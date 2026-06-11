@@ -1,6 +1,6 @@
 ---
 name: vanilla-web
-description: Atle's conventions for building web UIs — vanilla ES modules, HTML <template> components loaded by JS (no HTML strings in JS), @scope CSS, interaction-safe re-renders, zero-dep node server, JSDoc+tsc gate. Use whenever creating or modifying a website, dashboard, or web UI, unless React is explicitly justified.
+description: Atle's conventions for building web UIs — vanilla ES modules, HTML <template> components loaded by JS (no HTML strings in JS), reusable component folders with a create-factory contract, @scope CSS, interaction-safe re-renders, zero-dep node server, JSDoc+tsc gate. Use whenever creating or modifying a website, dashboard, or web UI, unless React is explicitly justified.
 ---
 
 # vanilla-web — how websites get built here
@@ -31,19 +31,30 @@ web/
 ├── lib/
 │   ├── templates.js     # canonical helpers — copy from this skill dir
 │   └── helpers.js       # app-specific shared utils
+├── components/          # reusable across views — one folder per component
+│   └── stat-card/
+│       ├── stat-card.html   # <template id="tpl-stat-card">
+│       ├── stat-card.css    # @scope (.stat-card)
+│       └── stat-card.js     # export createStatCard() — see Components
 └── views/
     ├── registry.js      # export const views = [{ id, title, load: () => import("./overview/index.js") }]
     └── overview/        # one self-contained folder per view
         ├── index.js     # default export: the view contract
         ├── style.css    # @scope'd to the view root
-        └── *.html       # <template> component files for this view
+        └── *.html       # view-private <template> files (single-use markup)
 ```
+
+`index.html` preloads the module graph — `<link rel="modulepreload">` for
+`shell.js`, `views/registry.js`, and `lib/templates.js` — since static ESM
+otherwise discovers imports one round-trip at a time.
 
 `shell.js` in this skill dir is the canonical shell — copy it verbatim. It
 makes `location.hash` (`#/<view-id>`) the source of truth (deep links and the
-back button come free), creates one `AbortController` per mount, and wraps
-each swap in `document.startViewTransition` when available (crossfade for
-free; feature-detected — Firefox only shipped it late 2025).
+back button come free), creates one `AbortController` per mount, wraps each
+swap in `document.startViewTransition` when available (crossfade for free;
+feature-detected), and surfaces swallowed errors — window `error` /
+`unhandledrejection` log and fill `<output id="errbar">` when the markup has
+one.
 
 The view contract — everything a view starts goes through `helpers.signal`,
 so teardown is structural, not a checklist:
@@ -57,7 +68,9 @@ export default {
     await loadTemplates(new URL("./overview.html", import.meta.url).href);
     // build DOM, then attach EVERYTHING through the signal:
     btn.addEventListener("click", onClick, { signal });   // auto-removed
-    const res = await fetch("/api/data", { signal });      // auto-cancelled
+    const res = await fetch("/api/data", {                 // auto-cancelled + capped
+      signal: AbortSignal.any([signal, AbortSignal.timeout(5000)]),
+    });
     every(refresh, 5000, signal);                          // auto-cleared
     const es = new EventSource("/api/events");             // see Live data
     signal.addEventListener("abort", () => es.close(), { once: true });
@@ -90,10 +103,75 @@ pick(row, "date").textContent = run.date;   // pick() throws on a typo'd slot
 host.appendChild(row);
 ```
 
+Numbers, dates, and durations render through `Intl` (`NumberFormat`,
+`DateTimeFormat`, `RelativeTimeFormat`) — never hand-rolled padding or
+`toFixed` display logic.
+
 `templates.js` in this skill dir is the canonical helper module
 (`loadTemplates`, `tpl`, `slot`, `pick`, `mount`, `loadCSS`, `every`,
 `renderRegion`, `selectionInside`). Copy it into `lib/` verbatim; extend,
 don't fork.
+
+## Components — reusable UI lives in components/, one folder each
+
+Markup starts view-private (a `<template>` in the view's own `.html`). The
+moment a second view needs it, promote it to `components/<name>/` — don't
+build a component library speculatively, and don't copy-paste templates
+between views.
+
+A component is one folder with three same-named files:
+
+- `<name>.html` — its `<template id="tpl-<name>">` blocks (ids are global,
+  so the component name prefixes them);
+- `<name>.css` — `@scope (.<name>)` styles, `container-type` on the root if
+  its layout should respond to its own width;
+- `<name>.js` — a factory that owns loading its own template + CSS (a
+  module-level promise makes it once-only), clones, fills slots, wires its
+  internal events, and returns the element plus in-place updaters.
+
+```js
+// components/stat-card/stat-card.js
+// @ts-check
+import { loadTemplates, tpl, pick, loadCSS } from "../../lib/templates.js";
+
+let ready;
+const ensure = () => (ready ??= Promise.all([
+  loadTemplates(new URL("./stat-card.html", import.meta.url).href),
+  loadCSS(import.meta.url, "./stat-card.css"),
+]));
+
+/** @param {{ label: string, value: string, onSelect?: () => void }} props
+ *  @param {AbortSignal} signal — the view's mount signal */
+export async function createStatCard({ label, value, onSelect }, signal) {
+  await ensure();
+  const el = /** @type {HTMLElement} */ (tpl("tpl-stat-card").firstElementChild);
+  pick(el, "label").textContent = label;
+  const valueEl = pick(el, "value");
+  valueEl.textContent = value;
+  if (onSelect) el.addEventListener("click", onSelect, { signal });
+  return { el, update: (/** @type {string} */ v) => { valueEl.textContent = v; } };
+}
+```
+
+```js
+// in a view's mount():
+const card = await createStatCard({ label: "Runs", value: "0" }, signal);
+host.append(card.el);
+// later ticks mutate in place — no swap, nothing to clobber:
+card.update(String(state.runs));
+```
+
+The contract in short: **`create<Name>(props, signal) → { el, …updaters }`**.
+
+- Listeners always attach with the caller's `signal`, so component listeners
+  die with the view that mounted it — components never need an unmount.
+- Component CSS loads once and stays for the app's lifetime (it's `@scope`d,
+  it can't leak); only *view* CSS is removed on unmount.
+- Data flows in via props and updater calls; events flow out via callback
+  props. For anything broader, dispatch a `CustomEvent` on `el` and let the
+  view listen — components never import views or reach for global state.
+- A component that only renders once can return `el` alone; add updaters the
+  first time a caller would otherwise rebuild it.
 
 ## CSS — @scope per component, tokens in @layer
 
@@ -147,9 +225,20 @@ don't fork.
   for page-level shell layout (collapsing the header nav, etc.).
 - View CSS loads via `loadCSS(import.meta.url, "./style.css")` in
   `mount()`, removed in `unmount()`.
+- Derive shades instead of hand-picking them:
+  `color-mix(in oklch, var(--accent), transparent 85%)` for washes, hovers,
+  and surfaces — one accent token, not five near-duplicates.
+- Headings get `text-wrap: balance`, prose `text-wrap: pretty` — set once in
+  the utilities layer.
+- State styling through `:has()` when the DOM already knows:
+  `.row:has(:checked)`, `form:has(:user-invalid) .submit` — not a JS class
+  toggle.
+- Motion is opt-out globally: `shell.css` ends with a
+  `prefers-reduced-motion: reduce` block that disables view-transition and
+  overlay animations.
 - Never: inline `style=` in templates (a CSS var + class instead), shadow DOM,
-  BEM prefixes, CSS-in-JS. `@scope` and nesting are evergreen-baseline since
-  2024; these are local-first tools, old browsers are out of scope.
+  BEM prefixes, CSS-in-JS. These are local-first tools for evergreen
+  browsers; old browsers are out of scope.
 
 ## Re-renders — guarded by default (the no-flicker rule)
 
@@ -167,8 +256,8 @@ they swap DOM. The rule set, in order of preference:
    interaction clears.
 3. **Signature hygiene:** `sig` is a cheap string of exactly what the region
    renders. A fast-ticking value must never share a sig with an O(content)
-   region (one job-progress tick forcing a 3000-row rebuild was a real
-   TapScribe lockup). Separate regions, separate sigs.
+   region — one progress tick must not force a 3000-row table rebuild.
+   Separate regions, separate sigs.
 4. **Gate at the data layer too:** skip the whole render pass when the
    payload is unchanged (compare a JSON string or ETag). With SSE (see Live
    data) this gate moves to the server: no change → no event → no render
@@ -177,10 +266,9 @@ they swap DOM. The rule set, in order of preference:
 5. For in-place updaters that write text the user might be selecting, check
    `selectionInside(host)` first and defer — same rule as the focus guard.
 
-Apps with polling + interactive controls should carry the e2e clobber guard:
+Apps with polling + interactive controls should carry an e2e clobber guard:
 a test that focuses every control, crosses a poll tick, and fails if a node
-was rebuilt under the focus (reference:
-`test_next_poll_render_does_not_clobber_open_controls`, TapScribe).
+was rebuilt under the focus.
 
 ## Overlays — native dialog and popover, never hand-rolled
 
@@ -191,18 +279,35 @@ platform versions are less code and immune to whole classes of bugs:
   `::backdrop`, top layer, all free.
 - **Dropdowns / menus / tooltips**: the `popover` attribute +
   `popovertarget` on the trigger button — zero JS for open/close,
-  light-dismiss (click-outside, ESC) built in. Baseline since 2024.
+  light-dismiss (click-outside, ESC) built in.
 
   ```html
   <button popovertarget="run-menu">⋯</button>
   <div id="run-menu" popover class="menu">…</div>
   ```
 
-- Caveat: CSS anchor positioning is still Chrome-only — position simple
-  dropdowns with plain CSS relative to a wrapper for now.
+- **Accordions / disclosure**: `<details>`; a shared `name` attribute makes
+  a group exclusive-open. No accordion JS.
+- Anchor a dropdown to its trigger with CSS anchor positioning
+  (`anchor-name` / `position-area`); wrapper-relative positioning is fine
+  for simple cases.
+- Open/close animation is pure CSS: `@starting-style` for the entry state,
+  `transition-behavior: allow-discrete` so `display` can transition — no JS
+  animation hooks.
 - `renderRegion` defers swaps while a popover or `<dialog>` inside the host
   is open (same guard as focus/selection), so polled re-renders can't snap
   an open menu shut.
+
+## Forms — native validation, no form layer
+
+- Constraints live in markup: `required`, `pattern`, `min`/`max`,
+  `maxlength`, the right `type=`. Submit handlers call
+  `form.reportValidity()` and read `new FormData(form)` — always a real
+  `<form>`, so Enter-to-submit and validation come free.
+- Invalid styling uses `:user-invalid` / `:user-valid` — they fire only
+  after the user touches a field, so nothing is red on first paint.
+- Input UX is markup too: `inputmode`, `enterkeyhint`, and `autocomplete`
+  with real tokens (`email`, `one-time-code`, `current-password`).
 
 ## Typing — JSDoc + tsc, always
 
@@ -210,8 +315,7 @@ Every JS module starts with `// @ts-check`; params and exported shapes get
 JSDoc annotations; shared shapes live in `types.d.ts`. A tiny `tsconfig.json`
 (`allowJs`, `checkJs`, `noEmit`, `strict`, `noUnusedLocals`) and a
 `typecheck` npm script gate CI or a hook. `noUnusedLocals` makes stale
-imports hard errors — the removed-import-still-used bug is invisible at
-runtime because listener exceptions get swallowed. Intentionally unused
+imports hard errors instead of runtime surprises; intentionally unused
 bindings get a `_` prefix.
 
 ## Server
@@ -244,18 +348,3 @@ the user may be mid-interaction when one arrives. Interval polling (via
 `every(fn, ms, signal)`) stays acceptable for trivial pages or backends
 where an event stream isn't worth the wiring; the re-render rules above are
 what make polling survivable.
-
-## Reference implementations
-
-- `~/repos/Slipestein/main/dash/` — smallest example: templates + slots,
-  per-section CSS, aggregating API proxy. (Predates @scope + view registry.)
-- `~/repos/GitLandscape/main/web/` — view registry, mount/unmount + loadCSS,
-  canvas-heavy views. (Predates the template pattern — builds DOM in JS.)
-- `~/repos/TapScribe/main/tapscribe/web/` — origin of `renderRegion`,
-  interaction-hold lore, e2e clobber guards, JSDoc+tsc gate. (Global CSS,
-  guards opt-in rather than default.)
-
-All three predate parts of this skill (none yet use SSE, the signal
-lifecycle, native overlays, hash routing, or container queries); when
-touching them, converge toward the skill, not the other way. This file is
-the canonical statement.

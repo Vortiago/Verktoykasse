@@ -81,5 +81,17 @@ themeBtn?.addEventListener("click", () => {
   applyTheme(next);
 });
 
+// ── Errors ──────────────────────────────────────────────────────────────────
+// Listener exceptions and unhandled rejections vanish silently by default.
+// Always logs; fills <output id="errbar"> when the shell markup has one.
+const errbar = document.getElementById("errbar");
+/** @param {string} msg */
+function showError(msg) {
+  console.error(msg);
+  if (errbar) { errbar.textContent = msg; errbar.hidden = false; }
+}
+window.addEventListener("error", (e) => showError(e.message));
+window.addEventListener("unhandledrejection", (e) => showError(`unhandled: ${e.reason}`));
+
 window.addEventListener("hashchange", () => switchView(viewIdFromHash()));
 switchView(viewIdFromHash());
