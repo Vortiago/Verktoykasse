@@ -62,5 +62,24 @@ function syncNav(id) {
   }
 }
 
+// ── Theme ───────────────────────────────────────────────────────────────────
+// light-dark() tokens follow the root's color-scheme, so a manual override is
+// one style property; "auto" clears it and defers to the OS. Wires
+// <button id="theme"> when the shell has one; choice persists per app.
+const themeBtn = document.getElementById("theme");
+const THEMES = ["auto", "light", "dark"];
+
+/** @param {string} t */
+function applyTheme(t) {
+  document.documentElement.style.colorScheme = t === "auto" ? "" : t;
+  if (themeBtn) themeBtn.textContent = t;
+}
+applyTheme(localStorage.getItem("theme") || "auto");
+themeBtn?.addEventListener("click", () => {
+  const next = THEMES[(THEMES.indexOf(localStorage.getItem("theme") || "auto") + 1) % THEMES.length];
+  localStorage.setItem("theme", next);
+  applyTheme(next);
+});
+
 window.addEventListener("hashchange", () => switchView(viewIdFromHash()));
 switchView(viewIdFromHash());

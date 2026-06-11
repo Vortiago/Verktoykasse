@@ -101,7 +101,10 @@ don't fork.
   styles always win without specificity games:
 
   Tokens use `light-dark()` so one block carries both themes — the OS
-  preference picks the side, no duplicate token sets, no theme JS:
+  preference picks the side by default, and a manual override is just
+  `color-scheme` on the root element: the canonical `shell.js` wires a
+  3-state auto/light/dark toggle (persisted in localStorage) to
+  `<button id="theme">` whenever the shell markup has one.
 
   ```css
   @layer tokens, utilities, components;
