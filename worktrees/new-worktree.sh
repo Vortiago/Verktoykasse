@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Create a worktree in the bare+sibling layout under $REPOS_ROOT.
 # Usage: new-worktree.sh <repo> <branch-name>
-#   new-worktree.sh sh7pad feat1     → $REPOS_ROOT/sh7pad/feat1 on branch feat1
-#   new-worktree.sh sh7pad '#123'    → $REPOS_ROOT/sh7pad/pr-123 from PR #123's head
+#   new-worktree.sh myrepo feature-x   → $REPOS_ROOT/myrepo/feature-x on branch feature-x
+#   new-worktree.sh myrepo '#123'      → $REPOS_ROOT/myrepo/pr-123 from PR #123's head
 # Prints the worktree path on success.
 # Delegates to the Claude Code WorktreeCreate hook so all creation paths share
 # one implementation (fetch, base ref, existing-branch reuse, .worktreeinclude).

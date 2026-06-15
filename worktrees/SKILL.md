@@ -1,6 +1,6 @@
 ---
 name: worktrees
-description: Create and manage git worktrees in the bare+sibling layout (each <repo>/.git is a bare clone; working trees are siblings like <repo>/main, <repo>/feat1). Use when creating a worktree, starting feature/branch work, reviewing a PR locally, or working on multiple repos or branches in parallel.
+description: Create and manage git worktrees in the bare+sibling layout (each <repo>/.git is a bare clone; working trees are siblings like <repo>/main and <repo>/<branch>). Use when creating a worktree, starting feature/branch work, reviewing a PR locally, or working on multiple repos or branches in parallel.
 argument-hint: "[repo] [branch]"
 disable-model-invocation: true
 ---
