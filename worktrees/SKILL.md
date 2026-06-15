@@ -56,8 +56,12 @@ git -C $REPOS_ROOT/<repo> branch -D <branch>                           # if the 
 ## Clone a new repo into this layout
 
 ```bash
-$REPOS_ROOT/.clone-bare.sh <repo>    # <repo> = anything `gh repo clone` accepts: name, owner/name, or URL
+$REPOS_ROOT/.clone-bare.sh <repo>    # with gh: name, owner/name, or URL; without gh: a full URL/path
 ```
+
+`gh` is preferred (it resolves shorthand like `owner/name`); if it isn't
+installed, the script falls back to plain `git clone` for a full URL or local
+path.
 
 ## How worktree creation works
 

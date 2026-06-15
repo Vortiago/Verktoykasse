@@ -2,7 +2,9 @@
 # Clone a repo into the bare+worktree layout used under $REPOS_ROOT:
 #   <repo>/.git  (bare)  +  <repo>/main  (worktree)
 # Usage: ./clone-bare.sh <repo>
-# <repo> is anything `gh repo clone` accepts: name (your own repo), owner/name, or URL
+# With gh installed, <repo> is anything `gh repo clone` accepts: name (your own
+# repo), owner/name, or URL. Without gh it falls back to `git clone`, which needs
+# a full clone URL or local path (a bare "name"/"owner/name" can't be resolved).
 set -euo pipefail
 
 REPOS_ROOT="${REPOS_ROOT:-$HOME/repos}"
@@ -13,7 +15,19 @@ base="$REPOS_ROOT/$name"
 
 [ -e "$base" ] && { echo "error: $base already exists" >&2; exit 1; }
 
-gh repo clone "$repo" "$base/.git" -- --quiet --bare
+if command -v gh >/dev/null 2>&1; then
+  gh repo clone "$repo" "$base/.git" -- --quiet --bare
+else
+  # No gh: plain git can only clone something it can resolve directly.
+  case "$repo" in
+    *://*|*@*:*|/*|./*|../*|file:*|"$HOME"/*)
+      git clone --quiet --bare "$repo" "$base/.git" ;;
+    *)
+      echo "error: gh not found and '$repo' is not a clone URL/path." >&2
+      echo "       install gh, or pass a full URL (https://…, git@…:…, /path)." >&2
+      exit 1 ;;
+  esac
+fi
 git -C "$base" config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'
 git -C "$base" config push.autoSetupRemote true
 git -C "$base" fetch --quiet --prune origin
