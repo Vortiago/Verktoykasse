@@ -5,8 +5,8 @@
 My general-purpose [Claude Code](https://claude.com/claude-code) skills:
 conventions and canonical helper code that apply across projects, versioned
 here and symlinked into `~/.claude/skills/` dotfiles-style. Project-specific
-skills live with their projects (e.g. `delegate-impl` in Slipestein);
-third-party skills are installed separately and don't belong here.
+skills live with their projects; third-party skills are installed separately
+and don't belong here.
 
 ## Skills
 
