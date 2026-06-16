@@ -1,0 +1,19 @@
+{
+  "//": "Canonical JSDoc + tsc type gate for the vanilla-web conventions (see SKILL.md). Copy into <app>/ next to the web root. `npx tsc --noEmit` (or an npm `typecheck` script) is the whole gate — no emit, no build. Every .js starts with // @ts-check; noUnusedLocals turns stale imports into hard errors.",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "types": []
+  },
+  "include": ["**/*.js", "types.d.ts"],
+  "exclude": ["node_modules", "serve.mjs"]
+}
