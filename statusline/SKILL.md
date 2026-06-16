@@ -102,9 +102,11 @@ printf '%s● ci%s %squeue%s %s' "$dot" "$CL_RESET" "$CL_DIM" "$CL_RESET" "$coun
 
 ## Reference
 
-The worked example is committed in the GitLandscape repo at
-`.claude/statusline-ext.sh` — dev-server state, every reachable address, ingest
-repo count, dataset freshness, with a header comment that documents the contract.
+Worked example beside this skill in the toolbox:
+[`../.claude/statusline-ext.sh`](../.claude/statusline-ext.sh). Counts the toolbox's
+own skills, defined vs. linked live (`🧰 skills 3/3`); declares one `svc` link.
+Auto-found at `$CL_ROOT/.claude/statusline-ext.sh` — no `install.sh` wiring. Copy as a
+starting point.
 
 ## Testing
 
