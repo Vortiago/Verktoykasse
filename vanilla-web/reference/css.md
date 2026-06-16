@@ -1,0 +1,67 @@
+# CSS — @scope per component, tokens in @layer
+
+Read this when writing `shell.css` or any view/component stylesheet.
+
+- `shell.css` holds design tokens and the few utilities, layered so component
+  styles always win without specificity games:
+
+  Tokens use `light-dark()` so one block carries both themes — the OS preference
+  picks the side by default, and a manual override is just `color-scheme` on the
+  root element: the canonical `shell.js` wires a 3-state auto/light/dark toggle
+  (persisted in localStorage) to `<button id="theme">` whenever the shell markup
+  has one.
+
+  ```css
+  @layer tokens, utilities, components;
+  @layer tokens {
+    :root {
+      color-scheme: light dark;
+      --bg:       light-dark(#f6f7f9, #0b0d12);
+      --text:     light-dark(#1a1d23, #e6e9ef);
+      --text-dim: light-dark(#5d6570, #9aa3b2);
+      --accent:   light-dark(#1a64d6, #8ab4f8);
+      --hairline: light-dark(#d8dce2, #232936);
+      --r: 4px;
+      --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    }
+  }
+  @layer utilities {
+    .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+    .dim  { color: var(--text-dim); }
+  }
+  ```
+
+- Each view/component gets its own `.css` next to its `.html`, wrapped in
+  `@scope` on the component's root class — no manual prefixes, no leakage:
+
+  ```css
+  @layer components;
+  @scope (.scorecard) {
+    :scope { container-type: inline-size; padding: 14px 18px; }
+    .row { border-bottom: 1px solid var(--hairline); }   /* can't escape .scorecard */
+    .chip:hover { border-color: var(--text-dim); }
+    @container (width < 600px) {
+      .row { grid-template-columns: 1fr; }   /* responds to ITS width */
+    }
+  }
+  ```
+
+- Responsiveness is per-component, not per-viewport: the component root sets
+  `container-type: inline-size` and its layout shifts via `@container` — the
+  component stays self-contained wherever it's placed. Viewport `@media` only for
+  page-level shell layout (collapsing the header nav, etc.).
+- View CSS loads via `loadCSS(import.meta.url, "./style.css")` in `mount()`,
+  removed in `unmount()`.
+- Derive shades instead of hand-picking them:
+  `color-mix(in oklch, var(--accent), transparent 85%)` for washes, hovers, and
+  surfaces — one accent token, not five near-duplicates.
+- Headings get `text-wrap: balance`, prose `text-wrap: pretty` — set once in the
+  utilities layer.
+- State styling through `:has()` when the DOM already knows:
+  `.row:has(:checked)`, `form:has(:user-invalid) .submit` — not a JS class toggle.
+- Motion is opt-out globally: `shell.css` ends with a
+  `prefers-reduced-motion: reduce` block that disables view-transition and overlay
+  animations.
+- Never: inline `style=` in templates (a CSS var + class instead), shadow DOM,
+  BEM prefixes, CSS-in-JS. These are local-first tools for evergreen browsers;
+  old browsers are out of scope.
