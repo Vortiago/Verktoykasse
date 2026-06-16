@@ -92,6 +92,21 @@ config.local.json
 
 Without this, those files would be absent in every fresh worktree.
 
+`.worktreeinclude` copies from the *source* worktree, so the file must exist in
+whatever you branch from. To land a machine-local file in *every* worktree
+regardless of source — without committing a pattern list — use the seed tree.
+
+### `<bare>/worktree-seed/` — seed every worktree from the bare repo
+
+After creating the worktree, the hook mirrors `<bare>/worktree-seed/` into it
+(self-located from the shared git dir). Drop machine-local, gitignored files there
+(mirroring the worktree layout); every new worktree gets them — nothing in git
+history, no dependence on the source worktree:
+
+```
+<repo>/worktree-seed/data/config.local.json   →   <repo>/<branch>/data/config.local.json
+```
+
 ## Gotchas
 
 - Never commit directly in `$REPOS_ROOT/<repo>/` root — it's the bare repo.
