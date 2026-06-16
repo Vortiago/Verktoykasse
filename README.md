@@ -18,6 +18,16 @@ and don't belong here.
   routing with view transitions, zero-dep node server, JSDoc+tsc gate.
   Ships three canonical skeletons: `templates.js`, `shell.js`, `serve.mjs`.
 
+- **[statusline](statusline/SKILL.md)** — the status line for all my Claude Code
+  sessions. A generic core renders fixed regions: `project ⎇ branch (worktree)`,
+  two core-owned link regions (GitHub issue/PR; services / running code), then a
+  per-project status segment. Links are full URLs — clickable even where OSC-8 is
+  stripped (tmux over ssh); `gh` lookups are background-cached so renders stay
+  instant. A project adds an *extension* that declares links (`cl_addlink`) and
+  prints status, sharing `lib.sh`. It lives committed at `.claude/statusline-ext.sh`
+  (inert without the core) or personal at `~/.config/claude-statusline/projects/<project>.sh`.
+  User-invocable as `/expand-statusline`; worked example in the GitLandscape repo.
+
 - **[worktrees](worktrees/SKILL.md)** — git worktrees in the bare+sibling
   layout (`<repo>/.git` bare, working trees as siblings like `<repo>/main`).
   A layout-detecting `WorktreeCreate` hook handles bare+sibling *and* ordinary
