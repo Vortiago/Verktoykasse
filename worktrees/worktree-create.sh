@@ -92,4 +92,20 @@ if [[ -n "$src" && -f "$src/.worktreeinclude" ]]; then
   ) >&2
 fi
 
+# Per-repo seed: copy machine-local, gitignored files (configs, secrets) into
+# every new worktree from <bare>/worktree-seed/ — shared by all worktrees of the
+# repo, outside the working tree (never in git), self-located from the git dir.
+if [[ "$(basename "$common")" == .git ]]; then
+  seed="$(dirname "$common")/worktree-seed"
+else
+  seed="$common/worktree-seed"
+fi
+if [[ -d "$seed" ]]; then
+  if cp -a "$seed/." "$wt/" 2>/dev/null; then
+    echo "seed: applied $seed" >&2
+  else
+    echo "seed: failed to apply $seed" >&2
+  fi
+fi
+
 echo "$wt"
