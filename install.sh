@@ -3,16 +3,25 @@
 # A real directory at a live path is backed up to <path>.pre-verktoykasse
 # rather than overwritten.
 #
-# Usage:
-#   ./install.sh                 install every skill
-#   ./install.sh worktrees ...   install only the named skill(s)
+# The CALLER decides target + skills; this installer holds NO skill->CLI policy,
+# only where each CLI keeps its skills (TARGET_DIR).
 #
-# A skill with its own <skill>/install.sh is sourced (it may symlink extra
-# files, register hooks, etc.); otherwise the skill dir is linked into
-# ~/.claude/skills/<skill>.
+# Usage:
+#   ./install.sh [skill...]                     install (all, or the named) for Claude
+#   ./install.sh --target opencode [skill...]   install for OpenCode (plain symlink, no hooks)
+#
+# Targets: claude (default) | opencode.
+# A skill's own <skill>/install.sh (hooks / extra setup) is Claude-specific, so it is
+# sourced ONLY for the claude target; every other target gets a plain symlink of the dir.
 set -euo pipefail
 
 HERE=$(dirname "$(readlink -f "$0")")
+
+declare -A TARGET_DIR=(
+  [claude]="$HOME/.claude/skills"
+  [opencode]="$HOME/.config/opencode/skills"
+)
+TARGET=claude
 
 link() { # $1 = repo dir, $2 = live path
   local target=$1 live=$2
@@ -28,24 +37,36 @@ link() { # $1 = repo dir, $2 = live path
   echo "linked  $live -> $target"
 }
 
-install_skill() { # $1 = skill name
+install_skill() { # $1 = skill name — installed for the current $TARGET
   local name=$1
   [[ -d "$HERE/$name" ]] || { echo "error: no skill '$name' in $HERE" >&2; return 1; }
-  if [[ -f "$HERE/$name/install.sh" ]]; then
+  if [[ $TARGET == claude && -f "$HERE/$name/install.sh" ]]; then
+    # Claude-specific hooks / extra setup — only for the claude target.
     # shellcheck source=/dev/null
     source "$HERE/$name/install.sh"
   else
-    link "$HERE/$name" "$HOME/.claude/skills/$name"
+    link "$HERE/$name" "${TARGET_DIR[$TARGET]}/$name"
   fi
 }
 
-skills=("$@")
+skills=()
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --target) TARGET=${2:?--target needs a value}; shift 2 ;;
+    --target=*) TARGET=${1#*=}; shift ;;
+    *) skills+=("$1"); shift ;;
+  esac
+done
+[[ -n ${TARGET_DIR[$TARGET]:-} ]] || {
+  echo "error: unknown target '$TARGET' (have: ${!TARGET_DIR[*]})" >&2; exit 1; }
+
 if [[ ${#skills[@]} -eq 0 ]]; then
   for d in "$HERE"/*/; do
     skills+=("$(basename "$d")")
   done
 fi
 
+echo "target: $TARGET -> ${TARGET_DIR[$TARGET]}"
 for s in "${skills[@]}"; do
   install_skill "$s"
 done
