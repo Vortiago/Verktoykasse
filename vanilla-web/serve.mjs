@@ -12,10 +12,13 @@
 //               for a dev frontend fronting a separate backend.
 //   INLINE API  or handle /api/* in-file (this server IS the backend): add
 //               handlers at the marked hook (readJsonBody + sendJson helpers).
+//   PREVIEW     on by default: regenerates previews/registry.js on startup so a
+//               new *.preview.js shows up at /preview.html. PREVIEW=off to skip.
 //
 //   PORT=4098 node serve.mjs                       # loopback only (default)
 //   HOST=$(tailscale ip -4) node serve.mjs         # expose on the tailnet
 //   API_ORIGIN=http://localhost:5000 node serve.mjs  # proxy /api → backend
+//   PREVIEW=off node serve.mjs                      # skip preview generation
 
 import { createServer, request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
@@ -32,6 +35,7 @@ const ROOT = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 8080;
 const HOST = process.env.HOST || "127.0.0.1";
 const API_ORIGIN = process.env.API_ORIGIN || ""; // set → reverse-proxy /api/*
+const PREVIEW = process.env.PREVIEW !== "off"; // on by default; PREVIEW=off to skip (prod)
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -192,6 +196,26 @@ const server = createServer(async (req, res) => {
     res.writeHead(500, { "content-type": "text/plain" }).end("Server error: " + /** @type {Error} */ (err).message);
   }
 });
+
+// ── Component preview catalogue (opt-out via PREVIEW=off) ─────────────────────
+// On by default: if a previews/ generator is present, regenerate its registry on
+// startup so a newly added *.preview.js is catalogued without a manual step.
+// Inert when there's no previews/scan.mjs; `node previews/scan.mjs` is the manual
+// fallback. See reference/preview.md.
+if (PREVIEW) {
+  const scanPath = join(ROOT, "previews", "scan.mjs");
+  // Probe for the generator explicitly, so a genuine error inside scan.mjs is
+  // reported instead of being mistaken for "no preview feature installed".
+  if (await stat(scanPath).then(() => true, () => false)) {
+    try {
+      const { default: scanPreviews } = await import("./previews/scan.mjs");
+      const n = await scanPreviews(ROOT);
+      console.log(`  previews: ${n} component(s) catalogued`);
+    } catch (err) {
+      console.warn("  preview scan failed:", /** @type {Error} */ (err).message);
+    }
+  }
+}
 
 server.listen(PORT, HOST, () => {
   console.log(`\n  →  http://${HOST}:${PORT}/${API_ORIGIN ? `   (proxy /api → ${API_ORIGIN})` : ""}\n\n  (Ctrl+C to stop)\n`);

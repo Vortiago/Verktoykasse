@@ -100,6 +100,46 @@ export function every(fn, ms, signal) {
   signal.addEventListener("abort", () => clearInterval(id), { once: true });
 }
 
+// ── Page chrome ────────────────────────────────────────────────────────────
+// Wiring shared by every page (the app shell.js and the standalone preview.js),
+// so the two can't drift. Both look up well-known ids in the shell markup.
+
+/** Wire the `<button id="theme">` light/dark/auto cycle. light-dark() tokens
+ * follow the root's color-scheme, so a manual override is one property; "auto"
+ * clears it and defers to the OS. Choice persists per page under `storageKey`.
+ * @param {string} [storageKey] */
+export function wireTheme(storageKey = "theme") {
+  const btn = document.getElementById("theme");
+  const themes = ["auto", "light", "dark"];
+  let current = localStorage.getItem(storageKey) || "auto";
+  const apply = () => {
+    document.documentElement.style.colorScheme = current === "auto" ? "" : current;
+    if (btn) btn.textContent = current;
+  };
+  apply();
+  btn?.addEventListener("click", () => {
+    current = themes[(themes.indexOf(current) + 1) % themes.length];
+    localStorage.setItem(storageKey, current);
+    apply();
+  });
+}
+
+/** Surface listener exceptions and unhandled rejections (which vanish silently
+ * by default): always logs, and fills `<output id="errbar">` when present. */
+export function wireErrorBar() {
+  const errbar = document.getElementById("errbar");
+  /** @param {unknown} msg */
+  const show = (msg) => {
+    console.error(msg);
+    if (errbar) {
+      errbar.textContent = String(msg);
+      errbar.hidden = false;
+    }
+  };
+  window.addEventListener("error", (e) => show(e.message));
+  window.addEventListener("unhandledrejection", (e) => show(`unhandled: ${e.reason}`));
+}
+
 // ── Interaction-safe re-rendering ──────────────────────────────────────────
 // Polled UIs clobber open dropdowns, focused inputs, and text selections when
 // they swap DOM. EVERY region swap on polled data goes through renderRegion;

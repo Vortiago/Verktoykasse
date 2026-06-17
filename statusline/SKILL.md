@@ -102,23 +102,10 @@ printf '%s● ci%s %squeue%s %s' "$dot" "$CL_RESET" "$CL_DIM" "$CL_RESET" "$coun
 
 ## Reference
 
-Worked example beside this skill in the toolbox:
-[`../.claude/statusline-ext.sh`](../.claude/statusline-ext.sh). Counts the toolbox's
-own skills, defined vs. linked live (`🧰 skills 3/3`); declares one `svc` link.
-Auto-found at `$CL_ROOT/.claude/statusline-ext.sh` — no `install.sh` wiring. Copy as a
-starting point.
+Worked example bundled with this skill: [`example-ext.sh`](example-ext.sh) — counts
+the toolbox's own skills, defined vs. linked live (`🧰 skills 3/3`); declares one
+`svc` link. Copy it as a starting point. (It also ships live in the toolbox at
+`$CL_ROOT/.claude/statusline-ext.sh`, auto-found with no `install.sh` wiring.)
 
-## Testing
-
-```bash
-# Direct: feed env + stdin; see the status segment AND the links it declared.
-links=$(mktemp); CL_LINKS=$links CL_LIB="$PWD/lib.sh" CL_ROOT=/path/to/repo \
-  CL_PROJECT=Foo CL_BRANCH=main CL_SLUG=owner/foo CL_HOST=github.com \
-  bash /path/to/repo/.claude/statusline-ext.sh <<<'{"cwd":"/path/to/repo"}'
-echo; cat "$links"   # declared links: <category> <icon> <url>
-
-# Through the core: the full line (regions + status), exactly as the bar runs it.
-echo '{"cwd":"/path/to/repo"}' | bash ~/.claude/statusline.sh
-
-# Confirm links are full URLs + OSC-8 wrapped: pipe the above to `cat -v`.
-```
+Testing — how to run the extension directly and through the core:
+→ [`reference/testing.md`](reference/testing.md)

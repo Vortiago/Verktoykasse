@@ -30,7 +30,8 @@ display logic. (`lib/format.js` wraps these; see `reference/modules.md`.)
 
 `templates.js` is the canonical helper module — copy into `lib/` verbatim;
 extend, don't fork. API: `loadTemplates`, `tpl`, `slot`, `pick`, `mount`,
-`loadCSS`, `every`, `renderRegion`, `selectionInside`.
+`loadCSS`, `every`, `wireTheme`, `wireErrorBar`, `renderRegion`,
+`selectionInside`.
 
 ## Components — reusable UI lives in components/, one folder each
 
