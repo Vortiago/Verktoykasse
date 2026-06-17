@@ -57,7 +57,8 @@ Copy **verbatim** from the skill dir: `shell.js` (makes `location.hash`
 `#/<view-id>` the source of truth — deep links + back button free; one
 `AbortController` per mount; `document.startViewTransition` swaps; surfaces
 errors to `<output id="errbar">`), `lib/templates.js`, `serve.mjs`,
-`tsconfig.json`. `index.html` preloads the module graph
+`tsconfig.json` — plus `preview.*` + `previews/scan.mjs` if you want the
+component catalogue (→ `reference/preview.md`). `index.html` preloads the module graph
 (`modulepreload` for `shell.js`, `views/registry.js`, `lib/templates.js`).
 
 ## The view contract

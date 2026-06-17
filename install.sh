@@ -38,6 +38,9 @@ link() { # $1 = repo dir, $2 = live path
 }
 
 install_skill() { # $1 = skill name — installed for the current $TARGET
+  # NOTE: skills are keyed by DIRECTORY name here; a skill's invocation name comes
+  # from its SKILL.md `name:` frontmatter and may differ — e.g. the `statusline/`
+  # dir is invoked as `/expand-statusline`.
   local name=$1
   [[ -d "$HERE/$name" ]] || { echo "error: no skill '$name' in $HERE" >&2; return 1; }
   if [[ $TARGET == claude && -f "$HERE/$name/install.sh" ]]; then
