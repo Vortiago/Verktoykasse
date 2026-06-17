@@ -36,6 +36,16 @@ and don't belong here.
   `clone-bare.sh` / `new-worktree.sh` helpers drive it. User-invocable as
   `/worktrees [repo] [branch]`.
 
+- **[conventional-commits](conventional-commits/SKILL.md)** — Conventional
+  Commits enforced machine-wide, zero deps. A POSIX-sh `commit-msg` hook wired
+  globally via git 2.54 config-based hooks (`hook.conventional-commits`) validates
+  every commit header (standard 11 types, `!`/`BREAKING CHANGE`, optional scope;
+  merge/revert/fixup allow-listed). Because PRs squash-merge, the PR title is the
+  moniker that ships — a Claude `PreToolUse(Bash)` hook validates `gh pr create`
+  titles and flags a breaking-change under-report against the branch, pointing at
+  the reflow workflow. Both hooks share one `validate.sh`. User-invocable as
+  `/conventional-commits`.
+
 ## Install
 
 ```sh
