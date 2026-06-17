@@ -10,7 +10,7 @@
 //                   available (crossfade for free; plain swap elsewhere).
 
 import { views } from "./views/registry.js";
-import { loadCSS, every } from "./lib/templates.js";
+import { loadCSS, every, wireTheme, wireErrorBar } from "./lib/templates.js";
 
 const stage = /** @type {HTMLElement} */ (document.getElementById("stage"));
 
@@ -62,36 +62,10 @@ function syncNav(id) {
   }
 }
 
-// ── Theme ───────────────────────────────────────────────────────────────────
-// light-dark() tokens follow the root's color-scheme, so a manual override is
-// one style property; "auto" clears it and defers to the OS. Wires
-// <button id="theme"> when the shell has one; choice persists per app.
-const themeBtn = document.getElementById("theme");
-const THEMES = ["auto", "light", "dark"];
-
-/** @param {string} t */
-function applyTheme(t) {
-  document.documentElement.style.colorScheme = t === "auto" ? "" : t;
-  if (themeBtn) themeBtn.textContent = t;
-}
-applyTheme(localStorage.getItem("theme") || "auto");
-themeBtn?.addEventListener("click", () => {
-  const next = THEMES[(THEMES.indexOf(localStorage.getItem("theme") || "auto") + 1) % THEMES.length];
-  localStorage.setItem("theme", next);
-  applyTheme(next);
-});
-
-// ── Errors ──────────────────────────────────────────────────────────────────
-// Listener exceptions and unhandled rejections vanish silently by default.
-// Always logs; fills <output id="errbar"> when the shell markup has one.
-const errbar = document.getElementById("errbar");
-/** @param {string} msg */
-function showError(msg) {
-  console.error(msg);
-  if (errbar) { errbar.textContent = msg; errbar.hidden = false; }
-}
-window.addEventListener("error", (e) => showError(e.message));
-window.addEventListener("unhandledrejection", (e) => showError(`unhandled: ${e.reason}`));
+// Page chrome — theme toggle + error surfacing, shared with preview.js so the
+// two pages can't drift (see lib/templates.js).
+wireTheme();
+wireErrorBar();
 
 window.addEventListener("hashchange", () => switchView(viewIdFromHash()));
 switchView(viewIdFromHash());

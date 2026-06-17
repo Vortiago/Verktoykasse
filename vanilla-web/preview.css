@@ -1,0 +1,99 @@
+/* Chrome for the standalone preview page (preview.html / preview.js).
+ * Self-sufficient: styled with light-dark() + system defaults so it works with
+ * or without the app's shell.css tokens, and follows the theme toggle for free. */
+@layer preview {
+  :root {
+    color-scheme: light dark;
+  }
+
+  body {
+    margin: 0;
+    font: 14px/1.5 system-ui, sans-serif;
+    color: light-dark(#1a1a1a, #e8e8e8);
+    background: light-dark(#ffffff, #14161a);
+  }
+
+  .preview-top {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.6rem 1rem;
+    background: inherit;
+    border-bottom: 1px solid light-dark(#e2e2e2, #2a2d33);
+  }
+  .preview-top strong {
+    font-weight: 600;
+  }
+  .preview-top #theme {
+    margin-inline-start: auto;
+    padding: 0.25rem 0.6rem;
+    font: inherit;
+    color: inherit;
+    background: light-dark(#f3f3f3, #21242a);
+    border: 1px solid light-dark(#d8d8d8, #34383f);
+    border-radius: 6px;
+    cursor: pointer;
+  }
+
+  .preview-layout {
+    display: grid;
+    grid-template-columns: 12rem 1fr;
+    min-height: calc(100dvh - 3.1rem);
+  }
+
+  .rail {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding: 0.5rem;
+    border-inline-end: 1px solid light-dark(#e2e2e2, #2a2d33);
+  }
+  .rail-item {
+    padding: 0.35rem 0.55rem;
+    color: inherit;
+    text-decoration: none;
+    border-radius: 6px;
+  }
+  .rail-item:hover {
+    background: light-dark(#f0f0f0, #21242a);
+  }
+  .rail-item[aria-current] {
+    font-weight: 600;
+    background: light-dark(#e6efff, #23314d);
+  }
+
+  .canvas {
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+    gap: 1.5rem;
+    padding: 1.5rem;
+  }
+
+  .frame {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 0;
+  }
+  .frame-stage {
+    padding: 1.25rem;
+    border: 1px dashed light-dark(#d4d4d4, #34383f);
+    border-radius: 8px;
+  }
+  .frame-caption {
+    font-size: 12px;
+    color: light-dark(#666, #9aa0aa);
+  }
+  .frame-caption code {
+    font-family: ui-monospace, monospace;
+  }
+  .frame-error {
+    margin: 0;
+    font: 12px/1.5 ui-monospace, monospace;
+    color: light-dark(#b00020, #ff8a8a);
+  }
+}
