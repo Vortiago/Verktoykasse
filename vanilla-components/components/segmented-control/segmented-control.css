@@ -1,0 +1,29 @@
+/* segmented-control — a bordered toggle/radio group (TapScribe `.segctl`,
+   Slipestein source toggles). The active option fills with the accent tint. */
+@scope (.segmented-control) {
+  :scope {
+    display: inline-flex;
+    border: 1px solid var(--hairline);
+    border-radius: var(--r);
+    overflow: hidden;
+    background: var(--bg-elev);
+  }
+  .segmented-control-opt {
+    border: 0;
+    border-right: 1px solid var(--hairline);
+    background: none;
+    color: var(--text-dim);
+    font: inherit;
+    font-size: 12px;
+    padding: 4px 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 80ms ease, color 80ms ease;
+  }
+  .segmented-control-opt:last-child { border-right: 0; }
+  .segmented-control-opt:hover { color: var(--text); }
+  .segmented-control-opt.is-on {
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    color: var(--accent);
+  }
+}

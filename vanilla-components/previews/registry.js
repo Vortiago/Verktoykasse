@@ -5,8 +5,15 @@
 /** @type {PreviewEntry[]} */
 export const previews = [
   { title: "app-bar", load: () => import("../components/app-bar/app-bar.preview.js") },
+  { title: "button", load: () => import("../components/button/button.preview.js") },
   { title: "chip", load: () => import("../components/chip/chip.preview.js") },
+  { title: "dialog", load: () => import("../components/dialog/dialog.preview.js") },
+  { title: "empty-state", load: () => import("../components/empty-state/empty-state.preview.js") },
+  { title: "field", load: () => import("../components/field/field.preview.js") },
+  { title: "kv-row", load: () => import("../components/kv-row/kv-row.preview.js") },
   { title: "panel", load: () => import("../components/panel/panel.preview.js") },
+  { title: "progress", load: () => import("../components/progress/progress.preview.js") },
+  { title: "segmented-control", load: () => import("../components/segmented-control/segmented-control.preview.js") },
   { title: "side-nav", load: () => import("../components/side-nav/side-nav.preview.js") },
   { title: "stat-card", load: () => import("../components/stat-card/stat-card.preview.js") },
   { title: "status-dot", load: () => import("../components/status-dot/status-dot.preview.js") },

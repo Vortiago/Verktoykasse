@@ -1,6 +1,6 @@
 ---
 name: vanilla-components
-description: Shared vanilla-web component library + unified design tokens — copy-verbatim, no build, no deps. Atoms (panel, stat-card, chip, status-dot, tooltip) + shell components (app-bar, side-nav, view-header) on the create-factory + @scope contract, plus a light-dark() token set. Use when building a vanilla-web UI and reaching for a panel/stat/chip/dot/tooltip/nav/header or a common token set, instead of hand-rolling one.
+description: Shared vanilla-web component library + unified design tokens — copy-verbatim, no build, no deps. Atoms (panel, stat-card, chip, status-dot, tooltip), shell (app-bar, side-nav, view-header), and controls (button, field, progress, kv-row, empty-state, dialog, segmented-control) on the create-factory + @scope contract, plus a light-dark() token set. Use when building a vanilla-web UI and reaching for any of those, or a common token set, instead of hand-rolling one.
 ---
 
 # vanilla-components — shared parts for vanilla-web UIs
@@ -43,9 +43,16 @@ and statically servable. Re-copy to update; never fork in place.
 | chip | `createChip({ text, tone?, dot? }) → { el, setText(text) }` | tone: ok\|warn\|bad\|info\|accent; `dot` = leading dot |
 | status-dot | `createStatusDot({ tone?, pulse?, label? }) → { el, setTone(t), setPulse(on) }` | tone: neutral\|ok\|warn\|bad\|info\|accent; `pulse` halo (respects reduced-motion) |
 | tooltip | `createTooltip(host, { className? }, signal?) → { node, show(content, x, y, box?), hide(), dispose() }` | top-layer manual popover, edge-clamped; aborts/disposes with `signal`. Also exports `clampTip(...)`. |
-| app-bar | `createAppBar({ brand, items, current?, onSelect? }, signal?) → { el, actionsEl, setCurrent }` | top bar: brand · pill nav (`<a href="#/<id>">`) · `actionsEl` slot; `setCurrent(id)` marks active; optional per-item `accent` |
+| app-bar | `createAppBar({ brand, items, current?, onSelect? }, signal?) → { el, actionsEl, setCurrent }` | top bar: brand · underline-tab nav (`<a href="#/<id>">`) · `actionsEl` slot; `setCurrent(id)` marks active; optional per-item `accent` |
 | side-nav | `createSideNav({ groups, current?, onSelect? }, signal?) → { el, setCurrent }` | grouped left-pane nav; `journey` group variant = numbered pipeline + done-checks; item `chip` composes the chip atom |
 | view-header | `createViewHeader({ eyebrow?, title, sub?, actions? }) → { el, actionsEl, setTitle, setSub }` | stage header: eyebrow · title · sub · `actionsEl` slot |
+| button | `createButton({ label, variant?, size?, icon?, onClick?, disabled? }, signal?) → { el, setLabel, setDisabled }` | variant: default\|primary\|danger\|ghost; size: md\|sm |
+| field | `createField({ label, type?, value?, placeholder?, hint?, options?, required?, onInput? }, signal?) → { el, control, getValue, setValue }` | type: text\|number\|email\|password\|search\|select\|textarea; native `:user-invalid` styling |
+| progress | `createProgress({ value, max?, tone?, label? }) → { el, setValue(value, max?) }` | track+fill meter; tone: ok\|warn\|bad\|accent |
+| kv-row | `createKvRow({ label, value, tone? }) → { el, setValue(value) }` | key·value line (prop is `label` — `key` is React-reserved); tone colors value |
+| empty-state | `createEmptyState({ icon?, title, detail? }) → { el }` | centered "nothing here" placeholder |
+| segmented-control | `createSegmentedControl({ options, current?, onSelect? }, signal?) → { el, setCurrent }` | radio/toggle group; `setCurrent(id)` marks the active option |
+| dialog | `createDialog({ title?, body?, actions? }, signal?) → { el, bodyEl, actionsEl, open(), close() }` | native `<dialog>`; append `el` to the DOM, then `open()` (showModal) / `close()` |
 
 Tones derive from one `--tone` custom property via `color-mix` — restyle by
 overriding the token, not the rule.

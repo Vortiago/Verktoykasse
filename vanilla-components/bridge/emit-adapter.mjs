@@ -30,6 +30,13 @@ const COMPONENTS = [
   { name: "app-bar", Pascal: "AppBar", props: `brand: { logo?: string; title: string; tagline?: string };\n  items: { id: string; label: string; accent?: string }[];\n  current?: string;` },
   { name: "side-nav", Pascal: "SideNav", props: `groups: { label?: string; variant?: "list" | "journey"; items: { id: string; label: string; icon?: string; chip?: { text: string; tone?: "ok" | "warn" | "bad" | "info" | "accent" }; done?: boolean }[] }[];\n  current?: string;` },
   { name: "view-header", Pascal: "ViewHeader", props: `eyebrow?: string;\n  title: string;\n  sub?: string;` },
+  { name: "button", Pascal: "Button", props: `label: string;\n  variant?: "default" | "primary" | "danger" | "ghost";\n  size?: "md" | "sm";\n  icon?: string;\n  disabled?: boolean;` },
+  { name: "kv-row", Pascal: "KvRow", props: `label: string;\n  value: string | number;\n  tone?: "ok" | "warn" | "bad" | "accent";` },
+  { name: "empty-state", Pascal: "EmptyState", props: `icon?: string;\n  title: string;\n  detail?: string;` },
+  { name: "progress", Pascal: "Progress", props: `value: number;\n  max?: number;\n  tone?: "ok" | "warn" | "bad" | "accent";\n  label?: string;` },
+  { name: "segmented-control", Pascal: "SegmentedControl", props: `options: { id: string; label: string }[];\n  current?: string;` },
+  { name: "field", Pascal: "Field", props: `label: string;\n  type?: "text" | "number" | "email" | "password" | "search" | "select" | "textarea";\n  value?: string;\n  placeholder?: string;\n  hint?: string;\n  options?: { value: string; label: string }[];\n  required?: boolean;` },
+  { name: "dialog", Pascal: "Dialog", props: `title?: string;\n  body?: string;`, dialog: true },
 ];
 
 /** Transform a real factory module into a self-contained dist module:
@@ -108,6 +115,29 @@ export function ${Pascal}({ content = "Tooltip" } = {}) {
 }
 `;
 
+const dialogShim = (Pascal, create) => `
+// A <dialog> is hidden until opened; the card shows it open-inline (non-modal) so
+// it isn't blank. The real component is driven by open()/close() (see prompt.md).
+export function ${Pascal}(props) {
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    const host = ref.current;
+    if (!host) return;
+    let alive = true;
+    Promise.resolve(${create}(props || {})).then((c) => {
+      if (!alive || !host) return;
+      c.el.open = true;
+      // a real dialog overlays (out of flow → 0-height card); for the preview,
+      // pin it into normal flow so the card shows the box.
+      Object.assign(c.el.style, { position: "static", margin: "0", inset: "auto" });
+      host.replaceChildren(c.el);
+    });
+    return () => { alive = false; };
+  }, [JSON.stringify(props)]);
+  return React.createElement("div", { ref });
+}
+`;
+
 // ---- _bridge-templates.js: tpl/pick/slot real; loaders unused (kept for API parity) ----
 const bridgeTemplates = `// Bridge edition of templates.js: real tpl/pick/slot; no loaders (templates are
 // pre-registered per-module, CSS ships via styles.css).
@@ -151,7 +181,9 @@ for (const c of COMPONENTS) {
   const html = await readFile(join(compDir, `${c.name}.html`), "utf8");
   const css = await readFile(join(compDir, `${c.name}.css`), "utf8");
   const create = `create${c.Pascal}`;
-  const shim = c.tooltip ? tooltipShim(c.Pascal, create) : declarativeShim(c.Pascal, create);
+  const shim = c.tooltip ? tooltipShim(c.Pascal, create)
+    : c.dialog ? dialogShim(c.Pascal, create)
+    : declarativeShim(c.Pascal, create);
   await writeFile(join(ADAPTER, "dist", `${c.name}.js`), neutralize(c.name, factory, html) + shim);
   await copyFile(join(compDir, `${c.name}.css`), join(ADAPTER, "css", `${c.name}.css`));
   exportsList.push(`export { ${c.Pascal} } from "./${c.name}.js";`);

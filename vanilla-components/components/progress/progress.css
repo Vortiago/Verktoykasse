@@ -1,0 +1,23 @@
+/* progress — a track + fill meter. Unifies TapScribe `.journey__fill`/`.level-meter`
+   and Slipestein `fitnessBar`. tone colors the fill. */
+@scope (.progress) {
+  :scope { display: flex; flex-direction: column; gap: 4px; }
+  .progress-label { font-size: 11px; color: var(--text-dim); }
+  .progress-track {
+    height: 6px;
+    background: var(--bg-elev-2);
+    border-radius: var(--r-pill);
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    width: 0;
+    background: var(--tone, var(--accent));
+    border-radius: inherit;
+    transition: width 0.35s ease;
+  }
+  :scope.tone-ok { --tone: var(--ok); }
+  :scope.tone-warn { --tone: var(--warn); }
+  :scope.tone-bad { --tone: var(--bad); }
+  :scope.tone-accent { --tone: var(--accent); }
+}
