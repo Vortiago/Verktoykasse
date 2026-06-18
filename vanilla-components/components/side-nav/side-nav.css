@@ -37,8 +37,8 @@
     transition: background 0.09s ease, color 0.09s ease, border-color 0.09s ease;
   }
   .side-nav-item:hover { background: var(--bg-elev-2); color: var(--text); }
-  .side-nav-item.is-active { background: var(--bg-elev-2); color: var(--text); border-color: var(--hairline); }
-  .side-nav-item.is-active::before {
+  .side-nav-item[aria-current] { background: var(--bg-elev-2); color: var(--text); border-color: var(--hairline); }
+  .side-nav-item[aria-current]::before {
     content: "";
     position: absolute;
     left: 0;
@@ -64,7 +64,7 @@
     border: 1px solid var(--hairline);
     border-radius: 3px;
   }
-  .side-nav-items.is-journey .side-nav-item.is-active .side-nav-lead.is-num {
+  .side-nav-items.is-journey .side-nav-item[aria-current] .side-nav-lead.is-num {
     background: var(--accent);
     color: var(--bg);
     border-color: var(--accent);

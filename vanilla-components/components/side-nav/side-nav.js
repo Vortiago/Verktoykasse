@@ -42,9 +42,7 @@ export async function createSideNav({ groups, current = null, onSelect } = /** @
       labelEl.textContent = group.label;
     }
 
-    let n = 0;
-    for (const item of group.items) {
-      n += 1;
+    for (const [i, item] of group.items.entries()) {
       const node = tpl("tpl-side-nav-item");
       const a = /** @type {HTMLAnchorElement} */ (pick(node, "link"));
       a.href = `#/${item.id}`;
@@ -53,7 +51,7 @@ export async function createSideNav({ groups, current = null, onSelect } = /** @
       const lead = pick(node, "lead");
       if (journey) {
         lead.classList.add("is-num");
-        lead.textContent = item.done ? "✓" : String(n);
+        lead.textContent = item.done ? "✓" : String(i + 1);
       } else if (item.icon != null) {
         lead.textContent = item.icon;
       } else {
@@ -77,8 +75,13 @@ export async function createSideNav({ groups, current = null, onSelect } = /** @
     el.append(g);
   }
 
+  // aria-current="page" marks the active item (matches app-bar). A real token,
+  // not the empty "" toggleAttribute would set; [aria-current] CSS still matches.
   const setCurrent = (/** @type {string} */ id) => {
-    for (const [lid, a] of links) a.classList.toggle("is-active", lid === id);
+    for (const [lid, a] of links) {
+      if (lid === id) a.setAttribute("aria-current", "page");
+      else a.removeAttribute("aria-current");
+    }
   };
   if (current != null) setCurrent(current);
 

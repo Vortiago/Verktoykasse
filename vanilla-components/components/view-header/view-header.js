@@ -22,30 +22,23 @@ export async function createViewHeader({ eyebrow = null, title, sub = null, acti
   const el = /** @type {HTMLElement} */ (tpl("tpl-view-header").firstElementChild);
 
   const titleEl = pick(el, "title");
-  titleEl.textContent = title;
-
   const eyebrowEl = pick(el, "eyebrow");
+  const subEl = pick(el, "sub");
+  const actionsEl = pick(el, "actions");
+
+  const setTitle = (/** @type {string} */ title) => { titleEl.textContent = title; };
+  const setSub = (/** @type {string | null} */ sub) => {
+    subEl.hidden = sub == null;
+    if (sub != null) subEl.textContent = sub;
+  };
+
+  setTitle(title);
   if (eyebrow != null) {
     eyebrowEl.hidden = false;
     eyebrowEl.textContent = eyebrow;
   }
-
-  const subEl = pick(el, "sub");
-  if (sub != null) {
-    subEl.hidden = false;
-    subEl.textContent = sub;
-  }
-
-  const actionsEl = pick(el, "actions");
+  setSub(sub); // hides when null (the template starts hidden), shows when provided
   if (actions != null) actionsEl.append(actions);
 
-  return {
-    el,
-    actionsEl,
-    setTitle: (title) => { titleEl.textContent = title; },
-    setSub: (sub) => {
-      subEl.hidden = sub == null;
-      if (sub != null) subEl.textContent = sub;
-    },
-  };
+  return { el, actionsEl, setTitle, setSub };
 }

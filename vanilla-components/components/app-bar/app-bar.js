@@ -53,7 +53,12 @@ export async function createAppBar({ brand, items, current = null, onSelect } = 
   }
 
   const setCurrent = (/** @type {string} */ id) => {
-    for (const [tid, a] of tabs) a.toggleAttribute("aria-current", tid === id);
+    // aria-current="page" (a meaningful token; the empty "" from toggleAttribute
+    // is treated as absent/false by assistive tech). [aria-current] CSS still matches.
+    for (const [tid, a] of tabs) {
+      if (tid === id) a.setAttribute("aria-current", "page");
+      else a.removeAttribute("aria-current");
+    }
   };
   if (current != null) setCurrent(current);
 

@@ -50,6 +50,12 @@ function neutralize(name, factorySrc, html) {
   if (/loadTemplates\(|loadCSS\(/.test(js)) {
     throw new Error(`neutralize(${name}): a loadTemplates(/loadCSS( call survived — the factory's ensure() shape changed; update the transform in emit-adapter.mjs`);
   }
+  // Same fail-loud principle for inter-component imports: only ../<x>/<x>.js
+  // siblings are flattened above, so any surviving "../" import would 404 at
+  // render in the flat adapter dist — catch it at build time instead.
+  if (/from\s*["']\.\.\//.test(js)) {
+    throw new Error(`neutralize(${name}): an unflattened "../" import survived — either a sibling import the rewrite doesn't model (only ../<name>/<name>.js is flattened) or a multi-line ../../lib/templates.js import the single-line strip missed; update emit-adapter.mjs`);
+  }
   return `// Adapter module for "${name}" — the real vanilla factory, dev-server
 // self-loading neutralized (template inlined below, CSS shipped via styles.css).
 import React from "react";
