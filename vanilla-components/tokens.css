@@ -1,0 +1,54 @@
+/* Shared design tokens for the vanilla-components library.
+ *
+ * The single file defining :root custom properties. Components style ONLY through
+ * these tokens (never hard-coded colors), so an app that ships its own tokens.css
+ * with the same names re-themes the whole library for free.
+ *
+ * Theming is `light-dark()`: every color carries (light, dark) and follows the
+ * root's `color-scheme`. wireTheme() (lib/templates.js) cycles auto/light/dark.
+ *   - A light+dark app: keep `color-scheme: light dark` (here) — both resolve.
+ *   - A DARK-ONLY app (e.g. GitLandscape, ADR-0016): set `color-scheme: dark` at
+ *     your app root and every light-dark() resolves to the dark side — these dark
+ *     values ARE GitLandscape's current palette, so adoption is a zero-diff change.
+ *
+ * Keep this set SMALL: shared surfaces, ink, one accent, status, type, a space
+ * scale, two radii. App-specific tokens (e.g. a per-view accent palette) belong
+ * in the app's own tokens, layered on top — not here. */
+
+@layer tokens {
+  :root {
+    color-scheme: light dark;
+
+    /* ── Surfaces ── page → elevated panel → double-elevated → hairline border */
+    --bg:        light-dark(#f3f4f7, #0b0d12);
+    --bg-elev:   light-dark(#ffffff, #141821);
+    --bg-elev-2: light-dark(#eef0f4, #1c222e);
+    --line:      light-dark(#d9dce3, #262d3a);
+    --hairline:  var(--line); /* alias: Slipestein/TapScribe call the border "hairline" */
+
+    /* ── Ink ── primary text → dimmed/secondary text */
+    --text:     light-dark(#1a1d23, #e6e9ef);
+    --text-dim: light-dark(#5d6570, #9aa3b2);
+
+    /* ── Accent + status ── one accent; semantic ok/warn/bad/info */
+    --accent: light-dark(#1a64d6, #8ab4f8);
+    --ok:     light-dark(#2c8a2c, #7dd97d);
+    --warn:   light-dark(#92700a, #e8c468);
+    --bad:    light-dark(#c04545, #e87d7d);
+    --info:   light-dark(#1a7d8a, #6fc7d6);
+
+    /* ── Type ── */
+    --sans: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --mono: ui-monospace, "Cascadia Code", SFMono-Regular, Menlo, Consolas, monospace;
+
+    /* ── Space scale ── (xs..l) for gaps and padding */
+    --space-xs: 4px;
+    --space-s:  8px;
+    --space-m:  12px;
+    --space-l:  16px;
+
+    /* ── Shape ── */
+    --r: 4px;        /* default corner radius */
+    --r-pill: 999px; /* fully-rounded (chips, dots, toggles) */
+  }
+}

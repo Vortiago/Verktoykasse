@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Component preview</title>
+    <!-- The shared design tokens — components render in their real token context. -->
+    <link rel="stylesheet" href="./tokens.css" />
+    <link rel="modulepreload" href="./preview.js" />
+    <link rel="modulepreload" href="./previews/registry.js" />
+    <link rel="modulepreload" href="./lib/templates.js" />
+    <script type="module" src="./preview.js"></script>
+  </head>
+  <body>
+    <header class="preview-top">
+      <strong>Components</strong>
+      <button id="theme" type="button" title="Toggle theme">auto</button>
+    </header>
+
+    <div class="preview-layout">
+      <nav id="rail" class="rail" aria-label="Components"></nav>
+      <main id="canvas" class="canvas"></main>
+    </div>
+
+    <output id="errbar" hidden></output>
+
+    <!-- Harness templates — no HTML strings in JS (SKILL.md invariant). -->
+    <template id="tpl-preview-railitem">
+      <a class="rail-item" data-slot="link"></a>
+    </template>
+
+    <template id="tpl-preview-frame">
+      <figure class="frame">
+        <div class="frame-stage" data-slot="stage"></div>
+        <figcaption class="frame-caption">
+          <b data-slot="name"></b> · <code data-slot="props"></code>
+        </figcaption>
+      </figure>
+    </template>
+
+    <template id="tpl-preview-error">
+      <pre class="frame-error" data-slot="msg"></pre>
+    </template>
+  </body>
+</html>

@@ -1,0 +1,38 @@
+/* Panel — a bordered, elevated surface with an optional header and a body.
+   The building-block container the apps reach for first (Slipestein `.panel`,
+   TapScribe `.panel__head/__body`). All color/shape via tokens. */
+@scope (.panel) {
+  :scope {
+    background: var(--bg-elev);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r);
+    color: var(--text);
+    overflow: clip; /* keep the head's bottom border inside the rounded corners */
+  }
+
+  .panel-head {
+    padding: var(--space-s) var(--space-m);
+    border-bottom: 1px solid var(--hairline);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-dim);
+  }
+
+  .panel-body {
+    padding: var(--space-m);
+  }
+
+  /* fill: stretch inside a flex column and let the body own the scroll —
+     for console-style layouts (Slipestein's Live view). */
+  :scope.is-fill {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    flex: 1 1 auto;
+  }
+  :scope.is-fill .panel-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+  }
+}

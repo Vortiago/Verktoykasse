@@ -1,0 +1,32 @@
+/* Tooltip — a positioned hover card. Rides the top layer as a manual popover
+   (no z-index games); the UA popover box is undone and re-skinned with tokens.
+   Promoted from GitLandscape's shared tooltip. Override via the `className`
+   option for per-use looks. */
+@scope (.tooltip) {
+  :scope {
+    /* undo the UA popover box, then skin it */
+    position: absolute;
+    inset: auto;
+    margin: 0;
+    max-width: 280px;
+    padding: var(--space-s) var(--space-m);
+    background: var(--bg-elev);
+    color: var(--text);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r);
+    font-size: 12px;
+    line-height: 1.4;
+    box-shadow: 0 4px 16px light-dark(rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0.5));
+    pointer-events: none;
+    opacity: 0;
+    z-index: 30; /* fallback only — the top layer ignores it */
+    /* allow-discrete defers display:none until the fade-out lands;
+       @starting-style gives the fade-in a from-value on the display flip */
+    transition: opacity 0.12s ease, display 0.12s allow-discrete;
+
+    &.show {
+      opacity: 1;
+      @starting-style { opacity: 0; }
+    }
+  }
+}
