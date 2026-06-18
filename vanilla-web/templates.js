@@ -233,7 +233,9 @@ export function reconcileList(host, items, keyOf, create, update) {
     const k = _reconcileKey.get(n);
     if (k !== undefined) prev.set(k, n);
   }
-  const canMove = typeof (/** @type {{ moveBefore?: unknown }} */ (host)).moveBefore === "function";
+  // moveBefore (Chromium 133+) repositions a node without resetting its state;
+  // cast it on once (lib.dom may not declare it), else fall back to insertBefore.
+  const h = /** @type {Element & { moveBefore?(node: Node, ref: Node | null): void }} */ (host);
   let cursor = host.firstElementChild;
   for (const item of items) {
     const k = String(keyOf(item));
@@ -247,10 +249,10 @@ export function reconcileList(host, items, keyOf, create, update) {
     }
     if (node === cursor) {
       cursor = cursor.nextElementSibling; // already in place
-    } else if (canMove && node.parentNode === host) {
-      /** @type {{ moveBefore: (n: Node, ref: Node | null) => void }} */ (/** @type {unknown} */ (host)).moveBefore(node, cursor); // state-preserving move
+    } else if (node.parentNode === host && h.moveBefore) {
+      h.moveBefore(node, cursor); // existing node: state-preserving move
     } else {
-      host.insertBefore(node, cursor); // new node (or no moveBefore): plain insert
+      host.insertBefore(node, cursor); // new node, or no moveBefore: plain insert
     }
   }
   for (const n of prev.values()) n.remove(); // drop keys no longer present
