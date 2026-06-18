@@ -19,13 +19,16 @@
   .app-bar-title { font-size: 15px; font-weight: 700; letter-spacing: 0.02em; }
   .app-bar-tagline { font-size: 11px; color: var(--text-dim); }
 
+  /* Underline tabs: text with an accent underline on the active one. The bar's
+     own bottom border is the rail; the active tab's 2px underline sits on it. */
   .app-bar-nav {
     display: flex;
-    gap: 6px;
+    gap: 2px;
     flex: 1 1 auto;
+    align-self: stretch;
+    align-items: stretch;
     overflow-x: auto;
     scrollbar-width: thin;
-    padding: 4px 0;
   }
   .app-bar-tab {
     --tab-accent: var(--accent);
@@ -33,23 +36,23 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 5px 12px;
-    border: 1px solid var(--hairline);
-    border-radius: var(--r-pill);
-    background: var(--bg-elev-2);
+    padding: 0 10px;
+    margin-bottom: -1px; /* overlap the bar's bottom border so the underline meets it */
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: none;
     color: var(--text-dim);
     text-decoration: none;
     font-size: 13px;
     font-weight: 500;
     white-space: nowrap;
-    transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+    transition: color 0.15s ease, border-color 0.15s ease;
   }
-  .app-bar-tab:hover { color: var(--text); border-color: var(--text-dim); }
+  .app-bar-tab:hover { color: var(--text); }
   .app-bar-tab[aria-current] {
-    color: var(--bg);
+    color: var(--text);
     font-weight: 600;
-    background: var(--tab-accent);
-    border-color: var(--tab-accent);
+    border-bottom-color: var(--tab-accent);
   }
 
   .app-bar-actions { display: flex; align-items: center; gap: var(--space-s); flex: none; }
