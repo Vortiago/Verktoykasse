@@ -1,0 +1,61 @@
+/* App-bar — the top bar: brand, a hash-routed pill-tab nav, and a right-side
+   actions slot. Unifies GitLandscape `#topbar`/`.tab` and Slipestein `.page-head`.
+   Active tab uses its per-item accent (defaults --accent). */
+@scope (.app-bar) {
+  :scope {
+    display: flex;
+    align-items: center;
+    gap: var(--space-l);
+    padding: 0 var(--space-m);
+    min-height: 56px;
+    background: var(--bg-elev);
+    border-bottom: 1px solid var(--hairline);
+    color: var(--text);
+  }
+
+  .app-bar-brand { display: flex; align-items: center; gap: var(--space-s); flex: none; }
+  .app-bar-logo { font-size: 20px; line-height: 1; }
+  .app-bar-titles { display: flex; flex-direction: column; }
+  .app-bar-title { font-size: 15px; font-weight: 700; letter-spacing: 0.02em; }
+  .app-bar-tagline { font-size: 11px; color: var(--text-dim); }
+
+  /* Underline tabs: text with an accent underline on the active one. The bar's
+     own bottom border is the rail; the active tab's 2px underline sits on it. */
+  .app-bar-nav {
+    display: flex;
+    gap: 2px;
+    flex: 1 1 auto;
+    align-self: stretch;
+    align-items: stretch;
+    /* overflow-x:auto forces overflow-y to compute as auto too, so pin y:hidden —
+       the tabs are full-height and must never trigger a vertical scrollbar. */
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+  }
+  .app-bar-tab {
+    --tab-accent: var(--accent);
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 10px;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: none;
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+  .app-bar-tab:hover { color: var(--text); }
+  .app-bar-tab[aria-current] {
+    color: var(--text);
+    font-weight: 600;
+    border-bottom-color: var(--tab-accent);
+  }
+
+  .app-bar-actions { display: flex; align-items: center; gap: var(--space-s); flex: none; }
+}

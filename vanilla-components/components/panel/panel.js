@@ -5,7 +5,9 @@
 import { loadTemplates, tpl, pick, loadCSS } from "../../lib/templates.js";
 
 let ready;
-const ensure = () => (ready ??= Promise.all([
+/** Load the template + CSS once. Await before calling createPanelSync — needed
+ * to use the component inside a synchronous renderRegion rebuild. */
+export const warmPanel = () => (ready ??= Promise.all([
   loadTemplates(new URL("./panel.html", import.meta.url).href),
   loadCSS(import.meta.url, "./panel.css"),
 ]));
@@ -18,15 +20,13 @@ function fill(host, content) {
   else host.replaceChildren(content);
 }
 
-/**
- * @param {{ head?: string | Node | null, body?: string | Node | null, fill?: boolean }} [props]
- *   head - header content (string or node); omit for a headless panel.
- *   body - initial body content; append more to the returned `bodyEl` later.
- *   fill - stretch to fill the container and let the body scroll.
- * @returns {Promise<{ el: HTMLElement, headEl: HTMLElement, bodyEl: HTMLElement }>}
- */
-export async function createPanel({ head = null, body = null, fill: doFill = false } = {}) {
-  await ensure();
+/** @typedef {{ head?: string | Node | null, body?: string | Node | null, fill?: boolean }} PanelProps */
+/** @typedef {{ el: HTMLElement, headEl: HTMLElement, bodyEl: HTMLElement }} PanelHandle */
+
+/** Synchronous build — requires warmPanel() to have resolved (else tpl() throws).
+ * Use inside a renderRegion rebuild after warming once at mount.
+ * @param {PanelProps} [props] @returns {PanelHandle} */
+export function createPanelSync({ head = null, body = null, fill: doFill = false } = {}) {
   const el = /** @type {HTMLElement} */ (tpl("tpl-panel").firstElementChild);
   if (doFill) el.classList.add("is-fill");
   const headEl = pick(el, "head");
@@ -37,4 +37,11 @@ export async function createPanel({ head = null, body = null, fill: doFill = fal
   }
   fill(bodyEl, body);
   return { el, headEl, bodyEl };
+}
+
+/** Warm + build. The convenience path (and what the design-sync shim uses).
+ * @param {PanelProps} [props] @returns {Promise<PanelHandle>} */
+export async function createPanel(props = {}) {
+  await warmPanel();
+  return createPanelSync(props);
 }

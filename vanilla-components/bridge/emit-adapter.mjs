@@ -27,6 +27,16 @@ const COMPONENTS = [
   { name: "chip", Pascal: "Chip", props: `text: string;\n  tone?: "ok" | "warn" | "bad" | "info" | "accent";\n  dot?: boolean;` },
   { name: "status-dot", Pascal: "StatusDot", props: `tone?: "neutral" | "ok" | "warn" | "bad" | "info" | "accent";\n  pulse?: boolean;\n  label?: string;` },
   { name: "tooltip", Pascal: "Tooltip", props: `content?: string;`, tooltip: true },
+  { name: "app-bar", Pascal: "AppBar", props: `brand: { logo?: string; title: string; tagline?: string };\n  items: { id: string; label: string; accent?: string }[];\n  current?: string;` },
+  { name: "side-nav", Pascal: "SideNav", props: `groups: { label?: string; variant?: "list" | "journey"; items: { id: string; label: string; icon?: string; chip?: { text: string; tone?: "ok" | "warn" | "bad" | "info" | "accent" }; done?: boolean }[] }[];\n  current?: string;` },
+  { name: "view-header", Pascal: "ViewHeader", props: `eyebrow?: string;\n  title: string;\n  sub?: string;` },
+  { name: "button", Pascal: "Button", props: `label: string;\n  variant?: "default" | "primary" | "danger" | "ghost";\n  size?: "md" | "sm";\n  icon?: string;\n  disabled?: boolean;` },
+  { name: "kv-row", Pascal: "KvRow", props: `label: string;\n  value: string | number;\n  tone?: "ok" | "warn" | "bad" | "accent";` },
+  { name: "empty-state", Pascal: "EmptyState", props: `icon?: string;\n  title: string;\n  detail?: string;` },
+  { name: "progress", Pascal: "Progress", props: `value: number;\n  max?: number;\n  tone?: "ok" | "warn" | "bad" | "accent";\n  label?: string;` },
+  { name: "segmented-control", Pascal: "SegmentedControl", props: `options: { id: string; label: string }[];\n  current?: string;` },
+  { name: "field", Pascal: "Field", props: `label: string;\n  type?: "text" | "number" | "email" | "password" | "search" | "select" | "textarea";\n  value?: string;\n  placeholder?: string;\n  hint?: string;\n  options?: { value: string; label: string }[];\n  required?: boolean;` },
+  { name: "dialog", Pascal: "Dialog", props: `title?: string;\n  body?: string;`, dialog: true },
 ];
 
 /** Transform a real factory module into a self-contained dist module:
@@ -37,12 +47,21 @@ function neutralize(name, factorySrc, html) {
     .replace(/^import\s*\{[^}]*\}\s*from\s*["']\.\.\/\.\.\/lib\/templates\.js["'];?\s*$/m, "")
     // ensure() self-load -> lazy template registration; CSS ships via styles.css
     .replace(new RegExp(`loadTemplates\\(new URL\\(["']\\./${name}\\.html["'],\\s*import\\.meta\\.url\\)\\.href\\)`), "ensureTemplate()")
-    .replace(new RegExp(`loadCSS\\(import\\.meta\\.url,\\s*["']\\./${name}\\.css["']\\)`), "null");
+    .replace(new RegExp(`loadCSS\\(import\\.meta\\.url,\\s*["']\\./${name}\\.css["']\\)`), "null")
+    // inter-component imports (e.g. side-nav -> chip): the adapter dist is flat,
+    // so "../chip/chip.js" becomes "./chip.js".
+    .replace(/from\s*["']\.\.\/([a-z-]+)\/\1\.js["']/g, 'from "./$1.js"');
   // Guard: if a factory's ensure() shape ever drifts, the replaces above miss and
   // we'd emit a module referencing the now-stripped loaders — fail loud at build
   // time instead of silently at render.
   if (/loadTemplates\(|loadCSS\(/.test(js)) {
     throw new Error(`neutralize(${name}): a loadTemplates(/loadCSS( call survived — the factory's ensure() shape changed; update the transform in emit-adapter.mjs`);
+  }
+  // Same fail-loud principle for inter-component imports: only ../<x>/<x>.js
+  // siblings are flattened above, so any surviving "../" import would 404 at
+  // render in the flat adapter dist — catch it at build time instead.
+  if (/from\s*["']\.\.\//.test(js)) {
+    throw new Error(`neutralize(${name}): an unflattened "../" import survived — either a sibling import the rewrite doesn't model (only ../<name>/<name>.js is flattened) or a multi-line ../../lib/templates.js import the single-line strip missed; update emit-adapter.mjs`);
   }
   return `// Adapter module for "${name}" — the real vanilla factory, dev-server
 // self-loading neutralized (template inlined below, CSS shipped via styles.css).
@@ -96,6 +115,29 @@ export function ${Pascal}({ content = "Tooltip" } = {}) {
 }
 `;
 
+const dialogShim = (Pascal, create) => `
+// A <dialog> is hidden until opened; the card shows it open-inline (non-modal) so
+// it isn't blank. The real component is driven by open()/close() (see prompt.md).
+export function ${Pascal}(props) {
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    const host = ref.current;
+    if (!host) return;
+    let alive = true;
+    Promise.resolve(${create}(props || {})).then((c) => {
+      if (!alive || !host) return;
+      c.el.open = true;
+      // a real dialog overlays (out of flow → 0-height card); for the preview,
+      // pin it into normal flow so the card shows the box.
+      Object.assign(c.el.style, { position: "static", margin: "0", inset: "auto" });
+      host.replaceChildren(c.el);
+    });
+    return () => { alive = false; };
+  }, [JSON.stringify(props)]);
+  return React.createElement("div", { ref });
+}
+`;
+
 // ---- _bridge-templates.js: tpl/pick/slot real; loaders unused (kept for API parity) ----
 const bridgeTemplates = `// Bridge edition of templates.js: real tpl/pick/slot; no loaders (templates are
 // pre-registered per-module, CSS ships via styles.css).
@@ -139,7 +181,9 @@ for (const c of COMPONENTS) {
   const html = await readFile(join(compDir, `${c.name}.html`), "utf8");
   const css = await readFile(join(compDir, `${c.name}.css`), "utf8");
   const create = `create${c.Pascal}`;
-  const shim = c.tooltip ? tooltipShim(c.Pascal, create) : declarativeShim(c.Pascal, create);
+  const shim = c.tooltip ? tooltipShim(c.Pascal, create)
+    : c.dialog ? dialogShim(c.Pascal, create)
+    : declarativeShim(c.Pascal, create);
   await writeFile(join(ADAPTER, "dist", `${c.name}.js`), neutralize(c.name, factory, html) + shim);
   await copyFile(join(compDir, `${c.name}.css`), join(ADAPTER, "css", `${c.name}.css`));
   exportsList.push(`export { ${c.Pascal} } from "./${c.name}.js";`);

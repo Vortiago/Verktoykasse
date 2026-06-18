@@ -1,0 +1,17 @@
+<template id="tpl-app-bar">
+  <header class="app-bar">
+    <div class="app-bar-brand">
+      <span class="app-bar-logo" data-slot="logo" hidden></span>
+      <div class="app-bar-titles">
+        <span class="app-bar-title" data-slot="title"></span>
+        <span class="app-bar-tagline" data-slot="tagline" hidden></span>
+      </div>
+    </div>
+    <nav class="app-bar-nav" data-slot="nav" aria-label="Views"></nav>
+    <div class="app-bar-actions" data-slot="actions"></div>
+  </header>
+</template>
+
+<template id="tpl-app-bar-item">
+  <a class="app-bar-tab" data-slot="link"></a>
+</template>

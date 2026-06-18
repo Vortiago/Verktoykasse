@@ -1,0 +1,22 @@
+/* kv-row — a key·value line (dim label left, value right). The dashboard staple
+   (Slipestein `kv`, GitLandscape `.gr-ro`, TapScribe `.statcell`). */
+@scope (.kv-row) {
+  :scope {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-m);
+  }
+  .kv-row-key { font-size: 12px; color: var(--text-dim); }
+  .kv-row-value {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 13px;
+    color: var(--tone, var(--text));
+    text-align: right;
+  }
+  :scope.tone-ok { --tone: var(--ok); }
+  :scope.tone-warn { --tone: var(--warn); }
+  :scope.tone-bad { --tone: var(--bad); }
+  :scope.tone-accent { --tone: var(--accent); }
+}

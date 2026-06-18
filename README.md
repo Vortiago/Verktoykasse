@@ -20,8 +20,11 @@ and don't belong here.
 
 - **[vanilla-components](vanilla-components/SKILL.md)** — a concrete component
   library built *on* the `vanilla-web` conventions (the "what" to its "how"):
-  five copy-verbatim atoms (`panel`, `stat-card`, `chip`, `status-dot`,
-  `tooltip`) on the create-factory + `@scope` contract, plus a unified
+  copy-verbatim atoms (`panel`, `stat-card`, `chip`, `status-dot`, `tooltip`),
+  shell components (`app-bar`, `side-nav` with a numbered "journey" variant,
+  `view-header`), and controls (`button`, `field`, `progress`, `kv-row`,
+  `empty-state`, `dialog`, `segmented-control`) on the create-factory + `@scope`
+  contract, plus a unified
   `light-dark()` design-token set extracted from across GitLandscape, Slipestein
   and TapScribe. No build, no deps; each part is copied into an app (`vendor.sh`
   stamps provenance). Ships a runnable preview catalogue (`node serve.mjs` →
