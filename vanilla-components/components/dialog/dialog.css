@@ -1,0 +1,45 @@
+/* dialog — a native <dialog> wrapper (title · body · actions) with a token-skinned
+   box + backdrop. Unifies Slipestein's expand/fire dialogs and GitLandscape's
+   reset-world dialog. Esc-to-close and focus trapping are native. */
+@scope (.dialog) {
+  :scope {
+    padding: 0;
+    max-width: min(560px, 92vw);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r);
+    background: var(--bg-elev);
+    color: var(--text);
+    box-shadow: 0 12px 48px light-dark(rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.6));
+  }
+  :scope::backdrop { background: light-dark(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.6)); }
+
+  .dialog-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-m);
+    padding: var(--space-s) var(--space-m);
+    border-bottom: 1px solid var(--hairline);
+  }
+  .dialog-title { font-size: 14px; font-weight: 600; }
+  .dialog-close {
+    border: 0;
+    background: none;
+    color: var(--text-dim);
+    font: inherit;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: var(--r);
+  }
+  .dialog-close:hover { color: var(--text); background: var(--bg-elev-2); }
+
+  .dialog-body { padding: var(--space-m); }
+  .dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-s);
+    padding: var(--space-s) var(--space-m);
+    border-top: 1px solid var(--hairline);
+  }
+}

@@ -1,0 +1,16 @@
+/* empty-state — a centered placeholder for "nothing here yet" (TapScribe
+   `.empty`, Slipestein `.live-empty`). */
+@scope (.empty-state) {
+  :scope {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: var(--space-l) var(--space-m);
+    text-align: center;
+    color: var(--text-dim);
+  }
+  .empty-state-icon { font-size: 26px; opacity: 0.8; }
+  .empty-state-title { font-weight: 600; color: var(--text); }
+  .empty-state-detail { font-size: 12px; }
+}
