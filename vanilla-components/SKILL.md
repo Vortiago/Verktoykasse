@@ -1,6 +1,6 @@
 ---
 name: vanilla-components
-description: Shared vanilla-web component library + unified design tokens — copy-verbatim, no build, no deps. Five atoms (panel, stat-card, chip, status-dot, tooltip) on the create-factory + @scope contract, plus a light-dark() token set. Use when building a vanilla-web UI and reaching for a panel/stat/chip/dot/tooltip or a common token set, instead of hand-rolling one.
+description: Shared vanilla-web component library + unified design tokens — copy-verbatim, no build, no deps. Atoms (panel, stat-card, chip, status-dot, tooltip) + shell components (app-bar, side-nav, view-header) on the create-factory + @scope contract, plus a light-dark() token set. Use when building a vanilla-web UI and reaching for a panel/stat/chip/dot/tooltip/nav/header or a common token set, instead of hand-rolling one.
 ---
 
 # vanilla-components — shared parts for vanilla-web UIs
@@ -43,9 +43,18 @@ and statically servable. Re-copy to update; never fork in place.
 | chip | `createChip({ text, tone?, dot? }) → { el, setText(text) }` | tone: ok\|warn\|bad\|info\|accent; `dot` = leading dot |
 | status-dot | `createStatusDot({ tone?, pulse?, label? }) → { el, setTone(t), setPulse(on) }` | tone: neutral\|ok\|warn\|bad\|info\|accent; `pulse` halo (respects reduced-motion) |
 | tooltip | `createTooltip(host, { className? }, signal?) → { node, show(content, x, y, box?), hide(), dispose() }` | top-layer manual popover, edge-clamped; aborts/disposes with `signal`. Also exports `clampTip(...)`. |
+| app-bar | `createAppBar({ brand, items, current?, onSelect? }, signal?) → { el, actionsEl, setCurrent }` | top bar: brand · pill nav (`<a href="#/<id>">`) · `actionsEl` slot; `setCurrent(id)` marks active; optional per-item `accent` |
+| side-nav | `createSideNav({ groups, current?, onSelect? }, signal?) → { el, setCurrent }` | grouped left-pane nav; `journey` group variant = numbered pipeline + done-checks; item `chip` composes the chip atom |
+| view-header | `createViewHeader({ eyebrow?, title, sub?, actions? }) → { el, actionsEl, setTitle, setSub }` | stage header: eyebrow · title · sub · `actionsEl` slot |
 
 Tones derive from one `--tone` custom property via `color-mix` — restyle by
 overriding the token, not the rule.
+
+**Shell components** (`app-bar`, `side-nav`, `view-header`) are registry-driven and
+follow the vanilla-web hash convention: they render `<a href="#/<id>">` and expose
+`setCurrent(id)` — the app keeps owning its `hashchange` loop. They also pick ONE
+house look, so adopting them converges an app's existing nav styling (a deliberate
+visual change, not a pure drop-in).
 
 ## Run the catalogue
 

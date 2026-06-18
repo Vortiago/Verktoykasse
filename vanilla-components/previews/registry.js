@@ -4,9 +4,12 @@
 /** @typedef {{ title: string, load: () => Promise<{ default: any }> }} PreviewEntry */
 /** @type {PreviewEntry[]} */
 export const previews = [
+  { title: "app-bar", load: () => import("../components/app-bar/app-bar.preview.js") },
   { title: "chip", load: () => import("../components/chip/chip.preview.js") },
   { title: "panel", load: () => import("../components/panel/panel.preview.js") },
+  { title: "side-nav", load: () => import("../components/side-nav/side-nav.preview.js") },
   { title: "stat-card", load: () => import("../components/stat-card/stat-card.preview.js") },
   { title: "status-dot", load: () => import("../components/status-dot/status-dot.preview.js") },
   { title: "tooltip", load: () => import("../components/tooltip/tooltip.preview.js") },
+  { title: "view-header", load: () => import("../components/view-header/view-header.preview.js") },
 ];

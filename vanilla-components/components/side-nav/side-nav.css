@@ -1,0 +1,89 @@
+/* Side-nav — a grouped vertical nav (the left pane / TapScribe spine). Items are
+   icon · label · chip with a left accent stripe when active. The `journey` group
+   variant renders numbered stages joined by a connecting line, with done-checks.
+   Width is the app's call — set it on the container this mounts into. */
+@scope (.side-nav) {
+  :scope {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-m);
+    padding: var(--space-s);
+    color: var(--text);
+  }
+
+  .side-nav-group { display: flex; flex-direction: column; gap: 2px; }
+  .side-nav-grouplabel {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    padding: 4px 8px 2px;
+  }
+  .side-nav-items { display: flex; flex-direction: column; gap: 2px; }
+
+  .side-nav-item {
+    position: relative;
+    display: grid;
+    grid-template-columns: 22px 1fr auto;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 8px;
+    border-radius: var(--r);
+    border: 1px solid transparent;
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 13px;
+    transition: background 0.09s ease, color 0.09s ease, border-color 0.09s ease;
+  }
+  .side-nav-item:hover { background: var(--bg-elev-2); color: var(--text); }
+  .side-nav-item.is-active { background: var(--bg-elev-2); color: var(--text); border-color: var(--hairline); }
+  .side-nav-item.is-active::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 6px;
+    bottom: 6px;
+    width: 2px;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+  .side-nav-lead { display: grid; place-items: center; font-size: 14px; }
+  .side-nav-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .side-nav-chip { display: inline-flex; }
+
+  /* journey variant: numbered badges joined by a connecting line */
+  .side-nav-items.is-journey .side-nav-lead.is-num {
+    width: 18px;
+    height: 18px;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    background: var(--bg-elev-2);
+    color: var(--text-dim);
+    border: 1px solid var(--hairline);
+    border-radius: 3px;
+  }
+  .side-nav-items.is-journey .side-nav-item.is-active .side-nav-lead.is-num {
+    background: var(--accent);
+    color: var(--bg);
+    border-color: var(--accent);
+  }
+  .side-nav-items.is-journey .side-nav-item.is-done .side-nav-lead.is-num {
+    color: var(--ok);
+    background: color-mix(in srgb, var(--ok) 12%, transparent);
+    border-color: color-mix(in srgb, var(--ok) 40%, transparent);
+  }
+  .side-nav-items.is-journey .side-nav-item:not(:last-child) .side-nav-lead.is-num::after {
+    content: "";
+    position: absolute;
+    left: 8px;
+    top: 26px;
+    width: 1px;
+    height: 9px;
+    background: var(--hairline);
+  }
+  .side-nav-items.is-journey .side-nav-item.is-done:not(:last-child) .side-nav-lead.is-num::after {
+    background: color-mix(in srgb, var(--ok) 40%, transparent);
+  }
+}

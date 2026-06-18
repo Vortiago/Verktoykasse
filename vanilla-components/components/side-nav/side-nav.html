@@ -1,0 +1,18 @@
+<template id="tpl-side-nav">
+  <nav class="side-nav" aria-label="Navigation"></nav>
+</template>
+
+<template id="tpl-side-nav-group">
+  <div class="side-nav-group">
+    <div class="side-nav-grouplabel" data-slot="label" hidden></div>
+    <div class="side-nav-items" data-slot="items"></div>
+  </div>
+</template>
+
+<template id="tpl-side-nav-item">
+  <a class="side-nav-item" data-slot="link">
+    <span class="side-nav-lead" data-slot="lead"></span>
+    <span class="side-nav-label" data-slot="label"></span>
+    <span class="side-nav-chip" data-slot="chip"></span>
+  </a>
+</template>

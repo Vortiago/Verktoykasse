@@ -27,6 +27,9 @@ const COMPONENTS = [
   { name: "chip", Pascal: "Chip", props: `text: string;\n  tone?: "ok" | "warn" | "bad" | "info" | "accent";\n  dot?: boolean;` },
   { name: "status-dot", Pascal: "StatusDot", props: `tone?: "neutral" | "ok" | "warn" | "bad" | "info" | "accent";\n  pulse?: boolean;\n  label?: string;` },
   { name: "tooltip", Pascal: "Tooltip", props: `content?: string;`, tooltip: true },
+  { name: "app-bar", Pascal: "AppBar", props: `brand: { logo?: string; title: string; tagline?: string };\n  items: { id: string; label: string; accent?: string }[];\n  current?: string;` },
+  { name: "side-nav", Pascal: "SideNav", props: `groups: { label?: string; variant?: "list" | "journey"; items: { id: string; label: string; icon?: string; chip?: { text: string; tone?: "ok" | "warn" | "bad" | "info" | "accent" }; done?: boolean }[] }[];\n  current?: string;` },
+  { name: "view-header", Pascal: "ViewHeader", props: `eyebrow?: string;\n  title: string;\n  sub?: string;` },
 ];
 
 /** Transform a real factory module into a self-contained dist module:
@@ -37,7 +40,10 @@ function neutralize(name, factorySrc, html) {
     .replace(/^import\s*\{[^}]*\}\s*from\s*["']\.\.\/\.\.\/lib\/templates\.js["'];?\s*$/m, "")
     // ensure() self-load -> lazy template registration; CSS ships via styles.css
     .replace(new RegExp(`loadTemplates\\(new URL\\(["']\\./${name}\\.html["'],\\s*import\\.meta\\.url\\)\\.href\\)`), "ensureTemplate()")
-    .replace(new RegExp(`loadCSS\\(import\\.meta\\.url,\\s*["']\\./${name}\\.css["']\\)`), "null");
+    .replace(new RegExp(`loadCSS\\(import\\.meta\\.url,\\s*["']\\./${name}\\.css["']\\)`), "null")
+    // inter-component imports (e.g. side-nav -> chip): the adapter dist is flat,
+    // so "../chip/chip.js" becomes "./chip.js".
+    .replace(/from\s*["']\.\.\/([a-z-]+)\/\1\.js["']/g, 'from "./$1.js"');
   // Guard: if a factory's ensure() shape ever drifts, the replaces above miss and
   // we'd emit a module referencing the now-stripped loaders — fail loud at build
   // time instead of silently at render.

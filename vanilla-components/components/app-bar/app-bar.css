@@ -1,0 +1,56 @@
+/* App-bar — the top bar: brand, a hash-routed pill-tab nav, and a right-side
+   actions slot. Unifies GitLandscape `#topbar`/`.tab` and Slipestein `.page-head`.
+   Active tab uses its per-item accent (defaults --accent). */
+@scope (.app-bar) {
+  :scope {
+    display: flex;
+    align-items: center;
+    gap: var(--space-l);
+    padding: 0 var(--space-m);
+    min-height: 56px;
+    background: var(--bg-elev);
+    border-bottom: 1px solid var(--hairline);
+    color: var(--text);
+  }
+
+  .app-bar-brand { display: flex; align-items: center; gap: var(--space-s); flex: none; }
+  .app-bar-logo { font-size: 20px; line-height: 1; }
+  .app-bar-titles { display: flex; flex-direction: column; }
+  .app-bar-title { font-size: 15px; font-weight: 700; letter-spacing: 0.02em; }
+  .app-bar-tagline { font-size: 11px; color: var(--text-dim); }
+
+  .app-bar-nav {
+    display: flex;
+    gap: 6px;
+    flex: 1 1 auto;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    padding: 4px 0;
+  }
+  .app-bar-tab {
+    --tab-accent: var(--accent);
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border: 1px solid var(--hairline);
+    border-radius: var(--r-pill);
+    background: var(--bg-elev-2);
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+  }
+  .app-bar-tab:hover { color: var(--text); border-color: var(--text-dim); }
+  .app-bar-tab[aria-current] {
+    color: var(--bg);
+    font-weight: 600;
+    background: var(--tab-accent);
+    border-color: var(--tab-accent);
+  }
+
+  .app-bar-actions { display: flex; align-items: center; gap: var(--space-s); flex: none; }
+}
