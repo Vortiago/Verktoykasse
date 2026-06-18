@@ -202,3 +202,56 @@ export function renderRegion(host, build, opts = {}) {
   if (opts.sig != null) _regionSig.set(host, opts.sig);
   host.replaceChildren(build());
 }
+
+/** Per-node reconcile key, set on nodes reconcileList creates. @type {WeakMap<Element, string>} */
+const _reconcileKey = new WeakMap();
+
+/** Keyed, in-place list reconciliation that PRESERVES node state. Updates `host`'s
+ * element children to match `items` by key, moving surviving nodes with
+ * `moveBefore()` — which keeps focus, text selection, scroll position, running CSS
+ * animations and playing media intact across the move — instead of rebuilding.
+ * This is the native answer to "re-render a live (SSE-driven) list without
+ * clobbering interaction": where `renderRegion` DEFERS a swap while a control is
+ * focused, `reconcileList` updates around it live. Where `moveBefore` is missing
+ * it falls back to `insertBefore` (still correct — just loses the state preservation).
+ *
+ *   reconcileList(rowsHost, sessions, (s) => s.id,
+ *     (s) => buildRow(s),                // create: a fresh row for a new key
+ *     (node, s) => fillRow(node, s));    // update: mutate an existing row in place
+ *
+ * The host's element children must be reconcileList's alone (no stray text nodes).
+ * @template T
+ * @param {Element} host
+ * @param {T[]} items - desired contents, in order
+ * @param {(item: T) => string} keyOf - stable identity per item
+ * @param {(item: T) => Element} create - build a node for a not-yet-present key
+ * @param {(node: Element, item: T) => void} [update] - update an existing node in place */
+export function reconcileList(host, items, keyOf, create, update) {
+  /** @type {Map<string, Element>} */
+  const prev = new Map();
+  for (const n of host.children) {
+    const k = _reconcileKey.get(n);
+    if (k !== undefined) prev.set(k, n);
+  }
+  const canMove = typeof (/** @type {{ moveBefore?: unknown }} */ (host)).moveBefore === "function";
+  let cursor = host.firstElementChild;
+  for (const item of items) {
+    const k = String(keyOf(item));
+    let node = prev.get(k);
+    if (node) {
+      prev.delete(k);
+      if (update) update(node, item);
+    } else {
+      node = create(item);
+      _reconcileKey.set(node, k);
+    }
+    if (node === cursor) {
+      cursor = cursor.nextElementSibling; // already in place
+    } else if (canMove && node.parentNode === host) {
+      /** @type {{ moveBefore: (n: Node, ref: Node | null) => void }} */ (/** @type {unknown} */ (host)).moveBefore(node, cursor); // state-preserving move
+    } else {
+      host.insertBefore(node, cursor); // new node (or no moveBefore): plain insert
+    }
+  }
+  for (const n of prev.values()) n.remove(); // drop keys no longer present
+}
