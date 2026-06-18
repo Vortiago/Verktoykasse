@@ -4,7 +4,8 @@
 import { loadTemplates, tpl, pick, loadCSS } from "../../lib/templates.js";
 
 let ready;
-const ensure = () => (ready ??= Promise.all([
+/** Load template + CSS once; await before createStatCardSync. */
+export const warmStatCard = () => (ready ??= Promise.all([
   loadTemplates(new URL("./stat-card.html", import.meta.url).href),
   loadCSS(import.meta.url, "./stat-card.css"),
 ]));
@@ -12,17 +13,17 @@ const ensure = () => (ready ??= Promise.all([
 /** @typedef {"ok" | "warn" | "bad" | "accent"} StatTone */
 
 /**
+ * Synchronous build - requires warmStatCard() resolved. For renderRegion rebuilds.
  * @param {{ label: string, value: string | number, unit?: string | null,
  *   hint?: string | null, tone?: StatTone | null, onSelect?: () => void }} props
  * @param {AbortSignal} [signal] - required only when `onSelect` is given.
- * @returns {Promise<{ el: HTMLElement,
- *   update: (value: string | number, hint?: string | null) => void }>}
+ * @returns {{ el: HTMLElement,
+ *   update: (value: string | number, hint?: string | null) => void }}
  */
-export async function createStatCard(
+export function createStatCardSync(
   { label, value, unit = null, hint = null, tone = null, onSelect } = /** @type {any} */ ({}),
   signal,
 ) {
-  await ensure();
   const el = /** @type {HTMLElement} */ (tpl("tpl-stat-card").firstElementChild);
   pick(el, "label").textContent = label;
 
@@ -58,4 +59,16 @@ export async function createStatCard(
       }
     },
   };
+}
+
+/** Warm + build (also what the design-sync shim uses).
+ * @param {{ label: string, value: string | number, unit?: string | null,
+ *   hint?: string | null, tone?: StatTone | null, onSelect?: () => void }} props
+ * @param {AbortSignal} [signal] - required only when `onSelect` is given.
+ * @returns {Promise<{ el: HTMLElement,
+ *   update: (value: string | number, hint?: string | null) => void }>}
+ */
+export async function createStatCard(props = /** @type {any} */ ({}), signal) {
+  await warmStatCard();
+  return createStatCardSync(props, signal);
 }

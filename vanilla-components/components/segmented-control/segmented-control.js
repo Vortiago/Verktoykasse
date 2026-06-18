@@ -3,18 +3,19 @@
 import { loadTemplates, tpl, loadCSS } from "../../lib/templates.js";
 
 let ready;
-const ensure = () => (ready ??= Promise.all([
+/** Load template + CSS once; await before createSegmentedControlSync. */
+export const warmSegmentedControl = () => (ready ??= Promise.all([
   loadTemplates(new URL("./segmented-control.html", import.meta.url).href),
   loadCSS(import.meta.url, "./segmented-control.css"),
 ]));
 
 /**
+ * Synchronous build - requires warmSegmentedControl() resolved. For renderRegion rebuilds.
  * @param {{ options: { id: string, label: string }[], current?: string | null, onSelect?: (id: string) => void }} props
  * @param {AbortSignal} [signal] - required only when `onSelect` is given.
- * @returns {Promise<{ el: HTMLElement, setCurrent: (id: string) => void }>}
+ * @returns {{ el: HTMLElement, setCurrent: (id: string) => void }}
  */
-export async function createSegmentedControl({ options, current = null, onSelect } = /** @type {any} */ ({}), signal) {
-  await ensure();
+export function createSegmentedControlSync({ options, current = null, onSelect } = /** @type {any} */ ({}), signal) {
   const el = /** @type {HTMLElement} */ (tpl("tpl-segmented-control").firstElementChild);
 
   /** @type {Map<string, HTMLButtonElement>} */
@@ -38,4 +39,14 @@ export async function createSegmentedControl({ options, current = null, onSelect
   if (current != null) setCurrent(current);
 
   return { el, setCurrent };
+}
+
+/** Warm + build (also what the design-sync shim uses).
+ * @param {{ options: { id: string, label: string }[], current?: string | null, onSelect?: (id: string) => void }} props
+ * @param {AbortSignal} [signal] - required only when `onSelect` is given.
+ * @returns {Promise<{ el: HTMLElement, setCurrent: (id: string) => void }>}
+ */
+export async function createSegmentedControl(props = /** @type {any} */ ({}), signal) {
+  await warmSegmentedControl();
+  return createSegmentedControlSync(props, signal);
 }
