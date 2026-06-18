@@ -1,13 +1,16 @@
-/* Tooltip — a positioned hover card. Rides the top layer as a manual popover
-   (no z-index games); the UA popover box is undone and re-skinned with tokens.
-   Promoted from GitLandscape's shared tooltip. Override via the `className`
-   option for per-use looks. */
+/* Tooltip — a hover/focus card on the top layer (manual popover), tethered to its
+   trigger with CSS Anchor Positioning. The browser does the placement and the
+   edge-flip (position-area + position-try-fallbacks) — no coordinate math. The
+   instance sets `position-anchor` (a unique anchor-name) inline. Chromium 125+. */
 @scope (.tooltip) {
   :scope {
-    /* undo the UA popover box, then skin it */
-    position: absolute;
-    inset: auto;
     margin: 0;
+    inset: auto; /* undo the UA popover centering; anchor positioning drives it */
+    /* sit below the trigger, centered; flip above / across when there's no room */
+    position-area: bottom center;
+    position-try-fallbacks: flip-block, flip-inline;
+    margin-block: 6px; /* gap between tip and trigger (both orientations) */
+
     max-width: 280px;
     padding: var(--space-s) var(--space-m);
     background: var(--bg-elev);
@@ -18,13 +21,12 @@
     line-height: 1.4;
     box-shadow: 0 4px 16px light-dark(rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0.5));
     pointer-events: none;
-    opacity: 0;
-    z-index: 30; /* fallback only — the top layer ignores it */
-    /* allow-discrete defers display:none until the fade-out lands;
-       @starting-style gives the fade-in a from-value on the display flip */
-    transition: opacity 0.12s ease, display 0.12s allow-discrete;
 
-    &.show {
+    opacity: 0;
+    /* allow-discrete defers display:none/overlay until the fade lands; the
+       starting-style gives the fade-in a from-value on the top-layer flip */
+    transition: opacity 0.12s ease, display 0.12s allow-discrete, overlay 0.12s allow-discrete;
+    &:popover-open {
       opacity: 1;
       @starting-style { opacity: 0; }
     }

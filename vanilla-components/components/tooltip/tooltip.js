@@ -1,7 +1,8 @@
 // @ts-check
-// Tooltip — a positioned hover card. The component owns the chrome and the
-// edge-clamped placement on the top layer (manual popover); the caller drives
-// show/hide and supplies the body. Promoted from GitLandscape's shared tooltip.
+// Tooltip — a hover/focus card tethered to a trigger element. The tip rides the
+// top layer as a manual popover; CSS Anchor Positioning (position-anchor +
+// position-area + position-try-fallbacks, in tooltip.css) does the placement and
+// the edge-flip. No manual coordinate math. Shows on the trigger's hover/focus.
 import { loadTemplates, tpl, loadCSS } from "../../lib/templates.js";
 
 let ready;
@@ -10,78 +11,45 @@ const ensure = () => (ready ??= Promise.all([
   loadCSS(import.meta.url, "./tooltip.css"),
 ]));
 
-/** Pure edge-clamping: prefer below-right of (x, y) by `offset`, flip to the
- * other side at the right/bottom edges (`bottomReserve` keeps clear of a HUD
- * strip), never leave the `pad` margin at top-left.
- * @param {number} x @param {number} y @param {number} tw @param {number} th
- * @param {number} vw @param {number} vh
- * @param {{ offset?: number, pad?: number, bottomReserve?: number }} [opts]
- * @returns {{ left: number, top: number }} */
-export function clampTip(x, y, tw, th, vw, vh, { offset = 14, pad = 8, bottomReserve = 0 } = {}) {
-  let left = x + offset;
-  let top = y + offset;
-  if (left + tw > vw - pad) left = x - tw - offset;
-  if (top + th > vh - bottomReserve) top = y - th - offset;
-  return { left: Math.max(pad, left), top: Math.max(pad, top) };
-}
+let seq = 0; // unique anchor-name per instance
 
 /**
- * @param {HTMLElement} host - placement is host-local; the node is appended here.
- * @param {{ className?: string }} [opts] - extra class(es) for per-use skinning.
- * @param {AbortSignal} [signal] - when it aborts, the tooltip disposes itself.
- * @returns {Promise<{
- *   node: HTMLElement,
- *   show: (content: string | Node | null | undefined, x: number, y: number,
- *     box?: { vw?: number, vh?: number, offset?: number, pad?: number, bottomReserve?: number }) => void,
- *   hide: () => void,
- *   dispose: () => void,
- * }>}
+ * @param {HTMLElement} trigger - the tip anchors to this element and shows on its hover/focus.
+ * @param {{ content?: string | Node | null, className?: string }} [opts] - body + per-use class.
+ * @param {AbortSignal} [signal] - aborting disposes the tooltip (removes tip + listeners).
+ * @returns {Promise<{ el: HTMLElement, setContent: (content: string | Node) => void, show: () => void, hide: () => void, dispose: () => void }>}
  */
-export async function createTooltip(host, { className = "" } = {}, signal) {
+export async function createTooltip(trigger, { content = null, className = "" } = {}, signal) {
   await ensure();
-  const node = /** @type {HTMLElement} */ (tpl("tpl-tooltip").firstElementChild);
-  if (className) node.className = (node.className + " " + className).trim();
-  host.appendChild(node);
+  const el = /** @type {HTMLElement} */ (tpl("tpl-tooltip").firstElementChild);
+  if (className) el.className = (el.className + " " + className).trim();
 
-  const canPopover = typeof node.showPopover === "function";
-  const popped = () => canPopover && node.matches(":popover-open");
-
-  const api = {
-    node,
-    /** @param {string | Node | null | undefined} content `null` repositions without refilling.
-     * @param {number} x @param {number} y
-     * @param {{ vw?: number, vh?: number, offset?: number, pad?: number, bottomReserve?: number }} [box] */
-    show(content, x, y, { vw, vh, ...clampOpts } = {}) {
-      // string → text (safe); Node → adopt; null → reposition only (a
-      // hover-move must not rebuild the body per pointer event).
-      if (typeof content === "string") node.textContent = content;
-      else if (content != null) node.replaceChildren(content);
-      // showPopover only on the hidden→shown edge — re-showing an open popover throws.
-      if (canPopover && !popped()) node.showPopover();
-      node.classList.add("show");
-      const tw = node.offsetWidth || 220;
-      const th = node.offsetHeight || 90;
-      const place = clampTip(
-        x, y, tw, th,
-        vw ?? globalThis.innerWidth ?? 1200,
-        vh ?? globalThis.innerHeight ?? 800,
-        clampOpts,
-      );
-      // x/y (and the clamp) are host-local; in the top layer the containing
-      // block is the viewport, so translate by the host's viewport offset.
-      const r = popped() ? host.getBoundingClientRect() : { left: 0, top: 0 };
-      node.style.left = r.left + place.left + "px";
-      node.style.top = r.top + place.top + "px";
-    },
-    hide() {
-      node.classList.remove("show");
-      if (popped()) node.hidePopover();
-    },
-    dispose() {
-      node.remove(); // disconnecting force-hides an open popover, per spec
-    },
+  /** @param {string | Node | null} c */
+  const setContent = (c) => {
+    if (c == null) return;
+    if (typeof c === "string") el.textContent = c;
+    else el.replaceChildren(c);
   };
+  setContent(content);
 
-  signal?.addEventListener("abort", () => api.dispose(), { once: true });
-  return api;
+  // tether: a unique anchor-name on the trigger, referenced by the tip
+  const name = `--tip-${++seq}`;
+  trigger.style.setProperty("anchor-name", name);
+  el.style.setProperty("position-anchor", name);
+  document.body.appendChild(el);
+
+  const show = () => { if (!el.matches(":popover-open")) el.showPopover(); };
+  const hide = () => { if (el.matches(":popover-open")) el.hidePopover(); };
+  trigger.addEventListener("pointerenter", show, { signal });
+  trigger.addEventListener("focus", show, { signal });
+  trigger.addEventListener("pointerleave", hide, { signal });
+  trigger.addEventListener("blur", hide, { signal });
+
+  const dispose = () => {
+    el.remove(); // disconnecting force-hides an open popover, per spec
+    trigger.style.removeProperty("anchor-name");
+  };
+  signal?.addEventListener("abort", dispose, { once: true });
+
+  return { el, setContent, show, hide, dispose };
 }
