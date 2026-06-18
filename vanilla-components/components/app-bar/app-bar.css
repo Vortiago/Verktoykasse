@@ -27,7 +27,10 @@
     flex: 1 1 auto;
     align-self: stretch;
     align-items: stretch;
+    /* overflow-x:auto forces overflow-y to compute as auto too, so pin y:hidden —
+       the tabs are full-height and must never trigger a vertical scrollbar. */
     overflow-x: auto;
+    overflow-y: hidden;
     scrollbar-width: thin;
   }
   .app-bar-tab {
@@ -37,7 +40,6 @@
     align-items: center;
     gap: 6px;
     padding: 0 10px;
-    margin-bottom: -1px; /* overlap the bar's bottom border so the underline meets it */
     border: 0;
     border-bottom: 2px solid transparent;
     background: none;
