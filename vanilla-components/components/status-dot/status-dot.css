@@ -1,0 +1,41 @@
+/* Status-dot — a small colored dot with an optional pulse and trailing label
+   (TapScribe `.dot`). The pulse halo is tinted to the dot's own tone. */
+@scope (.status-dot) {
+  :scope {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    --tone: var(--text-dim); /* neutral default */
+  }
+
+  .status-dot-mark {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--tone);
+    flex: none;
+  }
+  .status-dot-label {
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  :scope.tone-ok     { --tone: var(--ok); }
+  :scope.tone-warn   { --tone: var(--warn); }
+  :scope.tone-bad    { --tone: var(--bad); }
+  :scope.tone-info   { --tone: var(--info); }
+  :scope.tone-accent { --tone: var(--accent); }
+
+  :scope.is-pulse .status-dot-mark {
+    animation: status-dot-pulse 1.4s ease-out infinite;
+  }
+  @keyframes status-dot-pulse {
+    0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--tone) 45%, transparent); }
+    70%  { box-shadow: 0 0 0 6px color-mix(in srgb, var(--tone) 0%, transparent); }
+    100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--tone) 0%, transparent); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :scope.is-pulse .status-dot-mark { animation: none; }
+  }
+}

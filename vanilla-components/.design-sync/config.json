@@ -1,0 +1,8 @@
+{
+  "pkg": "vanilla-components",
+  "globalName": "VanillaComponents",
+  "projectId": "b6fc0495-57e0-4664-94b0-be883267992e",
+  "shape": "package",
+  "cssEntry": "styles.css",
+  "readmeHeader": ".design-sync/conventions.md"
+}

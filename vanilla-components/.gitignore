@@ -1,0 +1,13 @@
+# design-sync: staged scripts, deps, and build output — all regenerated.
+# The DURABLE inputs (.design-sync/config.json, NOTES.md, conventions.md,
+# previews/) are NOT ignored and should be committed.
+.ds-sync/
+ds-bundle/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules/
+
+# bridge: the React-shim adapter + prototype output are generated from the
+# real component sources by bridge/emit-adapter.mjs / build-bridge.mjs.
+bridge/ds-adapter/
+bridge/out/

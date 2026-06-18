@@ -1,0 +1,61 @@
+/* Stat-card — a labeled hero number with optional unit + hint. The
+   dashboard staple (Slipestein `hero`/`kv`/`block`; the canonical vanilla-web
+   example). Pre-formatted values in, mutate via update() on each tick. */
+@scope (.stat-card) {
+  :scope {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    padding: var(--space-m);
+    background: var(--bg-elev);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r);
+    color: var(--text);
+  }
+
+  .stat-card-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  .stat-card-value {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+  .stat-card-num {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 28px;
+    line-height: 1.1;
+    color: var(--tone, var(--text));
+  }
+  .stat-card-unit {
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+
+  .stat-card-hint {
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  /* tone colors the number; one custom prop drives it */
+  :scope.tone-ok     { --tone: var(--ok); }
+  :scope.tone-warn   { --tone: var(--warn); }
+  :scope.tone-bad    { --tone: var(--bad); }
+  :scope.tone-accent { --tone: var(--accent); }
+
+  /* clickable cards (onSelect) get affordance */
+  :scope.is-clickable {
+    cursor: pointer;
+    transition: border-color 80ms ease, background 80ms ease;
+  }
+  :scope.is-clickable:hover {
+    border-color: var(--text-dim);
+    background: var(--bg-elev-2);
+  }
+}

@@ -18,6 +18,15 @@ and don't belong here.
   routing with view transitions, zero-dep node server, JSDoc+tsc gate.
   Ships three canonical skeletons: `templates.js`, `shell.js`, `serve.mjs`.
 
+- **[vanilla-components](vanilla-components/SKILL.md)** — a concrete component
+  library built *on* the `vanilla-web` conventions (the "what" to its "how"):
+  five copy-verbatim atoms (`panel`, `stat-card`, `chip`, `status-dot`,
+  `tooltip`) on the create-factory + `@scope` contract, plus a unified
+  `light-dark()` design-token set extracted from across GitLandscape, Slipestein
+  and TapScribe. No build, no deps; each part is copied into an app (`vendor.sh`
+  stamps provenance). Ships a runnable preview catalogue (`node serve.mjs` →
+  `/preview.html`).
+
 - **[statusline](statusline/SKILL.md)** — the status line for all my Claude Code
   sessions. A generic core renders fixed regions: `project ⎇ branch (worktree)`,
   two core-owned link regions (GitHub issue/PR; services / running code), then a
