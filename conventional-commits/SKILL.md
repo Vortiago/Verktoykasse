@@ -63,7 +63,9 @@ The hook cannot tell (a) from (b) — decide from the net diff.
   validates every commit header. Allow-lists merge / revert / fixup / squash.
   Bypass: `git commit --no-verify`.
 - **`pr-title-check.sh`** — Claude `PreToolUse(Bash)` hook on `gh pr create` /
-  `gh pr edit`; title syntax is a hard block, a breaking under-report is an
-  advisory block. Fails open on anything it cannot parse.
+  `gh pr edit` and `az repos pr create` / `az repos pr update`; title syntax is a
+  hard block, a breaking under-report is an advisory block. Fails open on anything
+  it cannot parse. (For `az`, only `--title` carries the title — `-t` is
+  `--target-branch`.)
 
 Install (registers both hooks): `./install.sh conventional-commits` → [install.sh](install.sh)
