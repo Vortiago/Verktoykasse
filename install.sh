@@ -17,10 +17,15 @@ set -euo pipefail
 
 HERE=$(dirname "$(readlink -f "$0")")
 
-declare -A TARGET_DIR=(
-  [claude]="$HOME/.claude/skills"
-  [opencode]="$HOME/.config/opencode/skills"
-)
+# Where each CLI keeps its skills. A function (not a `declare -A` associative
+# array) so this runs on macOS's stock bash 3.2, which predates `declare -A`.
+target_dir() { # $1 = target name — prints its skills dir, empty if unknown
+  case $1 in
+    claude)   echo "$HOME/.claude/skills" ;;
+    opencode) echo "$HOME/.config/opencode/skills" ;;
+  esac
+}
+KNOWN_TARGETS="claude opencode"
 TARGET=claude
 
 link() { # $1 = repo dir, $2 = live path
@@ -48,7 +53,7 @@ install_skill() { # $1 = skill name — installed for the current $TARGET
     # shellcheck source=/dev/null
     source "$HERE/$name/install.sh"
   else
-    link "$HERE/$name" "${TARGET_DIR[$TARGET]}/$name"
+    link "$HERE/$name" "$(target_dir "$TARGET")/$name"
   fi
 }
 
@@ -60,8 +65,8 @@ while [[ $# -gt 0 ]]; do
     *) skills+=("$1"); shift ;;
   esac
 done
-[[ -n ${TARGET_DIR[$TARGET]:-} ]] || {
-  echo "error: unknown target '$TARGET' (have: ${!TARGET_DIR[*]})" >&2; exit 1; }
+[[ -n $(target_dir "$TARGET") ]] || {
+  echo "error: unknown target '$TARGET' (have: $KNOWN_TARGETS)" >&2; exit 1; }
 
 if [[ ${#skills[@]} -eq 0 ]]; then
   for d in "$HERE"/*/; do
@@ -69,7 +74,7 @@ if [[ ${#skills[@]} -eq 0 ]]; then
   done
 fi
 
-echo "target: $TARGET -> ${TARGET_DIR[$TARGET]}"
+echo "target: $TARGET -> $(target_dir "$TARGET")"
 for s in "${skills[@]}"; do
   install_skill "$s"
 done
