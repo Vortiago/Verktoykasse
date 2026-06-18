@@ -37,6 +37,8 @@ const COMPONENTS = [
   { name: "segmented-control", Pascal: "SegmentedControl", props: `options: { id: string; label: string }[];\n  current?: string;` },
   { name: "field", Pascal: "Field", props: `label: string;\n  type?: "text" | "number" | "email" | "password" | "search" | "select" | "textarea";\n  value?: string;\n  placeholder?: string;\n  hint?: string;\n  options?: { value: string; label: string }[];\n  required?: boolean;` },
   { name: "dialog", Pascal: "Dialog", props: `title?: string;\n  body?: string;`, dialog: true },
+  { name: "table-shell", Pascal: "TableShell", props: `columns: { key: string; label: string; align?: "start" | "end" }[];\n  rows?: (string | number)[][];\n  caption?: string;` },
+  { name: "checklist-row", Pascal: "ChecklistRow", props: `text: string;\n  done?: boolean;` },
 ];
 
 /** Transform a real factory module into a self-contained dist module:

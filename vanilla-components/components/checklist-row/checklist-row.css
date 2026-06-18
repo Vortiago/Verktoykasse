@@ -1,0 +1,26 @@
+/* checklist-row - a done/undone item: a leading box marker ([x] / [ ]) plus text.
+   When done, the text is struck through and dimmed. The marker glyph is set in JS;
+   the strikethrough/dim is driven off the [data-done] attribute. All via tokens. */
+@scope (.checklist-row) {
+  :scope {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-s);
+    color: var(--text);
+  }
+
+  .checklist-row-box {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text-dim);
+    flex: none;
+    white-space: pre;
+  }
+
+  .checklist-row-text { font-size: 13px; }
+
+  :scope[data-done="true"] .checklist-row-text {
+    text-decoration: line-through;
+    color: var(--text-dim);
+  }
+}
