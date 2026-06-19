@@ -10,9 +10,9 @@ export default {
       brand: { logo: "🧰", title: "Verktøykasse", tagline: "toolbox" },
       items: [
         { id: "overview", label: "Overview" },
-        { id: "atlas", label: "Atlas" },
+        { id: "atlas", label: "Atlas", chip: { text: "12", tone: "info" } },
         { id: "timelapse", label: "Timelapse" },
-        { id: "rules", label: "Game Rules" },
+        { id: "rules", label: "Game Rules", chip: { text: "new", tone: "accent" } },
       ],
       current: "atlas",
     },

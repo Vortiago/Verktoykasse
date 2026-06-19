@@ -4,14 +4,17 @@
 // keeps its own hashchange loop and calls setCurrent(id) to mark the active tab.
 import { tpl, pick } from "../../lib/templates.js";
 import { defineComponent } from "../../lib/component.js";
+import { warmChip, createChipSync } from "../chip/chip.js";
 
-/** @typedef {{ id: string, label: string, accent?: string }} NavItem */
+/** @typedef {{ text: string, tone?: import("../chip/chip.js").ChipTone | (string & {}) }} NavChip */
+/** @typedef {{ id: string, label: string, accent?: string, chip?: NavChip }} NavItem */
 
 /**
  * @param {{ brand: { logo?: string, title: string, tagline?: string },
  *   items: NavItem[], current?: string | null, onSelect?: (id: string) => void }} props
  *   brand - logo (emoji/char), title, optional tagline.
- *   items - nav tabs; each renders `<a href="#/<id>">`, optional per-tab `accent`.
+ *   items - nav tabs; each renders `<a href="#/<id>">`, optional per-tab `accent`
+ *     and a trailing `chip` badge (composes the chip component).
  *   current - id of the active tab.
  *   onSelect - optional click callback (routing is native via the anchors).
  * @param {AbortSignal} [signal] - required only when `onSelect` is given.
@@ -41,6 +44,7 @@ function buildAppBar({ brand, items, current = null, onSelect } = /** @type {any
     a.textContent = item.label;
     a.href = `#/${item.id}`;
     if (item.accent) a.style.setProperty("--tab-accent", item.accent);
+    if (item.chip) a.append(createChipSync({ text: item.chip.text, tone: item.chip.tone ?? null }).el);
     if (onSelect) a.addEventListener("click", () => onSelect(item.id), { signal });
     tabs.set(item.id, a);
     nav.append(node);
@@ -59,5 +63,15 @@ function buildAppBar({ brand, items, current = null, onSelect } = /** @type {any
   return { el, actionsEl: pick(el, "actions"), setCurrent };
 }
 
-export const { warm: warmAppBar, sync: createAppBarSync, create: createAppBar } =
-  defineComponent(import.meta.url, "app-bar", buildAppBar);
+const base = defineComponent(import.meta.url, "app-bar", buildAppBar);
+
+/** Warm app-bar + its composed chip template (item badges use createChipSync). */
+export const warmAppBar = () => Promise.all([base.warm(), warmChip()]);
+/** Synchronous build — requires warmAppBar() resolved. @type {typeof buildAppBar} */
+export const createAppBarSync = base.sync;
+/** Warm (app-bar + chip) then build.
+ * @type {(props?: Parameters<typeof buildAppBar>[0], signal?: AbortSignal) => Promise<ReturnType<typeof buildAppBar>>} */
+export async function createAppBar(props, signal) {
+  await warmAppBar();
+  return base.sync(props, signal);
+}
