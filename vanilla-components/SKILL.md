@@ -61,7 +61,7 @@ and statically servable. Re-copy to update; never fork in place.
 | kv-row | `createKvRow({ label, value, tone? }) → { el, setValue(value) }` | key·value line (prop is `label` — `key` is React-reserved); tone colors value |
 | empty-state | `createEmptyState({ icon?, title, detail? }) → { el }` | centered "nothing here" placeholder |
 | segmented-control | `createSegmentedControl({ options, current?, onSelect? }, signal?) → { el, setCurrent }` | radio/toggle group; `setCurrent(id)` marks the active option |
-| dialog | `createDialog({ title?, body?, actions? }, signal?) → { el, bodyEl, actionsEl, open(), close() }` | native `<dialog>`; append `el` to the DOM, then `open()` (showModal) / `close()` |
+| dialog | `createDialog({ title?, body?, actions?, scroll?, closeOnBackdrop? }, signal?) → { el, bodyEl, actionsEl, open(), close(), setTitle }` | native `<dialog>`; append `el`, then `open()`/`close()`; `scroll` caps height + scrolls a long body; `closeOnBackdrop`; `setTitle` updates the header |
 | table-shell | `createTableShell({ columns, rows?, caption? }) → { el, tbody, setRows }` | tokenized table skeleton: sticky header from `columns`, caller-fillable `tbody`; numeric columns (`align:"end"`) right-aligned mono |
 | checklist-row | `createChecklistRow({ text, done? }) → { el, setDone(done) }` | done/undone item: box marker + strikethrough/dim when done |
 

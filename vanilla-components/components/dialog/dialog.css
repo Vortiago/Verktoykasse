@@ -36,6 +36,10 @@
   .dialog-close:hover { color: var(--text); background: var(--bg-elev-2); }
 
   .dialog-body { padding: var(--space-m); }
+  /* scroll: cap the box height and let the body scroll, with the head + actions
+     pinned. A dialog with a long body otherwise overflows the viewport. */
+  :scope.is-scroll { display: flex; flex-direction: column; max-height: 85vh; }
+  :scope.is-scroll .dialog-body { flex: 1 1 auto; min-height: 0; overflow: auto; }
   .dialog-actions {
     display: flex;
     justify-content: flex-end;
