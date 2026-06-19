@@ -1,3 +1,4 @@
+@layer vanilla-components {
 /* Panel — a bordered, elevated surface with an optional header and a body.
    The building-block container the apps reach for first (Slipestein `.panel`,
    TapScribe `.panel__head/__body`). All color/shape via tokens. */
@@ -35,4 +36,5 @@
     min-height: 0;
     overflow: auto;
   }
+}
 }

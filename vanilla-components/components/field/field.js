@@ -9,18 +9,22 @@ import { defineComponent } from "../../lib/component.js";
 /**
  * @param {{ label: string, type?: FieldType, value?: string, placeholder?: string,
  *   hint?: string | null, options?: { value: string, label: string }[],
- *   required?: boolean, onInput?: (value: string) => void }} props
+ *   required?: boolean, hideLabel?: boolean, onInput?: (value: string) => void }} props
+ *   hideLabel - visually hide the label (kept as the control's aria-label) so the
+ *     field fits a compact toolbar — `label` is still required for accessibility.
  * @param {AbortSignal} [signal] - required only when `onInput` is given.
  * @returns {{ el: HTMLElement,
  *   control: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement,
  *   getValue: () => string, setValue: (value: string) => void }}
  */
 function buildField(
-  { label, type = "text", value = "", placeholder = "", hint = null, options = [], required = false, onInput } = /** @type {any} */ ({}),
+  { label, type = "text", value = "", placeholder = "", hint = null, options = [], required = false, hideLabel = false, onInput } = /** @type {any} */ ({}),
   signal,
 ) {
   const el = /** @type {HTMLElement} */ (tpl("tpl-field").firstElementChild);
-  pick(el, "label").textContent = label;
+  const labelEl = pick(el, "label");
+  labelEl.textContent = label;
+  if (hideLabel) labelEl.classList.add("is-sr-only"); // visually hidden, aria-label set below
 
   /** @type {HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement} */
   let control;
@@ -41,6 +45,7 @@ function buildField(
   control.className = "field-input";
   control.value = value;
   if (required) control.required = true;
+  if (hideLabel) control.setAttribute("aria-label", label);
   pick(el, "control").append(control);
 
   if (hint != null) {

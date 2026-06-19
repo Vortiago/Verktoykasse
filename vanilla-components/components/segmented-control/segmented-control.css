@@ -1,3 +1,4 @@
+@layer vanilla-components {
 /* segmented-control — a bordered toggle/radio group (TapScribe `.segctl`,
    Slipestein source toggles). The active option fills with the accent tint. */
 @scope (.segmented-control) {
@@ -26,4 +27,5 @@
     background: color-mix(in srgb, var(--accent) 14%, transparent);
     color: var(--accent);
   }
+}
 }

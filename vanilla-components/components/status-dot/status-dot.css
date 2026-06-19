@@ -1,3 +1,4 @@
+@layer vanilla-components {
 /* Status-dot — a small colored dot with an optional pulse and trailing label
    (TapScribe `.dot`). The pulse halo is tinted to the dot's own tone. */
 @scope (.status-dot) {
@@ -38,4 +39,5 @@
   @media (prefers-reduced-motion: reduce) {
     :scope.is-pulse .status-dot-mark { animation: none; }
   }
+}
 }

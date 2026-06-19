@@ -18,5 +18,11 @@ export default {
       title: "Reset the world?",
       body: "This clears all parcels and re-bootstraps from the chronicle. It cannot be undone.",
     },
+    scrolling: {
+      title: "Release notes",
+      body: "Line one.\n".repeat(60),
+      scroll: true,
+      closeOnBackdrop: true,
+    },
   },
 };

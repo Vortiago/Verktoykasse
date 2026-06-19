@@ -1,3 +1,4 @@
+@layer vanilla-components {
 /* Button — a styled native <button> with variants. Unifies TapScribe `.act`
    (primary/danger/sm) and Slipestein `.fire-btn`/`.ghost-btn`. */
 @scope (.button) {
@@ -19,7 +20,16 @@
   }
   :scope:hover { border-color: var(--text-dim); background: var(--bg-elev); }
   :scope:active { transform: translateY(0.5px); }
-  :scope:disabled { opacity: 0.5; cursor: not-allowed; }
+  :scope:disabled,
+  :scope.is-disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; } /* is-disabled: a link can't be :disabled */
+  :scope { text-decoration: none; } /* keep an <a class="button"> from underlining */
+
+  /* aria-pressed toggle: reads as "on", like segmented-control's active option */
+  :scope.is-pressed {
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+    color: var(--text);
+  }
 
   :scope.is-primary {
     background: var(--accent);
@@ -42,4 +52,5 @@
   :scope.is-ghost:hover { color: var(--text); background: var(--bg-elev-2); }
 
   :scope.is-sm { padding: 3px 8px; font-size: 12px; }
+}
 }

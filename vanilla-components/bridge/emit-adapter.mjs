@@ -195,7 +195,7 @@ const bridgeDefineComponent = `// Bridge edition of lib/component.js: warm injec
 const __templates = new Map();
 export const __registerTemplate = (name, html) => { __templates.set(name, html); };
 
-export function defineComponent(_moduleUrl, name, build) {
+export function defineComponent(_moduleUrl, name, build, composes = []) {
   let reg = false;
   const warm = () => {
     if (!reg) {
@@ -208,7 +208,7 @@ export function defineComponent(_moduleUrl, name, build) {
         document.body.append(...d.children);
       }
     }
-    return Promise.resolve();
+    return Promise.all(composes.map((w) => w())); // warm composed children (e.g. chip) too
   };
   return {
     warm,

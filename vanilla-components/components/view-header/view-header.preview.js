@@ -8,5 +8,6 @@ export default {
   variants: {
     full: { eyebrow: "Stages", title: "Capture", sub: "live transcription from active taps" },
     plain: { title: "Overview" },
+    dense: { eyebrow: "Service", title: "registry-agent", sub: "thinker", dense: true },
   },
 };

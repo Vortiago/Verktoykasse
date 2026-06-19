@@ -11,5 +11,6 @@ export default {
     degraded: { text: "degraded", tone: "warn", dot: true },
     failed: { text: "failed", tone: "bad", dot: true },
     live: { text: "12 live", tone: "info" },
+    branded: { text: "v4.2", tone: "#8b5cf6" },
   },
 };

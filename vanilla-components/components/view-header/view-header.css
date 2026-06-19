@@ -1,3 +1,4 @@
+@layer vanilla-components {
 /* View-header — a stage/view title block: eyebrow, title, sub, and an actions
    slot. The per-view header every app hand-rolls (TapScribe `.whead`). */
 @scope (.view-header) {
@@ -40,4 +41,11 @@
     gap: var(--space-s);
     flex: none;
   }
+
+  /* dense: a compact one-line section/toolbar bar — title shrinks, eyebrow/sub
+     sit inline with it, and the heavy bottom rule is dropped. */
+  :scope.is-dense { align-items: center; padding-bottom: var(--space-s); border-bottom: 0; }
+  :scope.is-dense .view-header-main { flex-direction: row; align-items: baseline; gap: var(--space-s); }
+  :scope.is-dense .view-header-title { font-size: 14px; }
+}
 }

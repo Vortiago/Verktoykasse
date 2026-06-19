@@ -1,3 +1,4 @@
+@layer vanilla-components {
 /* Side-nav — a grouped vertical nav (the left pane / TapScribe spine). Items are
    icon · label · chip with a left accent stripe when active. The `journey` group
    variant renders numbered stages joined by a connecting line, with done-checks.
@@ -86,4 +87,5 @@
   .side-nav-items.is-journey .side-nav-item.is-done:not(:last-child) .side-nav-lead.is-num::after {
     background: color-mix(in srgb, var(--ok) 40%, transparent);
   }
+}
 }

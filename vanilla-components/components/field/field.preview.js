@@ -13,5 +13,6 @@ export default {
       { value: "auto", label: "Auto" },
     ] },
     textarea: { label: "Hotwords", type: "textarea", value: "Verktøykasse\nSlipestein", hint: "one per line" },
+    toolbar: { label: "Filter", type: "search", placeholder: "filter…", hideLabel: true },
   },
 };

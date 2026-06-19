@@ -17,14 +17,18 @@ import { loadTemplates, loadCSS } from "./templates.js";
  * @param {string} moduleUrl - the component's `import.meta.url`.
  * @param {string} name - kebab id; matches `./<name>.html`, `./<name>.css`, and the `tpl-<name>` id.
  * @param {(...args: A) => R} build - synchronous build; assumes warm() resolved (tpl() needs the template).
+ * @param {Array<() => Promise<unknown>>} [composes] - warmers of child components this one
+ *   builds synchronously (e.g. a nav that composes chip). warm() awaits them too, so a single
+ *   warmX() readies the whole subtree and create()/sync() can build without further awaits.
  * @returns {{ warm: () => Promise<unknown>, sync: (...args: A) => R, create: (...args: A) => Promise<R> }}
  */
-export function defineComponent(moduleUrl, name, build) {
+export function defineComponent(moduleUrl, name, build, composes = []) {
   /** @type {Promise<unknown> | undefined} */
   let ready;
   const warm = () => (ready ??= Promise.all([
     loadTemplates(new URL(`./${name}.html`, moduleUrl).href),
     loadCSS(moduleUrl, `./${name}.css`),
+    ...composes.map((w) => w()),
   ]));
   return {
     warm,
