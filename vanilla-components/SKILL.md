@@ -80,6 +80,13 @@ follow the vanilla-web hash convention: they render `<a href="#/<id>">` and expo
 house look, so adopting them converges an app's existing nav styling (a deliberate
 visual change, not a pure drop-in).
 
+`side-nav` models **navigation**: each item is a single `<a>` (`lead · label ·
+chip`). A *live status list* — rows with a status dot, per-host accent, and their
+own per-row actions (e.g. a fleet rail with open/preview buttons) — is not
+navigation and doesn't fit it: there's no per-row action slot, and nesting buttons
+inside the item's `<a>` is invalid. Keep that a custom component (it can still
+compose these atoms: `status-dot`, `chip`, `button`).
+
 ## Run the catalogue
 
 `node serve.mjs` → `http://127.0.0.1:8080/preview.html` (regenerates the preview
