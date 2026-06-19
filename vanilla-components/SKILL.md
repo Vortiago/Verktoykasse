@@ -56,7 +56,7 @@ and statically servable. Re-copy to update; never fork in place.
 | side-nav | `createSideNav({ groups, current?, onSelect? }, signal?) → { el, setCurrent }` | grouped left-pane nav; `journey` group variant = numbered pipeline + done-checks; item `chip` composes the chip atom |
 | view-header | `createViewHeader({ eyebrow?, title, sub?, actions? }) → { el, actionsEl, setTitle, setSub }` | stage header: eyebrow · title · sub · `actionsEl` slot |
 | button | `createButton({ label, variant?, size?, icon?, href?, target?, onClick?, disabled?, pressed? }, signal?) → { el, setLabel, setDisabled, setPressed }` | variant: default\|primary\|danger\|ghost; size: md\|sm; `href` renders an `<a>` styled as a button; `pressed` = aria-pressed toggle |
-| field | `createField({ label, type?, value?, placeholder?, hint?, options?, required?, onInput? }, signal?) → { el, control, getValue, setValue }` | type: text\|number\|email\|password\|search\|select\|textarea; native `:user-invalid` styling |
+| field | `createField({ label, type?, value?, placeholder?, hint?, options?, required?, hideLabel?, onInput? }, signal?) → { el, control, getValue, setValue }` | type: text\|number\|email\|password\|search\|select\|textarea; `hideLabel` → label-less (aria-label kept) for toolbars; native `:user-invalid` styling |
 | progress | `createProgress({ value, max?, tone?, label? }) → { el, setValue(value, max?) }` | track+fill meter; tone: ok\|warn\|bad\|accent |
 | kv-row | `createKvRow({ label, value, tone? }) → { el, setValue(value) }` | key·value line (prop is `label` — `key` is React-reserved); tone colors value |
 | empty-state | `createEmptyState({ icon?, title, detail? }) → { el }` | centered "nothing here" placeholder |
