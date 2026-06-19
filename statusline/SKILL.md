@@ -1,6 +1,6 @@
 ---
 name: expand-statusline
-description: Extend Atle's Claude Code status line with project-specific information (dev-server state, CI status, queue depth, counts, freshness, …). Use ONLY when the user invokes /expand-statusline. Not model-invoked.
+description: Extend Atle's Claude Code status line with project-specific information (dev-server state, CI status, queue depth, counts, freshness, …). Use ONLY when the user invokes /expand-statusline.
 argument-hint: "[what to show, e.g. 'dev server + open queue count']"
 disable-model-invocation: true
 ---
@@ -103,7 +103,7 @@ printf '%s● ci%s %squeue%s %s' "$dot" "$CL_RESET" "$CL_DIM" "$CL_RESET" "$coun
 ## Reference
 
 Worked example bundled with this skill: [`example-ext.sh`](example-ext.sh) — counts
-the toolbox's own skills, defined vs. linked live (`🧰 skills 3/3`); declares one
+the toolbox's own skills, defined vs. linked live (`🧰 skills N/N`); declares one
 `svc` link. Copy it as a starting point. (It also ships live in the toolbox at
 `$CL_ROOT/.claude/statusline-ext.sh`, auto-found with no `install.sh` wiring.)
 

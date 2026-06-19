@@ -5,15 +5,14 @@ description: Atle's conventions for building web UIs — vanilla ES modules, HTM
 
 # vanilla-web — how websites get built here
 
-Default stack for every web UI: **no build step, no runtime deps**, plain ES
-modules served statically; the only dev dependency is `typescript` for the
-typecheck gate. This file is the map — read the linked `reference/*.md` only for
-the area you're actually touching.
+**No build step, no runtime deps** — plain ES modules served statically; the
+only dev dependency is `typescript` for the typecheck gate. This file is the map
+— read the linked `reference/*.md` only for the area you're actually touching.
 
 ## Decision rule
 
-Default to this stack for every web UI. Reach for React (or another framework)
-only with a concrete driver: heavy shared client state across many screens, an
+New web UI → default to this stack. Reach for React (or another framework) only
+with a concrete driver: heavy shared client state across many screens, an
 existing React codebase, or a component ecosystem the task genuinely needs (rich
 editors, complex drag-drop). "It might grow" is not a driver — this skeleton
 grows fine. If React seems warranted, say so and ask before scaffolding.
