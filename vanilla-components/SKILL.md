@@ -49,7 +49,7 @@ and statically servable. Re-copy to update; never fork in place.
 |---|---|---|
 | panel | `createPanel({ head?, body?, fill? }) → { el, headEl, bodyEl }` | head/body take string or Node; `fill` stretches + scrolls body |
 | stat-card | `createStatCard({ label, value, unit?, hint?, tone?, onSelect? }, signal?) → { el, update(value, hint?) }` | tone: ok\|warn\|bad\|accent; `update()` mutates in place for polled values |
-| chip | `createChip({ text, tone?, dot? }) → { el, setText(text) }` | tone: ok\|warn\|bad\|info\|accent; `dot` = leading dot |
+| chip | `createChip({ text, tone?, dot? }) → { el, setText(text) }` | tone: ok\|warn\|bad\|info\|accent, a raw CSS colour, or neutral; `dot` = leading dot |
 | status-dot | `createStatusDot({ tone?, pulse?, label? }) → { el, setTone(t), setPulse(on) }` | tone: neutral\|ok\|warn\|bad\|info\|accent; `pulse` halo (respects reduced-motion) |
 | tooltip | `createTooltip(trigger, { content?, className? }, signal?) → { el, setContent, show(), hide(), dispose() }` | top-layer Popover tethered to the trigger via CSS anchor positioning (auto edge-flip, no coordinate math); shows on the trigger's hover/focus. Chromium 125+. |
 | app-bar | `createAppBar({ brand, items, current?, onSelect? }, signal?) → { el, actionsEl, setCurrent }` | top bar: brand · underline-tab nav (`<a href="#/<id>">`) · `actionsEl` slot; `setCurrent(id)` marks active; optional per-item `accent` |
