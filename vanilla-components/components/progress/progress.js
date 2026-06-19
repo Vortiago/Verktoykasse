@@ -3,17 +3,18 @@
 import { loadTemplates, tpl, pick, loadCSS } from "../../lib/templates.js";
 
 let ready;
-const ensure = () => (ready ??= Promise.all([
+/** Load template + CSS once; await before createProgressSync. */
+export const warmProgress = () => (ready ??= Promise.all([
   loadTemplates(new URL("./progress.html", import.meta.url).href),
   loadCSS(import.meta.url, "./progress.css"),
 ]));
 
 /**
+ * Synchronous build - requires warmProgress() resolved. For renderRegion rebuilds.
  * @param {{ value: number, max?: number, tone?: "ok" | "warn" | "bad" | "accent" | null, label?: string | null }} props
- * @returns {Promise<{ el: HTMLElement, setValue: (value: number, max?: number) => void }>}
+ * @returns {{ el: HTMLElement, setValue: (value: number, max?: number) => void }}
  */
-export async function createProgress({ value, max = 100, tone = null, label = null } = /** @type {any} */ ({})) {
-  await ensure();
+export function createProgressSync({ value, max = 100, tone = null, label = null } = /** @type {any} */ ({})) {
   const el = /** @type {HTMLElement} */ (tpl("tpl-progress").firstElementChild);
   if (tone) el.classList.add(`tone-${tone}`);
   const fill = pick(el, "fill");
@@ -31,4 +32,13 @@ export async function createProgress({ value, max = 100, tone = null, label = nu
     labelEl.textContent = label;
   }
   return { el, setValue: (value, max) => apply(value, max) };
+}
+
+/** Warm + build (also what the design-sync shim uses).
+ * @param {{ value: number, max?: number, tone?: "ok" | "warn" | "bad" | "accent" | null, label?: string | null }} props
+ * @returns {Promise<{ el: HTMLElement, setValue: (value: number, max?: number) => void }>}
+ */
+export async function createProgress(props = /** @type {any} */ ({})) {
+  await warmProgress();
+  return createProgressSync(props);
 }

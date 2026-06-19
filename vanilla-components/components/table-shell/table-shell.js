@@ -1,0 +1,70 @@
+// @ts-check
+// table-shell - a tokenized table skeleton: a sticky header built from `columns`
+// and a tbody the caller fills directly or via setRows(). end-aligned columns are
+// right-aligned monospace. The wrapper owns the scroll so a tall table stays boxed.
+import { loadTemplates, tpl, pick, loadCSS } from "../../lib/templates.js";
+
+let ready;
+/** Load the template + CSS once. Await before calling createTableShellSync -
+ * needed to use the component inside a synchronous renderRegion rebuild. */
+export const warmTableShell = () => (ready ??= Promise.all([
+  loadTemplates(new URL("./table-shell.html", import.meta.url).href),
+  loadCSS(import.meta.url, "./table-shell.css"),
+]));
+
+/** @typedef {{ key: string, label: string, align?: "start" | "end" }} TableColumn */
+/** @typedef {{ columns: TableColumn[], rows?: (string | number)[][], caption?: string }} TableShellProps */
+/** @typedef {{ el: HTMLElement, tbody: HTMLElement, setRows: (rows: (string | number)[][]) => void }} TableShellHandle */
+
+/** Build one `<tr>` of cells in column order; end-aligned columns get .is-end.
+ * @param {TableColumn[]} columns @param {(string | number)[]} cells @returns {HTMLElement} */
+function buildRow(columns, cells) {
+  const tr = /** @type {HTMLElement} */ (tpl("tpl-table-shell-tr").firstElementChild);
+  columns.forEach((col, i) => {
+    const td = /** @type {HTMLElement} */ (tpl("tpl-table-shell-td").firstElementChild);
+    if (col.align === "end") td.classList.add("is-end");
+    const cell = cells[i];
+    td.textContent = cell == null ? "" : String(cell);
+    tr.append(td);
+  });
+  return tr;
+}
+
+/** Synchronous build - requires warmTableShell() to have resolved (else tpl() throws).
+ * Use inside a renderRegion rebuild after warming once at mount.
+ *   columns - column defs in display order; align:"end" right-aligns + monospaces the cell.
+ *   rows - optional initial rows, each inner array = cells in column order.
+ *   caption - optional table caption.
+ * @param {TableShellProps} props @returns {TableShellHandle} */
+export function createTableShellSync({ columns, rows, caption } = /** @type {any} */ ({})) {
+  const el = /** @type {HTMLElement} */ (tpl("tpl-table-shell").firstElementChild);
+
+  if (caption != null) {
+    const captionEl = pick(el, "caption");
+    captionEl.hidden = false;
+    captionEl.textContent = caption;
+  }
+
+  const headRow = pick(el, "head-row");
+  for (const col of columns) {
+    const th = /** @type {HTMLElement} */ (tpl("tpl-table-shell-th").firstElementChild);
+    if (col.align === "end") th.classList.add("is-end");
+    th.textContent = col.label;
+    headRow.append(th);
+  }
+
+  const tbody = pick(el, "body");
+  const setRows = (/** @type {(string | number)[][]} */ rows) => {
+    tbody.replaceChildren(...rows.map((cells) => buildRow(columns, cells)));
+  };
+  if (rows) setRows(rows);
+
+  return { el, tbody, setRows };
+}
+
+/** Warm + build. The convenience path (and what the design-sync shim uses).
+ * @param {TableShellProps} props @returns {Promise<TableShellHandle>} */
+export async function createTableShell(props = /** @type {any} */ ({})) {
+  await warmTableShell();
+  return createTableShellSync(props);
+}

@@ -37,6 +37,8 @@ const COMPONENTS = [
   { name: "segmented-control", Pascal: "SegmentedControl", props: `options: { id: string; label: string }[];\n  current?: string;` },
   { name: "field", Pascal: "Field", props: `label: string;\n  type?: "text" | "number" | "email" | "password" | "search" | "select" | "textarea";\n  value?: string;\n  placeholder?: string;\n  hint?: string;\n  options?: { value: string; label: string }[];\n  required?: boolean;` },
   { name: "dialog", Pascal: "Dialog", props: `title?: string;\n  body?: string;`, dialog: true },
+  { name: "table-shell", Pascal: "TableShell", props: `columns: { key: string; label: string; align?: "start" | "end" }[];\n  rows?: (string | number)[][];\n  caption?: string;` },
+  { name: "checklist-row", Pascal: "ChecklistRow", props: `text: string;\n  done?: boolean;` },
 ];
 
 /** Transform a real factory module into a self-contained dist module:
@@ -99,19 +101,24 @@ export function ${Pascal}(props) {
 `;
 
 const tooltipShim = (Pascal, create) => `
-// Imperative overlay -> demo shim: mount a host and show the tip immediately so
-// the design-sync card isn't blank (the live component is hover-driven).
+// Hover-driven tooltip -> demo shim: render a trigger, tether the tip to it and
+// show it immediately so the design-sync card isn't blank.
 export function ${Pascal}({ content = "Tooltip" } = {}) {
   const ref = React.useRef(null);
   React.useEffect(() => {
     const host = ref.current;
     if (!host) return;
+    const trigger = document.createElement("button");
+    trigger.type = "button";
+    trigger.textContent = "hover me";
+    Object.assign(trigger.style, { font: "inherit", fontSize: "12px", padding: "4px 10px", border: "1px solid var(--hairline)", borderRadius: "var(--r)", background: "var(--bg-elev)", color: "var(--text)", cursor: "help" });
+    host.replaceChildren(trigger);
     const ac = new AbortController();
     let tip;
-    Promise.resolve(${create}(host, {}, ac.signal)).then((t) => { tip = t; t.show(content, 16, 8); });
+    Promise.resolve(${create}(trigger, { content }, ac.signal)).then((t) => { tip = t; t.show(); });
     return () => { ac.abort(); tip && tip.dispose && tip.dispose(); };
   }, [content]);
-  return React.createElement("div", { ref, style: { position: "relative", minHeight: "72px", minWidth: "220px" } });
+  return React.createElement("div", { ref, style: { padding: "44px 16px 16px", minHeight: "120px", display: "flex", justifyContent: "center", alignItems: "flex-start" } });
 }
 `;
 

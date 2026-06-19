@@ -6,6 +6,7 @@
 export const previews = [
   { title: "app-bar", load: () => import("../components/app-bar/app-bar.preview.js") },
   { title: "button", load: () => import("../components/button/button.preview.js") },
+  { title: "checklist-row", load: () => import("../components/checklist-row/checklist-row.preview.js") },
   { title: "chip", load: () => import("../components/chip/chip.preview.js") },
   { title: "dialog", load: () => import("../components/dialog/dialog.preview.js") },
   { title: "empty-state", load: () => import("../components/empty-state/empty-state.preview.js") },
@@ -17,6 +18,7 @@ export const previews = [
   { title: "side-nav", load: () => import("../components/side-nav/side-nav.preview.js") },
   { title: "stat-card", load: () => import("../components/stat-card/stat-card.preview.js") },
   { title: "status-dot", load: () => import("../components/status-dot/status-dot.preview.js") },
+  { title: "table-shell", load: () => import("../components/table-shell/table-shell.preview.js") },
   { title: "tooltip", load: () => import("../components/tooltip/tooltip.preview.js") },
   { title: "view-header", load: () => import("../components/view-header/view-header.preview.js") },
 ];

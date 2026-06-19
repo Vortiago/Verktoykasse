@@ -1,0 +1,59 @@
+/* table-shell - a tokenized table skeleton: sticky header, hairline row borders,
+   right-aligned monospace numeric columns. The data-grid building block the apps
+   reach for (a scorecard, a run list). The wrapper owns the scroll so a tall
+   table stays inside its box. All color/shape via tokens. */
+@scope (.table-shell) {
+  :scope {
+    display: block;
+    overflow: auto;
+    border: 1px solid var(--hairline);
+    border-radius: var(--r);
+    background: var(--bg-elev);
+    color: var(--text);
+  }
+
+  .table-shell-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  .table-shell-caption {
+    padding: var(--space-s) var(--space-m);
+    text-align: left;
+    font-size: 12px;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .table-shell-th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--bg-elev-2);
+    padding: var(--space-s) var(--space-m);
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .table-shell-td {
+    padding: var(--space-s) var(--space-m);
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  /* end-aligned columns: right-aligned, monospace, tabular figures (numeric data) */
+  .table-shell-th.is-end { text-align: right; }
+  .table-shell-td.is-end {
+    text-align: right;
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* last row sits flush against the rounded bottom edge */
+  .table-shell-tr:last-child .table-shell-td { border-bottom: 0; }
+}
