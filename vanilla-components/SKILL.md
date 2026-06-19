@@ -1,6 +1,6 @@
 ---
 name: vanilla-components
-description: Shared vanilla-web component library + unified design tokens — copy-verbatim, no build, no deps. Atoms (panel, stat-card, chip, status-dot, tooltip), shell (app-bar, side-nav, view-header), and controls (button, field, progress, kv-row, empty-state, dialog, segmented-control) on the create-factory + @scope contract, plus a light-dark() token set. Use when building a vanilla-web UI and reaching for any of those, or a common token set, instead of hand-rolling one.
+description: Shared vanilla-web component library + unified design tokens — copy-verbatim, no build, no deps. Atoms (panel, stat-card, chip, status-dot, tooltip), shell (app-bar, side-nav, view-header), controls (button, field, progress, kv-row, empty-state, dialog, segmented-control), and layout (table-shell, checklist-row) on the create-factory + @scope contract, plus a light-dark() token set. Use when building a vanilla-web UI and reaching for any of those, or a common token set, instead of hand-rolling one.
 ---
 
 # vanilla-components — shared parts for vanilla-web UIs
@@ -42,7 +42,7 @@ and statically servable. Re-copy to update; never fork in place.
 | stat-card | `createStatCard({ label, value, unit?, hint?, tone?, onSelect? }, signal?) → { el, update(value, hint?) }` | tone: ok\|warn\|bad\|accent; `update()` mutates in place for polled values |
 | chip | `createChip({ text, tone?, dot? }) → { el, setText(text) }` | tone: ok\|warn\|bad\|info\|accent; `dot` = leading dot |
 | status-dot | `createStatusDot({ tone?, pulse?, label? }) → { el, setTone(t), setPulse(on) }` | tone: neutral\|ok\|warn\|bad\|info\|accent; `pulse` halo (respects reduced-motion) |
-| tooltip | `createTooltip(host, { className? }, signal?) → { node, show(content, x, y, box?), hide(), dispose() }` | top-layer manual popover, edge-clamped; aborts/disposes with `signal`. Also exports `clampTip(...)`. |
+| tooltip | `createTooltip(trigger, { content?, className? }, signal?) → { el, setContent, show(), hide(), dispose() }` | top-layer Popover tethered to the trigger via CSS anchor positioning (auto edge-flip, no coordinate math); shows on the trigger's hover/focus. Chromium 125+. |
 | app-bar | `createAppBar({ brand, items, current?, onSelect? }, signal?) → { el, actionsEl, setCurrent }` | top bar: brand · underline-tab nav (`<a href="#/<id>">`) · `actionsEl` slot; `setCurrent(id)` marks active; optional per-item `accent` |
 | side-nav | `createSideNav({ groups, current?, onSelect? }, signal?) → { el, setCurrent }` | grouped left-pane nav; `journey` group variant = numbered pipeline + done-checks; item `chip` composes the chip atom |
 | view-header | `createViewHeader({ eyebrow?, title, sub?, actions? }) → { el, actionsEl, setTitle, setSub }` | stage header: eyebrow · title · sub · `actionsEl` slot |
@@ -53,9 +53,16 @@ and statically servable. Re-copy to update; never fork in place.
 | empty-state | `createEmptyState({ icon?, title, detail? }) → { el }` | centered "nothing here" placeholder |
 | segmented-control | `createSegmentedControl({ options, current?, onSelect? }, signal?) → { el, setCurrent }` | radio/toggle group; `setCurrent(id)` marks the active option |
 | dialog | `createDialog({ title?, body?, actions? }, signal?) → { el, bodyEl, actionsEl, open(), close() }` | native `<dialog>`; append `el` to the DOM, then `open()` (showModal) / `close()` |
+| table-shell | `createTableShell({ columns, rows?, caption? }) → { el, tbody, setRows }` | tokenized table skeleton: sticky header from `columns`, caller-fillable `tbody`; numeric columns (`align:"end"`) right-aligned mono |
+| checklist-row | `createChecklistRow({ text, done? }) → { el, setDone(done) }` | done/undone item: box marker + strikethrough/dim when done |
 
 Tones derive from one `--tone` custom property via `color-mix` — restyle by
 overriding the token, not the rule.
+
+**Sync-create path (for polled views):** every component also exports
+`warm<Name>()` (await once at mount) + `create<Name>Sync(props[, signal])` (a
+synchronous build) so it can be created inside a `renderRegion`/`reconcileList`
+rebuild. `create<Name>()` is just the async `warm + Sync` wrapper.
 
 **Shell components** (`app-bar`, `side-nav`, `view-header`) are registry-driven and
 follow the vanilla-web hash convention: they render `<a href="#/<id>">` and expose
