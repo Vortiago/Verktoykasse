@@ -1,24 +1,17 @@
 // @ts-check
 // Status-dot — a small colored dot with an optional pulse and trailing label.
 // setTone/setPulse mutate in place so a polled status flips without a DOM swap.
-import { loadTemplates, tpl, pick, loadCSS } from "../../lib/templates.js";
-
-let ready;
-/** Load template + CSS once; await before createStatusDotSync. */
-export const warmStatusDot = () => (ready ??= Promise.all([
-  loadTemplates(new URL("./status-dot.html", import.meta.url).href),
-  loadCSS(import.meta.url, "./status-dot.css"),
-]));
+import { tpl, pick } from "../../lib/templates.js";
+import { defineComponent } from "../../lib/component.js";
 
 /** @typedef {"neutral" | "ok" | "warn" | "bad" | "info" | "accent"} DotTone */
 
 /**
- * Synchronous build - requires warmStatusDot() resolved. For renderRegion rebuilds.
  * @param {{ tone?: DotTone, pulse?: boolean, label?: string | null }} [props]
  * @returns {{ el: HTMLElement,
  *   setTone: (tone: DotTone) => void, setPulse: (on: boolean) => void }}
  */
-export function createStatusDotSync({ tone = "neutral", pulse = false, label = null } = {}) {
+function buildStatusDot({ tone = "neutral", pulse = false, label = null } = {}) {
   const el = /** @type {HTMLElement} */ (tpl("tpl-status-dot").firstElementChild);
 
   /** @param {DotTone} t */
@@ -41,12 +34,5 @@ export function createStatusDotSync({ tone = "neutral", pulse = false, label = n
   return { el, setTone, setPulse };
 }
 
-/** Warm + build (also what the design-sync shim uses).
- * @param {{ tone?: DotTone, pulse?: boolean, label?: string | null }} [props]
- * @returns {Promise<{ el: HTMLElement,
- *   setTone: (tone: DotTone) => void, setPulse: (on: boolean) => void }>}
- */
-export async function createStatusDot(props = {}) {
-  await warmStatusDot();
-  return createStatusDotSync(props);
-}
+export const { warm: warmStatusDot, sync: createStatusDotSync, create: createStatusDot } =
+  defineComponent(import.meta.url, "status-dot", buildStatusDot);

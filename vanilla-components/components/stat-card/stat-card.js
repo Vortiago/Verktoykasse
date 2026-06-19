@@ -1,26 +1,19 @@
 // @ts-check
 // Stat-card — a labeled hero number with optional unit + hint, plus an in-place
 // update() so polled values mutate without a DOM swap (the canonical example).
-import { loadTemplates, tpl, pick, loadCSS } from "../../lib/templates.js";
-
-let ready;
-/** Load template + CSS once; await before createStatCardSync. */
-export const warmStatCard = () => (ready ??= Promise.all([
-  loadTemplates(new URL("./stat-card.html", import.meta.url).href),
-  loadCSS(import.meta.url, "./stat-card.css"),
-]));
+import { tpl, pick } from "../../lib/templates.js";
+import { defineComponent } from "../../lib/component.js";
 
 /** @typedef {"ok" | "warn" | "bad" | "accent"} StatTone */
 
 /**
- * Synchronous build - requires warmStatCard() resolved. For renderRegion rebuilds.
  * @param {{ label: string, value: string | number, unit?: string | null,
  *   hint?: string | null, tone?: StatTone | null, onSelect?: () => void }} props
  * @param {AbortSignal} [signal] - required only when `onSelect` is given.
  * @returns {{ el: HTMLElement,
  *   update: (value: string | number, hint?: string | null) => void }}
  */
-export function createStatCardSync(
+function buildStatCard(
   { label, value, unit = null, hint = null, tone = null, onSelect } = /** @type {any} */ ({}),
   signal,
 ) {
@@ -61,14 +54,5 @@ export function createStatCardSync(
   };
 }
 
-/** Warm + build (also what the design-sync shim uses).
- * @param {{ label: string, value: string | number, unit?: string | null,
- *   hint?: string | null, tone?: StatTone | null, onSelect?: () => void }} props
- * @param {AbortSignal} [signal] - required only when `onSelect` is given.
- * @returns {Promise<{ el: HTMLElement,
- *   update: (value: string | number, hint?: string | null) => void }>}
- */
-export async function createStatCard(props = /** @type {any} */ ({}), signal) {
-  await warmStatCard();
-  return createStatCardSync(props, signal);
-}
+export const { warm: warmStatCard, sync: createStatCardSync, create: createStatCard } =
+  defineComponent(import.meta.url, "stat-card", buildStatCard);

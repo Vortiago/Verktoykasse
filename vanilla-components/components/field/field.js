@@ -1,13 +1,8 @@
 // @ts-check
 // field — a labeled form control. The control is a native input/select/textarea
 // (per `type`); native constraint validation styling via :user-invalid in the CSS.
-import { loadTemplates, tpl, pick, loadCSS } from "../../lib/templates.js";
-
-let ready;
-const ensure = () => (ready ??= Promise.all([
-  loadTemplates(new URL("./field.html", import.meta.url).href),
-  loadCSS(import.meta.url, "./field.css"),
-]));
+import { tpl, pick } from "../../lib/templates.js";
+import { defineComponent } from "../../lib/component.js";
 
 /** @typedef {"text" | "number" | "email" | "password" | "search" | "select" | "textarea"} FieldType */
 
@@ -16,15 +11,14 @@ const ensure = () => (ready ??= Promise.all([
  *   hint?: string | null, options?: { value: string, label: string }[],
  *   required?: boolean, onInput?: (value: string) => void }} props
  * @param {AbortSignal} [signal] - required only when `onInput` is given.
- * @returns {Promise<{ el: HTMLElement,
+ * @returns {{ el: HTMLElement,
  *   control: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement,
- *   getValue: () => string, setValue: (value: string) => void }>}
+ *   getValue: () => string, setValue: (value: string) => void }}
  */
-export async function createField(
+function buildField(
   { label, type = "text", value = "", placeholder = "", hint = null, options = [], required = false, onInput } = /** @type {any} */ ({}),
   signal,
 ) {
-  await ensure();
   const el = /** @type {HTMLElement} */ (tpl("tpl-field").firstElementChild);
   pick(el, "label").textContent = label;
 
@@ -63,3 +57,6 @@ export async function createField(
     setValue: (value) => { control.value = value; },
   };
 }
+
+export const { warm: warmField, sync: createFieldSync, create: createField } =
+  defineComponent(import.meta.url, "field", buildField);

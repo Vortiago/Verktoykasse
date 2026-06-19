@@ -3,13 +3,8 @@
 // top layer as a manual popover; CSS Anchor Positioning (position-anchor +
 // position-area + position-try-fallbacks, in tooltip.css) does the placement and
 // the edge-flip. No manual coordinate math. Shows on the trigger's hover/focus.
-import { loadTemplates, tpl, loadCSS } from "../../lib/templates.js";
-
-let ready;
-const ensure = () => (ready ??= Promise.all([
-  loadTemplates(new URL("./tooltip.html", import.meta.url).href),
-  loadCSS(import.meta.url, "./tooltip.css"),
-]));
+import { tpl } from "../../lib/templates.js";
+import { defineComponent } from "../../lib/component.js";
 
 let seq = 0; // unique anchor-name per instance
 
@@ -17,10 +12,9 @@ let seq = 0; // unique anchor-name per instance
  * @param {HTMLElement} trigger - the tip anchors to this element and shows on its hover/focus.
  * @param {{ content?: string | Node | null, className?: string }} [opts] - body + per-use class.
  * @param {AbortSignal} [signal] - aborting disposes the tooltip (removes tip + listeners).
- * @returns {Promise<{ el: HTMLElement, setContent: (content: string | Node) => void, show: () => void, hide: () => void, dispose: () => void }>}
+ * @returns {{ el: HTMLElement, setContent: (content: string | Node) => void, show: () => void, hide: () => void, dispose: () => void }}
  */
-export async function createTooltip(trigger, { content = null, className = "" } = {}, signal) {
-  await ensure();
+function buildTooltip(trigger, { content = null, className = "" } = {}, signal) {
   const el = /** @type {HTMLElement} */ (tpl("tpl-tooltip").firstElementChild);
   if (className) el.className = (el.className + " " + className).trim();
 
@@ -53,3 +47,6 @@ export async function createTooltip(trigger, { content = null, className = "" } 
 
   return { el, setContent, show, hide, dispose };
 }
+
+export const { warm: warmTooltip, sync: createTooltipSync, create: createTooltip } =
+  defineComponent(import.meta.url, "tooltip", buildTooltip);
