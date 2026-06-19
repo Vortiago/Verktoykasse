@@ -8,7 +8,9 @@ import { defineComponent } from "../../lib/component.js";
 
 /**
  * @param {{ tone?: DotTone | null, pulse?: boolean, label?: string | null }} [props]
- *   tone - a named tone; "neutral"/null is the quiet default (matches chip).
+ *   tone - a named tone; null is treated as "neutral", the quiet default —
+ *     so chip's null and status-dot's neutral mean the same. (Raw colours,
+ *     which chip accepts, aren't supported here.)
  * @returns {{ el: HTMLElement,
  *   setTone: (tone: DotTone | null) => void, setPulse: (on: boolean) => void }}
  */

@@ -63,15 +63,7 @@ function buildAppBar({ brand, items, current = null, onSelect } = /** @type {any
   return { el, actionsEl: pick(el, "actions"), setCurrent };
 }
 
-const base = defineComponent(import.meta.url, "app-bar", buildAppBar);
-
-/** Warm app-bar + its composed chip template (item badges use createChipSync). */
-export const warmAppBar = () => Promise.all([base.warm(), warmChip()]);
-/** Synchronous build — requires warmAppBar() resolved. @type {typeof buildAppBar} */
-export const createAppBarSync = base.sync;
-/** Warm (app-bar + chip) then build.
- * @type {(props?: Parameters<typeof buildAppBar>[0], signal?: AbortSignal) => Promise<ReturnType<typeof buildAppBar>>} */
-export async function createAppBar(props, signal) {
-  await warmAppBar();
-  return base.sync(props, signal);
-}
+// composes chip: warmAppBar() readies the chip template too, so the per-item
+// badge (createChipSync) builds synchronously.
+export const { warm: warmAppBar, sync: createAppBarSync, create: createAppBar } =
+  defineComponent(import.meta.url, "app-bar", buildAppBar, [warmChip]);

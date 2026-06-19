@@ -83,15 +83,7 @@ function buildSideNav({ groups, current = null, onSelect } = /** @type {any} */ 
   return { el, setCurrent };
 }
 
-const base = defineComponent(import.meta.url, "side-nav", buildSideNav);
-
-/** Warm side-nav + its composed chip template (createSideNavSync uses createChipSync). */
-export const warmSideNav = () => Promise.all([base.warm(), warmChip()]);
-/** Synchronous build — requires warmSideNav() resolved. @type {(props?: SideNavProps, signal?: AbortSignal) => SideNavHandle} */
-export const createSideNavSync = base.sync;
-/** Warm (side-nav + chip) then build.
- * @param {SideNavProps} [props] @param {AbortSignal} [signal] @returns {Promise<SideNavHandle>} */
-export async function createSideNav(props, signal) {
-  await warmSideNav();
-  return base.sync(props, signal);
-}
+// composes chip: warmSideNav() readies the chip template too, so createSideNavSync
+// (used for item badges via createChipSync) can build without an extra await.
+export const { warm: warmSideNav, sync: createSideNavSync, create: createSideNav } =
+  defineComponent(import.meta.url, "side-nav", buildSideNav, [warmChip]);
