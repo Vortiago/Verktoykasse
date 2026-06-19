@@ -2,15 +2,8 @@
 // table-shell - a tokenized table skeleton: a sticky header built from `columns`
 // and a tbody the caller fills directly or via setRows(). end-aligned columns are
 // right-aligned monospace. The wrapper owns the scroll so a tall table stays boxed.
-import { loadTemplates, tpl, pick, loadCSS } from "../../lib/templates.js";
-
-let ready;
-/** Load the template + CSS once. Await before calling createTableShellSync -
- * needed to use the component inside a synchronous renderRegion rebuild. */
-export const warmTableShell = () => (ready ??= Promise.all([
-  loadTemplates(new URL("./table-shell.html", import.meta.url).href),
-  loadCSS(import.meta.url, "./table-shell.css"),
-]));
+import { tpl, pick } from "../../lib/templates.js";
+import { defineComponent } from "../../lib/component.js";
 
 /** @typedef {{ key: string, label: string, align?: "start" | "end" }} TableColumn */
 /** @typedef {{ columns: TableColumn[], rows?: (string | number)[][], caption?: string }} TableShellProps */
@@ -36,7 +29,7 @@ function buildRow(columns, cells) {
  *   rows - optional initial rows, each inner array = cells in column order.
  *   caption - optional table caption.
  * @param {TableShellProps} props @returns {TableShellHandle} */
-export function createTableShellSync({ columns, rows, caption } = /** @type {any} */ ({})) {
+function buildTableShell({ columns, rows, caption } = /** @type {any} */ ({})) {
   const el = /** @type {HTMLElement} */ (tpl("tpl-table-shell").firstElementChild);
 
   if (caption != null) {
@@ -62,9 +55,5 @@ export function createTableShellSync({ columns, rows, caption } = /** @type {any
   return { el, tbody, setRows };
 }
 
-/** Warm + build. The convenience path (and what the design-sync shim uses).
- * @param {TableShellProps} props @returns {Promise<TableShellHandle>} */
-export async function createTableShell(props = /** @type {any} */ ({})) {
-  await warmTableShell();
-  return createTableShellSync(props);
-}
+export const { warm: warmTableShell, sync: createTableShellSync, create: createTableShell } =
+  defineComponent(import.meta.url, "table-shell", buildTableShell);

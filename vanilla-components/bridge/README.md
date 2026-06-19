@@ -6,12 +6,16 @@ presents each component AS a React component, then the real converter does the r
 
 ## `emit-adapter.mjs` — the generator
 
-`node bridge/emit-adapter.mjs` reads the real component sources and writes a
-React-shim **adapter package** to `bridge/ds-adapter/` (gitignored, regenerated):
+`node bridge/emit-adapter.mjs` discovers the components by walking `components/`
+(each carries a `<name>.bridge.mjs` with its narrowed `Props` + optional shim; a
+real component missing one fails the build loudly), reads the real sources, and
+writes a React-shim **adapter package** to `bridge/ds-adapter/` (gitignored, regenerated):
 
-- each `dist/<name>.js` is the **real factory verbatim**, with only its dev-server
-  self-loaders neutralized — the `<template>` is inlined and registered lazily,
-  `loadCSS` becomes a no-op, and the component CSS ships via `styles.css` instead;
+- each `dist/<name>.js` is the **real factory verbatim**, with its two `lib/` imports
+  swapped for bridge editions: `_bridge-templates.js` (real `tpl`/`pick`/`slot`) and
+  `_bridge-defineComponent.js`, whose `warm()` injects the pre-inlined `<template>`
+  (registered at the top of each module) instead of fetching — component CSS ships
+  via `styles.css`;
 - a thin React shim wraps the factory (`useRef` + `useEffect` → mount the factory's
   element), so `import { Panel } from "vanilla-components"` is a real React component;
 - `dist/index.d.ts` carries the agent-facing `Props`; `styles.css` is the compiled

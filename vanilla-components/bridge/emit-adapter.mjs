@@ -4,82 +4,102 @@
 //
 // design-sync is React-only: it esbuild-bundles a package's dist entry into
 // window.<global>. So we present the vanilla library AS a React package: each
-// dist module is the real vanilla factory (verbatim — only its dev-server
-// self-loaders neutralized: template inlined + registered lazily, loadCSS no-op,
-// component CSS shipped via styles.css instead) wrapped in a thin React shim.
+// dist module is the real vanilla factory (verbatim — its two lib/ imports
+// swapped for bridge editions: tpl/pick/slot, and a defineComponent whose warm
+// injects the pre-inlined <template>; loadCSS no-op, CSS ships via styles.css)
+// wrapped in a thin React shim.
+//
+// The component list is DISCOVERED by walking components/ (no central table):
+// each component carries a <name>.bridge.mjs with its narrowed Props + optional
+// shim; a real component dir missing its sidecar fails the build loudly.
 //
 // Output: bridge/ds-adapter/  (package.json, dist/*.js + *.d.ts, styles.css, css/)
 //   node bridge/emit-adapter.mjs
 
-import { readFile, writeFile, mkdir, copyFile, rm } from "node:fs/promises";
+import { readFile, writeFile, mkdir, copyFile, rm, readdir, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = dirname(HERE); // vanilla-components/
 const ADAPTER = join(HERE, "ds-adapter");
 
-/** Each component: Pascal name, the d.ts Props body (agent-facing, narrowed),
- *  and whether it's the imperative tooltip (custom shim). */
-const COMPONENTS = [
-  { name: "panel", Pascal: "Panel", props: `head?: string;\n  body?: string;\n  fill?: boolean;` },
-  { name: "stat-card", Pascal: "StatCard", props: `label: string;\n  value: string | number;\n  unit?: string;\n  hint?: string;\n  tone?: "ok" | "warn" | "bad" | "accent";` },
-  { name: "chip", Pascal: "Chip", props: `text: string;\n  tone?: "ok" | "warn" | "bad" | "info" | "accent";\n  dot?: boolean;` },
-  { name: "status-dot", Pascal: "StatusDot", props: `tone?: "neutral" | "ok" | "warn" | "bad" | "info" | "accent";\n  pulse?: boolean;\n  label?: string;` },
-  { name: "tooltip", Pascal: "Tooltip", props: `content?: string;`, tooltip: true },
-  { name: "app-bar", Pascal: "AppBar", props: `brand: { logo?: string; title: string; tagline?: string };\n  items: { id: string; label: string; accent?: string }[];\n  current?: string;` },
-  { name: "side-nav", Pascal: "SideNav", props: `groups: { label?: string; variant?: "list" | "journey"; items: { id: string; label: string; icon?: string; chip?: { text: string; tone?: "ok" | "warn" | "bad" | "info" | "accent" }; done?: boolean }[] }[];\n  current?: string;` },
-  { name: "view-header", Pascal: "ViewHeader", props: `eyebrow?: string;\n  title: string;\n  sub?: string;` },
-  { name: "button", Pascal: "Button", props: `label: string;\n  variant?: "default" | "primary" | "danger" | "ghost";\n  size?: "md" | "sm";\n  icon?: string;\n  disabled?: boolean;` },
-  { name: "kv-row", Pascal: "KvRow", props: `label: string;\n  value: string | number;\n  tone?: "ok" | "warn" | "bad" | "accent";` },
-  { name: "empty-state", Pascal: "EmptyState", props: `icon?: string;\n  title: string;\n  detail?: string;` },
-  { name: "progress", Pascal: "Progress", props: `value: number;\n  max?: number;\n  tone?: "ok" | "warn" | "bad" | "accent";\n  label?: string;` },
-  { name: "segmented-control", Pascal: "SegmentedControl", props: `options: { id: string; label: string }[];\n  current?: string;` },
-  { name: "field", Pascal: "Field", props: `label: string;\n  type?: "text" | "number" | "email" | "password" | "search" | "select" | "textarea";\n  value?: string;\n  placeholder?: string;\n  hint?: string;\n  options?: { value: string; label: string }[];\n  required?: boolean;` },
-  { name: "dialog", Pascal: "Dialog", props: `title?: string;\n  body?: string;`, dialog: true },
-  { name: "table-shell", Pascal: "TableShell", props: `columns: { key: string; label: string; align?: "start" | "end" }[];\n  rows?: (string | number)[][];\n  caption?: string;` },
-  { name: "checklist-row", Pascal: "ChecklistRow", props: `text: string;\n  done?: boolean;` },
-];
+const SHIMS = new Set(["declarative", "tooltip", "dialog"]);
+const toPascal = (name) => name.split("-").map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join("");
 
-/** Transform a real factory module into a self-contained dist module:
- *  strip the templates.js import, neutralize loadTemplates/loadCSS, inline+register
- *  the <template>, keep the factory verbatim. */
+/** Discover the components by walking components/ — a real component is a <name>/
+ *  dir holding <name>.js. Each MUST carry a <name>.bridge.mjs declaring its
+ *  design-sync contract ({ props, shim? }), or opt out with { skip: true }; a real
+ *  dir with no sidecar throws here rather than silently missing from the adapter.
+ *  Pascal is derived from the dir name. Returns sorted { name, Pascal, props, shim }. */
+async function discoverComponents() {
+  const dir = join(ROOT, "components");
+  const entries = await readdir(dir, { withFileTypes: true });
+  const out = [];
+  for (const e of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+    if (!e.isDirectory()) continue;
+    const name = e.name;
+    const isComponent = await stat(join(dir, name, `${name}.js`)).then(() => true).catch(() => false);
+    if (!isComponent) continue; // not a component dir
+    const sidecar = join(dir, name, `${name}.bridge.mjs`);
+    let meta;
+    try {
+      meta = (await import(pathToFileURL(sidecar).href)).default;
+    } catch (err) {
+      // Only "file absent" is the missing-sidecar case; a sidecar that exists but
+      // fails to load (syntax/runtime error) must surface its real error, not be
+      // mislabelled as missing.
+      if (err && /** @type {{ code?: string }} */ (err).code === "ERR_MODULE_NOT_FOUND") {
+        throw new Error(`emit-adapter: components/${name}/ has no ${name}.bridge.mjs — add one ({ props, shim? }) so the component reaches design-sync, or set { skip: true } to opt out.`);
+      }
+      throw err;
+    }
+    if (meta?.skip) continue;
+    if (typeof meta?.props !== "string") {
+      throw new Error(`emit-adapter: ${name}.bridge.mjs must export default { props: string, shim?: "declarative" | "tooltip" | "dialog" }.`);
+    }
+    const shim = meta.shim ?? "declarative";
+    if (!SHIMS.has(shim)) {
+      throw new Error(`emit-adapter: ${name}.bridge.mjs has unknown shim ${JSON.stringify(shim)} — use "declarative", "tooltip", or "dialog".`);
+    }
+    out.push({ name, Pascal: toPascal(name), props: meta.props, shim });
+  }
+  return out;
+}
+
+const COMPONENTS = await discoverComponents();
+
+/** Transform a real factory module into a self-contained dist module: swap the two
+ *  lib imports for bridge editions (tpl/pick/slot + defineComponent), register the
+ *  inlined <template> (no fetch; CSS ships via styles.css), keep the factory verbatim.
+ *  The loaders now live inside defineComponent, so there are no per-factory
+ *  loadTemplates/loadCSS calls to strip — only the two imports are swapped. */
 function neutralize(name, factorySrc, html) {
   let js = factorySrc
     .replace(/^import\s*\{[^}]*\}\s*from\s*["']\.\.\/\.\.\/lib\/templates\.js["'];?\s*$/m, "")
-    // ensure() self-load -> lazy template registration; CSS ships via styles.css
-    .replace(new RegExp(`loadTemplates\\(new URL\\(["']\\./${name}\\.html["'],\\s*import\\.meta\\.url\\)\\.href\\)`), "ensureTemplate()")
-    .replace(new RegExp(`loadCSS\\(import\\.meta\\.url,\\s*["']\\./${name}\\.css["']\\)`), "null")
+    .replace(/^import\s*\{[^}]*\}\s*from\s*["']\.\.\/\.\.\/lib\/component\.js["'];?\s*$/m, "")
     // inter-component imports (e.g. side-nav -> chip): the adapter dist is flat,
     // so "../chip/chip.js" becomes "./chip.js".
     .replace(/from\s*["']\.\.\/([a-z-]+)\/\1\.js["']/g, 'from "./$1.js"');
-  // Guard: if a factory's ensure() shape ever drifts, the replaces above miss and
-  // we'd emit a module referencing the now-stripped loaders — fail loud at build
-  // time instead of silently at render.
-  if (/loadTemplates\(|loadCSS\(/.test(js)) {
-    throw new Error(`neutralize(${name}): a loadTemplates(/loadCSS( call survived — the factory's ensure() shape changed; update the transform in emit-adapter.mjs`);
+  // Guard: both lib imports must be gone — a survivor would pull the real fetch/DOM
+  // loaders into the design-sync runtime. Fail loud at build time, not at render.
+  if (/from\s*["']\.\.\/\.\.\/lib\/(templates|component)\.js["']/.test(js)) {
+    throw new Error(`neutralize(${name}): a ../../lib import survived — the import shape changed (e.g. multi-line); update the strip in emit-adapter.mjs`);
   }
   // Same fail-loud principle for inter-component imports: only ../<x>/<x>.js
   // siblings are flattened above, so any surviving "../" import would 404 at
   // render in the flat adapter dist — catch it at build time instead.
   if (/from\s*["']\.\.\//.test(js)) {
-    throw new Error(`neutralize(${name}): an unflattened "../" import survived — either a sibling import the rewrite doesn't model (only ../<name>/<name>.js is flattened) or a multi-line ../../lib/templates.js import the single-line strip missed; update emit-adapter.mjs`);
+    throw new Error(`neutralize(${name}): an unflattened "../" import survived — a sibling import the rewrite doesn't model (only ../<name>/<name>.js is flattened); update emit-adapter.mjs`);
   }
-  return `// Adapter module for "${name}" — the real vanilla factory, dev-server
-// self-loading neutralized (template inlined below, CSS shipped via styles.css).
+  return `// Adapter module for "${name}" — the real vanilla factory; the lib imports are
+// swapped for bridge editions and the <template> is pre-inlined + registered
+// (no fetch; CSS ships via styles.css). The factory body is verbatim.
 import React from "react";
 import { tpl, pick, slot } from "./_bridge-templates.js";
+import { defineComponent, __registerTemplate } from "./_bridge-defineComponent.js";
 
-const __HTML = ${JSON.stringify(html)};
-let __reg = false;
-const ensureTemplate = () => {
-  if (__reg) return;
-  __reg = true;
-  const d = document.createElement("div");
-  d.hidden = true;
-  d.innerHTML = __HTML;
-  document.body.append(...d.children);
-};
+__registerTemplate(${JSON.stringify(name)}, ${JSON.stringify(html)});
 
 ${js.trim()}
 `;
@@ -167,6 +187,37 @@ export const slot = (frag, slots) => {
 };
 `;
 
+// ---- _bridge-defineComponent.js: warm injects a pre-inlined <template> (no
+//      fetch); CSS ships via styles.css. Same { warm, sync, create } contract. ----
+const bridgeDefineComponent = `// Bridge edition of lib/component.js: warm injects a pre-registered <template>
+// (each dist module calls __registerTemplate at import) instead of fetching; CSS
+// ships via styles.css. Same { warm, sync, create } contract as the real one.
+const __templates = new Map();
+export const __registerTemplate = (name, html) => { __templates.set(name, html); };
+
+export function defineComponent(_moduleUrl, name, build) {
+  let reg = false;
+  const warm = () => {
+    if (!reg) {
+      reg = true;
+      const html = __templates.get(name);
+      if (html) {
+        const d = document.createElement("div");
+        d.hidden = true;
+        d.innerHTML = html;
+        document.body.append(...d.children);
+      }
+    }
+    return Promise.resolve();
+  };
+  return {
+    warm,
+    sync: build,
+    create: async (...args) => { await warm(); return build(...args); },
+  };
+}
+`;
+
 // Wipe only the generated parts — preserve node_modules (installed deps).
 await rm(join(ADAPTER, "dist"), { recursive: true, force: true });
 await rm(join(ADAPTER, "css"), { recursive: true, force: true });
@@ -174,6 +225,7 @@ await mkdir(join(ADAPTER, "dist"), { recursive: true });
 await mkdir(join(ADAPTER, "css"), { recursive: true });
 
 await writeFile(join(ADAPTER, "dist", "_bridge-templates.js"), bridgeTemplates);
+await writeFile(join(ADAPTER, "dist", "_bridge-defineComponent.js"), bridgeDefineComponent);
 
 const exportsList = [];
 const dtsParts = [];
@@ -188,8 +240,8 @@ for (const c of COMPONENTS) {
   const html = await readFile(join(compDir, `${c.name}.html`), "utf8");
   const css = await readFile(join(compDir, `${c.name}.css`), "utf8");
   const create = `create${c.Pascal}`;
-  const shim = c.tooltip ? tooltipShim(c.Pascal, create)
-    : c.dialog ? dialogShim(c.Pascal, create)
+  const shim = c.shim === "tooltip" ? tooltipShim(c.Pascal, create)
+    : c.shim === "dialog" ? dialogShim(c.Pascal, create)
     : declarativeShim(c.Pascal, create);
   await writeFile(join(ADAPTER, "dist", `${c.name}.js`), neutralize(c.name, factory, html) + shim);
   await copyFile(join(compDir, `${c.name}.css`), join(ADAPTER, "css", `${c.name}.css`));

@@ -59,10 +59,11 @@ and statically servable. Re-copy to update; never fork in place.
 Tones derive from one `--tone` custom property via `color-mix` — restyle by
 overriding the token, not the rule.
 
-**Sync-create path (for polled views):** every component also exports
-`warm<Name>()` (await once at mount) + `create<Name>Sync(props[, signal])` (a
-synchronous build) so it can be created inside a `renderRegion`/`reconcileList`
-rebuild. `create<Name>()` is just the async `warm + Sync` wrapper.
+**Sync-create path (for polled views):** every component is wired through
+`defineComponent` (`lib/component.js`) and so exports `warm<Name>()` (await once at
+mount) + `create<Name>Sync(props[, signal])` (a synchronous build) so it can be
+created inside a `renderRegion`/`reconcileList` rebuild. `create<Name>()` is just
+the async `warm + Sync` wrapper.
 
 **Shell components** (`app-bar`, `side-nav`, `view-header`) are registry-driven and
 follow the vanilla-web hash convention: they render `<a href="#/<id>">` and expose
@@ -78,9 +79,16 @@ registry on startup; theme toggle exercises light/dark). The typecheck gate is
 
 ## Add a component
 
-1. `components/<name>/<name>.{html,css,js}` following the factory contract above.
+1. `components/<name>/<name>.{html,css,js}` — author a synchronous `build<Name>`, then
+   `export const { warm: warm<Name>, sync: create<Name>Sync, create: create<Name> } =
+   defineComponent(import.meta.url, "<name>", build<Name>)` (copy any component).
 2. `node previews/new.mjs <name>` seeds `<name>.preview.js`; fill in `variants`.
 3. `node serve.mjs` regenerates `previews/registry.js` and serves it.
+4. `components/<name>/<name>.bridge.mjs` — `export default { props, shim? }`: the
+   design-sync contract (narrowed `Props` body; `shim` `tooltip`/`dialog` if imperative).
+   The bridge discovers components by walking `components/`, so a real component missing
+   its sidecar fails `emit-adapter.mjs` loudly instead of vanishing silently from
+   design-sync (opt out with `{ skip: true }`).
 
 Out of current scope (candidates for later): richer factories (legend, scrubber),
 chart/sparkline primitives, and TapScribe's idiom migration (it's BEM + different

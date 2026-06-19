@@ -1,13 +1,8 @@
 // @ts-check
 // dialog — a native <dialog> wrapper. Append `el` to the DOM, then call open()
 // (showModal → top layer, focus-trapped, Esc-closable) and close().
-import { loadTemplates, tpl, pick, loadCSS } from "../../lib/templates.js";
-
-let ready;
-const ensure = () => (ready ??= Promise.all([
-  loadTemplates(new URL("./dialog.html", import.meta.url).href),
-  loadCSS(import.meta.url, "./dialog.css"),
-]));
+import { tpl, pick } from "../../lib/templates.js";
+import { defineComponent } from "../../lib/component.js";
 
 /** @param {HTMLElement} host @param {string | Node | null | undefined} content */
 function fill(host, content) {
@@ -21,10 +16,9 @@ function fill(host, content) {
  *   title - header text (omit for a chromeless dialog); body - string or node;
  *   actions - a node for the footer (e.g. buttons); append more to `actionsEl`.
  * @param {AbortSignal} [signal] - aborting removes the close listener.
- * @returns {Promise<{ el: HTMLDialogElement, bodyEl: HTMLElement, actionsEl: HTMLElement, open: () => void, close: () => void }>}
+ * @returns {{ el: HTMLDialogElement, bodyEl: HTMLElement, actionsEl: HTMLElement, open: () => void, close: () => void }}
  */
-export async function createDialog({ title = null, body = null, actions = null } = {}, signal) {
-  await ensure();
+function buildDialog({ title = null, body = null, actions = null } = {}, signal) {
   const el = /** @type {HTMLDialogElement} */ (tpl("tpl-dialog").firstElementChild);
 
   if (title != null) {
@@ -48,3 +42,6 @@ export async function createDialog({ title = null, body = null, actions = null }
     close: () => el.close(),
   };
 }
+
+export const { warm: warmDialog, sync: createDialogSync, create: createDialog } =
+  defineComponent(import.meta.url, "dialog", buildDialog);

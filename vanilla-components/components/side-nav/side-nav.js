@@ -3,29 +3,24 @@
 // component. The `journey` group variant numbers its items and joins them with a
 // connecting line. Routing convention: items render <a href="#/<id>">; the app
 // owns hashchange and calls setCurrent(id) to mark the active item.
-import { loadTemplates, tpl, pick, loadCSS } from "../../lib/templates.js";
-import { createChip } from "../chip/chip.js";
-
-let ready;
-const ensure = () => (ready ??= Promise.all([
-  loadTemplates(new URL("./side-nav.html", import.meta.url).href),
-  loadCSS(import.meta.url, "./side-nav.css"),
-]));
+import { tpl, pick } from "../../lib/templates.js";
+import { defineComponent } from "../../lib/component.js";
+import { warmChip, createChipSync } from "../chip/chip.js";
 
 /** @typedef {{ text: string, tone?: "ok" | "warn" | "bad" | "info" | "accent" }} NavChip */
 /** @typedef {{ id: string, label: string, icon?: string, chip?: NavChip, done?: boolean }} NavItem */
 /** @typedef {{ label?: string, variant?: "list" | "journey", items: NavItem[] }} NavGroup */
+/** @typedef {{ groups: NavGroup[], current?: string | null, onSelect?: (id: string) => void }} SideNavProps */
+/** @typedef {{ el: HTMLElement, setCurrent: (id: string) => void }} SideNavHandle */
 
-/**
- * @param {{ groups: NavGroup[], current?: string | null, onSelect?: (id: string) => void }} props
+/** Synchronous build — requires warmSideNav() (side-nav + chip templates) resolved.
  *   groups - sections; a `journey` group numbers items + draws the pipeline line.
  *   current - id of the active item.
  *   onSelect - optional click callback (routing is native via the anchors).
+ * @param {SideNavProps} [props]
  * @param {AbortSignal} [signal] - required only when `onSelect` is given.
- * @returns {Promise<{ el: HTMLElement, setCurrent: (id: string) => void }>}
- */
-export async function createSideNav({ groups, current = null, onSelect } = /** @type {any} */ ({}), signal) {
-  await ensure();
+ * @returns {SideNavHandle} */
+function buildSideNav({ groups, current = null, onSelect } = /** @type {any} */ ({}), signal) {
   const el = /** @type {HTMLElement} */ (tpl("tpl-side-nav").firstElementChild);
 
   /** @type {Map<string, HTMLAnchorElement>} */
@@ -62,7 +57,7 @@ export async function createSideNav({ groups, current = null, onSelect } = /** @
 
       const chipHost = pick(node, "chip");
       if (item.chip) {
-        const chip = await createChip({ text: item.chip.text, tone: item.chip.tone ?? null });
+        const chip = createChipSync({ text: item.chip.text, tone: item.chip.tone ?? null });
         chipHost.append(chip.el);
       } else {
         chipHost.hidden = true;
@@ -86,4 +81,17 @@ export async function createSideNav({ groups, current = null, onSelect } = /** @
   if (current != null) setCurrent(current);
 
   return { el, setCurrent };
+}
+
+const base = defineComponent(import.meta.url, "side-nav", buildSideNav);
+
+/** Warm side-nav + its composed chip template (createSideNavSync uses createChipSync). */
+export const warmSideNav = () => Promise.all([base.warm(), warmChip()]);
+/** Synchronous build — requires warmSideNav() resolved. @type {(props?: SideNavProps, signal?: AbortSignal) => SideNavHandle} */
+export const createSideNavSync = base.sync;
+/** Warm (side-nav + chip) then build.
+ * @param {SideNavProps} [props] @param {AbortSignal} [signal] @returns {Promise<SideNavHandle>} */
+export async function createSideNav(props, signal) {
+  await warmSideNav();
+  return base.sync(props, signal);
 }

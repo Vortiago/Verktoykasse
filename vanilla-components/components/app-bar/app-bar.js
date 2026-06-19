@@ -2,13 +2,8 @@
 // App-bar — top bar with brand, a hash-routed nav, and an actions slot.
 // Routing convention (not coupling): nav items render <a href="#/<id>">; the app
 // keeps its own hashchange loop and calls setCurrent(id) to mark the active tab.
-import { loadTemplates, tpl, pick, loadCSS } from "../../lib/templates.js";
-
-let ready;
-const ensure = () => (ready ??= Promise.all([
-  loadTemplates(new URL("./app-bar.html", import.meta.url).href),
-  loadCSS(import.meta.url, "./app-bar.css"),
-]));
+import { tpl, pick } from "../../lib/templates.js";
+import { defineComponent } from "../../lib/component.js";
 
 /** @typedef {{ id: string, label: string, accent?: string }} NavItem */
 
@@ -20,10 +15,9 @@ const ensure = () => (ready ??= Promise.all([
  *   current - id of the active tab.
  *   onSelect - optional click callback (routing is native via the anchors).
  * @param {AbortSignal} [signal] - required only when `onSelect` is given.
- * @returns {Promise<{ el: HTMLElement, actionsEl: HTMLElement, setCurrent: (id: string) => void }>}
+ * @returns {{ el: HTMLElement, actionsEl: HTMLElement, setCurrent: (id: string) => void }}
  */
-export async function createAppBar({ brand, items, current = null, onSelect } = /** @type {any} */ ({}), signal) {
-  await ensure();
+function buildAppBar({ brand, items, current = null, onSelect } = /** @type {any} */ ({}), signal) {
   const el = /** @type {HTMLElement} */ (tpl("tpl-app-bar").firstElementChild);
 
   if (brand.logo != null) {
@@ -64,3 +58,6 @@ export async function createAppBar({ brand, items, current = null, onSelect } = 
 
   return { el, actionsEl: pick(el, "actions"), setCurrent };
 }
+
+export const { warm: warmAppBar, sync: createAppBarSync, create: createAppBar } =
+  defineComponent(import.meta.url, "app-bar", buildAppBar);

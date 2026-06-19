@@ -1,12 +1,7 @@
 // @ts-check
 // View-header — a stage/view title block (eyebrow, title, sub) with an actions slot.
-import { loadTemplates, tpl, pick, loadCSS } from "../../lib/templates.js";
-
-let ready;
-const ensure = () => (ready ??= Promise.all([
-  loadTemplates(new URL("./view-header.html", import.meta.url).href),
-  loadCSS(import.meta.url, "./view-header.css"),
-]));
+import { tpl, pick } from "../../lib/templates.js";
+import { defineComponent } from "../../lib/component.js";
 
 /**
  * @param {{ eyebrow?: string | null, title: string, sub?: string | null, actions?: Node | null }} props
@@ -14,11 +9,10 @@ const ensure = () => (ready ??= Promise.all([
  *   title - the heading.
  *   sub - a detail line under the title (omit to hide).
  *   actions - a node placed in the right-side actions slot; append more to `actionsEl` later.
- * @returns {Promise<{ el: HTMLElement, actionsEl: HTMLElement,
- *   setTitle: (title: string) => void, setSub: (sub: string | null) => void }>}
+ * @returns {{ el: HTMLElement, actionsEl: HTMLElement,
+ *   setTitle: (title: string) => void, setSub: (sub: string | null) => void }}
  */
-export async function createViewHeader({ eyebrow = null, title, sub = null, actions = null } = /** @type {any} */ ({})) {
-  await ensure();
+function buildViewHeader({ eyebrow = null, title, sub = null, actions = null } = /** @type {any} */ ({})) {
   const el = /** @type {HTMLElement} */ (tpl("tpl-view-header").firstElementChild);
 
   const titleEl = pick(el, "title");
@@ -42,3 +36,6 @@ export async function createViewHeader({ eyebrow = null, title, sub = null, acti
 
   return { el, actionsEl, setTitle, setSub };
 }
+
+export const { warm: warmViewHeader, sync: createViewHeaderSync, create: createViewHeader } =
+  defineComponent(import.meta.url, "view-header", buildViewHeader);

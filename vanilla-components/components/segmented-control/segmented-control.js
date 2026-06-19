@@ -1,21 +1,14 @@
 // @ts-check
 // segmented-control — a bordered radio/toggle group; setCurrent() marks the active option.
-import { loadTemplates, tpl, loadCSS } from "../../lib/templates.js";
-
-let ready;
-/** Load template + CSS once; await before createSegmentedControlSync. */
-export const warmSegmentedControl = () => (ready ??= Promise.all([
-  loadTemplates(new URL("./segmented-control.html", import.meta.url).href),
-  loadCSS(import.meta.url, "./segmented-control.css"),
-]));
+import { tpl } from "../../lib/templates.js";
+import { defineComponent } from "../../lib/component.js";
 
 /**
- * Synchronous build - requires warmSegmentedControl() resolved. For renderRegion rebuilds.
  * @param {{ options: { id: string, label: string }[], current?: string | null, onSelect?: (id: string) => void }} props
  * @param {AbortSignal} [signal] - required only when `onSelect` is given.
  * @returns {{ el: HTMLElement, setCurrent: (id: string) => void }}
  */
-export function createSegmentedControlSync({ options, current = null, onSelect } = /** @type {any} */ ({}), signal) {
+function buildSegmentedControl({ options, current = null, onSelect } = /** @type {any} */ ({}), signal) {
   const el = /** @type {HTMLElement} */ (tpl("tpl-segmented-control").firstElementChild);
 
   /** @type {Map<string, HTMLButtonElement>} */
@@ -41,12 +34,5 @@ export function createSegmentedControlSync({ options, current = null, onSelect }
   return { el, setCurrent };
 }
 
-/** Warm + build (also what the design-sync shim uses).
- * @param {{ options: { id: string, label: string }[], current?: string | null, onSelect?: (id: string) => void }} props
- * @param {AbortSignal} [signal] - required only when `onSelect` is given.
- * @returns {Promise<{ el: HTMLElement, setCurrent: (id: string) => void }>}
- */
-export async function createSegmentedControl(props = /** @type {any} */ ({}), signal) {
-  await warmSegmentedControl();
-  return createSegmentedControlSync(props, signal);
-}
+export const { warm: warmSegmentedControl, sync: createSegmentedControlSync, create: createSegmentedControl } =
+  defineComponent(import.meta.url, "segmented-control", buildSegmentedControl);
