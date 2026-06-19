@@ -6,16 +6,33 @@ import { defineComponent } from "../../lib/component.js";
 /** @typedef {"default" | "primary" | "danger" | "ghost"} ButtonVariant */
 
 /**
+ * A styled native button, or — when `href` is set — a link styled identically
+ * (so an action-that-navigates keeps real anchor semantics: middle/ctrl-click,
+ * "open in new tab"). `pressed` makes it an aria-pressed toggle.
  * @param {{ label: string, variant?: ButtonVariant, size?: "md" | "sm",
- *   icon?: string | null, onClick?: () => void, disabled?: boolean }} props
+ *   icon?: string | null, href?: string | null, target?: string | null,
+ *   onClick?: () => void, disabled?: boolean, pressed?: boolean }} props
  * @param {AbortSignal} [signal] - required only when `onClick` is given.
- * @returns {{ el: HTMLButtonElement, setLabel: (label: string) => void, setDisabled: (disabled: boolean) => void }}
+ * @returns {{ el: HTMLButtonElement | HTMLAnchorElement,
+ *   setLabel: (label: string) => void, setDisabled: (disabled: boolean) => void,
+ *   setPressed: (pressed: boolean) => void }}
  */
 function buildButton(
-  { label, variant = "default", size = "md", icon = null, onClick, disabled = false } = /** @type {any} */ ({}),
+  { label, variant = "default", size = "md", icon = null, href = null, target = null, onClick, disabled = false, pressed = false } = /** @type {any} */ ({}),
   signal,
 ) {
-  const el = /** @type {HTMLButtonElement} */ (tpl("tpl-button").firstElementChild);
+  const base = /** @type {HTMLButtonElement} */ (tpl("tpl-button").firstElementChild);
+  // href ⇒ swap the <button> root for an <a>, keeping the icon/label spans.
+  /** @type {HTMLButtonElement | HTMLAnchorElement} */
+  let el = base;
+  if (href != null) {
+    const a = document.createElement("a");
+    a.className = base.className;
+    a.append(...base.childNodes);
+    a.href = href;
+    if (target != null) a.target = target;
+    el = a;
+  }
   if (variant !== "default") el.classList.add(`is-${variant}`);
   if (size === "sm") el.classList.add("is-sm");
 
@@ -26,13 +43,27 @@ function buildButton(
     iconEl.hidden = false;
     iconEl.textContent = icon;
   }
-  el.disabled = disabled;
+
+  /** A link can't be natively disabled — mark it aria-disabled + untabbable
+   * (CSS .is-disabled kills pointer events); a real button uses the property.
+   * @param {boolean} d */
+  const setDisabled = (d) => {
+    if (el instanceof HTMLButtonElement) el.disabled = d;
+    else { el.classList.toggle("is-disabled", d); el.setAttribute("aria-disabled", String(d)); el.tabIndex = d ? -1 : 0; }
+  };
+  setDisabled(disabled);
+
+  /** @param {boolean} p */
+  const setPressed = (p) => { el.classList.toggle("is-pressed", p); el.setAttribute("aria-pressed", String(p)); };
+  if (pressed) setPressed(true); // only an opted-in toggle gets aria-pressed
+
   if (onClick) el.addEventListener("click", onClick, { signal });
 
   return {
     el,
     setLabel: (label) => { labelEl.textContent = label; },
-    setDisabled: (disabled) => { el.disabled = disabled; },
+    setDisabled,
+    setPressed,
   };
 }
 

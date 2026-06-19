@@ -11,5 +11,7 @@ export default {
     danger: { label: "Delete", variant: "danger" },
     ghost: { label: "Dismiss", variant: "ghost" },
     small: { label: "Open", size: "sm" },
+    link: { label: "Open repo", icon: "↗", href: "https://example.com", target: "_blank", variant: "ghost" },
+    pressed: { label: "Live", pressed: true },
   },
 };
