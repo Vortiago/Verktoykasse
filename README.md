@@ -39,7 +39,7 @@ and don't belong here.
   prints status, sharing `lib.sh`. It lives committed at `.claude/statusline-ext.sh`
   (inert without the core) or personal at `~/.config/claude-statusline/projects/<project>.sh`.
   User-invocable as `/expand-statusline`; worked example at
-  [`.claude/statusline-ext.sh`](.claude/statusline-ext.sh) (`🧰 skills 3/3`).
+  [`.claude/statusline-ext.sh`](.claude/statusline-ext.sh) (a live `🧰 skills` count).
 
 - **[worktrees](worktrees/SKILL.md)** — git worktrees in the bare+sibling
   layout (`<repo>/.git` bare, working trees as siblings like `<repo>/main`).
