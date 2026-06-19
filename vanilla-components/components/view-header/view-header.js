@@ -4,16 +4,20 @@ import { tpl, pick } from "../../lib/templates.js";
 import { defineComponent } from "../../lib/component.js";
 
 /**
- * @param {{ eyebrow?: string | null, title: string, sub?: string | null, actions?: Node | null }} props
+ * @param {{ eyebrow?: string | null, title: string, sub?: string | null,
+ *   actions?: Node | null, dense?: boolean }} props
  *   eyebrow - small label above the title (omit to hide).
  *   title - the heading.
  *   sub - a detail line under the title (omit to hide).
  *   actions - a node placed in the right-side actions slot; append more to `actionsEl` later.
+ *   dense - a compact one-line bar (smaller title, inline eyebrow/sub, no rule) —
+ *     the section/toolbar header that sits between a page title and a plain row.
  * @returns {{ el: HTMLElement, actionsEl: HTMLElement,
  *   setTitle: (title: string) => void, setSub: (sub: string | null) => void }}
  */
-function buildViewHeader({ eyebrow = null, title, sub = null, actions = null } = /** @type {any} */ ({})) {
+function buildViewHeader({ eyebrow = null, title, sub = null, actions = null, dense = false } = /** @type {any} */ ({})) {
   const el = /** @type {HTMLElement} */ (tpl("tpl-view-header").firstElementChild);
+  if (dense) el.classList.add("is-dense");
 
   const titleEl = pick(el, "title");
   const eyebrowEl = pick(el, "eyebrow");
