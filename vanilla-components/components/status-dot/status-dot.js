@@ -7,17 +7,18 @@ import { defineComponent } from "../../lib/component.js";
 /** @typedef {"neutral" | "ok" | "warn" | "bad" | "info" | "accent"} DotTone */
 
 /**
- * @param {{ tone?: DotTone, pulse?: boolean, label?: string | null }} [props]
+ * @param {{ tone?: DotTone | null, pulse?: boolean, label?: string | null }} [props]
+ *   tone - a named tone; "neutral"/null is the quiet default (matches chip).
  * @returns {{ el: HTMLElement,
- *   setTone: (tone: DotTone) => void, setPulse: (on: boolean) => void }}
+ *   setTone: (tone: DotTone | null) => void, setPulse: (on: boolean) => void }}
  */
 function buildStatusDot({ tone = "neutral", pulse = false, label = null } = {}) {
   const el = /** @type {HTMLElement} */ (tpl("tpl-status-dot").firstElementChild);
 
-  /** @param {DotTone} t */
+  /** @param {DotTone | null} t */
   const setTone = (t) => {
     for (const cls of [...el.classList]) if (cls.startsWith("tone-")) el.classList.remove(cls);
-    if (t !== "neutral") el.classList.add(`tone-${t}`);
+    if (t && t !== "neutral") el.classList.add(`tone-${t}`);
   };
   setTone(tone);
 
