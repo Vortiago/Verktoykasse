@@ -14,7 +14,7 @@ const NAMED_TONES = new Set(["ok", "warn", "bad", "info", "accent"]);
  * @param {ChipTone | (string & {}) | null} [tone]
  * @returns {{ className: string | null, color: string | null }} */
 export function resolveChipTone(tone) {
-  if (tone == null || tone === "neutral") return { className: null, color: null };
+  if (tone == null || tone === "" || tone === "neutral") return { className: null, color: null };
   if (NAMED_TONES.has(tone)) return { className: `tone-${tone}`, color: null };
   return { className: "tone-custom", color: tone }; // a raw CSS colour
 }
@@ -31,8 +31,16 @@ function buildChip({ text, tone = null, dot = false } = /** @type {any} */ ({}))
   const textEl = pick(el, "text");
   textEl.textContent = text;
   const { className, color } = resolveChipTone(tone);
-  if (className) el.classList.add(className);
-  if (color) el.style.setProperty("--tone", color);
+  if (color != null) {
+    // raw colour: apply only if it's a valid CSS colour, else leave the neutral
+    // default (so a typo'd tone degrades to neutral, not a broken color-mix).
+    if (typeof CSS === "undefined" || CSS.supports("color", color)) {
+      el.classList.add(className ?? "tone-custom");
+      el.style.setProperty("--tone", color);
+    }
+  } else if (className) {
+    el.classList.add(className);
+  }
   if (dot) pick(el, "dot").hidden = false;
   return { el, setText: (text) => { textEl.textContent = text; } };
 }

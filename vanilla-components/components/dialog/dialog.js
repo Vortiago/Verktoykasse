@@ -41,7 +41,14 @@ function buildDialog({ title = null, body = null, actions = null, scroll = false
   }
   const close = () => el.close();
   pick(el, "close").addEventListener("click", close, { signal });
-  if (closeOnBackdrop) el.addEventListener("click", (e) => { if (e.target === el) close(); }, { signal });
+  if (closeOnBackdrop) {
+    // Close only when both press and release land on the backdrop (the dialog
+    // element itself) — so a drag/selection that starts inside and releases on
+    // the backdrop doesn't close it.
+    let downOnBackdrop = false;
+    el.addEventListener("mousedown", (e) => { downOnBackdrop = e.target === el; }, { signal });
+    el.addEventListener("click", (e) => { if (downOnBackdrop && e.target === el) close(); }, { signal });
+  }
 
   return {
     el,

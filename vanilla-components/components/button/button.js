@@ -30,7 +30,7 @@ function buildButton(
     a.className = base.className;
     a.append(...base.childNodes);
     a.href = href;
-    if (target != null) a.target = target;
+    if (target != null) { a.target = target; a.rel = "noopener"; } // avoid reverse-tabnabbing
     el = a;
   }
   if (variant !== "default") el.classList.add(`is-${variant}`);
@@ -54,10 +54,19 @@ function buildButton(
   setDisabled(disabled);
 
   /** @param {boolean} p */
-  const setPressed = (p) => { el.classList.toggle("is-pressed", p); el.setAttribute("aria-pressed", String(p)); };
-  if (pressed) setPressed(true); // only an opted-in toggle gets aria-pressed
+  const setPressed = (p) => {
+    el.classList.toggle("is-pressed", p);
+    // aria-pressed is only valid on a button role — a link is not a toggle.
+    if (el instanceof HTMLButtonElement) el.setAttribute("aria-pressed", String(p));
+  };
+  if (pressed) setPressed(true);
 
-  if (onClick) el.addEventListener("click", onClick, { signal });
+  // A link has no native disabled, so its click listener must bail when disabled
+  // (pointer-events:none stops the mouse, but not keyboard/programmatic activation).
+  if (onClick) el.addEventListener("click", (e) => {
+    if (!(el instanceof HTMLButtonElement) && el.getAttribute("aria-disabled") === "true") { e.preventDefault(); return; }
+    onClick();
+  }, { signal });
 
   return {
     el,

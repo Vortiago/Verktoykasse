@@ -7,10 +7,11 @@ test("resolveChipTone: a named tone maps to its tone-<name> class, no inline col
   assert.deepEqual(resolveChipTone("accent"), { className: "tone-accent", color: null });
 });
 
-test("resolveChipTone: neutral / null / omitted are the default (no class, no colour)", () => {
+test("resolveChipTone: neutral / null / omitted / empty are the default (no class, no colour)", () => {
   assert.deepEqual(resolveChipTone("neutral"), { className: null, color: null });
   assert.deepEqual(resolveChipTone(null), { className: null, color: null });
   assert.deepEqual(resolveChipTone(undefined), { className: null, color: null });
+  assert.deepEqual(resolveChipTone(""), { className: null, color: null });
 });
 
 test("resolveChipTone: any other string is a raw colour, driving tone-custom via --tone", () => {
