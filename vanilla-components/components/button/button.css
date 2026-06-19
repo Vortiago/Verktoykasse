@@ -1,3 +1,4 @@
+@layer vanilla-components {
 /* Button — a styled native <button> with variants. Unifies TapScribe `.act`
    (primary/danger/sm) and Slipestein `.fire-btn`/`.ghost-btn`. */
 @scope (.button) {
@@ -42,4 +43,5 @@
   :scope.is-ghost:hover { color: var(--text); background: var(--bg-elev-2); }
 
   :scope.is-sm { padding: 3px 8px; font-size: 12px; }
+}
 }

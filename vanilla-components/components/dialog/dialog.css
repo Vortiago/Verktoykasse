@@ -1,3 +1,4 @@
+@layer vanilla-components {
 /* dialog — a native <dialog> wrapper (title · body · actions) with a token-skinned
    box + backdrop. Unifies Slipestein's expand/fire dialogs and GitLandscape's
    reset-world dialog. Esc-to-close and focus trapping are native. */
@@ -42,4 +43,5 @@
     padding: var(--space-s) var(--space-m);
     border-top: 1px solid var(--hairline);
   }
+}
 }

@@ -1,3 +1,4 @@
+@layer vanilla-components {
 /* field — a labeled form control (input/select/textarea) with a hint and native
    validation styling. Unifies TapScribe `.field/.input/.select`. */
 @scope (.field) {
@@ -27,4 +28,5 @@
   /* field-sizing: content auto-grows the textarea to its text (Chromium 123+) */
   textarea.field-input { resize: vertical; min-height: 60px; field-sizing: content; }
   .field-hint { font-size: 11px; color: var(--text-dim); }
+}
 }

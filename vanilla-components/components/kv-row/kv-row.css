@@ -1,3 +1,4 @@
+@layer vanilla-components {
 /* kv-row — a key·value line (dim label left, value right). The dashboard staple
    (Slipestein `kv`, GitLandscape `.gr-ro`, TapScribe `.statcell`). */
 @scope (.kv-row) {
@@ -19,4 +20,5 @@
   :scope.tone-warn { --tone: var(--warn); }
   :scope.tone-bad { --tone: var(--bad); }
   :scope.tone-accent { --tone: var(--accent); }
+}
 }

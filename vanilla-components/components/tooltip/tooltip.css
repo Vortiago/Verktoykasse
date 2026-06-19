@@ -1,3 +1,4 @@
+@layer vanilla-components {
 /* Tooltip — a hover/focus card on the top layer (manual popover), tethered to its
    trigger with CSS Anchor Positioning. The browser does the placement and the
    edge-flip (position-area + position-try-fallbacks) — no coordinate math. The
@@ -31,4 +32,5 @@
       @starting-style { opacity: 0; }
     }
   }
+}
 }

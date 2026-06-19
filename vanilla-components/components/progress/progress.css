@@ -1,3 +1,4 @@
+@layer vanilla-components {
 /* progress — a track + fill meter. Unifies TapScribe `.journey__fill`/`.level-meter`
    and Slipestein `fitnessBar`. tone colors the fill. */
 @scope (.progress) {
@@ -20,4 +21,5 @@
   :scope.tone-warn { --tone: var(--warn); }
   :scope.tone-bad { --tone: var(--bad); }
   :scope.tone-accent { --tone: var(--accent); }
+}
 }

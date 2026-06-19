@@ -19,6 +19,15 @@ and statically servable. Re-copy to update; never fork in place.
   component CSS. It's a superset that's drop-in for GitLandscape + Slipestein
   token names. A dark-only app sets `color-scheme: dark` at its root and every
   `light-dark()` resolves dark (zero visual change).
+- **Cascade layer** — every component's CSS lives in `@layer vanilla-components`.
+  Declare that layer first in your app's order so any of your own rules can
+  override a component's look or layout: `@layer vanilla-components, <your
+  layers>;` (e.g. `@layer vanilla-components, tokens, utilities, components;`).
+  Colour/shape are already re-themeable via `tokens.css`; the layer is what lets
+  you override the *structural* bits (a component's `flex`, `padding`, width)
+  from your own layer with a plain low-specificity rule. Skip the declaration and
+  layer precedence falls back to stylesheet load order — unstable for the
+  dynamically self-loaded component CSS.
 - **A component** — copy `components/<name>/` into the app's `components/`
   (a sibling of `lib/`, per the vanilla-web layout — the component imports
   `../../lib/templates.js`, so that relative shape must hold). Or run

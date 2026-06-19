@@ -1,3 +1,4 @@
+@layer vanilla-components {
 /* checklist-row - a done/undone item: a leading box marker ([x] / [ ]) plus text.
    When done, the text is struck through and dimmed. The marker glyph is set in JS;
    the strikethrough/dim is driven off the [data-done] attribute. All via tokens. */
@@ -23,4 +24,5 @@
     text-decoration: line-through;
     color: var(--text-dim);
   }
+}
 }

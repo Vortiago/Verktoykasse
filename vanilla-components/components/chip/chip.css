@@ -1,3 +1,4 @@
+@layer vanilla-components {
 /* Chip — a compact inline pill/badge. Neutral by default; a tone sets one
    `--tone` custom property and text/fill/border all derive from it via
    color-mix (the TapScribe `.chip` pattern). Optional leading dot. */
@@ -39,4 +40,5 @@
     background: color-mix(in srgb, var(--tone) 12%, transparent);
     border-color: color-mix(in srgb, var(--tone) 32%, transparent);
   }
+}
 }

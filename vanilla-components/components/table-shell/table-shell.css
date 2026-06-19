@@ -1,3 +1,4 @@
+@layer vanilla-components {
 /* table-shell - a tokenized table skeleton: sticky header, hairline row borders,
    right-aligned monospace numeric columns. The data-grid building block the apps
    reach for (a scorecard, a run list). The wrapper owns the scroll so a tall
@@ -56,4 +57,5 @@
 
   /* last row sits flush against the rounded bottom edge */
   .table-shell-tr:last-child .table-shell-td { border-bottom: 0; }
+}
 }

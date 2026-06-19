@@ -1,3 +1,4 @@
+@layer vanilla-components {
 /* View-header — a stage/view title block: eyebrow, title, sub, and an actions
    slot. The per-view header every app hand-rolls (TapScribe `.whead`). */
 @scope (.view-header) {
@@ -40,4 +41,5 @@
     gap: var(--space-s);
     flex: none;
   }
+}
 }
