@@ -1,0 +1,31 @@
+@layer vanilla-components {
+/* Alert — an inline banner. Neutral by default; a tone colours the border, a
+   faint fill, and the title via the shared --tone (var() fallback = neutral). */
+@scope (.alert) {
+  :scope {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-s);
+    padding: var(--space-s) var(--space-m);
+    border: 1px solid var(--tone, var(--hairline));
+    border-radius: var(--r);
+    background: color-mix(in srgb, var(--tone, var(--text-dim)) 8%, var(--bg-elev));
+    color: var(--text);
+    font-size: 13px;
+    line-height: 1.45;
+  }
+  .alert-body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .alert-title { color: var(--tone, var(--text)); font-weight: 600; }
+  .alert-close {
+    flex: none;
+    border: 0;
+    background: none;
+    cursor: pointer;
+    color: var(--text-dim);
+    font-size: 16px;
+    line-height: 1;
+    padding: 0 2px;
+  }
+  .alert-close:hover { color: var(--text); }
+}
+}

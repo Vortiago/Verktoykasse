@@ -1,0 +1,27 @@
+@layer vanilla-components {
+/* Spinner — an indeterminate ring. Colour is currentColor (inherits, or set via
+   a tone/--accent on the host); size is one --spinner-size custom property. */
+@scope (.spinner) {
+  :scope {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-s);
+    color: var(--text-dim);
+  }
+  .spinner-ring {
+    width: var(--spinner-size, 16px);
+    height: var(--spinner-size, 16px);
+    border-radius: 50%;
+    border: 2px solid color-mix(in srgb, currentColor 25%, transparent);
+    border-top-color: currentColor;
+    animation: spinner-spin 0.6s linear infinite;
+  }
+  .spinner-label { font-size: 12px; }
+  @keyframes spinner-spin { to { transform: rotate(1turn); } }
+  /* Reduced motion: slow it right down rather than freeze (a frozen partial ring
+     reads as broken, not "loading"). */
+  @media (prefers-reduced-motion: reduce) {
+    .spinner-ring { animation-duration: 2s; }
+  }
+}
+}

@@ -16,58 +16,24 @@
 // Output: bridge/ds-adapter/  (package.json, dist/*.js + *.d.ts, styles.css, css/)
 //   node bridge/emit-adapter.mjs
 
-import { readFile, writeFile, mkdir, copyFile, rm, readdir, stat } from "node:fs/promises";
+import { readFile, writeFile, mkdir, copyFile, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
+import { discoverComponents } from "./shared.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = dirname(HERE); // vanilla-components/
 const ADAPTER = join(HERE, "ds-adapter");
 
-const SHIMS = new Set(["declarative", "tooltip", "dialog"]);
-const toPascal = (name) => name.split("-").map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join("");
-
-/** Discover the components by walking components/ — a real component is a <name>/
- *  dir holding <name>.js. Each MUST carry a <name>.bridge.mjs declaring its
- *  design-sync contract ({ props, shim? }), or opt out with { skip: true }; a real
- *  dir with no sidecar throws here rather than silently missing from the adapter.
- *  Pascal is derived from the dir name. Returns sorted { name, Pascal, props, shim }. */
-async function discoverComponents() {
-  const dir = join(ROOT, "components");
-  const entries = await readdir(dir, { withFileTypes: true });
-  const out = [];
-  for (const e of entries.sort((a, b) => a.name.localeCompare(b.name))) {
-    if (!e.isDirectory()) continue;
-    const name = e.name;
-    const isComponent = await stat(join(dir, name, `${name}.js`)).then(() => true).catch(() => false);
-    if (!isComponent) continue; // not a component dir
-    const sidecar = join(dir, name, `${name}.bridge.mjs`);
-    let meta;
-    try {
-      meta = (await import(pathToFileURL(sidecar).href)).default;
-    } catch (err) {
-      // Only "file absent" is the missing-sidecar case; a sidecar that exists but
-      // fails to load (syntax/runtime error) must surface its real error, not be
-      // mislabelled as missing.
-      if (err && /** @type {{ code?: string }} */ (err).code === "ERR_MODULE_NOT_FOUND") {
-        throw new Error(`emit-adapter: components/${name}/ has no ${name}.bridge.mjs — add one ({ props, shim? }) so the component reaches design-sync, or set { skip: true } to opt out.`);
-      }
-      throw err;
-    }
-    if (meta?.skip) continue;
-    if (typeof meta?.props !== "string") {
-      throw new Error(`emit-adapter: ${name}.bridge.mjs must export default { props: string, shim?: "declarative" | "tooltip" | "dialog" }.`);
-    }
-    const shim = meta.shim ?? "declarative";
-    if (!SHIMS.has(shim)) {
-      throw new Error(`emit-adapter: ${name}.bridge.mjs has unknown shim ${JSON.stringify(shim)} — use "declarative", "tooltip", or "dialog".`);
-    }
-    out.push({ name, Pascal: toPascal(name), props: meta.props, shim });
-  }
-  return out;
-}
-
-const COMPONENTS = await discoverComponents();
+// Shared lib modules that are dependency-free + browser-safe, so their bridge
+// edition is the file copied VERBATIM into dist (unlike templates/component, which
+// have hand-written bridge editions). A component importing `../../lib/<x>.js` for
+// `<x>` here gets its import rewritten to `./_bridge-<x>.js`. Register a new
+// bridge-safe helper by adding its bare name to this list — nothing else.
+const BRIDGE_SAFE_LIBS = ["tone"];
+// discovery (walk components/, require a bridge sidecar, skip-filter) is shared
+// with gen-previews.mjs so the two generators can't disagree on the synced set.
+const COMPONENTS = await discoverComponents(ROOT);
 
 /** Transform a real factory module into a self-contained dist module: swap the two
  *  lib imports for bridge editions (tpl/pick/slot + defineComponent), register the
@@ -81,6 +47,10 @@ function neutralize(name, factorySrc, html) {
     // inter-component imports (e.g. side-nav -> chip): the adapter dist is flat,
     // so "../chip/chip.js" becomes "./chip.js".
     .replace(/from\s*["']\.\.\/([a-z-]+)\/\1\.js["']/g, 'from "./$1.js"');
+  // bridge-safe lib imports (e.g. the tone mixin) keep their import but point at
+  // the verbatim dist edition; any OTHER ../../lib/<x>.js is left to trip the
+  // guard below (a new helper must be registered in BRIDGE_SAFE_LIBS first).
+  for (const lib of BRIDGE_SAFE_LIBS) js = js.replaceAll(`../../lib/${lib}.js`, `./_bridge-${lib}.js`);
   // Guard: both lib imports must be gone — a survivor would pull the real fetch/DOM
   // loaders into the design-sync runtime. Fail loud at build time, not at render.
   if (/from\s*["']\.\.\/\.\.\/lib\/(templates|component)\.js["']/.test(js)) {
@@ -134,9 +104,9 @@ export function ${Pascal}({ content = "Tooltip" } = {}) {
     Object.assign(trigger.style, { font: "inherit", fontSize: "12px", padding: "4px 10px", border: "1px solid var(--hairline)", borderRadius: "var(--r)", background: "var(--bg-elev)", color: "var(--text)", cursor: "help" });
     host.replaceChildren(trigger);
     const ac = new AbortController();
-    let tip;
-    Promise.resolve(${create}(trigger, { content }, ac.signal)).then((t) => { tip = t; t.show(); });
-    return () => { ac.abort(); tip && tip.dispose && tip.dispose(); };
+    let alive = true, tip;
+    Promise.resolve(${create}(trigger, { content }, ac.signal)).then((t) => { if (!alive) { t.dispose && t.dispose(); return; } tip = t; t.show(); });
+    return () => { alive = false; ac.abort(); tip && tip.dispose && tip.dispose(); };
   }, [content]);
   return React.createElement("div", { ref, style: { padding: "44px 16px 16px", minHeight: "120px", display: "flex", justifyContent: "center", alignItems: "flex-start" } });
 }
@@ -164,6 +134,42 @@ export function ${Pascal}(props) {
   return React.createElement("div", { ref });
 }
 `;
+
+const menuShim = (Pascal, create) => `
+// Imperative menu -> demo shim: render a trigger, anchor the menu to it and open
+// it on mount so the design-sync card shows the menu, not just a button.
+export function ${Pascal}({ items = [] } = {}) {
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    const host = ref.current;
+    if (!host) return;
+    const trigger = document.createElement("button");
+    trigger.type = "button";
+    trigger.textContent = "Menu \\u25BE";
+    Object.assign(trigger.style, { font: "inherit", fontSize: "12px", padding: "4px 10px", border: "1px solid var(--hairline)", borderRadius: "var(--r)", background: "var(--bg-elev)", color: "var(--text)", cursor: "pointer" });
+    host.replaceChildren(trigger);
+    const ac = new AbortController();
+    let alive = true, m;
+    Promise.resolve(${create}(trigger, { items }, ac.signal)).then((mm) => { if (!alive) { mm.dispose && mm.dispose(); return; } m = mm; m.open(); });
+    return () => { alive = false; ac.abort(); m && m.dispose && m.dispose(); };
+  }, [JSON.stringify(items)]);
+  // tall card so the popover (anchored below the trigger) has room.
+  return React.createElement("div", { ref, style: { padding: "8px 16px 140px", minHeight: "180px" } });
+}
+`;
+
+// shim name → generator. The single registry: selection, validation, and the
+// "unknown shim" message all derive from it, so adding a shim is one entry here.
+const SHIMS = { declarative: declarativeShim, tooltip: tooltipShim, dialog: dialogShim, menu: menuShim };
+
+// Validate shim names up front — Object.hasOwn (NOT `SHIMS[name]`, which accepts
+// inherited keys like "toString"/"constructor"), and before dist/ is wiped below,
+// so an unknown shim fails cleanly instead of mid-write.
+for (const c of COMPONENTS) {
+  if (!Object.hasOwn(SHIMS, c.shim)) {
+    throw new Error(`emit-adapter: ${c.name}.bridge.mjs has unknown shim ${JSON.stringify(c.shim)} — use ${Object.keys(SHIMS).map((s) => JSON.stringify(s)).join(", ")}.`);
+  }
+}
 
 // ---- _bridge-templates.js: tpl/pick/slot real; loaders unused (kept for API parity) ----
 const bridgeTemplates = `// Bridge edition of templates.js: real tpl/pick/slot; no loaders (templates are
@@ -226,13 +232,25 @@ await mkdir(join(ADAPTER, "css"), { recursive: true });
 
 await writeFile(join(ADAPTER, "dist", "_bridge-templates.js"), bridgeTemplates);
 await writeFile(join(ADAPTER, "dist", "_bridge-defineComponent.js"), bridgeDefineComponent);
+// Bridge-safe libs ship verbatim — components importing them get their path
+// rewritten to ./_bridge-<lib>.js by neutralize().
+for (const lib of BRIDGE_SAFE_LIBS) {
+  await writeFile(join(ADAPTER, "dist", `_bridge-${lib}.js`), await readFile(join(ROOT, "lib", `${lib}.js`), "utf8"));
+}
 
 const exportsList = [];
 const dtsParts = [];
 // cssEntry must be a COMPILED stylesheet (real rules), not @import stubs — the
 // converter copies it verbatim into the styles.css closure. So inline tokens +
 // every component's @scope block into one file.
-const cssChunks = [`/* tokens */\n` + (await readFile(join(ROOT, "tokens.css"), "utf8")).trim()];
+// tokens + the shared tone mixin are the global stylesheets the components rely on
+// (tones.css maps `.tone-<name>` → --tone, which chip/status-dot/alert/etc. now
+// consume instead of self-mapping); both must ship, or a named-tone component
+// renders neutral in design-sync.
+const cssChunks = [
+  `/* tokens */\n` + (await readFile(join(ROOT, "tokens.css"), "utf8")).trim(),
+  `/* tones */\n` + (await readFile(join(ROOT, "tones.css"), "utf8")).trim(),
+];
 
 for (const c of COMPONENTS) {
   const compDir = join(ROOT, "components", c.name);
@@ -240,9 +258,7 @@ for (const c of COMPONENTS) {
   const html = await readFile(join(compDir, `${c.name}.html`), "utf8");
   const css = await readFile(join(compDir, `${c.name}.css`), "utf8");
   const create = `create${c.Pascal}`;
-  const shim = c.shim === "tooltip" ? tooltipShim(c.Pascal, create)
-    : c.shim === "dialog" ? dialogShim(c.Pascal, create)
-    : declarativeShim(c.Pascal, create);
+  const shim = SHIMS[c.shim](c.Pascal, create); // c.shim validated up front
   await writeFile(join(ADAPTER, "dist", `${c.name}.js`), neutralize(c.name, factory, html) + shim);
   await copyFile(join(compDir, `${c.name}.css`), join(ADAPTER, "css", `${c.name}.css`));
   exportsList.push(`export { ${c.Pascal} } from "./${c.name}.js";`);

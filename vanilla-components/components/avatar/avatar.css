@@ -1,0 +1,25 @@
+@layer vanilla-components {
+/* Avatar — a round initials-or-image badge. --avatar-size drives the box; the
+   fill is a tone (var(--tone, --accent)), so pass tone="…" or a raw colour.
+   Square it in a square design language by overriding --r-pill. */
+@scope (.avatar) {
+  :scope {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: var(--avatar-size, 32px);
+    height: var(--avatar-size, 32px);
+    border-radius: var(--r-pill);
+    overflow: hidden;
+    background: var(--tone, var(--accent));
+    color: var(--bg);
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: calc(var(--avatar-size, 32px) * 0.4);
+    line-height: 1;
+    user-select: none;
+  }
+  .avatar-img { width: 100%; height: 100%; object-fit: cover; }
+}
+}

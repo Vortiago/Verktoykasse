@@ -2,22 +2,9 @@
 // Chip — a compact inline pill/badge with an optional tone and leading dot.
 import { tpl, pick } from "../../lib/templates.js";
 import { defineComponent } from "../../lib/component.js";
+import { applyTone } from "../../lib/tone.js";
 
-/** @typedef {"ok" | "warn" | "bad" | "info" | "accent"} ChipTone */
-
-const NAMED_TONES = new Set(["ok", "warn", "bad", "info", "accent"]);
-
-/** Resolve a chip `tone` into a tone class + an optional inline `--tone` colour.
- * A named tone maps to its `tone-<name>` class; `"neutral"`/`null` is the default
- * (no tone); any other string is treated as a raw CSS colour and drives the chip
- * through the shared `tone-custom` rule via `--tone`. Pure — no DOM.
- * @param {ChipTone | (string & {}) | null} [tone]
- * @returns {{ className: string | null, color: string | null }} */
-export function resolveChipTone(tone) {
-  if (tone == null || tone === "" || tone === "neutral") return { className: null, color: null };
-  if (NAMED_TONES.has(tone)) return { className: `tone-${tone}`, color: null };
-  return { className: "tone-custom", color: tone }; // a raw CSS colour
-}
+/** @typedef {import("../../lib/tone.js").ToneName} ChipTone */
 
 /**
  * @param {{ text: string, tone?: ChipTone | (string & {}) | null, dot?: boolean }} props
@@ -30,17 +17,7 @@ function buildChip({ text, tone = null, dot = false } = /** @type {any} */ ({}))
   const el = /** @type {HTMLElement} */ (tpl("tpl-chip").firstElementChild);
   const textEl = pick(el, "text");
   textEl.textContent = text;
-  const { className, color } = resolveChipTone(tone);
-  if (color != null) {
-    // raw colour: apply only if it's a valid CSS colour, else leave the neutral
-    // default (so a typo'd tone degrades to neutral, not a broken color-mix).
-    if (typeof CSS === "undefined" || CSS.supports("color", color)) {
-      el.classList.add(className ?? "tone-custom");
-      el.style.setProperty("--tone", color);
-    }
-  } else if (className) {
-    el.classList.add(className);
-  }
+  applyTone(el, tone); // named tone → tone-<name>; raw colour → tone-custom + inline --tone
   if (dot) pick(el, "dot").hidden = false;
   return { el, setText: (text) => { textEl.textContent = text; } };
 }

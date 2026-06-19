@@ -21,5 +21,13 @@ export default {
       ],
       current: "speaker",
     },
+    perOptionTone: {
+      options: [
+        { id: "all", label: "All" },
+        { id: "ok", label: "Passing", tone: "ok" },
+        { id: "bad", label: "Failing", tone: "bad" },
+      ],
+      current: "ok",
+    },
   },
 };

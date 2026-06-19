@@ -23,9 +23,11 @@
   }
   .segmented-control-opt:last-child { border-right: 0; }
   .segmented-control-opt:hover { color: var(--text); }
+  /* active fill derives from the option's own --tone (set by applyTone), falling
+     back to --accent for untoned options — so per-option tone is opt-in. */
   .segmented-control-opt.is-on {
-    background: color-mix(in srgb, var(--accent) 14%, transparent);
-    color: var(--accent);
+    background: color-mix(in srgb, var(--tone, var(--accent)) 14%, transparent);
+    color: var(--tone, var(--accent));
   }
 }
 }
