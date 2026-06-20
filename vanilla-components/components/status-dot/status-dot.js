@@ -3,25 +3,21 @@
 // setTone/setPulse mutate in place so a polled status flips without a DOM swap.
 import { tpl, pick } from "../../lib/templates.js";
 import { defineComponent } from "../../lib/component.js";
+import { applyTone } from "../../lib/tone.js";
 
-/** @typedef {"neutral" | "ok" | "warn" | "bad" | "info" | "accent"} DotTone */
+/** @typedef {import("../../lib/tone.js").ToneName} DotTone */
 
 /**
- * @param {{ tone?: DotTone | null, pulse?: boolean, label?: string | null }} [props]
- *   tone - a named tone; null is treated as "neutral", the quiet default —
- *     so chip's null and status-dot's neutral mean the same. (Raw colours,
- *     which chip accepts, aren't supported here.)
+ * @param {{ tone?: DotTone | (string & {}) | null, pulse?: boolean, label?: string | null }} [props]
+ *   tone - a named tone, a raw CSS colour, or "neutral"/null for the quiet default.
  * @returns {{ el: HTMLElement,
- *   setTone: (tone: DotTone | null) => void, setPulse: (on: boolean) => void }}
+ *   setTone: (tone: DotTone | (string & {}) | null) => void, setPulse: (on: boolean) => void }}
  */
 function buildStatusDot({ tone = "neutral", pulse = false, label = null } = {}) {
   const el = /** @type {HTMLElement} */ (tpl("tpl-status-dot").firstElementChild);
 
-  /** @param {DotTone | null} t */
-  const setTone = (t) => {
-    for (const cls of [...el.classList]) if (cls.startsWith("tone-")) el.classList.remove(cls);
-    if (t && t !== "neutral") el.classList.add(`tone-${t}`);
-  };
+  /** @param {DotTone | (string & {}) | null} t */
+  const setTone = (t) => applyTone(el, t);
   setTone(tone);
 
   /** @param {boolean} on */

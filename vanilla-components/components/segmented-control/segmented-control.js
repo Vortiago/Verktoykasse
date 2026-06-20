@@ -2,9 +2,14 @@
 // segmented-control — a bordered radio/toggle group; setCurrent() marks the active option.
 import { tpl } from "../../lib/templates.js";
 import { defineComponent } from "../../lib/component.js";
+import { applyTone } from "../../lib/tone.js";
+
+/** @typedef {{ id: string, label: string, tone?: import("../../lib/tone.js").ToneName | (string & {}) }} SegOption */
 
 /**
- * @param {{ options: { id: string, label: string }[], current?: string | null, onSelect?: (id: string) => void }} props
+ * @param {{ options: SegOption[], current?: string | null, onSelect?: (id: string) => void }} props
+ *   An option's `tone` (named tone or raw colour) colours it when active; untoned
+ *   options keep the default accent fill, so existing callers are unchanged.
  * @param {AbortSignal} [signal] - required only when `onSelect` is given.
  * @returns {{ el: HTMLElement, setCurrent: (id: string) => void }}
  */
@@ -17,6 +22,7 @@ function buildSegmentedControl({ options, current = null, onSelect } = /** @type
     const node = tpl("tpl-segmented-control-opt");
     const btn = /** @type {HTMLButtonElement} */ (node.firstElementChild);
     btn.textContent = o.label;
+    if (o.tone) applyTone(btn, o.tone); // sets --tone; the .is-on rule fills from it
     if (onSelect) btn.addEventListener("click", () => onSelect(o.id), { signal });
     opts.set(o.id, btn);
     el.append(node);

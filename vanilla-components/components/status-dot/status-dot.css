@@ -6,14 +6,15 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    --tone: var(--text-dim); /* neutral default */
   }
 
   .status-dot-mark {
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: var(--tone);
+    /* neutral default via the var() fallback (NOT a :scope { --tone } rule), so
+       the global .tone-<name> mapping in tones.css always wins for a toned dot. */
+    background: var(--tone, var(--text-dim));
     flex: none;
   }
   .status-dot-label {
@@ -21,19 +22,15 @@
     color: var(--text-dim);
   }
 
-  :scope.tone-ok     { --tone: var(--ok); }
-  :scope.tone-warn   { --tone: var(--warn); }
-  :scope.tone-bad    { --tone: var(--bad); }
-  :scope.tone-info   { --tone: var(--info); }
-  :scope.tone-accent { --tone: var(--accent); }
+  /* The `tone-<name>` → `--tone` mapping lives once in tones.css. */
 
   :scope.is-pulse .status-dot-mark {
     animation: status-dot-pulse 1.4s ease-out infinite;
   }
   @keyframes status-dot-pulse {
-    0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--tone) 45%, transparent); }
-    70%  { box-shadow: 0 0 0 6px color-mix(in srgb, var(--tone) 0%, transparent); }
-    100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--tone) 0%, transparent); }
+    0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--tone, var(--text-dim)) 45%, transparent); }
+    70%  { box-shadow: 0 0 0 6px color-mix(in srgb, var(--tone, var(--text-dim)) 0%, transparent); }
+    100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--tone, var(--text-dim)) 0%, transparent); }
   }
 
   @media (prefers-reduced-motion: reduce) {

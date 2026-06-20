@@ -1,16 +1,19 @@
 // @ts-check
 import { createDialog } from "./dialog.js";
+import { previewTrigger } from "../../previews/trigger.js";
 
 /** @type {import("../../preview.js").PreviewModule} */
 export default {
   title: "dialog",
-  // A dialog is hidden until opened; the preview shows it inline (open, non-modal)
-  // so the card isn't blank.
-  render: async (props) => {
-    const d = await createDialog(props);
+  // A dialog is hidden until opened; the preview renders a trigger and opens it
+  // (modal) on click — rather than pinning it open, which leaves every card's
+  // dialog showing on load.
+  render: async (props, signal) => {
     const box = document.createElement("div");
-    box.append(d.el);
-    d.el.open = true;
+    const trigger = previewTrigger("Open dialog");
+    const d = await createDialog(props, signal);
+    box.append(trigger, d.el);
+    trigger.addEventListener("click", () => d.open(), { signal });
     return box;
   },
   variants: {

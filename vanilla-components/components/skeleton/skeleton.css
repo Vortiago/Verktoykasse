@@ -1,0 +1,37 @@
+@layer vanilla-components {
+/* Skeleton — a shimmering placeholder. variant text → stacked lines; block → a
+   rectangle (--skeleton-w/h); circle → a round blob (--skeleton-w). */
+@scope (.skeleton) {
+  :scope { display: block; }
+  :scope.is-text { display: flex; flex-direction: column; gap: var(--space-s); }
+
+  .skeleton-line,
+  :scope.is-block,
+  :scope.is-circle {
+    background: linear-gradient(
+      90deg,
+      var(--bg-elev-2) 25%,
+      color-mix(in srgb, var(--bg-elev-2) 55%, var(--bg-elev)) 50%,
+      var(--bg-elev-2) 75%);
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.4s ease-in-out infinite;
+    border-radius: var(--r);
+  }
+
+  .skeleton-line { height: 0.7em; }
+  .skeleton-line:last-child:not(:only-child) { width: 70%; } /* ragged final line */
+
+  :scope.is-block { width: var(--skeleton-w, 100%); height: var(--skeleton-h, 80px); }
+  :scope.is-circle { width: var(--skeleton-w, 40px); height: var(--skeleton-w, 40px); border-radius: 50%; }
+
+  @keyframes skeleton-shimmer {
+    from { background-position: 200% 0; }
+    to   { background-position: -200% 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .skeleton-line,
+    :scope.is-block,
+    :scope.is-circle { animation: none; background: var(--bg-elev-2); }
+  }
+}
+}

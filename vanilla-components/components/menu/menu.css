@@ -1,0 +1,52 @@
+@layer vanilla-components {
+/* menu — a popover action list on the top layer, tethered to its trigger with
+   CSS Anchor Positioning (the browser places it and edge-flips — no coordinate
+   math). popover="auto" gives light-dismiss + Esc for free. Chromium 125+. */
+@scope (.menu) {
+  :scope {
+    margin: 0;
+    inset: auto; /* undo UA popover centering; anchor positioning drives it */
+    position-area: bottom span-right; /* below the trigger, growing toward the end */
+    position-try-fallbacks: flip-block, flip-inline;
+    margin-block: 4px;
+
+    min-width: 180px;
+    padding: var(--space-xs);
+    background: var(--bg-elev);
+    color: var(--text);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r);
+    box-shadow: 0 8px 24px light-dark(rgba(0, 0, 0, 0.14), rgba(0, 0, 0, 0.5));
+
+    opacity: 0;
+    transition: opacity 0.12s ease, display 0.12s allow-discrete, overlay 0.12s allow-discrete;
+  }
+  :scope.is-align-end { position-area: bottom span-left; }
+  :scope:popover-open {
+    opacity: 1;
+    @starting-style { opacity: 0; }
+  }
+
+  .menu-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-s);
+    width: 100%;
+    padding: 6px 10px;
+    border: 0;
+    border-radius: max(0px, calc(var(--r) - 1px));
+    background: none;
+    color: var(--text);
+    font: inherit;
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+  }
+  .menu-item:hover:not(:disabled) { background: var(--bg-elev-2); }
+  .menu-item:disabled { color: var(--text-dim); cursor: not-allowed; }
+  .menu-item.is-danger { color: var(--bad); }
+  .menu-item-icon { flex: none; display: inline-flex; width: 1.1em; justify-content: center; }
+
+  .menu-separator { height: 1px; margin: var(--space-xs) 0; background: var(--hairline); }
+}
+}

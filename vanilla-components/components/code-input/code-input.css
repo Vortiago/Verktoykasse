@@ -1,0 +1,26 @@
+@layer vanilla-components {
+/* code-input — a row of single-character cells for an OTP / verification code. */
+@scope (.code-input) {
+  :scope { display: inline-flex; gap: var(--space-s); }
+  .code-input-cell {
+    width: 2.25em;
+    height: 2.5em;
+    padding: 0;
+    text-align: center;
+    font: inherit;
+    font-family: var(--mono);
+    font-size: 18px;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r);
+    caret-color: var(--accent);
+  }
+  .code-input-cell:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent);
+  }
+  .code-input-cell:disabled { opacity: 0.5; }
+}
+}

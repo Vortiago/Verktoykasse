@@ -1,0 +1,20 @@
+/* Shared tone mixin — the SINGLE place the base tone set maps to design tokens.
+ *
+ * A tone-bearing component (chip, status-dot, alert, list-row, segmented-control,
+ * …) never re-declares these; it just consumes `var(--tone)` (see lib/tone.js,
+ * which adds the `.tone-<name>` class). Neutral is expressed by the component as
+ * `var(--tone, <default>)` — NOT a `:scope { --tone: … }` rule — so this global
+ * mapping always wins for a toned element regardless of stylesheet order.
+ *
+ * `.tone-custom` carries no value here: lib/tone.js sets its `--tone` inline from
+ * a raw CSS colour. Promote a recurring custom colour into the base set by adding
+ * a `--<name>` token (tokens.css), a line here, and the name to NAMED_TONES.
+ *
+ * Link this once, right after tokens.css (the catalogue's preview.html does). */
+@layer vanilla-components {
+  .tone-ok     { --tone: var(--ok); }
+  .tone-warn   { --tone: var(--warn); }
+  .tone-bad    { --tone: var(--bad); }
+  .tone-info   { --tone: var(--info); }
+  .tone-accent { --tone: var(--accent); }
+}
