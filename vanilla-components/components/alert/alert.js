@@ -27,10 +27,15 @@ function buildAlert({ tone = null, title = null, message, dismissible = false, o
 
   const dismiss = () => el.remove();
 
+  // The close button lives in the template for the dismissible case; when not
+  // dismissible, remove it entirely so its "×" glyph doesn't leak into the
+  // alert's textContent (which would trip a consumer's exact-text assertions).
+  const closeBtn = pick(el, "close");
   if (dismissible) {
-    const closeBtn = pick(el, "close");
     closeBtn.hidden = false;
     closeBtn.addEventListener("click", () => { dismiss(); onDismiss?.(); }, { signal });
+  } else {
+    closeBtn.remove();
   }
 
   return { el, setMessage: (m) => { msgEl.textContent = m; }, dismiss };
