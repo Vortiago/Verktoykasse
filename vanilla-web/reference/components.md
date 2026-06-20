@@ -24,10 +24,6 @@ pick(row, "date").textContent = run.date;   // pick() throws on a typo'd slot
 host.appendChild(row);
 ```
 
-Numbers, dates, and durations render through `Intl` (`NumberFormat`,
-`DateTimeFormat`, `RelativeTimeFormat`) — never hand-rolled padding or `toFixed`
-display logic. (`lib/format.js` wraps these; see `reference/modules.md`.)
-
 `templates.js` is the canonical helper module — copy into `lib/` verbatim;
 extend, don't fork. API: `loadTemplates`, `tpl`, `slot`, `pick`, `mount`,
 `loadCSS`, `every`, `wireTheme`, `wireErrorBar`, `renderRegion`,

@@ -6,16 +6,15 @@ description: Atle's conventions for building web UIs — vanilla ES modules, HTM
 # vanilla-web — how websites get built here
 
 **No build step, no runtime deps** — plain ES modules served statically; the
-only dev dependency is `typescript` for the typecheck gate. This file is the map
-— read the linked `reference/*.md` only for the area you're actually touching.
+only dev dependency is `typescript` for the typecheck gate.
 
 ## Decision rule
 
 New web UI → default to this stack. Reach for React (or another framework) only
 with a concrete driver: heavy shared client state across many screens, an
 existing React codebase, or a component ecosystem the task genuinely needs (rich
-editors, complex drag-drop). "It might grow" is not a driver — this skeleton
-grows fine. If React seems warranted, say so and ask before scaffolding.
+editors, complex drag-drop). "It might grow" is not a driver. If React seems
+warranted, say so and ask before scaffolding.
 
 ## App skeleton — always multi-view
 
@@ -104,7 +103,7 @@ export default {
   `{ title, render, variants }`; `serve.mjs` generates the catalogue and serves
   it at `/preview.html`. No npm, no build. → `reference/preview.md`
 
-## Reference — read only what the task touches
+## Reference
 
 - `reference/components.md` — templates, the component factory, view markup
 - `reference/css.md` — `@scope`, tokens, `@container`, theming, motion
@@ -112,3 +111,4 @@ export default {
 - `reference/server.md` — `serve.mjs`, `/api` modes (SSE/proxy/inline), live data
 - `reference/modules.md` — `api-client` / `store` / `format` / `live`, typing, patterns to lift
 - `reference/preview.md` — component preview catalogue (`*.preview.js`, codegen registry, `/preview.html`)
+- `reference/testing.md` — Playwright e2e: setup, pointing the test-id attribute at `data-slot`, role/label vs structural selectors, running the app under test, and the interaction-hold test (`testing/*` configs)

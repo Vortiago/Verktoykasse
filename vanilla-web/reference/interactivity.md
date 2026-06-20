@@ -32,8 +32,7 @@ rebuilt under the focus.
 
 ## Overlays — native dialog and popover, never hand-rolled
 
-No DIY absolutely-positioned overlay divs with open/close state in JS — the
-platform versions are less code and immune to whole classes of bugs:
+No DIY absolutely-positioned overlay divs with open/close state in JS:
 
 - **Modals**: `<dialog>` + `dialog.showModal()` — focus trap, ESC-to-close,
   `::backdrop`, top layer, all free.

@@ -10,8 +10,7 @@ the engine: ES modules, `<template>`s, `@scope`, the create-factory contract).
 `vanilla-web` is the "how"; this is the "what". No build, no runtime deps.
 
 Distribution is **copy-verbatim** (the vanilla-web way): an app copies the parts
-it needs into its own tree. No package, no symlink — the app stays self-contained
-and statically servable. Re-copy to update; never fork in place.
+it needs into its own tree. No package, no symlink. Re-copy to update; never fork in place.
 
 ## Consume
 
@@ -46,6 +45,10 @@ and statically servable. Re-copy to update; never fork in place.
   `lib/templates.js` + `lib/component.js`.
 - Each component self-loads its own `<name>.html` + `<name>.css` on first use;
   just `import { create<Name> }` and call it.
+- **Test** — address atoms by their accessible name (`createButton` →
+  `get_by_role("button", name)`, `createField` → `get_by_label`), `data-slot` for
+  structural seams. Full Playwright wire-up + the interaction-hold test: vanilla-web
+  `reference/testing.md`.
 
 ## Tokens (names in `tokens.css`)
 

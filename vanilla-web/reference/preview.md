@@ -1,10 +1,7 @@
 # Preview — see a component in isolation, no app, no npm
 
 Read this when you want a Storybook-style catalogue of components without the
-Storybook. It's a thin harness over the component factory contract you already
-follow (`create<Name>(props, signal) → { el, … }`): a factory that self-loads its
-own template + CSS, takes no global state, and imports no view is *already* an
-isolatable unit, so previewing it is almost free.
+Storybook.
 
 ## Glossary
 
@@ -13,8 +10,7 @@ isolatable unit, so previewing it is almost free.
 - **variant** — a named prop-set inside a preview (`default`, `long`, `empty`).
   Each variant renders as one labeled frame. _Distinct from_ CSS/design "variants".
 
-Components only. Views are route-bound and data-backed — faking that is where
-lean storybooks rot, so previews stop at the component boundary.
+Components only. Views are route-bound and data-backed.
 
 ## What a preview file looks like
 
@@ -72,17 +68,9 @@ shown verbatim under each frame as JSON, so the catalogue doubles as docs
 
 The browser has no reflection — native ES modules with no build step can't
 enumerate files; a module only exists once something `import`s its exact URL. So
-the import list has to be emitted by something with filesystem access. The three
-options and why this one:
-
-- **build-time glob** (Vite `import.meta.glob`, Storybook) — needs a bundler,
-  which this stack doesn't have. Out.
-- **runtime server walk** — works, but the list is invisible to `tsc` and not
-  greppable.
-- **codegen** (chosen) — `previews/scan.mjs` walks `components/` for
-  `*.preview.js` and writes `previews/registry.js`. The output is real source:
-  `tsc` checks it, `grep` finds it, and it's committed. This is the no-build
-  equivalent of a **C# source generator**.
+the import list has to be emitted by something with filesystem access:
+`previews/scan.mjs` walks `components/` for `*.preview.js` and writes
+`previews/registry.js` — real source that `tsc` checks and `grep` finds.
 
 `previews/registry.js` is generated — never hand-edit it:
 
@@ -95,8 +83,7 @@ export const previews = [
 
 `title` is the component folder name (pure path work — `scan.mjs` never executes
 a preview module, so a broken preview can't break discovery). The file changes
-only when the *set* of previews changes, so there's no git churn on ordinary
-edits — and when it does change, commit it alongside the component.
+only when the *set* of previews changes — commit it alongside the component.
 
 ## Running it
 
