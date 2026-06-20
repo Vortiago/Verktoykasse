@@ -13,8 +13,8 @@ only dev dependency is `typescript` for the typecheck gate.
 New web UI → default to this stack. Reach for React (or another framework) only
 with a concrete driver: heavy shared client state across many screens, an
 existing React codebase, or a component ecosystem the task genuinely needs (rich
-editors, complex drag-drop). "It might grow" is not a driver — this skeleton
-grows fine. If React seems warranted, say so and ask before scaffolding.
+editors, complex drag-drop). "It might grow" is not a driver. If React seems
+warranted, say so and ask before scaffolding.
 
 ## App skeleton — always multi-view
 

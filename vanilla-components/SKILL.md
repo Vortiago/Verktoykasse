@@ -10,8 +10,7 @@ the engine: ES modules, `<template>`s, `@scope`, the create-factory contract).
 `vanilla-web` is the "how"; this is the "what". No build, no runtime deps.
 
 Distribution is **copy-verbatim** (the vanilla-web way): an app copies the parts
-it needs into its own tree. No package, no symlink — the app stays self-contained
-and statically servable. Re-copy to update; never fork in place.
+it needs into its own tree. No package, no symlink. Re-copy to update; never fork in place.
 
 ## Consume
 
