@@ -42,7 +42,7 @@ shipped once). So the gate has two halves, run together by the `check` script.
   `var(--x, fallback)` is exempt — a fallback can't fail silently. Caveats (regex,
   Linux-first): a `var(--x)` in a CSS comment or JS doc-string false-positives.
 
-Scripts to add (no `package.json` ships):
+Scripts to add:
 
 ```json
 "scripts": {
