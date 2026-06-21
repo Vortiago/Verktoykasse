@@ -26,14 +26,31 @@ re-implemented across multiple vanilla-web apps.)
   `livePoll(url, onData, signal, intervalMs)` (fallback with in-flight de-dup +
   change-only). Both tear down on abort.
 
-## Typing — JSDoc + tsc, always
+## The gate — `tsc --noEmit` AND `check-css-vars`
 
-Every JS module starts with `// @ts-check`; params and exported shapes get JSDoc
-annotations; shared shapes live in `types.d.ts`. Copy `tsconfig.json` from the
-skill dir (`allowJs`, `checkJs`, `noEmit`, `strict`,
-`noUnusedLocals`/`noUnusedParameters`) and add a `typecheck` npm script to gate CI
-or a hook. `noUnusedLocals` makes stale imports hard errors instead of runtime
-surprises; intentionally unused bindings get a `_` prefix.
+`tsc` checks the JS; nothing else checks `var(--x)` — an undefined custom property
+fails *silently*, just falling back (a transparent popover, a missing colour, as
+shipped once). So the gate has two halves, run together by the `check` script.
+
+- **Typing** — every module starts `// @ts-check` with JSDoc; shared shapes in
+  `types.d.ts`. Copy `tsconfig.json` from the skill dir (`strict`, `checkJs`,
+  `noUnusedLocals` turns stale imports into hard errors; unused bindings get `_`).
+- **`check-css-vars`** — copy `tools/check-css-vars.mjs` verbatim (zero-dep, Node
+  22+). Scans `web/**/*.{css,js}`, exits 1 on any required `var(--x)` never defined
+  (`web/file:line  --name`). *Defined* = a CSS `--x:` decl OR a JS
+  `setProperty("--x", …)` (so inline-set props like `--tone` don't false-positive);
+  `var(--x, fallback)` is exempt — a fallback can't fail silently. Caveats (regex,
+  Linux-first): a `var(--x)` in a CSS comment or JS doc-string false-positives.
+
+Scripts to add (no `package.json` ships):
+
+```json
+"scripts": {
+  "typecheck": "tsc -p tsconfig.json",
+  "check-css-vars": "node tools/check-css-vars.mjs",
+  "check": "tsc -p tsconfig.json && node tools/check-css-vars.mjs"
+}
+```
 
 ## Patterns ready to lift
 
