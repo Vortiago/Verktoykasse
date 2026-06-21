@@ -6,7 +6,8 @@ description: Atle's conventions for building web UIs — vanilla ES modules, HTM
 # vanilla-web — how websites get built here
 
 **No build step, no runtime deps** — plain ES modules served statically; the
-only dev dependency is `typescript` for the typecheck gate.
+only dev dependency is `typescript`. The gate is two halves:
+`tsc --noEmit` for the JS and `check-css-vars` for `var(--x)` (→ `reference/modules.md`).
 
 ## Decision rule
 
@@ -55,7 +56,7 @@ Copy **verbatim** from the skill dir: `shell.js` (makes `location.hash`
 `#/<view-id>` the source of truth — deep links + back button free; one
 `AbortController` per mount; `document.startViewTransition` swaps; surfaces
 errors to `<output id="errbar">`), `lib/templates.js`, `serve.mjs`,
-`tsconfig.json` — plus `preview.*` + `previews/scan.mjs` if you want the
+`tsconfig.json`, `tools/check-css-vars.mjs` — plus `preview.*` + `previews/scan.mjs` if you want the
 component catalogue (→ `reference/preview.md`). `index.html` preloads the module graph
 (`modulepreload` for `shell.js`, `views/registry.js`, `lib/templates.js`).
 
@@ -97,8 +98,8 @@ export default {
   `:user-invalid`). → `reference/interactivity.md`
 - **Numbers / dates / durations** render through `Intl` (via `lib/format.js`).
   → `reference/modules.md`
-- **Typing**: every module starts `// @ts-check` + JSDoc; `tsc --noEmit` is the
-  gate. → `reference/modules.md`
+- **The gate**: every module starts `// @ts-check` + JSDoc; `tsc --noEmit` **and**
+  `check-css-vars` (undefined `var(--x)` fails silently). → `reference/modules.md`
 - **Preview** (optional): a component can ship `<name>.preview.js` exporting
   `{ title, render, variants }`; `serve.mjs` generates the catalogue and serves
   it at `/preview.html`. No npm, no build. → `reference/preview.md`
@@ -109,6 +110,6 @@ export default {
 - `reference/css.md` — `@scope`, tokens, `@container`, theming, motion
 - `reference/interactivity.md` — re-render/no-flicker rules, overlays, forms
 - `reference/server.md` — `serve.mjs`, `/api` modes (SSE/proxy/inline), live data
-- `reference/modules.md` — `api-client` / `store` / `format` / `live`, typing, patterns to lift
+- `reference/modules.md` — `api-client` / `store` / `format` / `live`, the gate (typing + `check-css-vars`), patterns to lift
 - `reference/preview.md` — component preview catalogue (`*.preview.js`, codegen registry, `/preview.html`)
 - `reference/testing.md` — Playwright e2e: setup, pointing the test-id attribute at `data-slot`, role/label vs structural selectors, running the app under test, and the interaction-hold test (`testing/*` configs)
