@@ -6,7 +6,7 @@ description: Atle's conventions for building web UIs — vanilla ES modules, HTM
 # vanilla-web — how websites get built here
 
 **No build step, no runtime deps** — plain ES modules served statically; the
-only dev dependency is `typescript`. The gate is two zero-config halves:
+only dev dependency is `typescript`. The gate is two halves:
 `tsc --noEmit` for the JS and `check-css-vars` for `var(--x)` (→ `reference/modules.md`).
 
 ## Decision rule
@@ -99,8 +99,7 @@ export default {
 - **Numbers / dates / durations** render through `Intl` (via `lib/format.js`).
   → `reference/modules.md`
 - **The gate**: every module starts `// @ts-check` + JSDoc; `tsc --noEmit` **and**
-  `check-css-vars` (undefined `var(--x)` fail silently) are the gate, run together
-  by the `check` npm script. → `reference/modules.md`
+  `check-css-vars` (undefined `var(--x)` fails silently). → `reference/modules.md`
 - **Preview** (optional): a component can ship `<name>.preview.js` exporting
   `{ title, render, variants }`; `serve.mjs` generates the catalogue and serves
   it at `/preview.html`. No npm, no build. → `reference/preview.md`

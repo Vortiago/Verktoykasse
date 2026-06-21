@@ -30,7 +30,7 @@ re-implemented across multiple vanilla-web apps.)
 
 `tsc` checks the JS; nothing else checks `var(--x)` — an undefined custom property
 fails *silently*, just falling back (a transparent popover, a missing colour, as
-shipped once). So the gate has two halves, run together by the `check` script.
+shipped once). So the gate has two halves:
 
 - **Typing** — every module starts `// @ts-check` with JSDoc; shared shapes in
   `types.d.ts`. Copy `tsconfig.json` from the skill dir (`strict`, `checkJs`,
