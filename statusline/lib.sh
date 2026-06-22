@@ -4,7 +4,11 @@
 # an extension can `. "${CL_LIB:?}"` to get the same colours, links, and cache.
 
 # ── colours (CL_ prefixed so they never collide with an extension's vars) ─────
-CL_RESET=$'\033[0m'; CL_DIM=$'\033[2m'; CL_BOLD=$'\033[1m'
+# CL_DIM is an explicit mid-grey (256-colour), NOT the SGR "faint" attribute
+# (\033[2m): many terminals render faint as near-black, which is unreadable on a
+# black background (uptime, worktree, machine names all vanish). An explicit grey
+# forces a readable, deterministic dim that still reads as subdued vs. CL_BOLD.
+CL_RESET=$'\033[0m'; CL_DIM=$'\033[38;5;245m'; CL_BOLD=$'\033[1m'
 CL_GREEN=$'\033[32m'; CL_CYAN=$'\033[36m'; CL_PURPLE=$'\033[35m'
 CL_RED=$'\033[31m';   CL_YELLOW=$'\033[33m'; CL_BLUE=$'\033[34m'
 
