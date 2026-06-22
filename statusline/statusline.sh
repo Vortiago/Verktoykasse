@@ -47,6 +47,26 @@ cwd=$(printf '%s' "$input" | jq -r '.cwd // empty' 2>/dev/null)
 # One git call for toplevel + common dir (absolute) + branch (three lines).
 { read -r root; read -r common; read -r branch; } \
   < <(git rev-parse --show-toplevel --path-format=absolute --git-common-dir --abbrev-ref HEAD 2>/dev/null)
+
+# Bare repo (the `git worktree` layout: a bare clone whose worktrees live alongside) or
+# a plain .git dir has NO worktree here. The combined rev-parse above FAILS entirely in
+# that case (--show-toplevel needs a work tree → exit 128), so root/common come back
+# empty — re-probe the common dir on its own (that works), and if it exists resolve to
+# the repo's PRIMARY worktree (default branch's, else first) so launching Claude from the
+# bare/clone dir still gets the full status line instead of the [user@host] fallback.
+if [ -z "$root" ] && common=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) && [ -n "$common" ]; then
+  picks=$(git worktree list --porcelain 2>/dev/null | awk '
+    /^worktree /{wt=$2}
+    /^bare$/{wt=""}
+    /^branch /{b=$2; sub(/^refs\/heads\//,"",b); if (wt!="") print wt"\t"b}')
+  bare_wt=$(awk -F'\t' '$2=="main"||$2=="master"{print $1; exit}' <<<"$picks")
+  [ -n "$bare_wt" ] || bare_wt=$(printf '%s\n' "$picks" | head -n1 | cut -f1)
+  if [ -n "$bare_wt" ] && [ -d "$bare_wt" ]; then
+    root=$bare_wt
+    branch=$(git -C "$bare_wt" rev-parse --abbrev-ref HEAD 2>/dev/null)
+  fi
+fi
+
 if [ -z "$root" ]; then
   printf '[%s@%s %s]' "$(whoami)" "$(hostname -s)" "$(basename "${cwd:-$PWD}")"
   exit 0
