@@ -46,4 +46,21 @@ cke "squash"          0 "squash! feat: x"
 cke "empty"           0 ""
 cke "normal not exem" 1 "feat: x"
 
+ckb() { # desc  want(0 missing/1 ok)  cli  mode  cmd
+  if pr_body_missing "$5" "$3" "$4"; then got=0; else got=1; fi
+  if [ "$got" != "$2" ]; then echo "FAIL body  : $1 (got=$got want=$2)"; fail=1; else echo "ok   $1"; fi
+}
+
+ckb "create body"        1 gh create 'gh pr create --title "x" --body "why"'
+ckb "create body bare"   1 gh create 'gh pr create -t x --body why'
+ckb "create body=eq"     1 gh create 'gh pr create -t x --body=why'
+ckb "create empty body"  0 gh create 'gh pr create --title "x" --body ""'
+ckb "create no body"     0 gh create 'gh pr create --title "x"'
+ckb "create --fill"      1 gh create 'gh pr create --fill'
+ckb "create body-file"   1 gh create 'gh pr create -t x --body-file b.md'
+ckb "edit empty body"    0 gh edit   'gh pr edit 5 --body ""'
+ckb "edit other field"   1 gh edit   'gh pr edit 5 --add-label x'
+ckb "az create desc"     1 az create 'az repos pr create --title x --description why'
+ckb "az create no desc"  0 az create 'az repos pr create --title x'
+
 if [ "$fail" = 0 ]; then echo "ALL PASS"; else echo "FAILURES"; exit 1; fi

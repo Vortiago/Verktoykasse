@@ -54,8 +54,8 @@ and don't belong here.
   every commit header (standard 11 types, `!`/`BREAKING CHANGE`, optional scope;
   merge/revert/fixup allow-listed). Because PRs squash-merge, the PR title is the
   moniker that ships — a Claude `PreToolUse(Bash)` hook validates `gh pr create`
-  titles and flags a breaking-change under-report against the branch, pointing at
-  the reflow workflow. Both hooks share one `validate.sh`. User-invocable as
+  titles, blocks an empty PR body, and flags a breaking-change under-report
+  against the branch, pointing at the reflow workflow. Both hooks share one `validate.sh`. User-invocable as
   `/conventional-commits`.
 
 ## Install

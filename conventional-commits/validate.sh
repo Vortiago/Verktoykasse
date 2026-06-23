@@ -36,3 +36,44 @@ cc_severity() {
     *)              echo other ;;
   esac
 }
+
+# --- PR command helpers (sourced by pr-title-check.sh) --------------------
+# Heuristic parsing of a `gh`/`az` PR open/edit command string; first match wins.
+
+# pr_body_value CMD FLAG_ERE — print a body flag's value (FLAG_ERE e.g.
+# '--body|-b' or '--description|-d'). Quoted forms win over a bare token (sed `t`)
+# so empty quotes stay empty instead of capturing the literal "". exit 0 if the
+# flag is present (value may be empty), 1 if absent.
+pr_body_value() {
+  _c=$1; _f=$2
+  printf '%s' "$_c" | grep -Eq "(^| )(${_f})[= ]" || return 1
+  printf '%s' "$_c" | sed -nE "
+    s/.*(${_f})[= ]+\"([^\"]*)\".*/\2/p ; t
+    s/.*(${_f})[= ]+'([^']*)'.*/\2/p ; t
+    s/.*(${_f})[= ]+([^ ]+).*/\2/p"
+  return 0
+}
+
+# pr_body_missing CMD CLI MODE — true (0) if the command ships an empty/missing
+# body (block it). CLI=gh|az, MODE=create|edit. On edit only an explicit empty
+# body counts (absent = leaving it unchanged). Fails OPEN (1) on ambiguity:
+# non-inline gh sources (--body-file/-F/--fill*/--template/--web) count as a body.
+pr_body_missing() {
+  _c=$1; _cli=$2; _mode=$3
+  case "$_cli" in
+    gh) _f='--body|-b' ;;
+    az) _f='--description|-d' ;;
+    *)  return 1 ;;
+  esac
+  if _v=$(pr_body_value "$_c" "$_f"); then
+    case "$_v" in *[![:space:]]*) return 1 ;; esac   # has real content → ok
+    return 0                                          # present but empty
+  fi
+  if [ "$_cli" = gh ]; then
+    case "$_c" in
+      *--body-file*|*--fill*|*--template*|*--web*|*' -F '*|*' -F='*) return 1 ;;
+    esac
+  fi
+  [ "$_mode" = create ] && return 0                   # create with no body at all
+  return 1
+}
