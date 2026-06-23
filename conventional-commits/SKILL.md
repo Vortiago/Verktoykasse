@@ -8,6 +8,9 @@ description: Conventional Commits ruleset and the reflow workflow behind this ma
 Enforced machine-wide by two hooks that share `validate.sh`. The rules here are
 the source of truth; both hooks point back here on rejection.
 
+Squash-merge ships each PR as one commit — title = subject, PR body = body +
+footer. This skill owns all of it: grammar, PR title, PR body.
+
 ## Header grammar
 
 ```
@@ -46,6 +49,24 @@ per-commit messages are scaffolding. The title's severity must be ≥ the highes
 severity among the branch's commits. A branch with a `feat!` commit titled
 `fix:` under-reports a breaking change.
 
+## PR body
+
+Squash-merged into the commit body. **Never empty.** Scale to the diff:
+
+- Trivial → one line of *why*: `Bump eslint 9.1→9.2; no config change.`
+- Substantial → 1–3 sentences of *why* (not a restated diff), then trailers.
+
+Trailers, one per line:
+
+```
+Closes #N    auto-closes the issue on merge to the default branch
+Refs #N      related, don't close
+BREAKING CHANGE: <what + migration>    mirrors a breaking title
+```
+
+No headings, checklists, or Testing/Screenshots scaffolding. Verify `Closes`
+took: `gh pr view <n> --json closingIssuesReferences` (can lag a moment).
+
 ## Reflow a stale breaking commit
 
 When the PR-title hook flags a breaking under-report, either:
@@ -63,9 +84,9 @@ The hook cannot tell (a) from (b) — decide from the net diff.
   validates every commit header. Allow-lists merge / revert / fixup / squash.
   Bypass: `git commit --no-verify`.
 - **`pr-title-check.sh`** — Claude `PreToolUse(Bash)` hook on `gh pr create` /
-  `gh pr edit` and `az repos pr create` / `az repos pr update`; title syntax is a
-  hard block, a breaking under-report is an advisory block. Fails open on anything
-  it cannot parse. (For `az`, only `--title` carries the title — `-t` is
+  `gh pr edit` and `az repos pr create` / `az repos pr update`; title syntax and
+  an empty body are hard blocks, a breaking under-report is an advisory block.
+  Fails open on anything it cannot parse. (For `az`, only `--title` carries the title — `-t` is
   `--target-branch`.)
 
 Install (registers both hooks): `./install.sh conventional-commits` → [install.sh](install.sh)
