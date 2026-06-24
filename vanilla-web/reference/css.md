@@ -65,3 +65,38 @@ Read this when writing `shell.css` or any view/component stylesheet.
 - Never: inline `style=` in templates (a CSS var + class instead), shadow DOM,
   BEM prefixes, CSS-in-JS. These are local-first tools for evergreen browsers;
   old browsers are out of scope.
+
+## Long lists — `content-visibility`, not a JS virtual scroller
+
+For a list that can hold hundreds–thousands of rows (a file list, a log, a feed),
+don't reach for a windowing library. Two pieces, one CSS and one JS, keep it
+snappy without ever leaving plain DOM:
+
+- **CSS does the virtualization.** Put `content-visibility: auto` on each row;
+  the browser skips layout AND paint of off-screen rows (it pre-renders a
+  ~50%-viewport margin). Pair it with `contain-intrinsic-size: auto <h>` so a
+  skipped row reserves the right height — `auto` makes the browser *remember*
+  each row's last real height, so even variable-height rows (an expanded
+  `<details>`) get an accurate placeholder once seen. Unlike
+  `content-visibility: hidden`, the `auto` rows stay focusable, selectable, and
+  find-in-page-searchable. Baseline since Safari 18 (Sep 2024).
+
+  ```css
+  @scope (.filelist) {
+    .row { content-visibility: auto; contain-intrinsic-size: auto 38px; }
+  }
+  ```
+
+- **`reconcileList` does the updates** (see `lib/templates.js` /
+  `reference/modules.md`): never `replaceChildren` a long list on a poll/refresh
+  — rebuilding thousands of nodes is the jank. Reconcile keyed, in place, and
+  gate the call so it runs only when the row SET actually changes (a cheap
+  list-signature), not every tick; apply volatile per-row state (a selection
+  highlight) in place so picking a row never rebuilds it. `content-visibility`
+  skips off-screen *rendering*; it does NOT skip node *creation*, so the lazy
+  fetch + the don't-rebuild-every-tick discipline are what keep creation bounded.
+
+This is the native, dependency-free equivalent of a virtual list, and it
+composes with the interaction-hold rules (`reference/interactivity.md`): no row
+recycling means a focused control or mid-copy selection inside a surviving row
+is never destroyed.

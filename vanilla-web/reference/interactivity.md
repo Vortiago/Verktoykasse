@@ -25,6 +25,17 @@ swap DOM. The rule set, in order of preference:
    the strongest anti-flicker move is the render that never fires.
 5. For in-place updaters that write text the user might be selecting, check
    `selectionInside(host)` first and defer — same rule as the focus guard.
+6. **Long, keyed lists use `reconcileList`, not `renderRegion`.** Where
+   `renderRegion` DEFERS a swap of a whole region while a control inside is
+   focused, `reconcileList(host, items, keyOf, create, update)` updates a list
+   in place around the interaction: it matches rows by key and moves survivors
+   with `moveBefore()` (preserving focus, selection, scroll, animations, and an
+   open `<details>`), creating only new keys and dropping gone ones. Fold a
+   row's content into its key + omit `update` to recreate changed rows while
+   unchanged ones keep their state. Gate the call on a cheap list-signature so
+   it runs only when the row set changes, and pair it with
+   `content-visibility: auto` on the rows for off-screen skipping — the native
+   virtual-list recipe (see `reference/css.md`).
 
 Apps with polling + interactive controls should carry an e2e clobber guard: a
 test that focuses every control, crosses a poll tick, and fails if a node was
