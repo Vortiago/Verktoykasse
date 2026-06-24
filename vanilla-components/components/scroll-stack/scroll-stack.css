@@ -1,0 +1,25 @@
+@layer vanilla-components {
+/* scroll-stack — a container that OWNS its overflow and lays its children out at
+   their NATURAL height. The third member of the "own your scroll" set:
+   panel.is-fill and table-shell own the scroll for ONE box; this owns it for a
+   STACK of several cards. Use it when you stack panels (or other overflow:clip
+   surfaces) taller than the viewport — as flex children of a column they'd
+   shrink under negative free space, and because `panel` is `overflow: clip` the
+   cut-off content shows NO scrollbar (the boxes shrink to exactly fit, so the
+   column itself never overflows). Here the stack scrolls instead and every card
+   keeps full height.
+
+   `min-height: 0` is load-bearing: it lets the stack shrink below its content so
+   the overflow is real and scrolls. `flex: 1 1 auto` makes it consume the
+   leftover height when it is itself an item in a flex column (a view body). No
+   `display` override — children stay in block flow, so they are NOT flex items
+   and keep their natural height. */
+@scope (.scroll-stack) {
+  :scope {
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding-bottom: var(--space-xs); /* keep the last card off the scroll edge */
+  }
+}
+}

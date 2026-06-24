@@ -19,6 +19,7 @@ export const previews = [
   { title: "menu", load: () => import("../components/menu/menu.preview.js") },
   { title: "panel", load: () => import("../components/panel/panel.preview.js") },
   { title: "progress", load: () => import("../components/progress/progress.preview.js") },
+  { title: "scroll-stack", load: () => import("../components/scroll-stack/scroll-stack.preview.js") },
   { title: "segmented-control", load: () => import("../components/segmented-control/segmented-control.preview.js") },
   { title: "side-nav", load: () => import("../components/side-nav/side-nav.preview.js") },
   { title: "skeleton", load: () => import("../components/skeleton/skeleton.preview.js") },
