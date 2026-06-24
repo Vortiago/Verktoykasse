@@ -1,3 +1,4 @@
+// canonical source: vanilla-web/previews/scan.mjs@8177591 — vendored copy, do not edit here
 #!/usr/bin/env node
 // @ts-check
 // Generates previews/registry.js by walking components/ for *.preview.js files.

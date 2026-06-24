@@ -1,3 +1,4 @@
+// canonical source: vanilla-web/serve.mjs@8177591 — vendored copy, do not edit here
 #!/usr/bin/env node
 // @ts-check
 // Canonical zero-dependency static server for the vanilla-web conventions

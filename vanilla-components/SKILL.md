@@ -117,6 +117,14 @@ compose these atoms: `status-dot`, `chip`, `button`).
 registry on startup; theme toggle exercises light/dark). The typecheck gate is
 `tsc --noEmit -p tsconfig.json` — every module is `// @ts-check` + JSDoc.
 
+## Toolkit sync (maintainers)
+
+`serve.mjs`, `preview.{js,css}`, `previews/{scan,new}.mjs`, and `lib/templates.js`
+are **vendored from the `vanilla-web` skill** (the canon) — committed copies stamped
+`canonical source: vanilla-web/…`. Edit them in `vanilla-web`, then re-run
+`./sync-from-web.sh`; a repo-local pre-commit hook (`sync-from-web.sh --precommit`)
+blocks the commit if a copy drifts. See `docs/adr/0001-vendored-toolkit-not-symlink.md`.
+
 ## Add a component
 
 1. `components/<name>/<name>.{html,css,js}` — author a synchronous `build<Name>`, then
