@@ -1,6 +1,6 @@
 ---
 name: vanilla-components
-description: Shared vanilla-web component library + unified design tokens — copy-verbatim, no build, no deps. Atoms (panel, stat-card, chip, status-dot, avatar, tooltip), shell (app-bar, side-nav, view-header), controls (button, field, code-input, progress, kv-row, empty-state, dialog, segmented-control), feedback (alert, spinner, skeleton), overlays (menu), and layout (table-shell, checklist-row, list-row) on the create-factory + @scope contract, plus a light-dark() token set + shared tone mixin. Use when building a vanilla-web UI and reaching for any of those, or a common token set, instead of hand-rolling one.
+description: Shared vanilla-web component library + unified design tokens — copy-verbatim, no build, no deps. Atoms (panel, stat-card, chip, status-dot, avatar, tooltip), shell (app-bar, side-nav, view-header), controls (button, field, code-input, progress, kv-row, empty-state, dialog, segmented-control), feedback (alert, spinner, skeleton), overlays (menu), and layout (table-shell, checklist-row, list-row, scroll-stack) on the create-factory + @scope contract, plus a light-dark() token set + shared tone mixin. Use when building a vanilla-web UI and reaching for any of those, or a common token set, instead of hand-rolling one.
 ---
 
 # vanilla-components — shared parts for vanilla-web UIs
@@ -86,6 +86,7 @@ in `tones.css` (see Consume → Tone mixin).
 | table-shell | `createTableShell({ columns, rows?, caption? }) → { el, tbody, setRows }` | tokenized table skeleton: sticky header from `columns`, caller-fillable `tbody`; numeric columns (`align:"end"`) right-aligned mono |
 | checklist-row | `createChecklistRow({ text, done? }) → { el, setDone(done) }` | done/undone item: box marker + strikethrough/dim when done |
 | list-row | `createListRow({ title, meta?, leading?, trailing?, href?, onSelect? }, signal?) → { el, setTitle, setMeta }` | leading·title+meta·trailing row; renders `<a>` (href) / `<button>` (onSelect) / `<div>`; `leading`/`trailing` take a string or Node; draws its own top divider between rows |
+| scroll-stack | `createScrollStack({ children? }) → { el, append }` | a container that OWNS its overflow and lays children at natural height — the STACK complement to `panel.is-fill` / `table-shell` (which scroll ONE box). Stops stacked `overflow:clip` panels (every `panel` is) silently squishing + clipping with no scrollbar on a short viewport; `min-height:0` is load-bearing |
 
 Tones derive from one `--tone` custom property via `color-mix`. The base set is
 mapped once in `tones.css` and applied by `lib/tone.js`'s `applyTone(el, tone)`:
