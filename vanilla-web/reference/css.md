@@ -100,3 +100,31 @@ This is the native, dependency-free equivalent of a virtual list, and it
 composes with the interaction-hold rules (`reference/interactivity.md`): no row
 recycling means a focused control or mid-copy selection inside a surviving row
 is never destroyed.
+
+## Stacked cards taller than the viewport — give the stack a scroll path
+
+A flex child defaults to `min-height: auto`, but a surrounding flex COLUMN with
+negative free space shrinks it anyway. When that child is an `overflow: clip` /
+`hidden` surface — every `panel` is — the shrink CLIPS its content and produces
+NO scrollbar: each box shrinks to exactly fit, so nothing overflows the column
+and nothing scrolls. The symptom is "cards squished, the Save button cut off, and
+you can't scroll to it" — and it hides on a tall dev monitor, only biting on a
+short laptop viewport.
+
+Rule: a stack of cards that can exceed the viewport must have ONE element that
+owns the scroll path. Two shapes:
+
+- **One tall region** → let a single fill panel own it (`panel.is-fill`, or
+  `min-height: 0; overflow: auto` on its body). The OTHER, non-fill blocks in the
+  column must be rigid (`flex: none`) so the fill region — not a clip box —
+  absorbs the squeeze; once it bottoms out, the leftover overflow falls to the
+  column's own scroll instead of clipping a rigid sibling.
+- **Several natural-height cards, no single fill region** → wrap the whole stack
+  in a container that owns the overflow and lays its children out at natural
+  height: `flex: 1 1 auto; min-height: 0; overflow-y: auto` — the `scroll-stack`
+  primitive in `vanilla-components`.
+
+`min-height: 0` is the load-bearing line on both the column and the scroller —
+omit it and the shrink can't happen, so the scroll can't either. Never leave
+`clip` / `hidden` boxes as direct flex children of a column with no scroll owner.
+The regression net is the layout-reachability test in `reference/testing.md`.

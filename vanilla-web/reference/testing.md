@@ -61,3 +61,32 @@ Pin **render-signature hygiene** alongside it: a value that churns every tick
 O(content) region, or every tick rebuilds the whole region. Assert an identity
 stamp on the heavy region survives a churn tick. The rules both tests enforce live
 in `reference/interactivity.md`.
+
+## The other test to write: layout reachability
+
+The flexbox clip-vs-scroll trap (`reference/css.md` — a stacked `overflow: clip`
+card shrunk below its content with no scroll owner clips silently) hides on a
+tall dev monitor and only bites on a short laptop. A layout-reachability sweep
+catches it, and a new stacked view that forgets a scroll owner re-trips it.
+
+Make it **structure-independent** — assert on the SYMPTOM, never name the fix
+class (`scroll-stack` etc.) — so it re-fails if a refactor reintroduces the clip:
+
+> At a short viewport, for each view, evaluate in the page:
+> - **clipped** = every `overflow: clip`/`hidden` box whose `scrollHeight >
+>   clientHeight + 1` (content cut off);
+> - **belowFold** = boxes whose `getBoundingClientRect().bottom > innerHeight + 1`
+>   (a precondition: if empty, the view fits and the scroll case isn't exercised —
+>   so don't let "reachable" pass vacuously);
+> - **unreachable** = belowFold boxes with NO scrollable ancestor (walk parents
+>   for `overflow-y` in `auto`/`scroll` AND `scrollHeight > clientHeight + 1`,
+>   stopping at the view boundary).
+> Assert `clipped == []` and `unreachable == []`. Then take the one control that
+> vanished, `scroll_into_view_if_needed()`, and assert its `bounding_box()` lands
+> fully inside the viewport (a `None` box subsumes an `is_visible` check).
+
+One short height is enough — natural-height cards overflow any normal viewport,
+so there's no pixel threshold to sweep. Reference impl:
+TapScribe's `tests/e2e/test_dashboard_ui.py::test_no_view_clips_content_without_scroll_path`
+(per-view) and `::test_settings_stack_scrolls_without_clipping_cards` (the
+single-view form with the belowFold precondition spelled out).
