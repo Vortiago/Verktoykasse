@@ -58,6 +58,18 @@ and don't belong here.
   against the branch, pointing at the reflow workflow. Both hooks share one `validate.sh`. User-invocable as
   `/conventional-commits`.
 
+- **[verify-prd-implemented](verify-prd-implemented/SKILL.md)** — verify a PRD
+  (epic / umbrella issue / spec) is *actually* done before closing it: map every
+  user story to the code that delivers it AND the single assertion that guards it,
+  then **mutation-check** each guard — break the behaviour, confirm the named test
+  goes red, revert. The premise is that a green suite is not evidence of coverage
+  (coverage is proven per-story, by an assertion watched go red), so it hunts the
+  plausible-but-vacuous test via a bad-test catalogue (tautology / passes-with-zero
+  / shape-only / passes-for-the-wrong-reason) in a disclosed
+  [`test-patterns.md`](verify-prd-implemented/test-patterns.md), and returns a
+  per-story matrix + a close / do-not-close verdict. Scales to a fan-out workflow
+  for large PRDs. User-invocable as `/verify-prd-implemented`.
+
 ## Install
 
 ```sh
