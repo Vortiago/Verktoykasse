@@ -24,33 +24,21 @@ stamp="from vanilla-components@$rev - re-copy to update, don't fork"
 
 mkdir -p "$dest"
 
-# Prepend the right comment syntax for the file extension. Re-stamping a file
-# that already carries our header first strips the old one, so updates stay clean.
-stamp_file() {
-  local f=$1 line
-  case $f in
-    *.js)   line="// $stamp" ;;
-    *.css)  line="/* $stamp */" ;;
-    *.html) line="<!-- $stamp -->" ;;
-    *)      return ;;
-  esac
-  local tmp; tmp=$(mktemp)
-  # `|| true`: grep exits 1 when nothing remains (empty file, or a file that was
-  # only the old stamp), which would abort the whole script under `set -e`.
-  { printf '%s\n' "$line"; grep -v 'from vanilla-components@' "$f" || true; } > "$tmp"
-  mv "$tmp" "$f"
-}
+# Provenance stamping is shared with sync-from-web.sh (stamp_file <file> <text>
+# <strip-pattern>). Re-stamping strips the old header first, so updates stay clean.
+strip="from vanilla-components@"
+source "$HERE/lib-stamp.sh"
 
 if [ "$what" = tokens ]; then
   cp "$HERE/tokens.css" "$dest/tokens.css"
-  stamp_file "$dest/tokens.css"
+  stamp_file "$dest/tokens.css" "$stamp" "$strip"
   echo "vendored tokens.css -> $dest/tokens.css (@$rev)"
   exit 0
 fi
 
 if [ "$what" = tones ]; then
   cp "$HERE/tones.css" "$dest/tones.css"
-  stamp_file "$dest/tones.css"
+  stamp_file "$dest/tones.css" "$stamp" "$strip"
   echo "vendored tones.css -> $dest/tones.css (@$rev)"
   exit 0
 fi
@@ -61,5 +49,5 @@ out="$dest/$what"
 rm -rf "$out"
 cp -R "$src" "$out"
 rm -f "$out"/*.preview.js "$out"/*.test.mjs "$out"/*.bridge.mjs
-for f in "$out"/*; do stamp_file "$f"; done
+for f in "$out"/*; do stamp_file "$f" "$stamp" "$strip"; done
 echo "vendored $what -> $out (@$rev)"
