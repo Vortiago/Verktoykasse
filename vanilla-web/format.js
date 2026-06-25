@@ -8,7 +8,11 @@ let DEFAULT_LOCALE = typeof navigator !== "undefined" ? navigator.language : "en
 /** @param {string} loc */
 export function setLocale(loc) { DEFAULT_LOCALE = loc; }
 
+/** The viewer's IANA timezone — the default zone absolute instants render in. */
+export const BROWSER_TZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
 const DATE_MED = /** @type {Intl.DateTimeFormatOptions} */ ({ year: "numeric", month: "short", day: "numeric" });
+const TIME_SHORT = /** @type {Intl.DateTimeFormatOptions} */ ({ hour: "2-digit", minute: "2-digit" });
 
 /** @type {Map<string, Intl.NumberFormat>} */ const _nf = new Map();
 /** @type {Map<string, Intl.DateTimeFormat>} */ const _df = new Map();
@@ -25,7 +29,9 @@ function nfmt(opts, locale) {
 /** @param {Intl.DateTimeFormatOptions} opts @param {string} [locale] */
 function dfmt(opts, locale) {
   const loc = locale || DEFAULT_LOCALE;
-  const key = opts === DATE_MED ? loc : loc + JSON.stringify(opts);
+  // Fast-path the two default singletons (skip JSON.stringify); "\0" can't occur
+  // in a locale tag, so these keys never collide with a stringified opts object.
+  const key = opts === DATE_MED ? loc : opts === TIME_SHORT ? loc + "\0t" : loc + JSON.stringify(opts);
   let f = _df.get(key);
   if (!f) { f = new Intl.DateTimeFormat(loc, opts); _df.set(key, f); }
   return f;
@@ -38,6 +44,27 @@ export const num = (n, opts, locale) => nfmt(opts, locale).format(n);
 export function date(d, opts = DATE_MED, locale) {
   if (d == null || d === "") return "—";
   return dfmt(opts, locale).format(new Date(d));
+}
+
+/** Format an absolute instant (epoch-ms / ISO-with-offset / Date) as a wall-clock
+ * TIME (default: short hour:minute). The instant is unambiguous, so it renders in
+ * the VIEWER's browser timezone by default — that IS the conversion; the source
+ * zone is irrelevant to an absolute instant. Pass `opts.timeZone` (an IANA id)
+ * ONLY to pin a specific zone, e.g. to label the origin zone next to local time.
+ * @param {string|number|Date} d @param {Intl.DateTimeFormatOptions} [opts] @param {string} [locale] */
+export function time(d, opts = TIME_SHORT, locale) {
+  if (d == null || d === "") return "—";
+  return dfmt(opts, locale).format(new Date(d));
+}
+
+/** Origin-zone hover label for an absolute instant: `"<tz>: <instant rendered in
+ * tz>"`, or "" when `originTz` is unset or equals the viewer's zone (no redundant
+ * tooltip). Pair with `time()`/`date()` as the visible viewer-zone text — the
+ * visible value and this `title` are a text/tooltip split over the same instant.
+ * @param {string|number|Date} d @param {Intl.DateTimeFormatOptions} opts @param {string} [originTz] @param {string} [locale] */
+export function originZoneLabel(d, opts, originTz, locale) {
+  if (!originTz || originTz === BROWSER_TZ || d == null || d === "") return "";
+  return `${originTz}: ${time(d, { ...opts, timeZone: originTz }, locale)}`;
 }
 
 /** Human byte size. @param {number} n @param {string} [locale] */
