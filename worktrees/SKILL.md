@@ -72,10 +72,26 @@ sibling vs ordinary repo vs PR ref). To carry gitignored-but-required local file
 into new worktrees, use a repo-root `.worktreeinclude` or the `<bare>/worktree-seed/`
 tree. → [`reference/internals.md`](reference/internals.md)
 
+## Default-branch edit guard
+
+`guard-default-branch.sh` (`PreToolUse`) blocks `Edit`/`Write`/`MultiEdit`/
+`NotebookEdit` and `git commit`/`git add` when the target tree is on the repo's
+default branch — feature work must not land on main directly; main advances only
+via merge/pull.
+
+- Scope: bare+sibling layout only; fails open elsewhere — ordinary repos,
+  detached HEAD, bare root, `worktree-seed/`, non-git paths.
+- Default = `origin/HEAD`; if unset, falls back to `main`/`master` only.
+- Unaffected: feature worktrees; `git pull`/`merge`/`fetch`/`rebase` on main.
+- Best-effort on `Bash`: matches the literal `git commit`/`git add` verbs (so a
+  `cd … && git commit` or a quoted mention can slip/over-match) — fail-open.
+- Override: `WORKTREES_ALLOW_MAIN_EDITS=1` (launch env; user-only).
+- Verify: `bash worktrees/selftest.sh`.
+
 ## Gotchas
 
-- Never commit directly in `$REPOS_ROOT/<repo>/` root — it's the bare repo.
-  Always work inside a worktree.
+- Never commit in `$REPOS_ROOT/<repo>/` root — it's the bare repo (git refuses;
+  no work tree). Work in a worktree; the guard above enforces this for `main`.
 - Don't bypass the hook with ad-hoc `git worktree add` into
   `.claude/worktrees/` — `.new-worktree.sh` and the `--worktree` flag already
   route through it.
