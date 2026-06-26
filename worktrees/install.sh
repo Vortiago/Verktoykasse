@@ -5,9 +5,10 @@
 
 skill="$HERE/worktrees"
 
-# 1. skill doc + 2. the WorktreeCreate hook (path settings.json references)
+# 1. skill doc + 2. the hook scripts (paths settings.json references)
 link "$skill" "$HOME/.claude/skills/worktrees"
-link "$skill/worktree-create.sh" "$HOME/.claude/hooks/worktree-create.sh"
+link "$skill/worktree-create.sh"      "$HOME/.claude/hooks/worktree-create.sh"
+link "$skill/guard-default-branch.sh" "$HOME/.claude/hooks/guard-default-branch.sh"
 
 # 3. repos root: env wins; else prompt with the folder above this repo as default
 if [[ -z "${REPOS_ROOT:-}" ]]; then
@@ -59,3 +60,38 @@ else:
     print("ok      WorktreeCreate already registered in settings.json")
 PY
 fi
+
+# 6. register the default-branch edit guard as a PreToolUse hook (idempotent).
+# One matcher covers the file-edit tools + Bash; the guard itself dispatches and
+# fails open outside the bare+sibling layout.
+guard="$HOME/.claude/hooks/guard-default-branch.sh"
+python3 - "$settings" "$guard" <<'PY'
+import json, os, shutil, sys
+settings, hook = sys.argv[1], sys.argv[2]
+data = {}
+if os.path.exists(settings):
+    with open(settings) as f:
+        data = json.load(f)
+hooks = data.setdefault("hooks", {})
+entries = hooks.setdefault("PreToolUse", [])
+have = any(
+    h.get("command") == hook
+    for entry in entries
+    for h in entry.get("hooks", [])
+)
+if have:
+    print("ok      PreToolUse default-branch guard already registered")
+else:
+    # Don't clobber an earlier (more pristine) backup — step 5 / a prior run may
+    # have already snapshotted the original settings.json to this path.
+    backup = settings + ".pre-verktoykasse"
+    if os.path.exists(settings) and not os.path.exists(backup):
+        shutil.copy2(settings, backup)
+    entries.append({"matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash",
+                    "hooks": [{"type": "command", "command": hook}]})
+    os.makedirs(os.path.dirname(settings), exist_ok=True)
+    with open(settings, "w") as f:
+        json.dump(data, f, indent=2)
+        f.write("\n")
+    print(f"linked  PreToolUse default-branch guard -> {hook} in settings.json")
+PY
