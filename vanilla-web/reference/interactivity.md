@@ -46,7 +46,8 @@ rebuilt under the focus.
 No DIY absolutely-positioned overlay divs with open/close state in JS:
 
 - **Modals**: `<dialog>` + `dialog.showModal()` — focus trap, ESC-to-close,
-  `::backdrop`, top layer, all free.
+  `::backdrop`, top layer, all free. Light-dismiss (backdrop click) is the
+  `closedby="any"` attribute, not a JS backdrop-click listener.
 - **Dropdowns / menus / tooltips**: the `popover` attribute + `popovertarget` on
   the trigger button — zero JS for open/close, light-dismiss (click-outside, ESC)
   built in.
@@ -55,6 +56,26 @@ No DIY absolutely-positioned overlay divs with open/close state in JS:
   <button popovertarget="run-menu">⋯</button>
   <div id="run-menu" popover class="menu">…</div>
   ```
+
+- **Buttons that open/close an overlay**: the Invoker Commands API — `command` +
+  `commandfor` on a `<button>` — drives an overlay declaratively with zero JS,
+  and unlike `popovertarget` it also covers `<dialog>` (open *and* close). Reach
+  for it for close/confirm buttons and any trigger that isn't already a popover
+  invoker, instead of an `onclick` that calls `.showModal()` / `.close()`:
+
+  ```html
+  <button command="show-modal" commandfor="confirm">Delete…</button>
+  <dialog id="confirm">
+    …
+    <button command="request-close" commandfor="confirm">Cancel</button>
+  </dialog>
+  ```
+
+  Values: `show-modal` / `close` / `request-close` for dialogs (`request-close`
+  fires a cancelable `cancel`, mirroring ESC); `toggle-popover` / `show-popover` /
+  `hide-popover` for popovers. The invoker must be a real `<button>`. Chrome/Edge
+  only: `command`/`commandfor` ≥135, `request-close` ≥139, `closedby` ≥134 — past
+  our targets, not yet Safari-stable.
 
 - **Accordions / disclosure**: `<details>`; a shared `name` attribute makes a
   group exclusive-open. No accordion JS.
