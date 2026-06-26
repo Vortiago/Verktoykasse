@@ -30,7 +30,7 @@ web/
 ├── shell.css            # @layer tokens, utilities — see reference/css.md
 ├── shell.js             # routing + lifecycle + transitions — copy verbatim
 ├── lib/                 # copy the canonical modules you need from the skill dir:
-│   ├── templates.js     #   tpl/pick/slot/renderRegion/loadCSS/every (always)
+│   ├── templates.js     #   tpl/pick/slot/renderRegion/withPending/loadCSS/every (always)
 │   ├── api-client.js    #   fetch + ApiError + 204 + timeout (API-backed apps)
 │   ├── store.js         #   subscribe/get/refresh singleton (shared state)
 │   ├── format.js        #   cached-Intl number/date/relTime/bytes/duration
@@ -96,6 +96,14 @@ export default {
   hand-rolled. → `reference/interactivity.md`
 - **Forms** use native validation (`required`/`pattern`, `reportValidity()`,
   `:user-invalid`). → `reference/interactivity.md`
+- **Declarative over imperative.** Reach for a platform attribute before a JS
+  listener — `command`/`commandfor` and `popovertarget` for overlays,
+  `required`/`pattern` for forms — so an element's behaviour reads off its markup;
+  `addEventListener` (always `{ signal }`-scoped) is the fallback for what no
+  attribute covers. → `reference/interactivity.md`
+- **Pending state** is attribute-driven: a fetch marks its region busy
+  (`withPending` → `aria-busy`/`data-pending`) and CSS renders the busy look.
+  → `reference/interactivity.md`
 - **Numbers / dates / durations** render through `Intl` (via `lib/format.js`).
   → `reference/modules.md`
 - **The gate**: every module starts `// @ts-check` + JSDoc; `tsc --noEmit` **and**

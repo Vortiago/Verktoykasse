@@ -2,6 +2,15 @@
 
 Read this when a view polls/refreshes data, has menus/modals, or has forms.
 
+## Declarative over imperative
+
+Prefer a platform attribute to a JS listener — behaviour then reads off the
+element instead of a separate `mount()` body. The overlay and form rules below
+are this principle applied: `command`/`commandfor` and `popovertarget` drive
+overlays with no handler; `required`/`pattern` drive validation. Drop to
+`addEventListener` (always `{ signal }`-scoped, so teardown is structural) only
+for what no attribute covers.
+
 ## Re-renders — guarded by default (the no-flicker rule)
 
 Polled UIs clobber open dropdowns, focused inputs, and text selections when they
@@ -40,6 +49,25 @@ swap DOM. The rule set, in order of preference:
 Apps with polling + interactive controls should carry an e2e clobber guard: a
 test that focuses every control, crosses a poll tick, and fails if a node was
 rebuilt under the focus.
+
+## Pending state — attribute-driven, styled in CSS
+
+An in-flight fetch marks its target region busy; CSS — not JS — renders the busy
+look. `withPending(host, work)` (templates.js) sets `aria-busy="true"` and a
+`data-pending` attribute for the life of the promise and clears both in a
+`finally`, so a rejection can't strand the spinner; `aria-busy` also announces
+the wait to assistive tech. No per-app loading-flag bookkeeping, and it composes
+with `renderRegion` (the deferred swap lands when the data arrives).
+
+```js
+await withPending(listHost, get("/rows", { signal }));
+```
+
+```css
+@scope (.list) {
+  :scope[data-pending] { opacity: 0.6; cursor: progress; }
+}
+```
 
 ## Overlays — native dialog and popover, never hand-rolled
 

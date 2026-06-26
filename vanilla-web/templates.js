@@ -100,6 +100,26 @@ export function every(fn, ms, signal) {
   signal.addEventListener("abort", () => clearInterval(id), { once: true });
 }
 
+/** Mark `host` busy for the life of `work`: sets `aria-busy="true"` and a
+ * `data-pending` attribute (render the busy look in CSS — dim, spinner, skeleton),
+ * both cleared in a `finally` so a rejection can't strand them. `aria-busy` also
+ * announces the wait to assistive tech. Returns `work`'s result (or rethrows).
+ *   await withPending(listHost, get("/rows", { signal }));
+ * @template T
+ * @param {Element} host
+ * @param {Promise<T>} work
+ * @returns {Promise<T>} */
+export async function withPending(host, work) {
+  host.setAttribute("aria-busy", "true");
+  host.toggleAttribute("data-pending", true);
+  try {
+    return await work;
+  } finally {
+    host.removeAttribute("aria-busy");
+    host.removeAttribute("data-pending");
+  }
+}
+
 // ── Page chrome ────────────────────────────────────────────────────────────
 // Wiring shared by every page (the app shell.js and the standalone preview.js),
 // so the two can't drift. Both look up well-known ids in the shell markup.
