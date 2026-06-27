@@ -101,6 +101,58 @@ composes with the interaction-hold rules (`reference/interactivity.md`): no row
 recycling means a focused control or mid-copy selection inside a surviving row
 is never destroyed.
 
+## Carousels — scroll-snap + marker/button pseudo-elements, no slider JS
+
+A scroll-snap row already gives swipe + snap for free; the pieces that used to need
+JS — the dot indicators and the prev/next buttons — are now browser-generated
+pseudo-elements. No slide-index state, no click handlers.
+
+```css
+@scope (.carousel) {
+  :scope {
+    display: flex; overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-marker-group: after;                 /* browser emits the dot group */
+  }
+  .slide { flex: 0 0 100%; scroll-snap-align: center; }
+  .slide::scroll-marker { content: ""; }        /* one dot per slide */
+  :scope::scroll-button(inline-start) { content: "‹"; }
+  :scope::scroll-button(inline-end)   { content: "›"; }
+}
+```
+
+The dots track the active slide via `::scroll-marker:target-current` and take arrow
+keys — all native. Chrome/Edge ≥135. Gotcha: the `::scroll-button(next|prev)`
+keyword values aren't implemented anywhere — use directional keywords
+(`inline-start`/`inline-end`/`up`/`down`/…). Unsupported engines fall back to a
+plain scroll-snap strip (still swipeable), so it's a safe enhancement.
+
+## Scroll-driven effects — `animation-timeline`, not IntersectionObserver
+
+A reading-progress bar or a reveal-as-it-enters animation is a CSS animation bound
+to a scroll/view timeline, not JS measuring `scrollY` or an `IntersectionObserver`
+toggling classes. It runs off the main thread with zero listeners.
+
+```css
+@scope (.reader) {
+  .progress {
+    animation: grow linear;
+    animation-timeline: scroll(root block);     /* page scroll drives it */
+  }
+  .card {
+    animation: reveal linear both;
+    animation-timeline: view();                 /* each card's own viewport overlap */
+    animation-range: entry 0% cover 30%;
+  }
+}
+@keyframes grow   { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes reveal { from { opacity: 0; translate: 0 1rem; } }
+```
+
+Chrome/Edge ≥115. The shell's `prefers-reduced-motion` block already disables it
+there; and since an unsupported engine just skips the animation, keep the resting
+state usable without it.
+
 ## Stacked cards taller than the viewport — give the stack a scroll path
 
 A flex child defaults to `min-height: auto`, but a surrounding flex COLUMN with

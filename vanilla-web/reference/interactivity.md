@@ -85,6 +85,15 @@ No DIY absolutely-positioned overlay divs with open/close state in JS:
   <div id="run-menu" popover class="menu">…</div>
   ```
 
+- **Select-shaped dropdowns**: don't rebuild `<select>` as a div listbox just to
+  style it — opt the native control into full styling with `appearance:
+  base-select` (on both the `<select>` and its `::picker(select)`), put rich
+  markup (icons, two-line options) straight in the `<option>`s, and mirror the
+  chosen one with `<selectedcontent>`. Keyboard nav, type-ahead, ARIA, top-layer
+  positioning and light-dismiss stay native — the whole custom-combobox JS
+  disappears. Chrome/Edge ≥135; degrades to a plain native select where
+  unsupported.
+
 - **Buttons that open/close an overlay**: the Invoker Commands API — `command` +
   `commandfor` on a `<button>` — drives an overlay declaratively with zero JS,
   and unlike `popovertarget` it also covers `<dialog>` (open *and* close). Reach
@@ -104,6 +113,23 @@ No DIY absolutely-positioned overlay divs with open/close state in JS:
   `hide-popover` for popovers. The invoker must be a real `<button>`. Chrome/Edge
   only: `command`/`commandfor` ≥135, `request-close` ≥139, `closedby` ≥134 — past
   our targets, not yet Safari-stable.
+
+- **App actions, not just overlays**: a `command` whose value starts with `--`
+  (`command="--archive"`) is a *custom* command — clicking the button fires a
+  `CommandEvent` on the `commandfor` target with `e.command === "--archive"` and
+  `e.source` the button. One delegated listener on the target replaces a fan of
+  per-button `onclick`s, and the action still reads off the markup (the
+  declarative-over-imperative rule). Chrome/Edge ≥135.
+
+  ```html
+  <button command="--archive" commandfor="inbox">Archive</button>
+  <ul id="inbox">…</ul>
+  ```
+  ```js
+  inbox.addEventListener("command", (e) => {
+    if (e.command === "--archive") archive(e.source);
+  }, { signal });
+  ```
 
 - **Accordions / disclosure**: `<details>`; a shared `name` attribute makes a
   group exclusive-open. No accordion JS.
@@ -128,3 +154,6 @@ No DIY absolutely-positioned overlay divs with open/close state in JS:
   user touches a field, so nothing is red on first paint.
 - Input UX is markup too: `inputmode`, `enterkeyhint`, and `autocomplete` with
   real tokens (`email`, `one-time-code`, `current-password`).
+- A `<textarea>` that grows with its content is `field-sizing: content` in CSS,
+  not an `input` listener writing `scrollHeight` back to the height; cap it with
+  `max-block-size`. Chrome/Edge ≥123.
