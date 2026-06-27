@@ -73,9 +73,9 @@ export default {
     cssLink = loadCSS(import.meta.url, "./style.css");
     await loadTemplates(new URL("./overview.html", import.meta.url).href);
     btn.addEventListener("click", onClick, { signal });   // auto-removed
-    every(refresh, 5000, signal);                          // auto-cleared
-    const es = new EventSource("/api/events");             // see reference/server.md
+    const es = new EventSource("/api/events");            // live data — default; see reference/server.md
     signal.addEventListener("abort", () => es.close(), { once: true });
+    every(refresh, 5000, signal);                         // polling fallback — auto-cleared
   },
   unmount() { cssLink.remove(); }, // shell aborts the signal before calling this
 };
@@ -89,9 +89,12 @@ export default {
   `create<Name>(props, signal) → { el, …updaters }`. → `reference/components.md`
 - **CSS** is `@scope` per component + tokens in `@layer`; responsiveness via
   `@container`, not viewport media. → `reference/css.md`
-- **Re-renders** of polled data go through `renderRegion` (never raw
-  `replaceChildren`/`innerHTML`); mutate in place for fast-ticking values.
-  → `reference/interactivity.md`
+- **Live data** is pushed over SSE (`EventSource` + `liveSSE`), not interval
+  polling; `every`/`livePoll` is the fallback for trivial pages or pull-only
+  upstreams. → `reference/server.md`
+- **Re-renders** of live data (SSE-driven or polled) go through `renderRegion`
+  (never raw `replaceChildren`/`innerHTML`); mutate in place for fast-ticking
+  values. → `reference/interactivity.md`
 - **Overlays** use native `<dialog>` / `popover` / `<details>` — never
   hand-rolled. → `reference/interactivity.md`
 - **Forms** use native validation (`required`/`pattern`, `reportValidity()`,
@@ -101,8 +104,9 @@ export default {
   `required`/`pattern` for forms — so an element's behaviour reads off its markup;
   `addEventListener` (always `{ signal }`-scoped) is the fallback for what no
   attribute covers. → `reference/interactivity.md`
-- **Pending state** is attribute-driven: a fetch marks its region busy
-  (`withPending` → `aria-busy`/`data-pending`) and CSS renders the busy look.
+- **Pending state** for an initial or user-triggered load is attribute-driven:
+  `withPending` marks the region busy and CSS renders the busy look — background
+  SSE/poll updates don't flash busy; they use the no-flicker re-render.
   → `reference/interactivity.md`
 - **Numbers / dates / durations** render through `Intl` (via `lib/format.js`).
   → `reference/modules.md`

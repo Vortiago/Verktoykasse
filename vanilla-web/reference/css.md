@@ -88,8 +88,9 @@ snappy without ever leaving plain DOM:
   ```
 
 - **`reconcileList` does the updates** (see `lib/templates.js` /
-  `reference/modules.md`): never `replaceChildren` a long list on a poll/refresh
-  — rebuilding thousands of nodes is the jank. Reconcile keyed, in place, and
+  `reference/modules.md`): never `replaceChildren` a long list on a live update
+  (SSE or poll) — rebuilding thousands of nodes is the jank. Reconcile keyed, in
+  place, and
   gate the call so it runs only when the row SET actually changes (a cheap
   list-signature), not every tick; apply volatile per-row state (a selection
   highlight) in place so picking a row never rebuilds it. `content-visibility`
@@ -115,7 +116,11 @@ pseudo-elements. No slide-index state, no click handlers.
     scroll-marker-group: after;                 /* browser emits the dot group */
   }
   .slide { flex: 0 0 100%; scroll-snap-align: center; }
-  .slide::scroll-marker { content: ""; }        /* one dot per slide */
+  .slide::scroll-marker {                        /* one dot per slide */
+    content: ""; inline-size: 0.6rem; block-size: 0.6rem;
+    border-radius: 50%; background: var(--text-dim);
+  }
+  .slide::scroll-marker:target-current { background: var(--accent); }
   :scope::scroll-button(inline-start) { content: "‹"; }
   :scope::scroll-button(inline-end)   { content: "›"; }
 }

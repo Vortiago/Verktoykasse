@@ -1,20 +1,19 @@
 # Interactivity — re-renders, overlays, forms
 
-Read this when a view polls/refreshes data, has menus/modals, or has forms.
+Read this when a view shows live (SSE-driven or polled) data, has menus/modals,
+or has forms.
 
 ## Declarative over imperative
 
 Prefer a platform attribute to a JS listener — behaviour then reads off the
-element instead of a separate `mount()` body. The overlay and form rules below
-are this principle applied: `command`/`commandfor` and `popovertarget` drive
-overlays with no handler; `required`/`pattern` drive validation. Drop to
+element. The Overlays, Actions, and Forms rules below are this applied; drop to
 `addEventListener` (always `{ signal }`-scoped, so teardown is structural) only
 for what no attribute covers.
 
 ## Re-renders — guarded by default (the no-flicker rule)
 
-Polled UIs clobber open dropdowns, focused inputs, and text selections when they
-swap DOM. The rule set, in order of preference:
+Live-updating UIs (SSE-driven or polled) clobber open dropdowns, focused inputs,
+and text selections when they swap DOM. The rule set, in order of preference:
 
 1. **Mutate in place** for values that change every tick (counters, clocks,
    progress, appended feed lines): update `textContent` / toggle `hidden` on
@@ -46,18 +45,22 @@ swap DOM. The rule set, in order of preference:
    `content-visibility: auto` on the rows for off-screen skipping — the native
    virtual-list recipe (see `reference/css.md`).
 
-Apps with polling + interactive controls should carry an e2e clobber guard: a
-test that focuses every control, crosses a poll tick, and fails if a node was
-rebuilt under the focus.
+Apps with live updates (SSE or polling) + interactive controls should carry an
+e2e clobber guard: a test that focuses every control, crosses an update (a poll
+tick or a pushed event), and fails if a node was rebuilt under the focus.
 
 ## Pending state — attribute-driven, styled in CSS
 
-An in-flight fetch marks its target region busy; CSS — not JS — renders the busy
-look. `withPending(host, work)` (templates.js) sets `aria-busy="true"` and a
-`data-pending` attribute for the life of the promise and clears both in a
-`finally`, so a rejection can't strand the spinner; `aria-busy` also announces
-the wait to assistive tech. No per-app loading-flag bookkeeping, and it composes
-with `renderRegion` (the deferred swap lands when the data arrives).
+For an *initial* or *user-triggered* load — opening a view, a submit, a
+load-more — mark the target region busy and let CSS, not JS, render the busy
+look. `withPending(host, work)` (templates.js) sets `aria-busy="true"` for the
+life of the promise (ref-counted across overlapping calls) and clears it in a
+`finally`, so a rejection can't strand the spinner; `aria-busy` also tells
+assistive tech to hold partial-update announcements until the region settles. No
+per-app loading-flag bookkeeping, and it composes with `renderRegion` (the
+deferred swap lands when the data arrives). Background SSE/poll updates don't use
+this — a busy flash every tick is exactly the flicker the no-flicker rule
+prevents; they re-render silently instead.
 
 ```js
 await withPending(listHost, get("/rows", { signal }));
@@ -65,7 +68,7 @@ await withPending(listHost, get("/rows", { signal }));
 
 ```css
 @scope (.list) {
-  :scope[data-pending] { opacity: 0.6; cursor: progress; }
+  :scope[aria-busy="true"] { opacity: 0.6; cursor: progress; }
 }
 ```
 
@@ -112,24 +115,8 @@ No DIY absolutely-positioned overlay divs with open/close state in JS:
   fires a cancelable `cancel`, mirroring ESC); `toggle-popover` / `show-popover` /
   `hide-popover` for popovers. The invoker must be a real `<button>`. Chrome/Edge
   only: `command`/`commandfor` ≥135, `request-close` ≥139, `closedby` ≥134 — past
-  our targets, not yet Safari-stable.
-
-- **App actions, not just overlays**: a `command` whose value starts with `--`
-  (`command="--archive"`) is a *custom* command — clicking the button fires a
-  `CommandEvent` on the `commandfor` target with `e.command === "--archive"` and
-  `e.source` the button. One delegated listener on the target replaces a fan of
-  per-button `onclick`s, and the action still reads off the markup (the
-  declarative-over-imperative rule). Chrome/Edge ≥135.
-
-  ```html
-  <button command="--archive" commandfor="inbox">Archive</button>
-  <ul id="inbox">…</ul>
-  ```
-  ```js
-  inbox.addEventListener("command", (e) => {
-    if (e.command === "--archive") archive(e.source);
-  }, { signal });
-  ```
+  our targets, not yet Safari-stable. The same `command`/`commandfor` mechanism
+  also drives non-overlay app actions → see **Actions** below.
 
 - **Accordions / disclosure**: `<details>`; a shared `name` attribute makes a
   group exclusive-open. No accordion JS.
@@ -141,8 +128,28 @@ No DIY absolutely-positioned overlay divs with open/close state in JS:
   `transition-behavior: allow-discrete` so `display` can transition — no JS
   animation hooks.
 - `renderRegion` defers swaps while a popover or `<dialog>` inside the host is
-  open (same guard as focus/selection), so polled re-renders can't snap an open
+  open (same guard as focus/selection), so live re-renders can't snap an open
   menu shut.
+
+## Actions — delegated commands, not a fan of `onclick`s
+
+A `command` whose value starts with `--` (`command="--archive"`) is a *custom*
+command: clicking the button fires a `CommandEvent` on the `commandfor` target
+with `e.command === "--archive"` and `e.source` the button. One delegated
+listener on the target replaces a fan of per-button `onclick`s, and the action
+still reads off the markup (the declarative-over-imperative rule). Chrome/Edge
+≥135; where unsupported the button fires no `CommandEvent` (no fallback) — wire a
+plain `onclick` if the action must work off-target.
+
+```html
+<button command="--archive" commandfor="inbox">Archive</button>
+<ul id="inbox">…</ul>
+```
+```js
+inbox.addEventListener("command", (e) => {
+  if (e.command === "--archive") archive(e.source);
+}, { signal });
+```
 
 ## Forms — native validation, no form layer
 

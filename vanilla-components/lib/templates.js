@@ -1,4 +1,4 @@
-// canonical source: vanilla-web/templates.js@8177591 — vendored copy, do not edit here
+// canonical source: vanilla-web/templates.js@3a9fde2 — vendored copy, do not edit here
 // @ts-check
 // Canonical template + render helpers for the vanilla-web conventions
 // (see SKILL.md). Copy into <app>/web/lib/templates.js; extend, don't fork.
@@ -99,6 +99,33 @@ export function loadCSS(moduleUrl, relativePath) {
 export function every(fn, ms, signal) {
   const id = setInterval(fn, ms);
   signal.addEventListener("abort", () => clearInterval(id), { once: true });
+}
+
+/** @type {WeakMap<Element, number>} in-flight `withPending` count per host */
+const pendingCount = new WeakMap();
+
+/** Mark `host` busy for the life of `work`: sets `aria-busy="true"` (render the
+ * busy look in CSS off `[aria-busy="true"]` — dim, spinner, skeleton), cleared in
+ * a `finally` so a rejection can't strand it. `aria-busy` also tells assistive
+ * tech to hold partial-update announcements until the region settles. Overlapping
+ * calls on the same host are ref-counted, so the busy state clears only once the
+ * last one settles. Returns `work`'s result (or rethrows). For an initial or
+ * user-triggered load — background SSE/poll updates re-render silently instead.
+ *   await withPending(listHost, get("/rows", { signal }));
+ * @template T
+ * @param {Element} host
+ * @param {Promise<T>} work
+ * @returns {Promise<T>} */
+export async function withPending(host, work) {
+  pendingCount.set(host, (pendingCount.get(host) ?? 0) + 1);
+  host.setAttribute("aria-busy", "true");
+  try {
+    return await work;
+  } finally {
+    const n = (pendingCount.get(host) ?? 1) - 1;
+    if (n > 0) pendingCount.set(host, n);
+    else { pendingCount.delete(host); host.removeAttribute("aria-busy"); }
+  }
 }
 
 // ── Page chrome ────────────────────────────────────────────────────────────

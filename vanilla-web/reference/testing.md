@@ -39,22 +39,23 @@ handle by hand at the one call site that needs it.
 Boot the zero-dep `serve.mjs` through the `webServer` block (see
 `testing/playwright.config.js`) — the suite gets a real server on a known port.
 
-**Wait on DOM conditions, never fixed sleeps.** A vanilla-web view polls `/api`
-on a tick, so assert on what appears: locator visibility, `.count()`, text —
-locators auto-wait, and `wait_for_function` covers derived state. A `sleep` races
-the poll and you get a flaky suite.
+**Wait on DOM conditions, never fixed sleeps.** A vanilla-web view updates live
+(an SSE event or a poll tick), so assert on what appears: locator visibility,
+`.count()`, text — locators auto-wait, and `wait_for_function` covers derived
+state. A `sleep` races the update and you get a flaky suite.
 
 ## The one test to write: the interaction hold
 
-A vanilla-web view re-renders every poll tick. The **interaction hold** is its
-signature invariant: a tick must not clobber a focused control or an in-progress
-text selection (`renderRegion` / `selectionInside` — see
-`reference/interactivity.md`). It's the bug a polled UI reintroduces most often
-and the hardest to catch by eye, so it's the test that earns its keep:
+A vanilla-web view re-renders on every live update (a poll tick or a pushed SSE
+event). The **interaction hold** is its signature invariant: an update must not
+clobber a focused control or an in-progress text selection (`renderRegion` /
+`selectionInside` — see `reference/interactivity.md`). It's the bug a
+live-updating UI reintroduces most often and the hardest to catch by eye, so
+it's the test that earns its keep:
 
-> focus every interactive control in the view → cross at least one poll period →
-> assert no node was rebuilt out from under the focus (a `<select>` stays open, a
-> caret stays put, a selection survives).
+> focus every interactive control in the view → cross at least one update (a poll
+> tick or a pushed event) → assert no node was rebuilt out from under the focus
+> (a `<select>` stays open, a caret stays put, a selection survives).
 
 Pin **render-signature hygiene** alongside it: a value that churns every tick
 (progress, counters, captions) must not share a render signature with an
