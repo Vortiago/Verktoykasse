@@ -1,0 +1,6 @@
+/* Per-mount stylesheet for the live-harness view — exists so loadCSS() injects a
+   real <link>. The leak the memory-live-update spec watches is the <link> COUNT
+   in <head> (one added per mount; removed on abort only when loadCSS got a
+   signal), not anything this file paints. */
+[data-slot="liveView"] { display: block; }
+[data-slot="liveRow"] { padding: 2px 0; }

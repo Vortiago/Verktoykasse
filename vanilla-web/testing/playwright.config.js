@@ -1,28 +1,42 @@
 // @playwright/test config for a vanilla-web UI.
 //
-// The one line that matters here is `testIdAttribute: "data-slot"`: it points
-// Playwright's `getByTestId()` at the SAME `data-slot` markers the components
-// already bind through (`slot()`/`pick()` in lib/templates.js). So
+// `testIdAttribute: "data-slot"` points Playwright's `getByTestId()` at the SAME
+// `data-slot` markers the components already bind through (`slot()`/`pick()` in
+// lib/templates.js). So
 //   page.getByTestId("waveName")   ⟺   page.locator('[data-slot="waveName"]')
 // with auto-waiting and better errors — no new attribute, no parallel id
 // namespace. There is no native HTML `testid`; `data-*` IS the platform hook.
 //
-// See reference/testing.md for the convention (prefer getByRole/getByLabel for
-// controls, data-slot for structural seams, never presentational classes).
+// The memory-leak suite (tests/e2e/memory-*.spec.js, helper lib/mem.js) needs a
+// deterministic GC, so Chromium launches with --js-flags=--expose-gc (the CDP
+// HeapProfiler.collectGarbage path is primary; window.gc is the backstop) and
+// --enable-precise-memory-info. See reference/testing.md.
+//
+// serve.mjs lives one dir up (web root) and defaults to PORT 8080, so the
+// webServer block runs it from `..` and pins PORT to match baseURL — an app sets
+// `cwd`/PORT to wherever its serve.mjs lives. TEST=1 enables the env-gated SSE
+// test hooks the live-update spec drives.
 import { defineConfig, devices } from "@playwright/test";
+
+const PORT = process.env.PORT || "8000";
+const baseURL = `http://localhost:${PORT}`;
 
 export default defineConfig({
   testDir: "./tests/e2e",
+  // Memory specs measure a shared heap; never parallelise them against each other.
+  workers: 1,
+  fullyParallel: false,
   use: {
-    // Address elements by intent: getByTestId("x") → [data-slot="x"].
     testIdAttribute: "data-slot",
-    baseURL: "http://localhost:8000",
+    baseURL,
     trace: "on-first-retry",
+    launchOptions: { args: ["--js-flags=--expose-gc", "--enable-precise-memory-info"] },
   },
-  // Boot the zero-dep serve.mjs for the suite (adjust to your start command).
   webServer: {
     command: "node serve.mjs",
-    url: "http://localhost:8000",
+    cwd: "..",
+    env: { PORT, TEST: "1", PREVIEW: "on" },
+    url: `${baseURL}/preview.html`,
     reuseExistingServer: !process.env.CI,
   },
   projects: [

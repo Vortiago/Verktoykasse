@@ -1,4 +1,4 @@
-// canonical source: vanilla-web/previews/new.mjs@8177591 — vendored copy, do not edit here
+// canonical source: vanilla-web/previews/new.mjs@71330ec — vendored copy, do not edit here
 #!/usr/bin/env node
 // @ts-check
 // Scaffolds a starter <name>.preview.js for one component (see reference/preview.md).

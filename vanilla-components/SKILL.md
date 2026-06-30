@@ -99,6 +99,16 @@ mount) + `create<Name>Sync(props[, signal])` (a synchronous build) so it can be
 created inside a `renderRegion`/`reconcileList` rebuild. `create<Name>()` is just
 the async `warm + Sync` wrapper.
 
+**Lifecycle & cleanup:** the `signal` is load-bearing, not optional. Every
+component binds its listeners with `{ signal }` and the imperative ones
+(`tooltip`, `menu`) wire `dispose()` to `signal` abort — so passing the mount
+signal makes teardown structural and **omitting it leaks** every listener (and the
+top-layer tip/menu node) on each create/destroy. A component built **per tick** in
+a `reconcileList`/`renderRegion` rebuild must take a *per-tick* `AbortController`,
+not the long-lived view signal, or its teardown callbacks accumulate on the signal
+until the view unmounts. Guarded by `lib/lazy.leak.test.mjs` (node) and
+`testing/tests/e2e/memory-*` (browser); see `vanilla-web/reference/testing.md`.
+
 **Shell components** (`app-bar`, `side-nav`, `view-header`) are registry-driven and
 follow the vanilla-web hash convention: they render `<a href="#/<id>">` and expose
 `setCurrent(id)` — the app keeps owning its `hashchange` loop. They also pick ONE

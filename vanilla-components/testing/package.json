@@ -1,0 +1,13 @@
+{
+  "//": "Test-tooling island for the vanilla-components skill. The shipped components stay ZERO-dependency — @playwright/test lives ONLY here under testing/. Run: `cd testing && npm i && npx playwright install chromium && npm test`.",
+  "name": "vanilla-components-testing",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:mem": "playwright test memory-"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.1"
+  }
+}

@@ -7,7 +7,9 @@
 //   // lib/auth.js
 //   export const auth = createStore(() => get("/auth/me"));
 //   await auth.load();                 // boot once before the router
-//   auth.get();  auth.subscribe(renderChrome);  auth.refresh();  auth.set(null);
+//   auth.get();  auth.subscribe(renderChrome, signal);  auth.refresh();  auth.set(null);
+//   // pass the view's mount signal so the subscription dies with the view —
+//   // without it you OWN the returned unsubscribe and must call it on unmount.
 
 /**
  * @template T
@@ -43,7 +45,19 @@ export function createStore(load) {
     isLoaded: () => loaded,
     /** Replace the value directly and notify (optimistic update / logout reset). @param {T | null} v */
     set(v) { value = v; notify(); },
-    /** @param {(v: T | null) => void} cb @returns {() => void} unsubscribe */
-    subscribe(cb) { subs.add(cb); return () => subs.delete(cb); },
+    /** Subscribe to value changes. Pass the view's mount `signal` and the
+     * subscription auto-releases on abort — the structural teardown every other
+     * helper honours, so a re-mounting view can't pile dead callbacks (each
+     * pinning its detached DOM) into `subs`. The returned unsubscribe still
+     * works for callers without a signal.
+     * @param {(v: T | null) => void} cb
+     * @param {AbortSignal} [signal] - aborting drains this subscription
+     * @returns {() => void} unsubscribe */
+    subscribe(cb, signal) {
+      subs.add(cb);
+      const off = () => subs.delete(cb);
+      signal?.addEventListener("abort", off, { once: true });
+      return off;
+    },
   };
 }

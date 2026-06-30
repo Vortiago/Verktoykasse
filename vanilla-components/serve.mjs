@@ -1,4 +1,4 @@
-// canonical source: vanilla-web/serve.mjs@8177591 — vendored copy, do not edit here
+// canonical source: vanilla-web/serve.mjs@71330ec — vendored copy, do not edit here
 #!/usr/bin/env node
 // @ts-check
 // Canonical zero-dependency static server for the vanilla-web conventions
@@ -37,6 +37,7 @@ const PORT = Number(process.env.PORT) || 8080;
 const HOST = process.env.HOST || "127.0.0.1";
 const API_ORIGIN = process.env.API_ORIGIN || ""; // set → reverse-proxy /api/*
 const PREVIEW = process.env.PREVIEW !== "off"; // on by default; PREVIEW=off to skip (prod)
+const TEST = process.env.TEST === "1"; // gate the leak-suite hooks (inert in prod)
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -74,6 +75,23 @@ function sendJson(res, status, obj) {
   const body = JSON.stringify(obj);
   res.writeHead(status, { "content-type": "application/json; charset=utf-8", "content-length": Buffer.byteLength(body) });
   res.end(body);
+}
+
+/** Read a request body to a string (1 MB cap). Rejects (rather than hanging) when
+ * the body is oversized or the request aborts mid-stream. @param {import("node:http").IncomingMessage} req */
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    /** @type {Buffer[]} */ const chunks = [];
+    let len = 0;
+    req.on("data", (c) => {
+      len += c.length;
+      if (len > 1e6) { reject(new Error("request body too large")); return; } // settle + stop buffering (handler replies 500)
+      chunks.push(c);
+    });
+    req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+    req.on("error", reject);
+    req.on("aborted", () => reject(new Error("request aborted")));
+  });
 }
 
 // ── Server-Sent Events ──────────────────────────────────────────────────────
@@ -136,6 +154,14 @@ const server = createServer(async (req, res) => {
 
     // /api/* — SSE first, then proxy (if API_ORIGIN) OR your inline handlers, else 404.
     if (urlPath === "/api/events") return handleEvents(res);
+    // Leak-suite hooks (TEST=1 only): observe SSE client count + drive change so
+    // the memory-live-update spec can exercise real liveSSE teardown. Inert in prod.
+    if (TEST && urlPath === "/api/test/sse-count") return sendJson(res, 200, { count: sseClients.size });
+    if (TEST && urlPath === "/api/test/broadcast" && req.method === "POST") {
+      const raw = await readBody(req);
+      broadcast(raw ? JSON.parse(raw) : {});
+      return sendJson(res, 200, { ok: true, clients: sseClients.size });
+    }
     if (urlPath.startsWith("/api")) {
       if (API_ORIGIN) return proxyApi(req, res);
       // INLINE API HOOK — handle same-origin endpoints here when this server IS

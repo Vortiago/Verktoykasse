@@ -66,20 +66,28 @@ Everything a view starts goes through `helpers.signal`, so teardown is
 structural, not a checklist:
 
 ```js
-let cssLink;
 export default {
   id: "overview",
   async mount(container, data, { loadCSS, every, signal }) {
-    cssLink = loadCSS(import.meta.url, "./style.css");
+    loadCSS(import.meta.url, "./style.css", signal);      // <link> auto-removed on abort
     await loadTemplates(new URL("./overview.html", import.meta.url).href);
     btn.addEventListener("click", onClick, { signal });   // auto-removed
     const es = new EventSource("/api/events");            // live data — default; see reference/server.md
     signal.addEventListener("abort", () => es.close(), { once: true });
     every(refresh, 5000, signal);                         // polling fallback — auto-cleared
+    auth.subscribe(renderChrome, signal);                 // store sub — auto-drained
   },
-  unmount() { cssLink.remove(); }, // shell aborts the signal before calling this
+  unmount() {}, // shell aborts the signal first; signal-scoped resources self-release
 };
 ```
+
+Pass `signal` to everything that opens a resource — `loadCSS`, `store.subscribe`,
+`every`/`livePoll`/`liveSSE`, every `addEventListener` — and unmount is empty.
+Without a signal you own teardown by hand, and a forgotten `unsubscribe()` /
+`link.remove()` leaks that resource (and the detached DOM it closes over) on every
+re-mount: the classic slow browser OOM. One caveat for live updates: a component
+built **per tick** must take a *per-tick* `AbortController`, not the long-lived
+view `signal`, or its teardown callbacks pile up on the signal until unmount.
 
 ## Invariants — these always hold (detail behind each link)
 
@@ -110,6 +118,12 @@ export default {
   → `reference/interactivity.md`
 - **Numbers / dates / durations** render through `Intl` (via `lib/format.js`).
   → `reference/modules.md`
+- **No leaks across re-mounts.** Every resource a view opens (timer, listener,
+  `EventSource`, observer, `store.subscribe`, injected `<link>`) ties to
+  `helpers.signal`, so a view switch releases all of it; the seams that take a
+  signal are `store.subscribe(cb, signal)` and `loadCSS(url, path, signal)`.
+  Guarded by `*.leak.test.mjs` (node) + `testing/tests/e2e/memory-*` (browser).
+  → `reference/testing.md`
 - **The gate**: every module starts `// @ts-check` + JSDoc; `tsc --noEmit` **and**
   `check-css-vars` (undefined `var(--x)` fails silently). → `reference/modules.md`
 - **Preview** (optional): a component can ship `<name>.preview.js` exporting
