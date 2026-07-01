@@ -22,12 +22,13 @@ export default defineConfig({
     trace: "on-first-retry",
     launchOptions: { args: ["--js-flags=--expose-gc", "--enable-precise-memory-info"] },
   },
-  // Boot the skill's own serve.mjs (one dir up; regenerates the preview registry
-  // on startup). PREVIEW=on catalogues the components; PORT is pinned to baseURL.
+  // Boot the skill's own serve.mjs (one dir up), serving the committed
+  // previews/registry.js. PREVIEW=off so a test run never rewrites that tracked
+  // file on startup (keep the suite hermetic); PORT is pinned to baseURL.
   webServer: {
     command: "node serve.mjs",
     cwd: "..",
-    env: { PORT, PREVIEW: "on" },
+    env: { PORT, PREVIEW: "off" },
     url: `${baseURL}/preview.html`,
     reuseExistingServer: !process.env.CI,
   },
