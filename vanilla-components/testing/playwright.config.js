@@ -22,11 +22,12 @@ export default defineConfig({
     trace: "on-first-retry",
     launchOptions: { args: ["--js-flags=--expose-gc", "--enable-precise-memory-info"] },
   },
-  // A test-only static server (serves the skill root) — see static-server.mjs for
-  // why it's used instead of the vendored serve.mjs.
+  // Boot the skill's own serve.mjs (one dir up; regenerates the preview registry
+  // on startup). PREVIEW=on catalogues the components; PORT is pinned to baseURL.
   webServer: {
-    command: "node static-server.mjs",
-    env: { PORT },
+    command: "node serve.mjs",
+    cwd: "..",
+    env: { PORT, PREVIEW: "on" },
     url: `${baseURL}/preview.html`,
     reuseExistingServer: !process.env.CI,
   },

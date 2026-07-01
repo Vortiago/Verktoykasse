@@ -14,9 +14,20 @@ stamp_file() {
     *.html)     line="<!-- $text -->" ;;
     *)          return ;;
   esac
+  # Strip any existing stamp first so re-stamps stay clean. `|| true`: grep exits
+  # 1 when nothing remains (empty file, or a file that was only the old stamp),
+  # which would abort the caller under `set -e`.
+  local body; body=$(mktemp)
+  grep -v "$strip" "$f" > "$body" || true
+  # A shebang MUST stay on line 1 (else `node <file>` throws SyntaxError), so when
+  # the file leads with one, slot the banner just below it; otherwise on top.
+  local first=""; IFS= read -r first < "$body" || true
   local tmp; tmp=$(mktemp)
-  # `|| true`: grep exits 1 when nothing remains (empty file, or a file that was
-  # only the old stamp), which would abort the caller under `set -e`.
-  { printf '%s\n' "$line"; grep -v "$strip" "$f" || true; } > "$tmp"
+  if [[ $first == "#!"* ]]; then
+    { printf '%s\n' "$first"; printf '%s\n' "$line"; tail -n +2 "$body"; } > "$tmp"
+  else
+    { printf '%s\n' "$line"; cat "$body"; } > "$tmp"
+  fi
   mv "$tmp" "$f"
+  rm -f "$body"
 }

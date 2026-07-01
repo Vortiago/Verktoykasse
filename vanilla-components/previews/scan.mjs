@@ -1,5 +1,5 @@
-// canonical source: vanilla-web/previews/scan.mjs@71330ec — vendored copy, do not edit here
 #!/usr/bin/env node
+// canonical source: vanilla-web/previews/scan.mjs@b6958a9 — vendored copy, do not edit here
 // @ts-check
 // Generates previews/registry.js by walking components/ for *.preview.js files.
 // This is the no-build equivalent of a bundler's glob (or a C# source generator):
