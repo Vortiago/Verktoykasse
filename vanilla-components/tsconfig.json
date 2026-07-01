@@ -15,5 +15,5 @@
     "types": []
   },
   "include": ["**/*.js", "types.d.ts"],
-  "exclude": ["node_modules", "serve.mjs", "ds-bundle", ".ds-sync", "bridge/ds-adapter", "bridge/out"]
+  "exclude": ["node_modules", "serve.mjs", "testing", "ds-bundle", ".ds-sync", "bridge/ds-adapter", "bridge/out"]
 }

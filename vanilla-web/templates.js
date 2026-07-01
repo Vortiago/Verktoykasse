@@ -75,17 +75,23 @@ export function mount(host, frag) {
   host.replaceChildren(frag);
 }
 
-/** Inject a view's own stylesheet, resolved relative to its module.
- * In mount():   cssLink = loadCSS(import.meta.url, "./style.css");
- * In unmount(): cssLink.remove();
+/** Inject a view's own stylesheet, resolved relative to its module. Pass the
+ * mount `signal` and the <link> auto-removes on abort, so a re-mounting view
+ * can't accumulate orphaned stylesheets in <head>:
+ *   In mount():   loadCSS(import.meta.url, "./style.css", signal);
+ * Without a signal you OWN the returned <link> and must remove() it yourself:
+ *   In mount():   cssLink = loadCSS(import.meta.url, "./style.css");
+ *   In unmount(): cssLink.remove();
  * @param {string} moduleUrl
  * @param {string} relativePath
+ * @param {AbortSignal} [signal] - aborting removes the injected <link>
  * @returns {HTMLLinkElement} */
-export function loadCSS(moduleUrl, relativePath) {
+export function loadCSS(moduleUrl, relativePath, signal) {
   const link = document.createElement("link");
   link.rel = "stylesheet";
   link.href = new URL(relativePath, moduleUrl).href;
   document.head.appendChild(link);
+  signal?.addEventListener("abort", () => link.remove(), { once: true });
   return link;
 }
 

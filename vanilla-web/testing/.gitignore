@@ -1,0 +1,6 @@
+# Test-tooling island: installed deps and ephemeral run output, never committed.
+node_modules/
+package-lock.json
+test-results/
+playwright-report/
+.last-run.json

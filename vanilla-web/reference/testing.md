@@ -91,3 +91,37 @@ so there's no pixel threshold to sweep. Reference impl:
 TapScribe's `tests/e2e/test_dashboard_ui.py::test_no_view_clips_content_without_scroll_path`
 (per-view) and `::test_settings_stack_scrolls_without_clipping_cards` (the
 single-view form with the belowFold precondition spelled out).
+
+## Memory leaks — the teardown + detached-node test
+
+A live-updating UI re-mounts views and re-renders on every tick, so a single
+resource left open per cycle (a subscription never dropped, a `<link>` never
+removed, an `EventSource` never closed) accumulates until the tab runs out of
+heap. Two tiers guard it; both ship in this skill and copy into an app verbatim.
+
+**Node tier (`*.leak.test.mjs`, `node --test`, zero-dep, deterministic).** Asserts
+the teardown CONTRACT of the data/update helpers with no browser — fake
+`EventSource`/`fetch` on `globalThis`, `node:test` `mock.timers`/`mock.fn`, and a
+real `AbortController`. `store.leak.test.mjs` (subscribe drains on abort /
+unsubscribe), `templates.leak.test.mjs` (`every` clears its interval, registers
+its abort listener `{once:true}`), `live.leak.test.mjs` (`liveSSE` closes,
+`livePoll` stops + de-dupes), `lazy.leak.test.mjs` (observer disconnect + abort-
+listener parity). Needs Node ≥20.4 (`mock.timers` setInterval). Run:
+`cd vanilla-web && node --test ./*.leak.test.mjs`.
+
+**Browser tier (`testing/tests/e2e/memory-*.spec.js`, `@playwright/test` + CDP).**
+The real heap proof. Drives a real mount/unmount loop (the live-harness fixture,
+or the component catalogue's `preview.html`), forces GC via CDP
+`HeapProfiler.collectGarbage` (twice — V8 needs ~2 sweeps for `WeakRef`), and
+asserts the **integer** gates exactly: `WeakRef`-survivor count `=== 0` after GC,
+and a DOM census (total nodes, `<head>` `<link>`s, `<body>` children) that stays
+**flat across cycles** (compare per-round spread, not an absolute baseline — warmup
+loads a one-time pool). JS-heap bytes are corroborating only: a median-ratio of
+late vs early samples over ≥40 post-warmup cycles, never an absolute threshold. A transient survivor is
+killed by `survivorsAfterGC` (GC up to N times, stop at 0); a real leak never
+drains. `memory-detector-selftest.spec.js` points the same harness at a
+deliberately-leaky fixture and asserts it TRIPS, so the green specs can't pass
+vacuously. The `@playwright/test` dep lives only under `testing/` (the shipped app
+stays zero-dep). Run: `cd vanilla-web/testing && npm i && npx playwright install
+chromium && npm test` (vanilla-components has its own `testing/` mirror). Launch
+Chromium with `--js-flags=--expose-gc` (wired in `playwright.config.js`).

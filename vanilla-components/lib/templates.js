@@ -1,4 +1,4 @@
-// canonical source: vanilla-web/templates.js@3a9fde2 — vendored copy, do not edit here
+// canonical source: vanilla-web/templates.js@b6958a9 — vendored copy, do not edit here
 // @ts-check
 // Canonical template + render helpers for the vanilla-web conventions
 // (see SKILL.md). Copy into <app>/web/lib/templates.js; extend, don't fork.
@@ -76,17 +76,23 @@ export function mount(host, frag) {
   host.replaceChildren(frag);
 }
 
-/** Inject a view's own stylesheet, resolved relative to its module.
- * In mount():   cssLink = loadCSS(import.meta.url, "./style.css");
- * In unmount(): cssLink.remove();
+/** Inject a view's own stylesheet, resolved relative to its module. Pass the
+ * mount `signal` and the <link> auto-removes on abort, so a re-mounting view
+ * can't accumulate orphaned stylesheets in <head>:
+ *   In mount():   loadCSS(import.meta.url, "./style.css", signal);
+ * Without a signal you OWN the returned <link> and must remove() it yourself:
+ *   In mount():   cssLink = loadCSS(import.meta.url, "./style.css");
+ *   In unmount(): cssLink.remove();
  * @param {string} moduleUrl
  * @param {string} relativePath
+ * @param {AbortSignal} [signal] - aborting removes the injected <link>
  * @returns {HTMLLinkElement} */
-export function loadCSS(moduleUrl, relativePath) {
+export function loadCSS(moduleUrl, relativePath, signal) {
   const link = document.createElement("link");
   link.rel = "stylesheet";
   link.href = new URL(relativePath, moduleUrl).href;
   document.head.appendChild(link);
+  signal?.addEventListener("abort", () => link.remove(), { once: true });
   return link;
 }
 
