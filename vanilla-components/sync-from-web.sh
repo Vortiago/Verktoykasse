@@ -21,6 +21,7 @@ PAIRS=(
   "preview.css|preview.css"
   "previews/scan.mjs|previews/scan.mjs"
   "previews/new.mjs|previews/new.mjs"
+  "previews/naming.mjs|previews/naming.mjs"
   "templates.js|lib/templates.js"
 )
 

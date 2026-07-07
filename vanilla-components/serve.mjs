@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// canonical source: vanilla-web/serve.mjs@2f05a4c — vendored copy, do not edit here
+// canonical source: vanilla-web/serve.mjs@9fd2d6a — vendored copy, do not edit here
 // @ts-check
 // Canonical zero-dependency static server for the vanilla-web conventions
 // (see SKILL.md). Static files + a few extension points you opt into:

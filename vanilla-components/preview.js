@@ -1,4 +1,4 @@
-// canonical source: vanilla-web/preview.js@2f05a4c — vendored copy, do not edit here
+// canonical source: vanilla-web/preview.js@9fd2d6a — vendored copy, do not edit here
 // @ts-check
 // Standalone component preview harness for the vanilla-web conventions
 // (see reference/preview.md). Loaded by preview.html as its OWN page — it is
@@ -12,6 +12,7 @@
 // same across variants) lets you see the component's real source alongside it.
 
 import { previews } from "./previews/registry.js";
+import { factoryNameFor } from "./previews/naming.mjs";
 import { tpl, pick, slot, mount, loadCSS, wireTheme, wireErrorBar, withPending } from "./lib/templates.js";
 
 /** A component preview module's default export.
@@ -77,13 +78,12 @@ function frameError(message) {
 // reconstructed from data the catalogue already has (title + that variant's
 // props), so no per-component authoring. Storybook's "Show code" is the closest
 // analog: a snippet attached to each individual story, not a single shared one.
+// The factory-naming half of this lives in previews/naming.mjs, shared with
+// the scaffolder (previews/new.mjs) so the two can't drift apart.
 
-/** "stat-card" -> "createStatCard" — the create<Name> factory contract, same
- * convention previews/new.mjs seeds (a mismatch there fails the tsc gate).
- * @param {string} title @returns {string} */
-function factoryNameFor(title) {
-  return `create${title.replace(/(^|[-_])([a-z])/g, (_, __, c) => c.toUpperCase())}`;
-}
+/** Valid unquoted-object-key identifier — hoisted like TOKEN_PATTERNS below,
+ * since formatLiteral runs it once per key of every variant. */
+const IDENTIFIER = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
 
 /** Formats `value` as it'd actually be written in source — unquoted object keys
  * where they're valid identifiers, callback/function props omitted (there's no
@@ -95,7 +95,7 @@ function formatLiteral(value) {
   if (value !== null && typeof value === "object") {
     const entries = Object.entries(value)
       .filter(([, v]) => typeof v !== "function" && v !== undefined)
-      .map(([k, v]) => `${/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(k) ? k : JSON.stringify(k)}: ${formatLiteral(v)}`);
+      .map(([k, v]) => `${IDENTIFIER.test(k) ? k : JSON.stringify(k)}: ${formatLiteral(v)}`);
     return entries.length ? `{ ${entries.join(", ")} }` : "{}";
   }
   return JSON.stringify(value);
@@ -205,8 +205,10 @@ const TAB_NAMES = ["preview", "html", "css", "js"];
 /** Wires the Preview/HTML/CSS/JS tab strip for one shown component. Torn down
  * for free when `signal` aborts (listeners + any live highlights).
  * @param {DocumentFragment} view @param {{ title: string, dir: string }} entry
+ *   only `title`/`dir` are read — destructured rather than closing over the
+ *   whole catalogue entry (which also carries the component's `load` thunk).
  * @param {AbortSignal} signal */
-function wireSourceTabs(view, entry, signal) {
+function wireSourceTabs(view, { title, dir }, signal) {
   const tabs = /** @type {Record<TabName, HTMLElement>} */ (
     Object.fromEntries(TAB_NAMES.map((name) => [name, pick(view, `tab-${name}`)]))
   );
@@ -215,15 +217,13 @@ function wireSourceTabs(view, entry, signal) {
   const codeText = pick(view, "code-text");
   const copyBtn = /** @type {HTMLButtonElement} */ (pick(view, "copy"));
 
-  /** @type {TabName} last-requested tab — guards against a slower fetch for a
-   * tab the user has already clicked away from overwriting the newer one. */
-  let requested = "preview";
-
   /** @param {TabName} tab */
   async function activate(tab) {
-    requested = tab;
-    const stale = () => signal.aborted || requested !== tab; // a newer selection (or tab click) won the race
     for (const name of TAB_NAMES) tabs[name].setAttribute("aria-selected", String(name === tab));
+    // A newer tab click (or component switch) re-marks this tab as unselected
+    // (or aborts `signal`) before a slower fetch resolves — the DOM's own
+    // aria-selected is already the source of truth for "is this still current".
+    const stale = () => signal.aborted || tabs[tab].getAttribute("aria-selected") !== "true";
 
     if (tab === "preview") {
       frames.hidden = false;
@@ -237,7 +237,7 @@ function wireSourceTabs(view, entry, signal) {
     code.hidden = false;
     copyBtn.hidden = false;
     try {
-      const text = await withPending(code, fetchSource(entry.title, tab, entry.dir, signal));
+      const text = await withPending(code, fetchSource(title, tab, dir, signal));
       if (stale()) return;
       code.classList.remove("source-code-error");
       codeText.textContent = text;
@@ -284,9 +284,10 @@ async function show(title) {
   }
 
   const frag = document.createDocumentFragment();
+  const factory = factoryNameFor(title); // loop-invariant — same for every variant
   for (const [name, props] of Object.entries(preview.variants)) {
     const frame = tpl("tpl-preview-frame");
-    slot(frame, { name, usage: `${factoryNameFor(title)}(${formatLiteral(props)})` });
+    slot(frame, { name, usage: `${factory}(${formatLiteral(props)})` });
     const stage = pick(frame, "stage");
     try {
       const el = await preview.render(props, signal);

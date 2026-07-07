@@ -5,6 +5,10 @@
   :root {
     color-scheme: light dark;
     --err: light-dark(#b00020, #ff8a8a);
+    --hover-bg: light-dark(#f0f0f0, #21242a);
+    --selected-bg: light-dark(#e6efff, #23314d);
+    --btn-bg: light-dark(#f3f3f3, #21242a);
+    --btn-border: light-dark(#d8d8d8, #34383f);
   }
 
   body {
@@ -33,8 +37,8 @@
     padding: 0.25rem 0.6rem;
     font: inherit;
     color: inherit;
-    background: light-dark(#f3f3f3, #21242a);
-    border: 1px solid light-dark(#d8d8d8, #34383f);
+    background: var(--btn-bg);
+    border: 1px solid var(--btn-border);
     border-radius: 6px;
     cursor: pointer;
   }
@@ -59,11 +63,11 @@
     border-radius: 6px;
   }
   .rail-item:hover {
-    background: light-dark(#f0f0f0, #21242a);
+    background: var(--hover-bg);
   }
   .rail-item[aria-current] {
     font-weight: 600;
-    background: light-dark(#e6efff, #23314d);
+    background: var(--selected-bg);
   }
 
   .canvas {
@@ -129,18 +133,18 @@
     border: 1px solid transparent;
   }
   .source-tab:hover {
-    background: light-dark(#f0f0f0, #21242a);
+    background: var(--hover-bg);
   }
   .source-tab[aria-selected="true"] {
     font-weight: 600;
-    background: light-dark(#e6efff, #23314d);
+    background: var(--selected-bg);
     border-color: light-dark(#c7d9fb, #35507e);
   }
   .source-copy {
     margin-inline-start: auto;
     padding: 0.25rem 0.6rem;
-    background: light-dark(#f3f3f3, #21242a);
-    border: 1px solid light-dark(#d8d8d8, #34383f);
+    background: var(--btn-bg);
+    border: 1px solid var(--btn-border);
   }
 
   .source-code {
