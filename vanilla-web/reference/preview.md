@@ -124,14 +124,17 @@ so nothing preview-related ships in the real bundle.
 
 Each frame's caption shows the call you'd actually write for that variant —
 e.g. `createStatCard({ label: "Runs", value: "0" })` — instead of raw JSON
-props. It's reconstructed, not authored: the factory name comes from `title`
-via `previews/naming.mjs`'s `factoryNameFor` — the same convention
+props. It's reconstructed, not authored: the argument is that variant's
+`props` formatted as an idiomatic object literal (unquoted keys,
+callback/function props omitted — there's nothing meaningful to show for
+one), and since it's read straight from the real variant, no per-component
+authoring, it can't drift from it. The factory name comes from `title` via
+`previews/naming.mjs`'s `factoryNameFor` — the same function
 `previews/new.mjs` uses to scaffold the real import (see **Scaffold a new
-one**, above), from the same function, so the two can't drift apart — and the
-argument is that variant's `props` formatted as an idiomatic object literal
-(unquoted keys, callback/function props omitted — there's nothing meaningful
-to show for one). No per-component authoring, so it can't drift from the real
-variants.
+one**, above), so those two callers can't drift **from each other**. That's
+narrower than it sounds: nothing checks the printed name against what a
+component's own module actually exports, so a factory hand-renamed off the
+`create<Name>` convention still gets a confidently wrong "copy this" snippet.
 
 This is the same idea as Storybook's "Show code": a snippet attached to each
 individual story, not one shared example — since usage genuinely differs per
@@ -157,6 +160,14 @@ finds comment and string ranges in the fetched text and registers them as two
 `Highlight` objects; the CSS lives in `preview.css` as
 `::highlight(src-comment)` / `::highlight(src-string)`. A copy button next to
 the tabs puts the active tab's raw text on the clipboard.
+
+**Known limitation** (accepted, not a bug to chase): the string-detection regex
+has no concept of a JS regex literal or a template-literal `${…}` interpolation.
+A quote inside either can make the tokenizer misread real code that follows as
+still being inside a string, or swallow an interpolated expression whole as
+one flat string run. No component in this catalogue triggers it today, but if
+one adds a regex/template literal with an embedded quote, its JS tab may
+mis-highlight — cosmetic only, never a crash.
 
 ## Files (copy verbatim, like the other canonical pieces)
 

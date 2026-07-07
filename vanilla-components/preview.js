@@ -1,4 +1,4 @@
-// canonical source: vanilla-web/preview.js@9fd2d6a — vendored copy, do not edit here
+// canonical source: vanilla-web/preview.js@1d6aa5d — vendored copy, do not edit here
 // @ts-check
 // Standalone component preview harness for the vanilla-web conventions
 // (see reference/preview.md). Loaded by preview.html as its OWN page — it is
@@ -79,22 +79,31 @@ function frameError(message) {
 // props), so no per-component authoring. Storybook's "Show code" is the closest
 // analog: a snippet attached to each individual story, not a single shared one.
 // The factory-naming half of this lives in previews/naming.mjs, shared with
-// the scaffolder (previews/new.mjs) so the two can't drift apart.
+// the scaffolder (previews/new.mjs) so the two can't drift from EACH OTHER —
+// that's a guarantee about this harness's own two consumers of the convention,
+// not a check against what a component's own module actually exports; a
+// factory that's hand-renamed off the create<Name> convention prints a
+// snippet calling a name that doesn't exist, with nothing to catch it.
 
 /** Valid unquoted-object-key identifier — hoisted like TOKEN_PATTERNS below,
  * since formatLiteral runs it once per key of every variant. */
 const IDENTIFIER = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
 
+/** @param {unknown} v — true for a value with a meaningful literal to print. */
+const isLiteral = (v) => typeof v !== "function" && v !== undefined;
+
 /** Formats `value` as it'd actually be written in source — unquoted object keys
- * where they're valid identifiers, callback/function props omitted (there's no
+ * where they're valid identifiers, callback/function values omitted (there's no
  * meaningful literal to show for one, and a caller wouldn't pass `undefined`
- * for it either).
+ * for it either) in both objects AND arrays — Array.prototype.join renders a
+ * bare `undefined` element as an empty string, so without this an array of
+ * callbacks would print as a confusing `[1, , 2]` instead of being dropped.
  * @param {unknown} value @returns {string} */
 function formatLiteral(value) {
-  if (Array.isArray(value)) return `[${value.map(formatLiteral).join(", ")}]`;
+  if (Array.isArray(value)) return `[${value.filter(isLiteral).map(formatLiteral).join(", ")}]`;
   if (value !== null && typeof value === "object") {
     const entries = Object.entries(value)
-      .filter(([, v]) => typeof v !== "function" && v !== undefined)
+      .filter(([, v]) => isLiteral(v))
       .map(([k, v]) => `${IDENTIFIER.test(k) ? k : JSON.stringify(k)}: ${formatLiteral(v)}`);
     return entries.length ? `{ ${entries.join(", ")} }` : "{}";
   }
@@ -108,22 +117,29 @@ function formatLiteral(value) {
 // comments + strings) via the native CSS Custom Highlight API — no external
 // tokenizer/highlighter library.
 
-/** title:ext -> file text. @type {Map<string, string>} */
+/** title:ext -> in-flight/settled fetch. Caches the PROMISE, not just its
+ * eventual text: re-clicking a tab before its first fetch resolves reuses the
+ * same in-flight request instead of firing a duplicate one. A failed/aborted
+ * fetch evicts itself so a later genuine attempt isn't stuck with a cached
+ * rejection. @type {Map<string, Promise<string>>} */
 const sourceCache = new Map();
 
 /** @param {string} title @param {SourceExt} ext @param {string} dir
  * @param {AbortSignal} signal - forwarded to fetch(), so switching components
  *   actually cancels an in-flight request instead of merely discarding its result.
  * @returns {Promise<string>} */
-async function fetchSource(title, ext, dir, signal) {
+function fetchSource(title, ext, dir, signal) {
   const key = `${title}:${ext}`;
-  const cached = sourceCache.get(key);
-  if (cached !== undefined) return cached;
-  const res = await fetch(`${dir}/${title}.${ext}`, { signal });
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-  const text = await res.text();
-  sourceCache.set(key, text);
-  return text;
+  let promise = sourceCache.get(key);
+  if (!promise) {
+    promise = fetch(`${dir}/${title}.${ext}`, { signal }).then((res) => {
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      return res.text();
+    });
+    promise.catch(() => sourceCache.delete(key));
+    sourceCache.set(key, promise);
+  }
+  return promise;
 }
 
 /** Copy `text` to the clipboard. `navigator.clipboard` is unavailable outside a
