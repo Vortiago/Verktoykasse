@@ -40,6 +40,23 @@
       </figure>
     </template>
 
+    <!-- One shared view per component (not per variant — the underlying files
+         are identical across variants). Preview tab shows the frame stack;
+         HTML/CSS/JS tabs replace it with that file's source. -->
+    <template id="tpl-preview-component">
+      <div class="component-view">
+        <div class="source-tabs" role="tablist" aria-label="View">
+          <button class="source-tab" type="button" role="tab" data-slot="tab-preview" aria-selected="true">Preview</button>
+          <button class="source-tab" type="button" role="tab" data-slot="tab-html">HTML</button>
+          <button class="source-tab" type="button" role="tab" data-slot="tab-css">CSS</button>
+          <button class="source-tab" type="button" role="tab" data-slot="tab-js">JS</button>
+          <button class="source-copy" type="button" data-slot="copy" hidden>Copy</button>
+        </div>
+        <div class="frames" data-slot="frames"></div>
+        <pre class="source-code" data-slot="code" hidden><code data-slot="code-text"></code></pre>
+      </div>
+    </template>
+
     <template id="tpl-preview-error">
       <pre class="frame-error" data-slot="msg"></pre>
     </template>

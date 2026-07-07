@@ -1,10 +1,11 @@
-/* canonical source: vanilla-web/preview.css@b6958a9 — vendored copy, do not edit here */
+/* canonical source: vanilla-web/preview.css@e0f1fca — vendored copy, do not edit here */
 /* Chrome for the standalone preview page (preview.html / preview.js).
  * Self-sufficient: styled with light-dark() + system defaults so it works with
  * or without the app's shell.css tokens, and follows the theme toggle for free. */
 @layer preview {
   :root {
     color-scheme: light dark;
+    --err: light-dark(#b00020, #ff8a8a);
   }
 
   body {
@@ -67,10 +68,6 @@
   }
 
   .canvas {
-    display: flex;
-    flex-direction: column;
-    align-items: start;
-    gap: 1.5rem;
     padding: 1.5rem;
   }
 
@@ -95,6 +92,83 @@
   .frame-error {
     margin: 0;
     font: 12px/1.5 ui-monospace, monospace;
-    color: light-dark(#b00020, #ff8a8a);
+    color: var(--err);
+  }
+
+  /* One shared Preview/HTML/CSS/JS view per component — see reference/preview.md
+   * → view source. `.component-view` deliberately stretches (default align-items)
+   * so `.source-code` gets a bounded width to scroll long lines within, instead
+   * of growing to fit its widest line. */
+  .component-view {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .frames {
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+    gap: 1.5rem;
+  }
+
+  .source-tabs {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  .source-tab,
+  .source-copy {
+    font: inherit;
+    color: inherit;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .source-tab {
+    padding: 0.3rem 0.7rem;
+    background: transparent;
+    border: 1px solid transparent;
+  }
+  .source-tab:hover {
+    background: light-dark(#f0f0f0, #21242a);
+  }
+  .source-tab[aria-selected="true"] {
+    font-weight: 600;
+    background: light-dark(#e6efff, #23314d);
+    border-color: light-dark(#c7d9fb, #35507e);
+  }
+  .source-copy {
+    margin-inline-start: auto;
+    padding: 0.25rem 0.6rem;
+    background: light-dark(#f3f3f3, #21242a);
+    border: 1px solid light-dark(#d8d8d8, #34383f);
+  }
+
+  .source-code {
+    box-sizing: border-box;
+    max-width: 100%;
+    margin: 0;
+    padding: 1rem;
+    overflow-x: auto;
+    font: 13px/1.5 ui-monospace, monospace;
+    background: light-dark(#f7f7f8, #1a1d22);
+    border: 1px solid light-dark(#e2e2e2, #2a2d33);
+    border-radius: 8px;
+  }
+  .source-code[aria-busy="true"] {
+    opacity: 0.6;
+  }
+  .source-code-error {
+    color: var(--err);
+  }
+
+  /* Minimal hand-rolled highlighting — comments + strings only, applied via
+   * the native CSS Custom Highlight API (no tokenizer/highlighter library). */
+  ::highlight(src-comment) {
+    color: light-dark(#6b7280, #7d8590);
+    font-style: italic;
+  }
+  ::highlight(src-string) {
+    color: light-dark(#0a7d3c, #7ce0a0);
   }
 }
