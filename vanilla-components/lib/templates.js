@@ -1,4 +1,4 @@
-// canonical source: vanilla-web/templates.js@e0f1fca — vendored copy, do not edit here
+// canonical source: vanilla-web/templates.js@2f05a4c — vendored copy, do not edit here
 // @ts-check
 // Canonical template + render helpers for the vanilla-web conventions
 // (see SKILL.md). Copy into <app>/web/lib/templates.js; extend, don't fork.

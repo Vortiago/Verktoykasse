@@ -60,9 +60,11 @@ and you fix the seed (the scaffolder stays dumb — it never parses your source)
 
 `render(props, signal)` returns an `Element` or a `Promise<Element>`. The `signal`
 is the same teardown contract the app shell hands views: any listener the
-component attaches with it dies when you switch to another component. Props are
-shown verbatim under each frame as JSON, so the catalogue doubles as docs
-(callbacks/functions simply don't appear in that caption).
+component attaches with it dies when you switch to another component. Each
+frame's caption shows the actual call you'd write for that variant — e.g.
+`createStatCard({ label: "Runs", value: "0" })` — reconstructed from the title
+and that variant's props (see **Usage snippet**, below), so the catalogue
+doubles as docs without any extra authoring.
 
 ## How discovery works (and why it's codegen)
 
@@ -110,10 +112,27 @@ so nothing preview-related ships in the real bundle.
 - Left **rail** lists components (alphabetical). Selecting one sets
   `location.hash = "#/<title>"` (deep-linkable, back button works).
 - The **canvas** renders *every* variant of the selected component stacked, each
-  in a labeled frame with its props caption — so you see the whole matrix at once.
+  in a labeled frame with its usage-snippet caption — so you see the whole
+  matrix at once.
 - **Theme toggle** (auto / light / dark) flips `color-scheme`, so `light-dark()`
   tokens are exercised both ways — same idiom as `shell.js`.
 - A variant that throws shows its error in-frame instead of blanking the canvas.
+
+## Usage snippet
+
+Each frame's caption shows the call you'd actually write for that variant —
+e.g. `createStatCard({ label: "Runs", value: "0" })` — instead of raw JSON
+props. It's reconstructed, not authored: the factory name comes from `title`
+via the same `stat-card` → `createStatCard` convention `previews/new.mjs`
+already assumes (see **Scaffold a new one**, above), and the argument is that
+variant's `props` formatted as an idiomatic object literal (unquoted keys,
+callback/function props omitted — there's nothing meaningful to show for one).
+No per-component authoring, so it can't drift from the real variants.
+
+This is the same idea as Storybook's "Show code": a snippet attached to each
+individual story, not one shared example — since usage genuinely differs per
+variant (unlike the files under **View source**, which are identical across
+variants).
 
 ## View source
 
@@ -122,8 +141,9 @@ component**, not per variant, since the underlying files are identical across
 every variant of a component. `HTML`/`CSS`/`JS` swap the frame stack out for
 that file's real, verbatim content (`fetch()`ed via the registry's `dir` field,
 lazily, cached per component) — what you see is exactly what you'd copy into
-your own app, same as the rest of this copy-verbatim library. There's no
-reconstructed usage snippet; the files themselves are the catalogue.
+your own app, same as the rest of this copy-verbatim library. Unlike the
+per-variant caption (see **Usage snippet**, above), nothing here is
+reconstructed — the files themselves are the catalogue.
 
 Highlighting is intentionally minimal — comments and strings only, no
 keywords/tags/properties — via the native **CSS Custom Highlight API**

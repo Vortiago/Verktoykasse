@@ -1,4 +1,4 @@
-// canonical source: vanilla-web/preview.js@e0f1fca — vendored copy, do not edit here
+// canonical source: vanilla-web/preview.js@2f05a4c — vendored copy, do not edit here
 // @ts-check
 // Standalone component preview harness for the vanilla-web conventions
 // (see reference/preview.md). Loaded by preview.html as its OWN page — it is
@@ -70,6 +70,35 @@ function titleFromHash() {
 /** @param {string} message */
 function frameError(message) {
   return slot(tpl("tpl-preview-error"), { msg: message });
+}
+
+// ── Usage snippet ─────────────────────────────────────────────────────────────
+// Each variant's caption shows the actual call you'd write, not raw JSON —
+// reconstructed from data the catalogue already has (title + that variant's
+// props), so no per-component authoring. Storybook's "Show code" is the closest
+// analog: a snippet attached to each individual story, not a single shared one.
+
+/** "stat-card" -> "createStatCard" — the create<Name> factory contract, same
+ * convention previews/new.mjs seeds (a mismatch there fails the tsc gate).
+ * @param {string} title @returns {string} */
+function factoryNameFor(title) {
+  return `create${title.replace(/(^|[-_])([a-z])/g, (_, __, c) => c.toUpperCase())}`;
+}
+
+/** Formats `value` as it'd actually be written in source — unquoted object keys
+ * where they're valid identifiers, callback/function props omitted (there's no
+ * meaningful literal to show for one, and a caller wouldn't pass `undefined`
+ * for it either).
+ * @param {unknown} value @returns {string} */
+function formatLiteral(value) {
+  if (Array.isArray(value)) return `[${value.map(formatLiteral).join(", ")}]`;
+  if (value !== null && typeof value === "object") {
+    const entries = Object.entries(value)
+      .filter(([, v]) => typeof v !== "function" && v !== undefined)
+      .map(([k, v]) => `${/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(k) ? k : JSON.stringify(k)}: ${formatLiteral(v)}`);
+    return entries.length ? `{ ${entries.join(", ")} }` : "{}";
+  }
+  return JSON.stringify(value);
 }
 
 // ── View source ───────────────────────────────────────────────────────────────
@@ -257,7 +286,7 @@ async function show(title) {
   const frag = document.createDocumentFragment();
   for (const [name, props] of Object.entries(preview.variants)) {
     const frame = tpl("tpl-preview-frame");
-    slot(frame, { name, props: JSON.stringify(props) });
+    slot(frame, { name, usage: `${factoryNameFor(title)}(${formatLiteral(props)})` });
     const stage = pick(frame, "stage");
     try {
       const el = await preview.render(props, signal);
