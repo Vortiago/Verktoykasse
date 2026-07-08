@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Custom elements — declarative vanilla-components</title>
+
+    <!-- Same token + tone environment the real preview harness uses. -->
+    <link rel="stylesheet" href="../tokens.css" />
+    <link rel="stylesheet" href="../tones.css" />
+
+    <style>
+      @layer page {
+        body {
+          margin: 0; font-family: var(--sans); background: var(--bg); color: var(--text); line-height: 1.5;
+        }
+        .wrap { max-width: 64rem; margin: 0 auto; padding: var(--space-l); }
+
+        header.top {
+          display: flex; align-items: baseline; gap: var(--space-m);
+          justify-content: space-between; flex-wrap: wrap;
+          padding-block-end: var(--space-m); border-block-end: 1px solid var(--line);
+        }
+        header.top h1 { font-size: 1.35rem; margin: 0; }
+        header.top p { margin: 0.25rem 0 0; color: var(--text-dim); font-size: 0.9rem; }
+        #theme {
+          font: inherit; cursor: pointer; color: var(--text-dim);
+          background: var(--bg-elev); border: 1px solid var(--line);
+          border-radius: var(--r); padding: 0.35rem 0.7rem;
+        }
+
+        section { margin-block: var(--space-l); }
+        section > h2 { font-size: 1.05rem; margin: 0 0 0.25rem; }
+        section > .lede { margin: 0 0 var(--space-m); color: var(--text-dim); font-size: 0.9rem; }
+
+        .demo {
+          display: flex; flex-wrap: wrap; gap: var(--space-m); align-items: center;
+          padding: var(--space-m); border: 1px solid var(--line);
+          border-radius: var(--r); background: var(--bg-elev);
+        }
+        .demo.stack { flex-direction: column; align-items: stretch; }
+        .demo + pre { margin-block-start: 0; border-radius: 0 0 var(--r) var(--r); }
+
+        pre.src {
+          margin: 0; overflow-x: auto;
+          background: var(--bg-elev-2); border: 1px solid var(--line); border-radius: var(--r);
+          padding: var(--space-m); font-family: var(--mono); font-size: 0.82rem; color: var(--text); tab-size: 2;
+        }
+        pre.src .c { color: var(--text-dim); }
+        .cols { display: grid; gap: var(--space-m); grid-template-columns: 1fr 1fr; }
+        .cols h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em;
+                   color: var(--text-dim); margin: 0 0 0.4rem; font-weight: 600; }
+        @media (max-width: 46rem) { .cols, .grid2 { grid-template-columns: 1fr; } }
+        .grid2 { display: grid; gap: var(--space-m); grid-template-columns: 1fr 1fr; }
+
+        .proof { display: grid; gap: var(--space-m); }
+        .proof label { display: flex; align-items: center; gap: 0.5rem; color: var(--text-dim); font-size: 0.9rem; }
+        .proof input[type="text"], .proof input[type="range"] {
+          font: inherit; padding: 0.3rem 0.5rem; border-radius: var(--r);
+          border: 1px solid var(--line); background: var(--bg); color: var(--text);
+        }
+        .count { font-family: var(--mono); color: var(--accent); font-weight: 700; }
+
+        /* The custom-element hosts carry no box of their own — the built node lays
+           out directly in the flow (no wrapper spacing, rows can stretch). */
+        :is(vc-button, vc-chip, vc-status-dot, vc-avatar, vc-progress, vc-kv-row,
+            vc-empty-state, vc-spinner, vc-skeleton, vc-checklist-row, vc-stat-card,
+            vc-alert) { display: contents; }
+      }
+    </style>
+
+    <!-- Page logic lives in a gated module (// @ts-check), like preview.html → preview.js. -->
+    <script type="module" src="./vc-elements.js"></script>
+  </head>
+
+  <body>
+    <div class="wrap">
+      <header class="top">
+        <div>
+          <h1>vanilla-components as custom elements</h1>
+          <p>Light-DOM <code>&lt;vc-*&gt;</code> tags — 12 leaf atoms, same factories, authored in HTML</p>
+        </div>
+        <button id="theme" type="button" title="Toggle light / dark / auto">auto</button>
+      </header>
+
+      <section>
+        <h2>Read the page, see the page</h2>
+        <p class="lede">
+          Every element below is a literal tag in this file — no <code>createX()</code> calls, no append glue.
+          View source: what you read is what renders.
+        </p>
+      </section>
+
+      <!-- ── Buttons ──────────────────────────────────────────────────────── -->
+      <section>
+        <h2><code>&lt;vc-button&gt;</code></h2>
+        <div class="demo">
+          <vc-button label="Cancel"></vc-button>
+          <vc-button label="Generate" variant="primary"></vc-button>
+          <vc-button label="Delete" variant="danger"></vc-button>
+          <vc-button label="Dismiss" variant="ghost"></vc-button>
+          <vc-button label="Open" size="sm"></vc-button>
+          <vc-button label="Live" pressed></vc-button>
+          <vc-button label="Disabled" disabled></vc-button>
+          <vc-button label="Open repo" icon="↗" variant="ghost" href="https://example.com" target="_blank"></vc-button>
+        </div>
+        <pre class="src">&lt;vc-button label="Generate" variant="primary"&gt;&lt;/vc-button&gt;
+&lt;vc-button label="Open repo" icon="↗" variant="ghost"
+           href="https://example.com" target="_blank"&gt;&lt;/vc-button&gt;</pre>
+      </section>
+
+      <!-- ── Chips + status dots ──────────────────────────────────────────── -->
+      <section>
+        <h2><code>&lt;vc-chip&gt;</code> · <code>&lt;vc-status-dot&gt;</code></h2>
+        <p class="lede">Tone drives colour — a named tone, or any raw CSS colour.</p>
+        <div class="demo">
+          <vc-chip text="Neutral"></vc-chip>
+          <vc-chip text="Passing" tone="ok" dot></vc-chip>
+          <vc-chip text="Flaky" tone="warn" dot></vc-chip>
+          <vc-chip text="Failing" tone="bad" dot></vc-chip>
+          <vc-chip text="Custom" tone="rebeccapurple" dot></vc-chip>
+          <vc-status-dot tone="ok" pulse label="Online"></vc-status-dot>
+          <vc-status-dot tone="warn" label="Degraded"></vc-status-dot>
+          <vc-status-dot tone="bad" pulse label="Down"></vc-status-dot>
+        </div>
+        <pre class="src">&lt;vc-chip text="Passing" tone="ok" dot&gt;&lt;/vc-chip&gt;
+&lt;vc-status-dot tone="ok" pulse label="Online"&gt;&lt;/vc-status-dot&gt;</pre>
+      </section>
+
+      <!-- ── Avatars ──────────────────────────────────────────────────────── -->
+      <section>
+        <h2><code>&lt;vc-avatar&gt;</code></h2>
+        <div class="demo">
+          <vc-avatar name="Ada Lovelace"></vc-avatar>
+          <vc-avatar name="Grace Hopper" tone="accent"></vc-avatar>
+          <vc-avatar name="Alan Turing" size="48" tone="ok"></vc-avatar>
+          <vc-avatar initials="?" size="48"></vc-avatar>
+        </div>
+        <pre class="src">&lt;vc-avatar name="Grace Hopper" tone="accent"&gt;&lt;/vc-avatar&gt;
+&lt;vc-avatar name="Alan Turing" size="48" tone="ok"&gt;&lt;/vc-avatar&gt;</pre>
+      </section>
+
+      <!-- ── Data rows: kv-row, progress, stat-card ───────────────────────── -->
+      <section>
+        <h2><code>&lt;vc-kv-row&gt;</code> · <code>&lt;vc-progress&gt;</code> · <code>&lt;vc-stat-card&gt;</code></h2>
+        <div class="grid2">
+          <div class="demo stack">
+            <vc-kv-row label="Status" value="Passing" tone="ok"></vc-kv-row>
+            <vc-kv-row label="Region" value="eu-north-1"></vc-kv-row>
+            <vc-kv-row label="Errors" value="3" tone="bad"></vc-kv-row>
+            <vc-progress value="40" tone="accent" label="Uploading"></vc-progress>
+            <vc-progress value="82" tone="ok" label="Coverage"></vc-progress>
+          </div>
+          <div class="demo">
+            <vc-stat-card label="Runs" value="1284" unit="total" tone="accent"></vc-stat-card>
+            <vc-stat-card label="Failures" value="7" hint="last 24h" tone="bad"></vc-stat-card>
+          </div>
+        </div>
+        <pre class="src">&lt;vc-kv-row label="Status" value="Passing" tone="ok"&gt;&lt;/vc-kv-row&gt;
+&lt;vc-progress value="82" tone="ok" label="Coverage"&gt;&lt;/vc-progress&gt;
+&lt;vc-stat-card label="Runs" value="1284" unit="total" tone="accent"&gt;&lt;/vc-stat-card&gt;</pre>
+      </section>
+
+      <!-- ── Feedback: alert, spinner, skeleton, empty-state ──────────────── -->
+      <section>
+        <h2><code>&lt;vc-alert&gt;</code> · <code>&lt;vc-spinner&gt;</code> · <code>&lt;vc-skeleton&gt;</code> · <code>&lt;vc-empty-state&gt;</code></h2>
+        <div class="demo stack">
+          <vc-alert tone="info" title="Heads up" message="A new version is available."></vc-alert>
+          <vc-alert tone="warn" title="Disk almost full" message="82% used on eu-north-1." dismissible></vc-alert>
+        </div>
+        <div class="demo">
+          <vc-spinner></vc-spinner>
+          <vc-spinner size="24" label="Loading"></vc-spinner>
+          <vc-skeleton variant="circle"></vc-skeleton>
+          <vc-skeleton variant="text" lines="3" width="180px"></vc-skeleton>
+          <vc-empty-state icon="📭" title="No runs yet" detail="Trigger one to begin"></vc-empty-state>
+        </div>
+        <pre class="src">&lt;vc-alert tone="warn" title="Disk almost full" message="82% used." dismissible&gt;&lt;/vc-alert&gt;
+&lt;vc-skeleton variant="text" lines="3" width="180px"&gt;&lt;/vc-skeleton&gt;</pre>
+      </section>
+
+      <!-- ── Checklist ────────────────────────────────────────────────────── -->
+      <section>
+        <h2><code>&lt;vc-checklist-row&gt;</code></h2>
+        <div class="demo stack">
+          <vc-checklist-row text="Wire the API" done></vc-checklist-row>
+          <vc-checklist-row text="Add the tests" done></vc-checklist-row>
+          <vc-checklist-row text="Ship the PR"></vc-checklist-row>
+        </div>
+      </section>
+
+      <!-- ── Nothing lost ─────────────────────────────────────────────────── -->
+      <section id="playground">
+        <h2>Nothing's lost going declarative</h2>
+        <p class="lede">Events fire, updaters update, callbacks surface as events — the factory does all of it underneath.</p>
+        <div class="proof">
+          <div class="demo">
+            <vc-button label="Click me" variant="primary"></vc-button>
+            <vc-button label="Or me"></vc-button>
+            <span>Native clicks caught by one delegated listener: <span class="count" id="click-count">0</span></span>
+          </div>
+          <div class="demo">
+            <vc-button id="live-target" label="Rename me" variant="primary"></vc-button>
+            <label><input type="text" id="rename" placeholder="new label" /> → <code>label</code> → <code>setLabel()</code></label>
+            <label><input type="checkbox" id="toggle-disabled" /> <code>disabled</code> → <code>setDisabled()</code></label>
+          </div>
+          <div class="demo">
+            <input type="range" id="scrub" min="0" max="100" value="40" />
+            <vc-progress id="live-bar" value="40" tone="accent" label="Live"></vc-progress>
+            <vc-stat-card id="live-stat" label="Value" value="40"></vc-stat-card>
+            <span><code>value</code> attr → <code>setValue()</code> / <code>update()</code></span>
+          </div>
+          <div class="demo">
+            <vc-alert id="live-alert" tone="bad" title="Dismiss me" message="Watch the console line below." dismissible></vc-alert>
+            <span class="count" id="dismissed">waiting…</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Before / after ───────────────────────────────────────────────── -->
+      <section>
+        <h2>The change, in one view</h2>
+        <p class="lede">Same component, same build code. Placement moves from JS to HTML.</p>
+        <div class="cols">
+          <div>
+            <h3>Factory (today)</h3>
+            <pre class="src"><span class="c">// in a view's mount()</span>
+const { el } = await createButton({
+  label: "Generate",
+  variant: "primary",
+  onClick: run,
+}, signal);
+toolbar.append(el);</pre>
+          </div>
+          <div>
+            <h3>Custom element (this batch)</h3>
+            <pre class="src"><span class="c">&lt;!-- in the page's HTML --&gt;</span>
+&lt;vc-button
+  label="Generate"
+  variant="primary"&gt;&lt;/vc-button&gt;
+
+<span class="c">// native click bubbles — listen once</span></pre>
+          </div>
+        </div>
+      </section>
+    </div>
+  </body>
+</html>

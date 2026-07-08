@@ -40,9 +40,10 @@ it needs into its own tree. No package, no symlink. Re-copy to update; never for
   header. Needs `lib/templates.js` present (the vanilla-web canonical module),
   and the app's tsconfig `include` must cover `components/**/*.js`.
 - **lib helpers** — `lib/tone.js` (the tone resolver above; required by any
-  tone-bearing component) and `lib/lazy.js` (`whenSized` / `onceVisible` — defer a
-  map/canvas/chart until its host is laid out / scrolled into view). Copy alongside
-  `lib/templates.js` + `lib/component.js`.
+  tone-bearing component), `lib/lazy.js` (`whenSized` / `onceVisible` — defer a
+  map/canvas/chart until its host is laid out / scrolled into view), and
+  `lib/element.js` (`defineElement` — required by any `<name>.element.js` custom-element
+  sidecar; see Declarative face). Copy alongside `lib/templates.js` + `lib/component.js`.
 - Each component self-loads its own `<name>.html` + `<name>.css` on first use;
   just `import { create<Name> }` and call it.
 - **Test** — address atoms by their accessible name (`createButton` →
@@ -121,6 +122,40 @@ own per-row actions (e.g. a fleet rail with open/preview buttons) — is not
 navigation and doesn't fit it: there's no per-row action slot, and nesting buttons
 inside the item's `<a>` is invalid. Keep that a custom component (it can still
 compose these atoms: `status-dot`, `chip`, `button`).
+
+## Declarative face — custom elements (opt-in)
+
+Every **leaf atom** (scalar-prop, no Node/array child) also ships a
+`<name>.element.js` sidecar that registers a **light-DOM** custom element, so it can be
+authored in HTML instead of via `create<Name>()` — readable static markup, same factory
+underneath (the tag is a face, never the primary contract):
+
+```js
+import "…/components/button/button.element.js";        // importing registers the tag
+```
+```html
+<vc-button label="Generate" variant="primary"></vc-button>
+```
+
+Light DOM (no Shadow DOM) → `tokens.css` / `@layer` / `@scope` reach the built node
+exactly as for a factory-mounted one. `defineElement` (`lib/element.js`, copy alongside
+`lib/templates.js`) maps scalar / `booleans` / `numbers` attrs → props and callback
+props → bubbling CustomEvents (e.g. `onDismiss`→`dismiss`); a native `click` already
+bubbles through the host, so no mapping for those. Only **setter-backed
+attrs are live** (react to change); the rest are read once at connect. Teardown is
+structural — `disconnectedCallback` aborts the mount signal (the omit-the-signal leak
+above can't happen), and an empty `connectedMoveCallback` stops a `reconcileList`
+`moveBefore` from tearing down + rebuilding a moved `<vc-*>`.
+
+Tags (live attrs **bold**): `vc-button` (**label disabled pressed**), `vc-chip`
+(**text**), `vc-status-dot` (**tone pulse**), `vc-avatar` (**name src**), `vc-progress`
+(**value**), `vc-kv-row` (**value**), `vc-empty-state`, `vc-spinner`, `vc-skeleton`,
+`vc-checklist-row` (**done**), `vc-stat-card` (**value**), `vc-alert`
+(**message** · `dismiss` event).
+
+**No tag** (Node / array / callback props don't fit string attributes — factory only):
+panel, dialog, menu, tooltip, side-nav, app-bar, view-header, table-shell, scroll-stack,
+list-row, segmented-control, field, code-input.
 
 ## Run the catalogue
 
