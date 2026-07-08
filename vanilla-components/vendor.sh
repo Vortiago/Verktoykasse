@@ -14,6 +14,11 @@
 # Dev/sync-only sidecars (<name>.preview.js, .test.mjs, .bridge.mjs) are NOT
 # vendored; the component's .html/.css/.js are self-contained and only need
 # lib/templates.js (+ tones.css for a tone-bearing component).
+#
+# The optional <name>.element.js sidecar (the declarative `<vc-name>` custom-element
+# face) DOES ship — it's consumable, not dev-only. It's inert unless the app imports
+# it; importing it also needs lib/element.js copied alongside lib/templates.js (see
+# SKILL.md → Consume → lib helpers). Skip it (don't import it) to stay factory-only.
 set -euo pipefail
 
 HERE=$(cd "$(dirname "$0")" && pwd)
