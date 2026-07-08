@@ -145,7 +145,9 @@ bubbles through the host, so no mapping for those. Only **setter-backed
 attrs are live** (react to change); the rest are read once at connect. Teardown is
 structural — `disconnectedCallback` aborts the mount signal (the omit-the-signal leak
 above can't happen), and an empty `connectedMoveCallback` stops a `reconcileList`
-`moveBefore` from tearing down + rebuilding a moved `<vc-*>`.
+`moveBefore` from tearing down + rebuilding a moved `<vc-*>`. Both are browser-tested:
+`testing/tests/e2e/memory-vc-lifecycle` (connect/disconnect leaves no survivors) and
+`vc-reconcile-move` (a moved row keeps its built node, focus and state).
 
 Tags (live attrs **bold**): `vc-button` (**label disabled pressed**), `vc-chip`
 (**text**), `vc-status-dot` (**tone pulse**), `vc-avatar` (**name src**), `vc-progress`
