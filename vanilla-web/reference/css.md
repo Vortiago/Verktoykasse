@@ -29,6 +29,11 @@ Read this when writing `shell.css` or any view/component stylesheet.
     .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
     .dim  { color: var(--text-dim); }
   }
+  @media (prefers-reduced-motion: reduce) {   /* motion is opt-out; see below */
+    ::view-transition-group(*),
+    ::view-transition-old(*),
+    ::view-transition-new(*) { animation: none !important; }
+  }
   ```
 
 - Each view/component gets its own `.css` next to its `.html`, wrapped in
@@ -59,9 +64,13 @@ Read this when writing `shell.css` or any view/component stylesheet.
   utilities layer.
 - State styling through `:has()` when the DOM already knows:
   `.row:has(:checked)`, `form:has(:user-invalid) .submit` — not a JS class toggle.
-- Motion is opt-out globally: `shell.css` ends with a
-  `prefers-reduced-motion: reduce` block that disables view-transition and overlay
-  animations.
+- Motion is opt-out globally: `shell.css` ends with the
+  `prefers-reduced-motion: reduce` block above, which zeroes the
+  `::view-transition-*` animations (add any overlay entry animations there too).
+  View transitions are *triggered* from JS — `withTransition()` (templates.js,
+  → `reference/interactivity.md`), for user-initiated changes only — but styled
+  here: the crossfade lives in `::view-transition-old/new/group`, and elements
+  that should morph across the change carry a shared `view-transition-name`.
 - Never: inline `style=` in templates (a CSS var + class instead), shadow DOM,
   BEM prefixes, CSS-in-JS. These are local-first tools for evergreen browsers;
   old browsers are out of scope.

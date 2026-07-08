@@ -102,7 +102,9 @@ view `signal`, or its teardown callbacks pile up on the signal until unmount.
   upstreams. → `reference/server.md`
 - **Re-renders** of live data (SSE-driven or polled) go through `renderRegion`
   (never raw `replaceChildren`/`innerHTML`); mutate in place for fast-ticking
-  values. → `reference/interactivity.md`
+  values. A *user-initiated* change (tab switch, open detail, expand/sort)
+  may animate via `withTransition` (View Transitions) — never the polled path.
+  → `reference/interactivity.md`
 - **Overlays** use native `<dialog>` / `popover` / `<details>` — never
   hand-rolled. → `reference/interactivity.md`
 - **Forms** use native validation (`required`/`pattern`, `reportValidity()`,
