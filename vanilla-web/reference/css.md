@@ -71,6 +71,16 @@ Read this when writing `shell.css` or any view/component stylesheet.
   → `reference/interactivity.md`), for user-initiated changes only — but styled
   here: the crossfade lives in `::view-transition-old/new/group`, and elements
   that should morph across the change carry a shared `view-transition-name`.
+- Cross-document (MPA) navigations animate with **zero JS** — the pure-CSS
+  counterpart to `withTransition`. Declare `@view-transition { navigation: auto; }`
+  in *both* the outgoing and incoming document's CSS and a same-origin navigation
+  crossfades on its own; matched elements with a shared `view-transition-name`
+  morph across the load. Style it with the same `::view-transition-*`
+  pseudo-elements, and the `prefers-reduced-motion` reset above already covers it.
+  Chrome/Edge ≥126. Caveat: the canonical `shell.js` is an SPA — hash routing
+  swaps views in the *same* document — so this at-rule never fires there; it's for
+  a tool that navigates between real documents. In-page swap → `withTransition()`;
+  genuine page-to-page load → this at-rule.
 - Never: inline `style=` in templates (a CSS var + class instead), shadow DOM,
   BEM prefixes, CSS-in-JS. These are local-first tools for evergreen browsers;
   old browsers are out of scope.
