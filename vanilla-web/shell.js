@@ -10,7 +10,7 @@
 //                   available (crossfade for free; plain swap elsewhere).
 
 import { views } from "./views/registry.js";
-import { loadCSS, every, wireTheme, wireErrorBar } from "./lib/templates.js";
+import { loadCSS, every, wireTheme, wireErrorBar, withTransition } from "./lib/templates.js";
 
 const stage = /** @type {HTMLElement} */ (document.getElementById("stage"));
 
@@ -49,9 +49,10 @@ async function switchView(id) {
     });
     syncNav(id);
   };
-  // startViewTransition waits for the async callback before animating.
-  if (document.startViewTransition) document.startViewTransition(swap);
-  else await swap();
+  // Animate the swap where supported (crossfade for free), else swap in place.
+  // startViewTransition awaits the async callback before animating; nothing
+  // awaits switchView, so the fallback's fire-and-forget swap is equivalent.
+  withTransition(swap);
 }
 
 /** Mark the active nav link. Expects header links shaped href="#/<id>".

@@ -290,3 +290,39 @@ export function reconcileList(host, items, keyOf, create, update) {
   }
   for (const n of prev.values()) n.remove(); // drop keys no longer present
 }
+
+/** Animate a DISCRETE, user-initiated DOM change with a View Transition instead
+ * of letting it pop — switching a tab, opening a detail, expanding a panel,
+ * sorting a column: the changes a person triggered and expects to see move.
+ * `update` performs the DOM mutation (typically a forced `renderRegion` swap, or
+ * a user-driven `reconcileList` reorder whose rows carry a `view-transition-name`);
+ * the browser snapshots before and after and crossfades between them. Style the
+ * animation entirely in CSS via the `::view-transition-*` pseudo-elements.
+ *
+ * NOT for polled or SSE re-renders. A view transition is single-flight per
+ * document — starting one while another runs SKIPS the first — and animates on
+ * every call, so wrapping a fast re-render path yields shimmer and
+ * self-cancelling transitions. Let those swap instantly through `renderRegion` /
+ * `reconcileList`; the dividing line is the trigger — a human action, not a timer.
+ *
+ * Returns the `ViewTransition` (a resolved-`finished` shim where the API is
+ * missing), so acting once the change settles composes without leaving the
+ * helper: `withTransition(update).finished.then(() => closeBtn.focus())`. Note
+ * `update` runs ASYNCHRONOUSLY under a real transition (after the browser
+ * captures the old state), so don't read the new DOM synchronously after the
+ * call. Reduced motion is handled in CSS — `shell.css` neutralises the
+ * `::view-transition-*` animations under `prefers-reduced-motion` — so this never
+ * checks it. Where the API is missing, `update` runs synchronously: same DOM
+ * result, no animation.
+ *
+ *   btn.addEventListener("click", () => withTransition(() =>
+ *     renderRegion(panel, () => detailView(id), { force: true })), { signal });
+ *
+ * @param {() => void} update - the DOM mutation to animate
+ * @returns {{ finished: Promise<unknown> }} the transition — await `.finished` */
+export function withTransition(update) {
+  const doc = /** @type {Document & { startViewTransition?: (cb: () => void) => { finished: Promise<unknown> } }} */ (document);
+  if (typeof doc.startViewTransition === "function") return doc.startViewTransition(update);
+  update();
+  return { finished: Promise.resolve() };
+}

@@ -49,6 +49,35 @@ Apps with live updates (SSE or polling) + interactive controls should carry an
 e2e clobber guard: a test that focuses every control, crosses an update (a poll
 tick or a pushed event), and fails if a node was rebuilt under the focus.
 
+## Animating a user-initiated change — `withTransition`
+
+The rules above keep *polled* swaps invisible. The opposite case — a change a
+person just triggered (switching a tab, opening a detail, expanding a panel,
+sorting a column, a user-clicked add/remove) — should be *visible*: wrap the DOM
+mutation in `withTransition(update)` (templates.js) and the browser crossfades between the
+before and after states via the View Transition API. Style it entirely in CSS
+with the `::view-transition-*` pseudo-elements; give elements that should morph
+across the change a shared `view-transition-name` (e.g. a `reconcileList` row
+that reorders). Chrome/Edge ≥111; where unsupported the swap just happens
+instantly.
+
+```js
+tab.addEventListener("click", () => withTransition(() =>
+  renderRegion(panel, () => viewFor(tab.dataset.id), { force: true })), { signal });
+```
+
+Do **not** wrap polled/SSE re-renders in it. A view transition is single-flight
+per document (a new one skips the one in flight) and animates on every call, so
+on a fast re-render path it produces shimmer and self-cancelling transitions —
+the *trigger* decides, not the helper: a human action animates, a timer swaps
+instantly through `renderRegion`/`reconcileList`. Two more notes: motion is
+opt-out globally via the shell's `prefers-reduced-motion` block (see
+`reference/css.md`), so `withTransition` never checks it; and `update` runs
+asynchronously under a real transition, so don't read the new DOM right after
+the call — `withTransition` returns the transition (a resolved-`finished` shim
+where unsupported), so `withTransition(update).finished.then(() => …)` acts once
+it settles (e.g. to move focus) without dropping back to the raw API.
+
 ## Pending state — attribute-driven, styled in CSS
 
 For an *initial* or *user-triggered* load — opening a view, a submit, a
