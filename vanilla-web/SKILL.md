@@ -6,8 +6,9 @@ description: Atle's conventions for building web UIs — vanilla ES modules, HTM
 # vanilla-web — how websites get built here
 
 **No build step, no runtime deps** — plain ES modules served statically; the
-only dev dependency is `typescript`. The gate is two halves:
-`tsc --noEmit` for the JS and `check-css-vars` for `var(--x)` (→ `reference/modules.md`).
+only dev dependency is `typescript`. `node tools/check.mjs` runs the whole gate
+in one command — `tsc --noEmit`, `check-css-vars`, and `node --test` — with
+`--fast` to skip the `node --test` pass (→ `reference/modules.md`).
 
 ## Decision rule
 
@@ -21,7 +22,8 @@ warranted, say so and ask before scaffolding.
 
 Every app starts as views + registry, even with one view (a single page is a
 multi-view app with one entry; the skeleton is then already there when page two
-arrives).
+arrives). `node <vanilla-web>/new-app.mjs <target-dir> [app-name]` scaffolds this
+canonical skeleton in one shot instead of copying files by hand.
 
 ```
 web/
@@ -33,6 +35,7 @@ web/
 │   ├── templates.js     #   tpl/pick/slot/renderRegion/withPending/loadCSS/every (always)
 │   ├── api-client.js    #   fetch + ApiError + 204 + timeout (API-backed apps)
 │   ├── store.js         #   subscribe/get/refresh singleton (shared state)
+│   ├── state.js         #   createState — view-local state for dense views → reference/state.md
 │   ├── format.js        #   cached-Intl number/date/relTime/bytes/duration
 │   ├── live.js          #   liveSSE / livePoll clients (live data)
 │   └── helpers.js       #   app-specific shared utils
@@ -86,8 +89,26 @@ Pass `signal` to everything that opens a resource — `loadCSS`, `store.subscrib
 Without a signal you own teardown by hand, and a forgotten `unsubscribe()` /
 `link.remove()` leaks that resource (and the detached DOM it closes over) on every
 re-mount: the classic slow browser OOM. One caveat for live updates: a component
-built **per tick** must take a *per-tick* `AbortController`, not the long-lived
-view `signal`, or its teardown callbacks pile up on the signal until unmount.
+built **per tick** must NOT take the long-lived view `signal` directly — its
+teardown callbacks would pile up on that signal, one per tick, until unmount.
+Give it its own per-tick `AbortController`, composed with the view's via
+`AbortSignal.any([signal, tick.signal])`:
+
+```js
+const tick = new AbortController();
+const rowSignal = AbortSignal.any([signal, tick.signal]);
+// build this tick's per-row components with rowSignal; tick.abort() at the next tick
+```
+
+so the resource dies at tick end *or* view unmount, whichever comes first — a
+BARE per-tick controller alone (no `signal` composed in) only dies at the START
+of the *next* tick, so a view that unmounts mid-tick leaves it stranded until a
+next tick that, post-unmount, never comes.
+
+An `AbortError` escaping `mount()` is normal shutdown, not a failure — it means
+a newer navigation cancelled this one mid-flight. The shell and errbar already
+treat it as such (shell.js's `swap()`, `wireErrorBar`); don't wrap view code in
+defensive try/catch to hide it.
 
 ## Invariants — these always hold (detail behind each link)
 
@@ -120,14 +141,20 @@ view `signal`, or its teardown callbacks pile up on the signal until unmount.
   → `reference/interactivity.md`
 - **Numbers / dates / durations** render through `Intl` (via `lib/format.js`).
   → `reference/modules.md`
+- **In a dense view, an event handler never touches DOM — it only writes
+  state.** Every dependent region subscribes once at `mount()`; reach for
+  `lib/state.js`'s `createState` once one handler is calling more than ~2
+  updaters, or two handlers update the same region. → `reference/state.md`
 - **No leaks across re-mounts.** Every resource a view opens (timer, listener,
   `EventSource`, observer, `store.subscribe`, injected `<link>`) ties to
   `helpers.signal`, so a view switch releases all of it; the seams that take a
   signal are `store.subscribe(cb, signal)` and `loadCSS(url, path, signal)`.
   Guarded by `*.leak.test.mjs` (node) + `testing/tests/e2e/memory-*` (browser).
   → `reference/testing.md`
-- **The gate**: every module starts `// @ts-check` + JSDoc; `tsc --noEmit` **and**
-  `check-css-vars` (undefined `var(--x)` fails silently). → `reference/modules.md`
+- **The gate**: every module starts `// @ts-check` + JSDoc; `tsc --noEmit`,
+  `check-css-vars` (undefined `var(--x)` fails silently), and `node --test` —
+  run all three with `node tools/check.mjs` (`--fast` skips the `node --test`
+  pass). → `reference/modules.md`
 - **Preview** (optional): a component can ship `<name>.preview.js` exporting
   `{ title, render, variants }`; `serve.mjs` generates the catalogue and serves
   it at `/preview.html`. No npm, no build. → `reference/preview.md`
@@ -139,5 +166,6 @@ view `signal`, or its teardown callbacks pile up on the signal until unmount.
 - `reference/interactivity.md` — re-render/no-flicker rules, overlays, forms
 - `reference/server.md` — `serve.mjs`, `/api` modes (SSE/proxy/inline), live data
 - `reference/modules.md` — `api-client` / `store` / `format` / `live`, the gate (typing + `check-css-vars`), patterns to lift
+- `reference/state.md` — the unidirectional-flow rule, `createState`, the escalation ladder, trip-wires
 - `reference/preview.md` — component preview catalogue (`*.preview.js`, codegen registry, `/preview.html`)
 - `reference/testing.md` — Playwright e2e: setup, pointing the test-id attribute at `data-slot`, role/label vs structural selectors, running the app under test, and the interaction-hold test (`testing/*` configs)
