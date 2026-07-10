@@ -32,7 +32,7 @@ function buildTooltip(trigger, { content = null, className = "" } = {}, signal) 
   const setContent = (c) => {
     if (c == null) return;
     if (typeof c === "string") el.textContent = c;
-    else el.replaceChildren(c);
+    else el.replaceChildren(c); // static-render
   };
   setContent(content);
 

@@ -17,7 +17,7 @@ import { defineComponent } from "../../lib/component.js";
 function fill(host, content) {
   if (content == null) return;
   if (typeof content === "string") host.textContent = content;
-  else host.replaceChildren(content);
+  else host.replaceChildren(content); // static-render
 }
 
 /** @typedef {{ head?: string | Node | null, body?: string | Node | null, fill?: boolean, collapsed?: boolean }} PanelProps */
