@@ -1,8 +1,7 @@
 // #60 — shell.js: a real view switch updates document.title and moves focus
 // to the stage (the SPA route-change a11y gap: an MPA gives both for free).
 import { test, expect } from "@playwright/test";
-
-const FIXTURE = "/testing/fixtures/shell-harness.html";
+import { FIXTURE } from "../../lib/harness.js";
 
 test("hashchange to a real switch updates document.title and focuses the stage", async ({ page }) => {
   await page.goto(`${FIXTURE}#/home`);

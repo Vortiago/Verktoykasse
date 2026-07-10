@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// canonical source: vanilla-web/tools/check-css-vars.mjs@a1b4cb8 — vendored copy, do not edit here
+// canonical source: vanilla-web/tools/check-css-vars.mjs@60f9ef5 — vendored copy, do not edit here
 // @ts-check
 // check-css-vars — the no-build stack's guard for CSS custom properties. `tsc`
 // checks the JS; nothing checks `var(--x)`, so an undefined custom property
@@ -13,9 +13,8 @@
 // CSS) are skipped — same SKIP as check-slots.mjs/check-conventions.mjs.
 // Zero-dep; meant to run in the same gate as tsc. Exit 1 on any undefined var.
 import { globSync, readFileSync } from "node:fs";
+import { ROOT, SKIP } from "./js-scan.mjs";
 
-const ROOT = new URL("../", import.meta.url); // tools/ sits in the app/skill root
-const SKIP = /(^|\/)(node_modules|testing)\//;
 const files = ["**/*.css", "**/*.js"]
   .flatMap((p) => globSync(p, { cwd: ROOT }))
   .filter((p) => !SKIP.test(p + "/"));

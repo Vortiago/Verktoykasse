@@ -32,7 +32,9 @@ export function patchGlobal(t, name, value) {
 export const makeFlush = (n) => async () => { for (let i = 0; i < n; i++) await Promise.resolve(); };
 
 /** Minimal EventTarget double: addEventListener(type, fn, {signal, once}) +
- * dispatch(type) fire listeners synchronously (once-listeners self-remove);
+ * dispatch(type, event?) fire listeners synchronously (once-listeners
+ * self-remove), passing `event` through to each listener when given — a
+ * no-arg dispatch(type) call still works, listeners just see `undefined`;
  * listenerCount(type) backs "exactly one armed / detached after flush"
  * assertions. Shared by the fake document/window/dialog/popover doubles. */
 export function fakeEventTarget() {
@@ -47,10 +49,10 @@ export function fakeEventTarget() {
       listeners.get(type).add(entry);
       opts?.signal?.addEventListener("abort", () => listeners.get(type)?.delete(entry), { once: true });
     },
-    /** @param {string} type */
-    dispatch(type) {
+    /** @param {string} type @param {unknown} [event] */
+    dispatch(type, event) {
       for (const entry of [...(listeners.get(type) ?? [])]) {
-        entry.fn();
+        entry.fn(event);
         if (entry.once) listeners.get(type)?.delete(entry);
       }
     },

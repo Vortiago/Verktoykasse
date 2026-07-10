@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// canonical source: vanilla-web/tools/check-slots.mjs@a1b4cb8 — vendored copy, do not edit here
+// canonical source: vanilla-web/tools/check-slots.mjs@60f9ef5 — vendored copy, do not edit here
 // @ts-check
 // check-slots — static gate for the .html ↔ .js template seam, the one boundary
 // `tsc` cannot see. Template ids and data-slot names are stringly-typed:
@@ -22,10 +22,8 @@
 // node_modules/ and testing/ (deliberately-weird fixtures) are skipped.
 // Zero-dep; same shape + exit contract as check-css-vars. Exit 1 on any error.
 import { globSync, readFileSync } from "node:fs";
-import { lineOf, stripComments, argSpan } from "./js-scan.mjs";
+import { ROOT, SKIP, lineOf, stripComments, argSpan } from "./js-scan.mjs";
 
-const ROOT = new URL("../", import.meta.url); // tools/ sits in the app/skill root
-const SKIP = /(^|\/)(node_modules|testing)\//;
 const html = globSync("**/*.html", { cwd: ROOT }).filter((p) => !SKIP.test(p + "/"));
 const js = globSync("**/*.js", { cwd: ROOT }).filter((p) => !SKIP.test(p + "/"));
 

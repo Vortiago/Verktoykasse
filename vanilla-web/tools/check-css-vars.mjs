@@ -12,9 +12,8 @@
 // CSS) are skipped — same SKIP as check-slots.mjs/check-conventions.mjs.
 // Zero-dep; meant to run in the same gate as tsc. Exit 1 on any undefined var.
 import { globSync, readFileSync } from "node:fs";
+import { ROOT, SKIP } from "./js-scan.mjs";
 
-const ROOT = new URL("../", import.meta.url); // tools/ sits in the app/skill root
-const SKIP = /(^|\/)(node_modules|testing)\//;
 const files = ["**/*.css", "**/*.js"]
   .flatMap((p) => globSync(p, { cwd: ROOT }))
   .filter((p) => !SKIP.test(p + "/"));

@@ -6,8 +6,7 @@
 // catch returns before painting a fallback, and wireErrorBar filters the
 // AbortError at the error/unhandledrejection hooks — the errbar stays hidden.
 import { test, expect } from "@playwright/test";
-
-const FIXTURE = "/testing/fixtures/shell-harness.html";
+import { FIXTURE } from "../../lib/harness.js";
 
 test("navigating away mid-mount aborts the slow view silently — no errbar, next view intact", async ({ page }) => {
   await page.goto(`${FIXTURE}#/home`);

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// canonical source: vanilla-web/serve.mjs@a1b4cb8 — vendored copy, do not edit here
+// canonical source: vanilla-web/serve.mjs@60f9ef5 — vendored copy, do not edit here
 // @ts-check
 // Canonical zero-dependency static server for the vanilla-web conventions
 // (see SKILL.md). Static files + a few extension points you opt into:
@@ -235,6 +235,18 @@ const server = createServer(async (req, res) => {
     // read this process's stdout directly, so expose the count it's already
     // tracking. TEST=1 only, same as the other hooks in this block.
     if (TEST && urlPath === "/api/test/client-error-count") return sendJson(res, 200, { count: clientErrorTotal });
+    // #67 — the flood guard's 30/min budget is a single per-PROCESS counter, but
+    // Playwright's webServer starts ONE server for the whole suite: every
+    // error-triggering spec was drawing from the same rolling window, so a
+    // later spec could get rate-limited by an earlier one's errors. Lets a spec
+    // reset its OWN budget in beforeEach instead of sharing the 60s window with
+    // the rest of the suite. Resets only the flood-guard counters, not
+    // clientErrorTotal — that's the lifetime count other specs assert against.
+    if (TEST && urlPath === "/api/test/reset-client-errors" && req.method === "POST") {
+      clientErrorCount = 0;
+      clientErrorCapWarned = false;
+      return sendJson(res, 200, { ok: true });
+    }
     if (TEST && urlPath === "/api/test/broadcast" && req.method === "POST") {
       const raw = await readBody(req);
       broadcast(raw ? JSON.parse(raw) : {});

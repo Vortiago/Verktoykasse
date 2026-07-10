@@ -7,8 +7,7 @@
 // REAL canon shell.js, running against test views served by serve.mjs's
 // TEST-only /views/registry.js route (see serve.mjs).
 import { test, expect } from "@playwright/test";
-
-const FIXTURE = "/testing/fixtures/shell-harness.html";
+import { FIXTURE } from "../../lib/harness.js";
 
 test("a throwing mount() renders a fallback, other views keep working, and the failed link retries", async ({ page }) => {
   await page.goto(`${FIXTURE}#/broken`);

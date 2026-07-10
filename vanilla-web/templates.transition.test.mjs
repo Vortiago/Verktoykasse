@@ -12,21 +12,10 @@ import assert from "node:assert/strict";
 import { withTransition, renderRegion } from "./templates.js";
 import { fakeEventTarget as fakeTarget, patchGlobal } from "./testing-util.mjs";
 
-/** Run `body` with a stubbed `globalThis.document`, restored afterwards; returns
- * whatever `body` returns. @param {any} doc @param {() => any} body */
-function withDocument(doc, body) {
-  const g = /** @type {any} */ (globalThis);
-  const had = "document" in g;
-  const prev = g.document;
-  g.document = doc;
-  try { return body(); }
-  finally { if (had) g.document = prev; else delete g.document; }
-}
-
 /** @param {any} ret */
 const isThenableFinished = (ret) => ret != null && typeof ret.finished?.then === "function";
 
-test("routes the mutation through startViewTransition and returns its transition", () => {
+test("routes the mutation through startViewTransition and returns its transition", (t) => {
   const calls = { started: 0, updated: 0 };
   const transition = { finished: Promise.resolve() };
   const doc = {
@@ -37,24 +26,27 @@ test("routes the mutation through startViewTransition and returns its transition
       return transition;
     },
   };
-  const ret = withDocument(doc, () => withTransition(() => { calls.updated++; }));
+  patchGlobal(t, "document", doc);
+  const ret = withTransition(() => { calls.updated++; });
   assert.equal(calls.started, 1, "startViewTransition called once");
   assert.equal(calls.updated, 1, "the update ran (inside the transition)");
   assert.equal(ret, transition, "returns the ViewTransition so .finished composes");
 });
 
-test("falls back to a synchronous update when startViewTransition is missing", () => {
+test("falls back to a synchronous update when startViewTransition is missing", (t) => {
+  patchGlobal(t, "document", {});
   let updated = 0;
-  const ret = withDocument({}, () => withTransition(() => { updated++; }));
+  const ret = withTransition(() => { updated++; });
   assert.equal(updated, 1, "update ran directly with no transition available");
   assert.ok(isThenableFinished(ret), "fallback still returns a { finished } shim so callers can .finished uniformly");
 });
 
-test("falls back when startViewTransition is present but not callable", () => {
+test("falls back when startViewTransition is present but not callable", (t) => {
+  patchGlobal(t, "document", { startViewTransition: null });
   let updated = 0;
   // A partial/older impl might expose the name as a non-function — must still fall back,
   // never skip the mutation (which would silently drop the user's change).
-  const ret = withDocument({ startViewTransition: null }, () => withTransition(() => { updated++; }));
+  const ret = withTransition(() => { updated++; });
   assert.equal(updated, 1, "non-callable startViewTransition falls back to a direct update");
   assert.ok(isThenableFinished(ret), "fallback returns the shim here too");
 });
@@ -93,20 +85,10 @@ function fakeDocument({ activeElement = null, selection = null } = {}) {
   return { ...target, activeElement, getSelection: () => selection };
 }
 
-/** Stub globalThis.document for the life of the test (t.after cleanup runs
- * AFTER any awaits in the test body, unlike withDocument's synchronous finally). */
-function installDoc(t, doc) {
-  const g = /** @type {any} */ (globalThis);
-  const had = "document" in g;
-  const prev = g.document;
-  g.document = doc;
-  t.after(() => { if (had) g.document = prev; else delete g.document; });
-}
-
 test("renderRegion: a swap deferred by focus flushes the instant focus leaves — no next tick required", (t) => {
   const input = { tagName: "INPUT" };
   const doc = fakeDocument({ activeElement: input });
-  installDoc(t, doc);
+  patchGlobal(t, "document", doc);
   const host = fakeHost({ insideEl: input });
 
   let builds = 0;
@@ -128,7 +110,7 @@ test("renderRegion: a swap deferred by focus flushes the instant focus leaves �
 test("renderRegion: repeated skips while still focused replace the pending build (latest-wins) and arm only one listener", (t) => {
   const input = { tagName: "INPUT" };
   const doc = fakeDocument({ activeElement: input });
-  installDoc(t, doc);
+  patchGlobal(t, "document", doc);
   const host = fakeHost({ insideEl: input });
 
   renderRegion(host, () => ({ v: 1 }));
@@ -143,7 +125,7 @@ test("renderRegion: repeated skips while still focused replace the pending build
 });
 
 test("renderRegion: a swap deferred by an open popover/dialog flushes on 'toggle'", (t) => {
-  installDoc(t, fakeDocument());
+  patchGlobal(t, "document", fakeDocument());
   const overlay = fakeTarget();
   const host = fakeHost({ overlay });
 
@@ -165,7 +147,7 @@ test("renderRegion: a swap deferred by a text selection flushes on selectionchan
   const anchor = {};
   const selection = { isCollapsed: false, rangeCount: 1, anchorNode: anchor, focusNode: anchor };
   const doc = fakeDocument({ selection });
-  installDoc(t, doc);
+  patchGlobal(t, "document", doc);
   const host = fakeHost({ insideEl: anchor }); // host.contains(anchor) === true
 
   renderRegion(host, () => ({ id: "text" }));
@@ -184,7 +166,7 @@ test("renderRegion: a swap deferred by a text selection flushes on selectionchan
 });
 
 test("renderRegion: a sig-unchanged skip is a no-op, not a deferral — nothing pending, no listener armed", (t) => {
-  installDoc(t, fakeDocument());
+  patchGlobal(t, "document", fakeDocument());
   const host = fakeHost();
   let builds = 0;
 
@@ -197,7 +179,7 @@ test("renderRegion: a sig-unchanged skip is a no-op, not a deferral — nothing 
 });
 
 test("renderRegion: an overlay removed WITHOUT close/toggle flushes via the removal observer", (t) => {
-  installDoc(t, fakeDocument());
+  patchGlobal(t, "document", fakeDocument());
   const overlay = /** @type {any} */ ({ ...fakeTarget(), isConnected: true });
   const host = fakeHost({ overlay });
   /** @type {any[]} */ const observers = [];
@@ -231,7 +213,7 @@ test("renderRegion: an overlay removed WITHOUT close/toggle flushes via the remo
 test("renderRegion: a detached host drops its pending swap — cleared, never rendered", (t) => {
   const input = { tagName: "INPUT" };
   const doc = fakeDocument({ activeElement: input });
-  installDoc(t, doc);
+  patchGlobal(t, "document", doc);
   const host = fakeHost({ insideEl: input });
 
   renderRegion(host, () => ({ v: "stale" }));
@@ -250,7 +232,7 @@ test("renderRegion: a detached host drops its pending swap — cleared, never re
 test("renderRegion: a later direct swap clears any earlier pending flush for the same host", (t) => {
   const input = { tagName: "INPUT" };
   const doc = fakeDocument({ activeElement: input });
-  installDoc(t, doc);
+  patchGlobal(t, "document", doc);
   const host = fakeHost({ insideEl: input });
 
   renderRegion(host, () => ({ v: "stale" })); // deferred by focus

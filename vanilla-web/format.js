@@ -103,21 +103,16 @@ const _DurationFormat = /** @type {{ new (locale: string, opts: { style: string,
   /** @type {{ DurationFormat: unknown }} */ (/** @type {unknown} */ (Intl)).DurationFormat
 );
 
-/** @type {Map<string, DurationFormatLike>} */ const _dfSec = new Map(); // sub-hour tiers: seconds always shown
-/** @type {Map<string, DurationFormatLike>} */ const _dfHr = new Map();  // hour+ tier: minutes always shown, no seconds
+/** @type {Map<string, DurationFormatLike>} */ const _dfCache = new Map(); // keyed `${tier}:${locale}`
 
-/** @param {string} [locale] */
-function secDurFmt(locale) {
+/** Memoized DurationFormat for one of the two tiers duration() needs: "seconds"
+ * (sub-hour — seconds always shown) or "minutes" (hour+ — minutes always
+ * shown, no seconds). @param {"seconds"|"minutes"} tier @param {string} [locale] */
+function durFmt(tier, locale) {
   const loc = locale || DEFAULT_LOCALE;
-  let f = _dfSec.get(loc);
-  if (!f) { f = new _DurationFormat(loc, { style: "narrow", secondsDisplay: "always" }); _dfSec.set(loc, f); }
-  return f;
-}
-/** @param {string} [locale] */
-function hrDurFmt(locale) {
-  const loc = locale || DEFAULT_LOCALE;
-  let f = _dfHr.get(loc);
-  if (!f) { f = new _DurationFormat(loc, { style: "narrow", minutesDisplay: "always" }); _dfHr.set(loc, f); }
+  const key = `${tier}:${loc}`;
+  let f = _dfCache.get(key);
+  if (!f) { f = new _DurationFormat(loc, { style: "narrow", [`${tier}Display`]: "always" }); _dfCache.set(key, f); }
   return f;
 }
 
@@ -134,10 +129,10 @@ function hrDurFmt(locale) {
 export function duration(ms, locale) {
   if (ms == null || !Number.isFinite(ms) || ms < 0) return "—";
   const s = Math.round(ms / 1000);
-  if (s < 60) return secDurFmt(locale).format({ seconds: s });
+  if (s < 60) return durFmt("seconds", locale).format({ seconds: s });
   const m = Math.floor(s / 60);
-  if (m < 60) return secDurFmt(locale).format({ minutes: m, seconds: s % 60 });
-  return hrDurFmt(locale).format({ hours: Math.floor(m / 60), minutes: m % 60 });
+  if (m < 60) return durFmt("seconds", locale).format({ minutes: m, seconds: s % 60 });
+  return durFmt("minutes", locale).format({ hours: Math.floor(m / 60), minutes: m % 60 });
 }
 
 /** Truncate with a remaining-count suffix. @param {string} str @param {number} max */

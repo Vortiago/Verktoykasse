@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// canonical source: vanilla-web/tools/check-conventions.mjs@a1b4cb8 — vendored copy, do not edit here
+// canonical source: vanilla-web/tools/check-conventions.mjs@60f9ef5 — vendored copy, do not edit here
 // @ts-check
 // check-conventions — turns the mechanically checkable SKILL.md invariants into
 // gate failures. An LLM reads the skill once per session; this runs on every
@@ -34,13 +34,14 @@
 // node_modules/ and testing/. Zero-dep; same shape + exit contract as
 // check-css-vars: file:line findings, exit 1 on any finding.
 import { globSync, readFileSync } from "node:fs";
-import { lineOf, stripComments, argSpan, splitTop, commentMatch } from "./js-scan.mjs";
+import { ROOT, SKIP, lineOf, stripComments, argSpan, splitTop, commentMatch } from "./js-scan.mjs";
 
-const ROOT = new URL("../", import.meta.url); // tools/ sits in the app/skill root
-const SKIP_DIRS = /(^|\/)(node_modules|testing|tools|previews|lib)\//;
+// This checker additionally skips tools/, previews/, and lib/ (the sanctioned
+// helpers live there) on top of the shared node_modules/testing base.
+const SKIP_EXTRA_DIRS = /(^|\/)(tools|previews|lib)\//;
 const SKIP_FILES = new Set(["templates.js", "shell.js", "store.js", "state.js", "api-client.js", "format.js", "live.js", "preview.js", "serve.mjs"]);
 const files = globSync("**/*.js", { cwd: ROOT }).filter((p) => {
-  if (SKIP_DIRS.test(p + "/")) return false;
+  if (SKIP.test(p + "/") || SKIP_EXTRA_DIRS.test(p + "/")) return false;
   return !SKIP_FILES.has(p.split("/").pop() ?? "");
 });
 

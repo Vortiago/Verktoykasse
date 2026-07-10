@@ -1,7 +1,9 @@
-// Abort-semantics guards for templates.js (#61 / #62):
+// Abort-semantics guards for templates.js (#61 / #62 / #66):
 //   - loadTemplates(...urls, {signal}) passes the signal through to fetch, and
-//     an aborted/failed fetch must NOT poison the module-level `fetched` set —
+//     an aborted/failed fetch must NOT poison the module-level `inflight` memo —
 //     a later call for the same url must retry, not silently no-op.
+//   - concurrent calls for the SAME url must share one fetch and one DOM
+//     append, never double-fetch or double-inline (#66).
 //   - wireErrorBar filters AbortError at both the error and unhandledrejection
 //     hooks (console.debug instead of painting the errbar), and never beacons
 //     one to /api/client-errors.
@@ -11,7 +13,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { loadTemplates, wireErrorBar } from "./templates.js";
-import { patchGlobal } from "./testing-util.mjs";
+import { patchGlobal, fakeEventTarget } from "./testing-util.mjs";
 
 /** A minimal fake `document` sufficient for loadTemplates: createElement()
  * returns one reusable holder (children irrelevant to these tests — they only
@@ -24,11 +26,11 @@ function installFakeDom(t) {
   });
 }
 
-// ── loadTemplates: abort must not poison the `fetched` set ───────────────────
+// ── loadTemplates: abort must not poison the `inflight` memo ─────────────────
 
 test("loadTemplates: an aborted fetch does NOT mark the url fetched — a later call retries it cleanly", async (t) => {
   installFakeDom(t);
-  const url = "/abort-retry-1.html"; // unique per test — `fetched` is module-level and persists across tests
+  const url = "/abort-retry-1.html"; // unique per test — `inflight` is module-level and persists across tests
   let calls = 0;
   patchGlobal(t, "fetch", async () => {
     calls++;
@@ -70,6 +72,26 @@ test("loadTemplates: a successful fetch IS memoized — a repeat call for the sa
   assert.equal(calls, 1, "idempotent: fetched once, second call is a no-op");
 });
 
+test("loadTemplates: concurrent calls for the SAME url share one fetch and one DOM append (#66)", async (t) => {
+  let calls = 0;
+  let appends = 0;
+  patchGlobal(t, "document", {
+    createElement: () => ({ hidden: false, innerHTML: "", children: [] }),
+    body: { append: () => { appends++; } },
+  });
+  patchGlobal(t, "fetch", async () => {
+    calls++;
+    await Promise.resolve(); // force both callers to race past the check before either resolves
+    return { ok: true, text: async () => "" };
+  });
+
+  const url = "/concurrent-same-url.html";
+  await Promise.all([loadTemplates(url), loadTemplates(url)]);
+
+  assert.equal(calls, 1, "exactly one fetch for two concurrent callers of the same url");
+  assert.equal(appends, 1, "exactly one DOM append — no duplicate <template> inlined");
+});
+
 test("loadTemplates: passes the trailing options object's signal through to fetch", async (t) => {
   installFakeDom(t);
   const url = "/signal-passthrough.html";
@@ -93,28 +115,22 @@ test("loadTemplates: a trailing options object is not mistaken for a url — bac
 
 // ── wireErrorBar: AbortError is a lifecycle event, not a failure ─────────────
 
-/** Install a fake `window` (error/unhandledrejection EventTarget), a fake
+/** Install a fake `window` (error/unhandledrejection EventTarget, via
+ * fakeEventTarget — dispatch(type, event) hands the event through), a fake
  * `document` (getElementById → the errbar), and a fake `navigator.sendBeacon`
  * spy; returns handles to drive and inspect them. */
 function installShellGlobals(t) {
-  /** @type {Map<string, Set<Function>>} */
-  const winListeners = new Map();
+  const win = fakeEventTarget();
   const errbar = { textContent: "", hidden: true };
   const beacons = [];
-  patchGlobal(t, "window", {
-    addEventListener(type, fn) {
-      if (!winListeners.has(type)) winListeners.set(type, new Set());
-      winListeners.get(type).add(fn);
-    },
-  });
+  patchGlobal(t, "window", win);
   patchGlobal(t, "document", { getElementById: () => errbar });
   patchGlobal(t, "location", { hash: "#/x" });
   patchGlobal(t, "navigator", {
     sendBeacon: (url, body) => { beacons.push({ url, body }); return true; },
     userAgent: "test-agent",
   });
-  const fire = (type, event) => { for (const fn of winListeners.get(type) ?? []) fn(event); };
-  return { errbar, beacons, fire };
+  return { errbar, beacons, fire: win.dispatch };
 }
 
 test("wireErrorBar: an AbortError from the 'error' hook is debug-logged, not painted into the errbar, and never beaconed", (t) => {

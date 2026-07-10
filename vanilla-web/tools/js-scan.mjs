@@ -4,6 +4,15 @@
 // itself — check.mjs discovers halves via a `tools/check-*.mjs` glob, and this
 // filename doesn't match that prefix, so it's never misdetected as one.
 
+/** tools/ sits in the app/skill root — every check-*.mjs resolves its file set
+ * relative to this. Shared here (rather than re-declared per file) since it's
+ * byte-identical across check-css-vars/check-slots/check-conventions. */
+export const ROOT = new URL("../", import.meta.url);
+/** Base skip: node_modules/ (dependencies) and testing/ (deliberately-weird
+ * fixtures, vendored third-party CSS) never belong in a source scan. Some
+ * checkers extend this with their own extra skipped dirs. */
+export const SKIP = /(^|\/)(node_modules|testing)\//;
+
 /** 1-based line of an index into text. @param {string} text @param {number} idx */
 export const lineOf = (text, idx) => text.slice(0, idx).split("\n").length;
 
