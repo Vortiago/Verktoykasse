@@ -48,7 +48,7 @@ function buildTableShell({ columns, rows, caption } = /** @type {any} */ ({})) {
 
   const tbody = pick(el, "body");
   const setRows = (/** @type {(string | number)[][]} */ rows) => {
-    tbody.replaceChildren(...rows.map((cells) => buildRow(columns, cells)));
+    tbody.replaceChildren(...rows.map((cells) => buildRow(columns, cells))); // static-render
   };
   if (rows) setRows(rows);
 
