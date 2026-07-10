@@ -8,11 +8,16 @@
 // legit inline-set props like --sev / --bell / --host-accent don't false-positive).
 // A `var(--x, fallback)` is exempt: an explicit fallback means it CAN'T fail
 // silently, and it's the stack's idiom for an intentionally-optional var.
+// node_modules/ and testing/ (deliberately-weird fixtures, vendored third-party
+// CSS) are skipped — same SKIP as check-slots.mjs/check-conventions.mjs.
 // Zero-dep; meant to run in the same gate as tsc. Exit 1 on any undefined var.
 import { globSync, readFileSync } from "node:fs";
 
-const ROOT = new URL("../web/", import.meta.url);
-const files = ["**/*.css", "**/*.js"].flatMap((p) => globSync(p, { cwd: ROOT }));
+const ROOT = new URL("../", import.meta.url); // tools/ sits in the app/skill root
+const SKIP = /(^|\/)(node_modules|testing)\//;
+const files = ["**/*.css", "**/*.js"]
+  .flatMap((p) => globSync(p, { cwd: ROOT }))
+  .filter((p) => !SKIP.test(p + "/"));
 
 /** Names with a definition somewhere (CSS decl or JS setProperty). @type {Set<string>} */
 const defined = new Set();
@@ -40,7 +45,7 @@ for (const rel of files) {
 const missing = usages.filter((u) => !defined.has(u.name));
 if (missing.length) {
   console.error(`✖ ${missing.length} undefined CSS custom propert${missing.length === 1 ? "y" : "ies"} (typo, or token not defined in tokens.css):`);
-  for (const u of missing) console.error(`  web/${u.file}:${u.line}  ${u.name}`);
+  for (const u of missing) console.error(`  ${u.file}:${u.line}  ${u.name}`);
   process.exit(1);
 }
 console.log(`✓ check-css-vars: all ${total} var(--…) usages resolve or carry a fallback (${defined.size} custom properties defined across ${files.length} files)`);
