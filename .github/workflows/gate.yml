@@ -83,14 +83,13 @@ jobs:
         working-directory: vanilla-components/testing
         run: npx playwright test
       - name: visual — vanilla-components
-        # Non-blocking: flip to blocking (drop continue-on-error) once baselines
-        # are committed from this job's visual-snapshots artifact.
+        # Blocking: baselines live in testing/__screenshots__/ (committed from
+        # this job's visual-snapshots artifact — CI is the pinned environment).
         # PW_VISUAL=1 is required: playwright.config.js only defines the
         # `visual` project when this env var is set (Playwright has no way to
         # exclude a project by default, so its existence is gated on the var)
         # — without it, --project=visual matches nothing and silently no-ops.
         if: ${{ !cancelled() }}
-        continue-on-error: true
         working-directory: vanilla-components/testing
         env:
           PW_VISUAL: "1"
