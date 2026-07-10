@@ -105,11 +105,13 @@ jobs:
             vanilla-components/testing/test-results/
           if-no-files-found: ignore
       - name: upload visual snapshots
+        # On a missing-baseline run Playwright writes the would-be baselines to
+        # __screenshots__/ (the configured snapshotPathTemplate) — this artifact
+        # IS the baseline-bootstrap: download, commit as testing/__screenshots__/,
+        # then drop continue-on-error above.
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: visual-snapshots
-          path: |
-            vanilla-components/testing/test-results/
-            vanilla-components/testing/tests/**/*-snapshots/
+          path: vanilla-components/testing/__screenshots__/
           if-no-files-found: ignore
