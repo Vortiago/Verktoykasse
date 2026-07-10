@@ -13,7 +13,8 @@
 //                    polled re-renders must go through renderRegion (innerHTML
 //                    swaps are already caught by html-string).
 //
-// Escapes (both visible in the diff, never silent):
+// Escapes (both visible in the diff, never silent — and both only count when
+// COMMENT-BORNE: a marker inside a string literal suppresses nothing):
 //   // static-render               trailing on the line — the semantic alias
 //                                  for raw-swap ONLY (it documents WHY: a
 //                                  deliberate one-shot render); suppresses no
@@ -32,7 +33,7 @@
 // node_modules/ and testing/. Zero-dep; same shape + exit contract as
 // check-css-vars: file:line findings, exit 1 on any finding.
 import { globSync, readFileSync } from "node:fs";
-import { lineOf, stripComments, argSpan } from "./js-scan.mjs";
+import { lineOf, stripComments, argSpan, splitTop, commentMatch } from "./js-scan.mjs";
 
 const ROOT = new URL("../", import.meta.url); // tools/ sits in the app/skill root
 const SKIP_DIRS = /(^|\/)(node_modules|testing|tools|previews|lib)\//;
@@ -42,15 +43,19 @@ const files = globSync("**/*.js", { cwd: ROOT }).filter((p) => {
   return !SKIP_FILES.has(p.split("/").pop() ?? "");
 });
 
+const GATE_ALLOW_RE = /\/\/\s*gate-allow:\s*([\w-,\s]+)/g;
+const STATIC_RENDER_RE = /\/\/\s*static-render\b/g;
+
 /** File-level suppression: a `// gate-allow: <rule>[, rule]` ANYWHERE in the
  * first ~10 lines suppresses those rule(s) for every finding in the file — for
  * a file whose every relevant call needs the same escape (see vc-elements.js's
  * header prose for the canonical example), rather than one inline comment per
- * call site. @param {string[]} rawLines */
-function fileLevelAllow(rawLines) {
+ * call site. Only comment-borne markers count (commentMatch, js-scan.mjs).
+ * @param {string[]} rawLines @param {string[]} strippedLines */
+function fileLevelAllow(rawLines, strippedLines) {
   /** @type {Set<string>} */ const allowed = new Set();
-  for (const l of rawLines.slice(0, 10)) {
-    const m = l.match(/\/\/\s*gate-allow:\s*([\w-,\s]+)/);
+  for (let i = 0; i < Math.min(10, rawLines.length); i++) {
+    const m = commentMatch(rawLines[i], strippedLines[i] ?? "", GATE_ALLOW_RE);
     if (m) for (const r of m[1].split(",")) allowed.add(r.trim());
   }
   return allowed;
@@ -63,16 +68,19 @@ for (const rel of files) {
   const raw = readFileSync(new URL(rel, ROOT), "utf8");
   const rawLines = raw.split("\n");
   const text = stripComments(raw);
-  const fileAllowed = fileLevelAllow(rawLines);
+  const strippedLines = text.split("\n"); // offsets preserved → same line indices as rawLines
+  const fileAllowed = fileLevelAllow(rawLines, strippedLines);
 
   /** Suppressed on this 1-based line? `// gate-allow: a, b` names rules
    * (trailing on the line, or file-wide from the header); `// static-render`
-   * is the raw-swap-specific escape. @param {number} ln @param {string} rule */
+   * is the raw-swap-specific escape. Markers only count when comment-borne —
+   * one inside a string literal is code, not an escape.
+   * @param {number} ln @param {string} rule */
   const suppressed = (ln, rule) => {
     if (fileAllowed.has(rule)) return true;
-    const l = rawLines[ln - 1] ?? "";
-    if (rule === "raw-swap" && /\/\/\s*static-render\b/.test(l)) return true;
-    const m = l.match(/\/\/\s*gate-allow:\s*([\w-,\s]+)/);
+    const rawL = rawLines[ln - 1] ?? "", strippedL = strippedLines[ln - 1] ?? "";
+    if (rule === "raw-swap" && commentMatch(rawL, strippedL, STATIC_RENDER_RE)) return true;
+    const m = commentMatch(rawL, strippedL, GATE_ALLOW_RE);
     return !!m && m[1].split(",").map((s) => s.trim()).includes(rule);
   };
 
@@ -84,14 +92,16 @@ for (const rel of files) {
     }
   };
 
-  // signal-listener — the options (or anything in the args) must carry `signal`
-  // or `once: true`; a bare two-arg call leaks across re-mounts.
+  // signal-listener — the OPTIONS argument (3rd+) must carry `signal` or
+  // `once: true`; a bare two-arg call leaks across re-mounts. Split on
+  // top-level commas so a callback body merely MENTIONING `signal` can't pass.
   for (const m of text.matchAll(/\baddEventListener\s*\(/g)) {
     const span = argSpan(text, m.index + m[0].length - 1);
     if (!span) continue;
-    if (/\bsignal\b/.test(span.args) || /\bonce\s*:\s*true\b/.test(span.args)) continue;
+    const options = splitTop(span.args).slice(2);
+    if (options.some((a) => /\bsignal\b/.test(a) || /\bonce\s*:\s*true\b/.test(a))) continue;
     flag(m.index, span.end, "signal-listener",
-      "addEventListener without { signal } (or { once: true }) — leaks across re-mounts");
+      "addEventListener without { signal } (or { once: true }) in the options — leaks across re-mounts");
   }
 
   // html-string — markup belongs in <template> .html files, never JS strings.

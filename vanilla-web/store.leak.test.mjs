@@ -172,6 +172,56 @@ test("refetchOn: ['online'] refreshes unconditionally on window 'online'", async
   assert.equal(loads, 2, "online refetches regardless of maxAge (none was even passed)");
 });
 
+// ── refetch races: generation guard + in-flight skip ─────────────────────────
+
+test("a superseded load resolving late neither clobbers the value nor notifies", async () => {
+  /** @type {Array<(v: unknown) => void>} */ const resolvers = [];
+  const store = createStore(() => new Promise((res) => resolvers.push(res)));
+  /** @type {unknown[]} */ const seen = [];
+  store.subscribe((v) => seen.push(v));
+
+  const first = store.load();  // chain 1 — resolves LAST (the stale response)
+  await flush();               // let chain 1 reach its load() call
+  store.refresh();             // chain 2 supersedes chain 1 mid-flight
+  await flush();
+  assert.equal(resolvers.length, 2, "both chains have called load()");
+
+  resolvers[1]("fresh");       // the newer chain settles first
+  await flush();
+  assert.equal(store.get(), "fresh");
+  assert.deepEqual(seen, ["fresh"]);
+
+  resolvers[0]("stale");       // the superseded chain settles late
+  await first;
+  await flush();
+  assert.equal(store.get(), "fresh", "a late stale response must not clobber the newer value");
+  assert.deepEqual(seen, ["fresh"], "and must not notify — nothing changed");
+});
+
+test("refetchOn: an event during an in-flight load does not start a second load", async (t) => {
+  const { doc, win } = installFakeBrowserGlobals(t, { visibilityState: "visible" });
+  let loads = 0;
+  /** @type {(v: unknown) => void} */ let release = () => {};
+  const store = createStore(() => { loads++; return new Promise((res) => { release = res; }); },
+    { refetchOn: ["visible", "online"] });
+
+  const p = store.load();
+  await flush();
+  assert.equal(loads, 1, "initial load in flight");
+
+  doc.dispatch("visibilitychange");
+  win.dispatch("online");
+  await flush();
+  assert.equal(loads, 1, "freshness already in flight — neither listener double-loads");
+
+  release(1);
+  await p;
+  await flush();
+  win.dispatch("online"); // settled again → events refetch as normal
+  await flush();
+  assert.equal(loads, 2, "after the load settles, refetchOn works again");
+});
+
 test("refetchOn: an aborted signal releases both listeners — no leaked module-level registration", async (t) => {
   const { doc, win } = installFakeBrowserGlobals(t, { visibilityState: "visible" });
   const controller = new AbortController();

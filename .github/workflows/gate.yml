@@ -70,6 +70,13 @@ jobs:
       - name: install chromium
         working-directory: vanilla-web/testing
         run: npx playwright install --with-deps chromium
+      - name: install chromium — vanilla-components
+        # Each testing/ dir resolves its own @playwright/test; a browser install
+        # keyed to vanilla-web's version misses when the two drift. This is a
+        # no-op while they match (same cache) and correct when they don't.
+        if: ${{ !cancelled() }}
+        working-directory: vanilla-components/testing
+        run: npx playwright install --with-deps chromium
       - name: e2e — vanilla-web
         working-directory: vanilla-web/testing
         run: npx playwright test

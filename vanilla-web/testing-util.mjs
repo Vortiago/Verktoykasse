@@ -41,6 +41,7 @@ export function fakeEventTarget() {
   return {
     /** @param {string} type @param {Function} fn @param {{ signal?: AbortSignal, once?: boolean }} [opts] */
     addEventListener(type, fn, opts) {
+      if (opts?.signal?.aborted) return; // mirror real EventTarget: a pre-aborted signal never registers
       if (!listeners.has(type)) listeners.set(type, new Set());
       const entry = { fn, once: !!opts?.once };
       listeners.get(type).add(entry);

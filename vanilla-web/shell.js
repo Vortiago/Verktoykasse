@@ -106,7 +106,9 @@ async function switchView(id) {
       window.reportError(err); // always surfaced (console + errbar), even if superseded below
       if (controller !== currentController) return; // a newer swap already owns the stage — don't clobber it
       controller.abort(); // release whatever the partial mount opened
+      try { view.unmount(); } catch { /* half-mounted teardown is best-effort */ }
       currentView = null; // nav link becomes the retry (#53)
+      hasSwitchedOnce = true; // a failed switch counts too — the next success must retitle (#60)
       renderFallback(id, err);
       focusStage(); // the failure fallback also gets focus
       return;

@@ -1,4 +1,4 @@
-// canonical source: vanilla-web/templates.js@245bd3a — vendored copy, do not edit here
+// canonical source: vanilla-web/templates.js@a1b4cb8 — vendored copy, do not edit here
 // @ts-check
 // Canonical template + render helpers for the vanilla-web conventions
 // (see SKILL.md). Copy into <app>/web/lib/templates.js; extend, don't fork.
@@ -277,12 +277,16 @@ const _pendingFlush = new WeakMap();
  * meantime, in which case this just re-defers (arming a fresh listener for
  * the NEW cause). Detaches the listener that triggered this flush first, so a
  * re-arm inside the recursive renderRegion call doesn't see a stale entry.
+ * A DETACHED host just drops its pending swap (entry deleted, listeners
+ * aborted, no render) — nothing must keep rendering into DOM that left the
+ * document, and the entry must not pin its build closure.
  * @param {Element} host */
 function _flushRegion(host) {
   const pending = _pendingFlush.get(host);
   if (!pending) return;
   _pendingFlush.delete(host);
   pending.controller.abort();
+  if (!host.isConnected) return;
   renderRegion(host, pending.build, { sig: pending.sig });
 }
 
@@ -339,6 +343,17 @@ export function renderRegion(host, build, opts = {}) {
         // dialog-only — attach both, harmless for whichever doesn't fire.
         overlay.addEventListener("toggle", () => _flushRegion(host), { signal, once: true });
         overlay.addEventListener("close", () => _flushRegion(host), { signal, once: true });
+        // Removal WITHOUT close/toggle (overlay.remove(), a parent re-render)
+        // fires neither event and would strand the pending swap on a quiet
+        // stream — watch the subtree, flush (re-running all guards) once the
+        // overlay left the DOM. Lives only while this flush is pending: same
+        // abort that detaches the listeners disconnects it. Feature-guarded —
+        // the node tests' fake documents have no MutationObserver.
+        if (typeof MutationObserver !== "undefined") {
+          const mo = new MutationObserver(() => { if (!overlay.isConnected) _flushRegion(host); });
+          mo.observe(host, { childList: true, subtree: true });
+          signal.addEventListener("abort", () => mo.disconnect(), { once: true });
+        }
       });
       return;
     }

@@ -131,7 +131,7 @@ const registryJs = `// @ts-check
  *   unmount(): void,
  * }} View */
 
-/** @typedef {{ id: string, title: string, load: () => Promise<{ default: View }> }} ViewEntry */
+/** @typedef {{ id: string, title?: string, load: () => Promise<{ default: View }> }} ViewEntry */
 
 /** @type {ViewEntry[]} */
 export const views = [

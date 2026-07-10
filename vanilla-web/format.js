@@ -128,10 +128,11 @@ function hrDurFmt(locale) {
  * duration RECORD; it doesn't convert milliseconds); `secondsDisplay`/
  * `minutesDisplay: "always"` keep a zero-valued trailing unit visible ("1m 0s",
  * "1h 0m") — Intl's default "auto" display drops zero-valued units entirely,
- * which would silently change the output shape.
+ * which would silently change the output shape. Non-finite input (NaN,
+ * Infinity) returns the "—" sentinel like null/negative, never a RangeError.
  * @param {number} ms @param {string} [locale] */
 export function duration(ms, locale) {
-  if (ms == null || ms < 0) return "—";
+  if (ms == null || !Number.isFinite(ms) || ms < 0) return "—";
   const s = Math.round(ms / 1000);
   if (s < 60) return secDurFmt(locale).format({ seconds: s });
   const m = Math.floor(s / 60);

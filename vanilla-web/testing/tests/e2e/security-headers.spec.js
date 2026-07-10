@@ -20,3 +20,13 @@ test("a static response carries CSP / nosniff / referrer-policy, no HSTS", async
   expect(headers["referrer-policy"]).toBe("strict-origin-when-cross-origin");
   expect(headers["strict-transport-security"]).toBeUndefined(); // deliberately omitted — see reference/security.md
 });
+
+test("error paths carry the CSP too — a static 404 and an /api 404 are still responses", async ({ request }) => {
+  const staticMiss = await request.get("/no-such-file.html");
+  expect(staticMiss.status()).toBe(404);
+  expect(staticMiss.headers()["content-security-policy"]).toContain("default-src 'self'");
+
+  const apiMiss = await request.get("/api/no-such-endpoint");
+  expect(apiMiss.status()).toBe(404);
+  expect(apiMiss.headers()["content-security-policy"]).toContain("default-src 'self'");
+});

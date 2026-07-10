@@ -69,7 +69,9 @@ const MIN_COMPRESS = 1400; // don't bother below ~1 packet
 
 // Security headers (#59) — a static object spread into every static-file
 // response (304, compressed 200, plain 200 all share the one `headers` object
-// below, so none of the three paths can silently drop these). The CSP's
+// below, so none of the three paths can silently drop these) and into the
+// error paths (sendJson, 403, 404); only the reverse proxy passes through
+// untouched — the backend owns its own headers. The CSP's
 // default-src 'self' + script-src implied by it should Just Work here: no
 // build, no inline <script>, no HTML strings in JS (slot()/pick() write
 // textContent only) — the one innerHTML (loadTemplates) goes through a named
@@ -105,7 +107,7 @@ function pickEncoding(accept) {
  * @param {number} status @param {unknown} obj */
 function sendJson(res, status, obj) {
   const body = JSON.stringify(obj);
-  res.writeHead(status, { "content-type": "application/json; charset=utf-8", "content-length": Buffer.byteLength(body) });
+  res.writeHead(status, { ...SECURITY_HEADERS, "content-type": "application/json; charset=utf-8", "content-length": Buffer.byteLength(body) });
   res.end(body);
 }
 
@@ -250,15 +252,18 @@ const server = createServer(async (req, res) => {
     // registry — this rewrite serves the fixture's bytes AT the exact URL
     // shell.js imports, so the canon shell.js runs completely unmodified and
     // the response still goes through the normal static pipeline below
-    // (ETag/compression/security headers included). Only this one path is
-    // rewritten; every other consumer of "/views/registry.js" under TEST=1
-    // (there are none today — no other fixture or spec references it) would
-    // see the same swap. Inert in prod (TEST unset).
-    let filePath = TEST && urlPath === "/views/registry.js"
-      ? join(ROOT, "testing", "fixtures", "shell-harness", "registry.js")
-      : normalize(join(ROOT, urlPath));
+    // (ETag/compression/security headers included). Rewritten ONLY when the
+    // fixture file actually exists (this repo's testing/ tree): a consuming
+    // app running its own e2e under TEST=1 has no such fixture, so its real
+    // /views/registry.js resolves normally instead of 404ing. Inert in prod.
+    let filePath = normalize(join(ROOT, urlPath));
+    if (TEST && urlPath === "/views/registry.js") {
+      const fixture = join(ROOT, "testing", "fixtures", "shell-harness", "registry.js");
+      if (await stat(fixture).then(() => true, () => false)) filePath = fixture;
+    }
     if (!filePath.startsWith(ROOT)) {
-      res.writeHead(403).end("Forbidden");
+      // Error paths carry the security headers too — a 403/404 is still a response.
+      res.writeHead(403, { ...SECURITY_HEADERS, "content-type": "text/plain" }).end("Forbidden");
       return;
     }
     let info = await stat(filePath).catch(() => null);
@@ -267,7 +272,7 @@ const server = createServer(async (req, res) => {
       info = await stat(filePath).catch(() => null);
     }
     if (!info) {
-      res.writeHead(404, { "content-type": "text/plain" }).end("Not found: " + urlPath);
+      res.writeHead(404, { ...SECURITY_HEADERS, "content-type": "text/plain" }).end("Not found: " + urlPath);
       return;
     }
 

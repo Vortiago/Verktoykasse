@@ -152,7 +152,7 @@ above can't happen), and an empty `connectedMoveCallback` stops a `reconcileList
 Tags (live attrs **bold**): `vc-button` (**label disabled pressed**), `vc-chip`
 (**text**), `vc-status-dot` (**tone pulse**), `vc-avatar` (**name src**), `vc-progress`
 (**value**), `vc-kv-row` (**value**), `vc-empty-state`, `vc-spinner`, `vc-skeleton`,
-`vc-checklist-row` (**done** · `toggle` event), `vc-stat-card` (**value**), `vc-alert`
+`vc-checklist-row` (**done** · `vc-toggle` event), `vc-stat-card` (**value**), `vc-alert`
 (**message** · `dismiss` event).
 
 **No tag** (Node / array / callback props don't fit string attributes — factory only):

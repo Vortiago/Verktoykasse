@@ -68,6 +68,24 @@ test("multiple subscribers each receive the batched notification once", async ()
   assert.deepEqual(b, [2]);
 });
 
+test("reentrancy: a set() inside a notify round gives the whole round ONE value, then a fresh round delivers the new one", async () => {
+  const s = createState("v0");
+  /** @type {string[]} */ const a = [];
+  /** @type {string[]} */ const b = [];
+  let reentered = false;
+  s.subscribe((v) => {
+    a.push(v);
+    if (!reentered) { reentered = true; s.set("v2"); } // reentrant write mid-round
+  });
+  s.subscribe((v) => b.push(v));
+
+  s.set("v1");
+  await flush();
+
+  assert.deepEqual(a, ["v1", "v2"], "round 1 delivers v1, the re-scheduled round 2 delivers v2");
+  assert.deepEqual(b, ["v1", "v2"], "NO torn read: the later subscriber sees the same value as the first, each round");
+});
+
 test("manual unsubscribe() drains the callback — a later write does not fan out to it", async () => {
   const s = createState(0);
   const calls = [];

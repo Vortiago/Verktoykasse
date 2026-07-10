@@ -4,7 +4,8 @@
 // into the stage, every OTHER view still switches normally, and clicking the
 // failed view's own nav link again retries (currentView reset to null fixes
 // the no-op bug — see shell.js's swap()). Uses the shell-harness fixture: the
-// REAL canon shell.js, running against test views swapped in via import map.
+// REAL canon shell.js, running against test views served by serve.mjs's
+// TEST-only /views/registry.js route (see serve.mjs).
 import { test, expect } from "@playwright/test";
 
 const FIXTURE = "/testing/fixtures/shell-harness.html";
@@ -20,6 +21,9 @@ test("a throwing mount() renders a fallback, other views keep working, and the f
   // The rest of the app is NOT bricked — a different view mounts fine.
   await page.getByRole("link", { name: "Home" }).click();
   await expect(page.getByTestId("msg")).toHaveText("Home OK");
+  // A failed boot mount counts as "switched once" (#60) — the FIRST successful
+  // navigation after it must retitle the tab, not skip the update.
+  await expect(page).toHaveTitle(/Home/);
 
   // Clicking the FAILED view's own link again must retry, not no-op (the #53
   // recovery bug: currentView used to stay pinned to the failed view's id).

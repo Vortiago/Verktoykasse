@@ -45,12 +45,15 @@ export function stripComments(text, isHtml) {
 /** Balanced argument span of a call from its `(` at openIdx to its matching
  * `)`, skipping strings/templates. Null when unterminated. Returns both the
  * args text and the index just past the closing paren (callers that only
- * need the text can destructure `{ args }`).
+ * need the text can destructure `{ args }`). Entering `${` records the current
+ * bracket depth; the `}` at that recorded depth closes the interpolation
+ * (context-pop only — it never opened a bracket, so it must not close one).
  * @param {string} text @param {number} openIdx
  * @returns {{args: string, end: number} | null} */
 export function argSpan(text, openIdx) {
   let depth = 0;
   /** @type {string[]} */ const ctx = [];
+  /** @type {number[]} */ const interpDepth = []; // bracket depth at each `${` entry
   for (let i = openIdx; i < text.length; i++) {
     const c = text[i], top = ctx[ctx.length - 1];
     if (top === '"' || top === "'") {
@@ -59,13 +62,62 @@ export function argSpan(text, openIdx) {
     } else if (top === "`") {
       if (c === "\\") i++;
       else if (c === "`") ctx.pop();
-      else if (c === "$" && text[i + 1] === "{") { ctx.push("${"); i++; }
+      else if (c === "$" && text[i + 1] === "{") { ctx.push("${"); interpDepth.push(depth); i++; }
     } else {
       if (c === '"' || c === "'" || c === "`") ctx.push(c);
       else if (c === "(" || c === "{" || c === "[") depth++;
-      else if (c === ")" || c === "}" || c === "]") { depth--; if (depth === 0) return { args: text.slice(openIdx + 1, i), end: i + 1 }; }
-      if (top === "${" && c === "}" && depth >= 0) ctx.pop();
+      else if (c === ")" || c === "}" || c === "]") {
+        if (c === "}" && top === "${" && depth === interpDepth[interpDepth.length - 1]) { ctx.pop(); interpDepth.pop(); }
+        else { depth--; if (depth === 0) return { args: text.slice(openIdx + 1, i), end: i + 1 }; }
+      }
     }
+  }
+  return null;
+}
+
+/** Split a call's argument span (argSpan().args) on its TOP-LEVEL commas —
+ * commas inside strings, templates (incl. `${}` interpolations) or nested
+ * ()/{}/[] belong to one argument. A blank span → []. Same interpolation
+ * handling as argSpan.
+ * @param {string} args @returns {string[]} */
+export function splitTop(args) {
+  /** @type {string[]} */ const out = [];
+  let depth = 0, start = 0;
+  /** @type {string[]} */ const ctx = [];
+  /** @type {number[]} */ const interpDepth = [];
+  for (let i = 0; i < args.length; i++) {
+    const c = args[i], top = ctx[ctx.length - 1];
+    if (top === '"' || top === "'") {
+      if (c === "\\") i++;
+      else if (c === top || c === "\n") ctx.pop();
+    } else if (top === "`") {
+      if (c === "\\") i++;
+      else if (c === "`") ctx.pop();
+      else if (c === "$" && args[i + 1] === "{") { ctx.push("${"); interpDepth.push(depth); i++; }
+    } else {
+      if (c === '"' || c === "'" || c === "`") ctx.push(c);
+      else if (c === "(" || c === "{" || c === "[") depth++;
+      else if (c === ")" || c === "}" || c === "]") {
+        if (c === "}" && top === "${" && depth === interpDepth[interpDepth.length - 1]) { ctx.pop(); interpDepth.pop(); }
+        else depth--;
+      } else if (c === "," && depth === 0) { out.push(args.slice(start, i)); start = i + 1; }
+    }
+  }
+  const last = args.slice(start);
+  if (out.length || last.trim()) out.push(last);
+  return out;
+}
+
+/** First COMMENT-BORNE match of global regex `re` in one raw source line: a
+ * match whose text was blanked in the comment-stripped copy of that line
+ * (stripComments preserves offsets — comment chars become spaces, string
+ * content survives). Guards suppression markers: a `// gate-allow:` inside a
+ * string literal must not suppress anything.
+ * @param {string} raw @param {string} stripped @param {RegExp} re
+ * @returns {RegExpExecArray | null} */
+export function commentMatch(raw, stripped, re) {
+  for (const m of raw.matchAll(re)) {
+    if (stripped[m.index] !== raw[m.index]) return /** @type {RegExpExecArray} */ (m);
   }
   return null;
 }

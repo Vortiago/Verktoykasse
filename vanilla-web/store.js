@@ -19,10 +19,16 @@
 //
 // "visible" refetches on visibilitychange→visible IF the value is older than
 // maxAge (omit maxAge → always refetch on visible); "online" refetches on
-// window "online" unconditionally. Listeners are module-level singletons by
-// default (registered once at store creation, alive for the app's lifetime —
-// the same assumption every other module-level store already makes); pass
-// `signal` to release them instead (tests, or a store created per-view).
+// window "online" unconditionally (no maxAge gate — reconnect means the data
+// is suspect regardless of age). Both listeners skip while a load is already
+// in flight: freshness is already coming, a second chain would just race it.
+// Race containment: load chains carry a generation; only the LATEST chain
+// writes value/loaded/lastLoadedAt and notifies — a superseded load resolving
+// late is dropped, never clobbering a newer result. Listeners are
+// module-level singletons by default (registered once at store creation,
+// alive for the app's lifetime — the same assumption every other module-level
+// store already makes); pass `signal` to release them instead (tests, or a
+// store created per-view).
 
 /**
  * @template T
@@ -33,19 +39,27 @@ export function createStore(load, opts) {
   /** @type {T | null} */ let value = null;
   let loaded = false;
   let lastLoadedAt = 0;
+  let gen = 0;           // load-chain generation — only the latest chain writes/notifies
+  let loading = false;   // a chain is un-settled; refetchOn listeners skip while true
   /** @type {Promise<void> | null} */ let inflight = null;
   /** @type {Set<(v: T | null) => void>} */ const subs = new Set();
 
   const notify = () => { for (const cb of subs) cb(value); };
 
-  /** Fetch once; concurrent callers share the inflight promise. */
+  /** Fetch once; concurrent callers share the inflight promise. A chain
+   * superseded by refresh() mid-flight is dropped on settle (gen guard). */
   function ensure() {
     if (inflight) return inflight;
+    const g = ++gen;
+    loading = true;
     inflight = Promise.resolve()
       .then(load)
-      .then((v) => { value = v; })
-      .catch(() => { value = null; })           // failed load → null, not a throw
-      .finally(() => { loaded = true; lastLoadedAt = Date.now(); notify(); });
+      .then((v) => { if (g === gen) value = v; },
+            () => { if (g === gen) value = null; })  // failed load → null, not a throw
+      .finally(() => {
+        if (g !== gen) return; // superseded — the newer chain owns value/loaded/notify
+        loading = false; loaded = true; lastLoadedAt = Date.now(); notify();
+      });
     return inflight;
   }
 
@@ -53,12 +67,13 @@ export function createStore(load, opts) {
   if (refetchOn.includes("visible") && typeof document !== "undefined") {
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState !== "visible") return;
+      if (loading) return; // freshness already in flight
       if (opts?.maxAge != null && Date.now() - lastLoadedAt < opts.maxAge) return; // still fresh
       store.refresh();
     }, { signal: opts?.signal });
   }
   if (refetchOn.includes("online") && typeof window !== "undefined") {
-    window.addEventListener("online", () => store.refresh(), { signal: opts?.signal });
+    window.addEventListener("online", () => { if (!loading) store.refresh(); }, { signal: opts?.signal });
   }
 
   const store = {

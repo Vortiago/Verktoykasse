@@ -110,6 +110,11 @@ a newer navigation cancelled this one mid-flight. The shell and errbar already
 treat it as such (shell.js's `swap()`, `wireErrorBar`); don't wrap view code in
 defensive try/catch to hide it.
 
+After every mount (success or fallback) the shell moves focus to the stage for
+screen-reader announcement, so a view must not rely on `autofocus` (or a focus
+set during `mount()`) surviving — focus a control explicitly after the swap if
+it needs it.
+
 ## Invariants — these always hold (detail behind each link)
 
 - **No HTML strings in JS.** Markup is `<template id="tpl-…">` in `.html` files

@@ -10,7 +10,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { withTransition, renderRegion } from "./templates.js";
-import { fakeEventTarget as fakeTarget } from "./testing-util.mjs";
+import { fakeEventTarget as fakeTarget, patchGlobal } from "./testing-util.mjs";
 
 /** Run `body` with a stubbed `globalThis.document`, restored afterwards; returns
  * whatever `body` returns. @param {any} doc @param {() => any} body */
@@ -75,6 +75,7 @@ function fakeHost({ insideEl = null, overlay = null } = {}) {
   const host = /** @type {any} */ ({
     ...target,
     tagName: "DIV",
+    isConnected: true, // real Elements always carry this; the detached-host test flips it
     _insideEl: insideEl,
     _overlay: overlay,
     contains(/** @type {unknown} */ node) { return node === host._insideEl; },
@@ -193,6 +194,57 @@ test("renderRegion: a sig-unchanged skip is a no-op, not a deferral — nothing 
   assert.equal(host.swaps, 1, "sig unchanged → no second swap");
   assert.equal(builds, 1, "build() not even called on the sig-gated skip");
   assert.equal(host.listenerCount("focusout"), 0, "a sig-only skip has nothing to flush later — no listener armed");
+});
+
+test("renderRegion: an overlay removed WITHOUT close/toggle flushes via the removal observer", (t) => {
+  installDoc(t, fakeDocument());
+  const overlay = /** @type {any} */ ({ ...fakeTarget(), isConnected: true });
+  const host = fakeHost({ overlay });
+  /** @type {any[]} */ const observers = [];
+  class FakeMO {
+    /** @param {() => void} cb */
+    constructor(cb) { this.cb = cb; this.disconnected = false; observers.push(this); }
+    /** @param {unknown} target @param {unknown} opts */
+    observe(target, opts) { this.target = target; this.opts = opts; }
+    disconnect() { this.disconnected = true; }
+  }
+  patchGlobal(t, "MutationObserver", FakeMO);
+
+  renderRegion(host, () => ({ id: "after-removal" }));
+  assert.equal(host.swaps, 0, "skipped while the overlay is open");
+  assert.equal(observers.length, 1, "a removal observer is armed alongside toggle/close");
+  assert.equal(observers[0].target, host, "observes the host subtree");
+  assert.deepEqual(observers[0].opts, { childList: true, subtree: true });
+
+  observers[0].cb(); // some unrelated mutation — overlay still connected
+  assert.equal(host.swaps, 0, "still open and connected — no flush");
+
+  overlay.isConnected = false; // dialog.remove() / parent re-render — no close/toggle fires
+  host._overlay = null;
+  observers[0].cb();
+  assert.equal(host.swaps, 1, "flushed when the overlay left the DOM without an event");
+  assert.deepEqual(host.lastNode, { id: "after-removal" });
+  assert.equal(observers[0].disconnected, true, "observer disconnected by the pending controller's abort");
+  assert.equal(overlay.listenerCount("toggle"), 0, "the event listeners are detached by the same abort");
+});
+
+test("renderRegion: a detached host drops its pending swap — cleared, never rendered", (t) => {
+  const input = { tagName: "INPUT" };
+  const doc = fakeDocument({ activeElement: input });
+  installDoc(t, doc);
+  const host = fakeHost({ insideEl: input });
+
+  renderRegion(host, () => ({ v: "stale" }));
+  assert.equal(host.listenerCount("focusout"), 1, "deferred by focus");
+
+  host.isConnected = false; // the host itself was removed (view unmount / parent re-render)
+  doc.activeElement = null;
+  host.dispatch("focusout");
+
+  assert.equal(host.swaps, 0, "no render into a detached host");
+  assert.equal(host.listenerCount("focusout"), 0, "listener detached — controller aborted");
+  host.dispatch("focusout");
+  assert.equal(host.swaps, 0, "pending entry cleared — nothing left to flush");
 });
 
 test("renderRegion: a later direct swap clears any earlier pending flush for the same host", (t) => {

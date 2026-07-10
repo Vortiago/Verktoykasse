@@ -24,12 +24,16 @@ export function createState(initial) {
 
   // Batch: N writes in the same handler (or microtask turn) → 1 notify per
   // subscriber, not N — queueMicrotask coalesces same-tick writes for free.
+  // Reentrancy: the flag clears BEFORE the loop and the value is snapshotted
+  // once per round, so a set() from inside a subscriber schedules a fresh
+  // round — every subscriber in a round sees the same value, no torn reads.
   function scheduleNotify() {
     if (notifyQueued) return;
     notifyQueued = true;
     queueMicrotask(() => {
       notifyQueued = false;
-      for (const cb of subs) cb(value);
+      const v = value;
+      for (const cb of subs) cb(v);
     });
   }
 
