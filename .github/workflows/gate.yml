@@ -1,0 +1,115 @@
+# The repo's gate — a thin caller of the exact commands a local session runs
+# (issue #63). If CI ever needs a step a session can't run with one command,
+# local and CI have drifted: fix the script, not this file.
+name: gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  gate:
+    # Fast half (<1 min): typecheck + static checkers + node tests per skill,
+    # vendored-copy drift, shell syntax. Same command a session runs locally.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      # check.mjs resolves typescript via `npx --yes --package typescript@5`
+      # when no local install exists; cache npx's store so the pin is cheap.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.npm/_npx
+          key: npx-typescript-5-${{ runner.os }}
+      - name: gate — vanilla-web
+        working-directory: vanilla-web
+        run: node tools/check.mjs
+      - name: gate — vanilla-components
+        if: ${{ !cancelled() }}
+        working-directory: vanilla-components
+        run: node tools/check.mjs
+      - name: vendored-toolkit drift (sync-from-web.sh --check)
+        if: ${{ !cancelled() }}
+        working-directory: vanilla-components
+        run: ./sync-from-web.sh --check
+      - name: shell syntax (bash -n)
+        if: ${{ !cancelled() }}
+        run: |
+          for f in install.sh \
+                   vanilla-components/install.sh \
+                   vanilla-components/vendor.sh \
+                   vanilla-components/sync-from-web.sh \
+                   vanilla-components/lib-stamp.sh \
+                   worktrees/*.sh; do
+            echo "bash -n $f"
+            bash -n "$f"
+          done
+
+  browser:
+    # Slow half: Playwright e2e (leak + interaction suites) for both skills,
+    # plus the vanilla-components visual project. CI is the pinned environment
+    # that owns visual baselines (CONTEXT.md); screenshots from elsewhere are
+    # advisory.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: install test deps — vanilla-web
+        working-directory: vanilla-web/testing
+        run: npm ci || npm i
+      - name: install test deps — vanilla-components
+        working-directory: vanilla-components/testing
+        run: npm ci || npm i
+      - name: playwright version (cache key)
+        id: pw
+        run: echo "version=$(node -p "require('./vanilla-web/testing/node_modules/@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ steps.pw.outputs.version }}-${{ runner.os }}
+      - name: install chromium
+        working-directory: vanilla-web/testing
+        run: npx playwright install --with-deps chromium
+      - name: e2e — vanilla-web
+        working-directory: vanilla-web/testing
+        run: npx playwright test
+      - name: e2e — vanilla-components
+        if: ${{ !cancelled() }}
+        working-directory: vanilla-components/testing
+        run: npx playwright test
+      - name: visual — vanilla-components
+        # Non-blocking: flip to blocking (drop continue-on-error) once baselines
+        # are committed from this job's visual-snapshots artifact.
+        # PW_VISUAL=1 is required: playwright.config.js only defines the
+        # `visual` project when this env var is set (Playwright has no way to
+        # exclude a project by default, so its existence is gated on the var)
+        # — without it, --project=visual matches nothing and silently no-ops.
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        working-directory: vanilla-components/testing
+        env:
+          PW_VISUAL: "1"
+        run: npx playwright test --project=visual
+      - name: upload playwright artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts
+          path: |
+            vanilla-web/testing/test-results/
+            vanilla-components/testing/test-results/
+          if-no-files-found: ignore
+      - name: upload visual snapshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-snapshots
+          path: |
+            vanilla-components/testing/test-results/
+            vanilla-components/testing/tests/**/*-snapshots/
+          if-no-files-found: ignore
