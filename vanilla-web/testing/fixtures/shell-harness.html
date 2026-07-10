@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>shell-harness</title>
+  <!-- Swaps shell.js's internal "./views/registry.js" import for this fixture's
+       test views WITHOUT copying or modifying the real, canon shell.js — import
+       maps remap by the resolved absolute URL, so this works no matter which
+       page imports it (see #53/#60/#61/#62 specs in tests/e2e/). -->
+  <script type="importmap">
+    { "imports": { "/views/registry.js": "/testing/fixtures/shell-harness/registry.js" } }
+  </script>
+  <link rel="modulepreload" href="/shell.js" />
+  <script type="module" src="/shell.js"></script>
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="#/home">Home</a>
+      <a href="#/broken">Broken</a>
+      <a href="#/slow">Slow</a>
+    </nav>
+  </header>
+  <main id="stage"></main>
+  <output id="errbar" hidden></output>
+</body>
+</html>
