@@ -45,6 +45,12 @@ A component is one folder with three same-named files:
   module-level promise makes it once-only), clones, fills slots, wires its
   internal events, and returns the element plus in-place updaters.
 
+`loadTemplates`/`loadCSS` resolve `.html`/`.css` relative to `import.meta.url`
+(see the `stat-card` example below), which is why a deploy-time minifier must
+run **per file, in place, preserving this folder shape** — never bundled; a
+bundler rewrites module URLs and breaks every one of these fetches silently
+(`reference/deploy.md`).
+
 ```js
 // components/stat-card/stat-card.js
 // @ts-check
