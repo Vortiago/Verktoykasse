@@ -1,4 +1,4 @@
-// canonical source: vanilla-web/templates.js@df51eb8 — vendored copy, do not edit here
+// canonical source: vanilla-web/templates.js@57e897c — vendored copy, do not edit here
 // @ts-check
 // Canonical template + render helpers for the vanilla-web conventions
 // (see SKILL.md). Copy into <app>/web/lib/templates.js; extend, don't fork.
@@ -14,20 +14,51 @@
 /** @type {Set<string>} */
 const fetched = new Set();
 
-/** Fetch component .html files and inline their <template> nodes. Idempotent.
- * @param {...string} urls */
-export async function loadTemplates(...urls) {
+// Trusted Types (#59): loadTemplates is the ONE innerHTML sink in the toolkit
+// (slot()/pick() write textContent only). require-trusted-types-for 'script'
+// in serve.mjs's CSP would throw on a raw string assignment, so the sink is
+// wrapped in a single named, lazily-created policy — the policy IS the audit
+// point for every trusted-HTML write in the app. Falls back to the raw string
+// where trustedTypes is absent (node tests, or a browser without the API).
+/** @typedef {{ createHTML(s: string): string }} TTPolicyLike — the one method
+ * this module needs; avoids depending on the (not-yet-in-lib.dom.d.ts) global
+ * TrustedTypePolicy/TrustedHTML types so the gate type-checks with no @types. */
+/** @type {TTPolicyLike | undefined} */
+let ttPolicy;
+/** @param {string} html @returns {string} */
+function trustedHtml(html) {
+  const tt = /** @type {{ trustedTypes?: { createPolicy(name: string, rules: { createHTML(s: string): string }): TTPolicyLike } }} */ (
+    /** @type {unknown} */ (globalThis)
+  ).trustedTypes;
+  if (!tt) return html;
+  ttPolicy ??= tt.createPolicy("vanilla-templates", { createHTML: (s) => s });
+  return /** @type {string} */ (/** @type {unknown} */ (ttPolicy.createHTML(html)));
+}
+
+/** Fetch component .html files and inline their <template> nodes. Idempotent —
+ * a URL already fetched is skipped. Pass an optional trailing options object
+ * (`{ signal }`) to make this call's fetches abortable; existing call sites
+ * that pass only strings are unaffected. On abort (or any fetch failure) a URL
+ * is NOT marked fetched — `fetched.add` only runs after every fetch in the
+ * batch has actually succeeded — so a cancelled view's next mount retries the
+ * fetch cleanly instead of silently treating it as already loaded (#61).
+ * @param {...(string | { signal?: AbortSignal })} args */
+export async function loadTemplates(...args) {
+  const last = args[args.length - 1];
+  const hasOpts = typeof last === "object" && last !== null;
+  const { signal } = /** @type {{ signal?: AbortSignal }} */ (hasOpts ? last : {});
+  const urls = /** @type {string[]} */ (hasOpts ? args.slice(0, -1) : args);
   const fresh = urls.filter((u) => !fetched.has(u));
   const texts = await Promise.all(
-    fresh.map((u) => fetch(u).then((r) => {
+    fresh.map((u) => fetch(u, { signal }).then((r) => {
       if (!r.ok) throw new Error(`template fetch ${u}: ${r.status}`);
       return r.text();
     })),
   );
-  fresh.forEach((u) => fetched.add(u));
+  fresh.forEach((u) => fetched.add(u)); // only reached once every fetch above resolved ok
   const holder = document.createElement("div");
   holder.hidden = true;
-  holder.innerHTML = texts.join("\n");
+  holder.innerHTML = trustedHtml(texts.join("\n"));
   document.body.append(...holder.children);
 }
 
@@ -159,19 +190,42 @@ export function wireTheme(storageKey = "theme") {
 }
 
 /** Surface listener exceptions and unhandled rejections (which vanish silently
- * by default): always logs, and fills `<output id="errbar">` when present. */
+ * by default): always logs, fills `<output id="errbar">` when present, and
+ * beacons a truncated copy to the server (#62) — the one place an LLM session
+ * maintaining the app can actually read it. `AbortError` is filtered at both
+ * hooks (#61): a cancelled fetch/mount from routine navigation is a lifecycle
+ * event, not a failure, so it's `console.debug`'d instead of painted red — and
+ * never beaconed (the relay call sits AFTER the filter, deliberately). The
+ * relay is additive only: `sendBeacon` 404s silently when `/api/client-errors`
+ * isn't wired up (serve.mjs), so an app that never adds the endpoint pays
+ * nothing extra. Payload is capped/truncated — it's an error message, not
+ * telemetry: no timing, no interaction events, no fingerprinting. */
 export function wireErrorBar() {
   const errbar = document.getElementById("errbar");
-  /** @param {unknown} msg */
-  const show = (msg) => {
+  /** @param {unknown} msg @param {string} src */
+  const relay = (msg, src) => navigator.sendBeacon?.("/api/client-errors", JSON.stringify({
+    msg: String(msg).slice(0, 2000),
+    src,
+    url: location.hash,
+    ua: navigator.userAgent,
+  }));
+  /** @param {unknown} msg @param {string} src */
+  const show = (msg, src) => {
     console.error(msg);
+    relay(msg, src);
     if (errbar) {
       errbar.textContent = String(msg);
       errbar.hidden = false;
     }
   };
-  window.addEventListener("error", (e) => show(e.message));
-  window.addEventListener("unhandledrejection", (e) => show(`unhandled: ${e.reason}`));
+  window.addEventListener("error", (e) => {
+    if (e.error instanceof DOMException && e.error.name === "AbortError") { console.debug(e.error); return; }
+    show(e.message, "error");
+  });
+  window.addEventListener("unhandledrejection", (e) => {
+    if (e.reason instanceof DOMException && e.reason.name === "AbortError") { console.debug(e.reason); return; }
+    show(`unhandled: ${e.reason}`, "unhandledrejection");
+  });
 }
 
 // ── Interaction-safe re-rendering ──────────────────────────────────────────
@@ -205,18 +259,63 @@ export function selectionInside(host) {
   );
 }
 
+/** @typedef {{ build: () => Node, sig?: string }} PendingSwap */
+/** Latest skipped {build, sig} per host — WeakMap, latest-wins: an
+ * intermediate skipped build is correctly dropped since `build` reflects
+ * current state whenever it finally runs. @type {WeakMap<Element, PendingSwap>} */
+const _pendingFlush = new WeakMap();
+/** One armed flush per host — set the first time a host is skipped, cleared
+ * (via `.abort()`) the moment it flushes. A repeat skip on an already-armed
+ * host just replaces `_pendingFlush`'s entry; it does NOT arm a second
+ * listener, which is what keeps this at one flush per host, never appended.
+ * @type {WeakMap<Element, AbortController>} */
+const _flushArmed = new WeakMap();
+
+/** Re-run renderRegion's normal guards now that whatever deferred the last
+ * skip may have cleared — another interaction may have started in the
+ * meantime, in which case this just re-defers (arming a fresh listener for
+ * the NEW cause). Detaches the listener that triggered this flush first, so a
+ * re-arm inside the recursive renderRegion call doesn't see a stale entry.
+ * @param {Element} host */
+function _flushRegion(host) {
+  _flushArmed.get(host)?.abort();
+  _flushArmed.delete(host);
+  const pending = _pendingFlush.get(host);
+  if (!pending) return;
+  _pendingFlush.delete(host);
+  renderRegion(host, pending.build, { sig: pending.sig });
+}
+
+/** Stash the latest skipped build for `host` and, only if nothing is armed for
+ * it yet, attach the one-shot listener that will flush it (#42 — "on the first
+ * tick after the interaction clears" assumes there IS a next tick; this fires
+ * the instant the interaction itself clears, tick or no tick).
+ * @param {Element} host @param {() => Node} build @param {string | undefined} sig
+ * @param {(signal: AbortSignal) => void} arm - attach whatever listener(s) fire on THIS skip's clear condition */
+function _deferSwap(host, build, sig, arm) {
+  _pendingFlush.set(host, { build, sig });
+  if (_flushArmed.has(host)) return; // already watching for this host's interaction to clear
+  const controller = new AbortController();
+  _flushArmed.set(host, controller);
+  arm(controller.signal);
+}
+
 /** Render `build()`'s output into `host` WITHOUT clobbering live interaction:
  *   - skip while a control inside `host` is focused (select/input/textarea/
  *     contenteditable) — an open dropdown must not snap shut;
  *   - skip while a popover or <dialog> inside `host` is open — a swap would
  *     destroy it mid-use;
  *   - skip while a text selection starts or ends inside `host`;
- *   - skip when a caller-supplied `sig` is unchanged (perf + flicker);
+ *   - skip when a caller-supplied `sig` is unchanged (perf + flicker) — this
+ *     one is a no-op, not a deferral: nothing new to flush later;
  *   - otherwise replaceChildren(build()).
- * `build` only runs when we actually swap, so a skipped tick is cheap. A
- * deferred swap lands on the first tick after the interaction clears — never
+ * `build` only runs when we actually swap, so a skipped tick is cheap. A swap
+ * deferred by focus/overlay/selection flushes the INSTANT that condition
+ * clears — a one-shot listener armed per host (focusout / toggle+close /
+ * selectionchange), not a wait for the next poll tick, so a quiet SSE stream
+ * or a one-shot store-triggered render can't strand stale DOM (#42). Never
  * advance `sig` on a skip (handled here: sig is only recorded when swapping).
- * `force:true` swaps unconditionally.
+ * `force:true` swaps unconditionally and clears any pending flush for `host`.
  *
  * Sig hygiene: `sig` is a cheap string of exactly what this region renders.
  * A fast-ticking value must never share a sig with an O(content) region —
@@ -228,11 +327,39 @@ export function selectionInside(host) {
 export function renderRegion(host, build, opts = {}) {
   if (!opts.force) {
     const active = document.activeElement;
-    if (active && active !== document.body && host.contains(active) && _isInteractive(active)) return;
-    if (host.querySelector(":popover-open, dialog[open]")) return;
-    if (selectionInside(host)) return;
+    if (active && active !== document.body && host.contains(active) && _isInteractive(active)) {
+      _deferSwap(host, build, opts.sig, (signal) =>
+        host.addEventListener("focusout", () => _flushRegion(host), { signal, once: true }));
+      return;
+    }
+    const overlay = host.querySelector(":popover-open, dialog[open]");
+    if (overlay) {
+      _deferSwap(host, build, opts.sig, (signal) => {
+        // toggle covers popovers (and dialogs, which also fire it); close is
+        // dialog-only — attach both, harmless for whichever doesn't fire.
+        overlay.addEventListener("toggle", () => _flushRegion(host), { signal, once: true });
+        overlay.addEventListener("close", () => _flushRegion(host), { signal, once: true });
+      });
+      return;
+    }
+    if (selectionInside(host)) {
+      _deferSwap(host, build, opts.sig, (signal) =>
+        // Chatty and document-level, so attach ONLY while a flush is pending
+        // (armed here, detached in _flushRegion via the shared AbortController)
+        // — never left listening between renders. Re-checks selectionInside
+        // itself: most selectionchange events fire while the selection is
+        // still inside host (extending it), and must not flush prematurely.
+        document.addEventListener("selectionchange", () => {
+          if (!selectionInside(host)) _flushRegion(host);
+        }, { signal }));
+      return;
+    }
     if (opts.sig != null && _regionSig.get(host) === opts.sig) return;
   }
+  // This swap is happening now — any earlier deferred one is moot.
+  _flushArmed.get(host)?.abort();
+  _flushArmed.delete(host);
+  _pendingFlush.delete(host);
   if (opts.sig != null) _regionSig.set(host, opts.sig);
   host.replaceChildren(build());
 }

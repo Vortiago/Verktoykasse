@@ -23,6 +23,10 @@ PAIRS=(
   "previews/new.mjs|previews/new.mjs"
   "previews/naming.mjs|previews/naming.mjs"
   "templates.js|lib/templates.js"
+  "tools/check.mjs|tools/check.mjs"
+  "tools/check-css-vars.mjs|tools/check-css-vars.mjs"
+  "tools/check-slots.mjs|tools/check-slots.mjs"
+  "tools/check-conventions.mjs|tools/check-conventions.mjs"
 )
 
 strip="canonical source: vanilla-web"   # must be a prefix of the sync-mode stamp text
