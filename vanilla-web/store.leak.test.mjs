@@ -17,6 +17,37 @@ import { createStore } from "./store.js";
 /** A store whose load never has to run for these synchronous-notify tests. */
 const newStore = () => createStore(async () => null);
 
+/** Resolve the microtasks createStore's load-chain (Promise.resolve().then(load)…) queues. */
+const flush = async () => { for (let i = 0; i < 8; i++) await Promise.resolve(); };
+
+/** Install fake document/window on globalThis for one test (#46's refetchOn
+ * listeners are gated on `typeof document/window !== "undefined"`, so plain
+ * node — no globals stubbed — exercises the "no browser" no-op path; every
+ * OTHER test in this file relies on exactly that for its default-unchanged
+ * assertion). Each fake supports addEventListener(type, fn, {signal}) +
+ * dispatch(type), same shape as the live.leak.test.mjs / templates fakes. */
+function installFakeBrowserGlobals(t, { visibilityState = "visible" } = {}) {
+  /** @param {Map<string, Set<{fn: () => void}>>} store */
+  const make = (store) => ({
+    addEventListener(type, fn, opts) {
+      if (!store.has(type)) store.set(type, new Set());
+      const entry = { fn };
+      store.get(type).add(entry);
+      opts?.signal?.addEventListener("abort", () => store.get(type)?.delete(entry), { once: true });
+    },
+    dispatch(type) { for (const { fn } of [...(store.get(type) ?? [])]) fn(); },
+  });
+  const doc = { visibilityState, ...make(new Map()) };
+  const win = make(new Map());
+  for (const [name, value] of [["document", doc], ["window", win]]) {
+    const had = Object.prototype.hasOwnProperty.call(globalThis, name);
+    const prev = globalThis[name];
+    globalThis[name] = value;
+    t.after(() => { if (had) globalThis[name] = prev; else delete globalThis[name]; });
+  }
+  return { doc, win };
+}
+
 test("manual unsubscribe() drains the callback — a post-unsubscribe set() does not fan out to it", () => {
   const store = newStore();
   // Simulate N mount/unmount cycles: each subscribes then unsubscribes.
@@ -86,4 +117,85 @@ test("signal overload: an already-aborted signal still returns a usable, idempot
 
   store.set("v");
   assert.deepEqual(calls, [], "a pre-aborted signal must not leave the subscriber live");
+});
+
+// ── #46: opt-in freshness (refetchOn) ────────────────────────────────────────
+
+test("no options: createStore never touches document/window — the default-unchanged contract", () => {
+  // No fake document/window installed for THIS test — if createStore ever
+  // touched them unconditionally (regardless of refetchOn), this would throw.
+  assert.doesNotThrow(() => createStore(async () => null));
+});
+
+test("refetchOn: ['visible'] refreshes on visibilitychange→visible only once the value is older than maxAge", async (t) => {
+  const { doc } = installFakeBrowserGlobals(t, { visibilityState: "hidden" });
+  let loads = 0;
+  const store = createStore(async () => ++loads, { refetchOn: ["visible"], maxAge: 1000 });
+  await store.load();
+  assert.equal(loads, 1, "primed once");
+
+  doc.visibilityState = "visible";
+  doc.dispatch("visibilitychange");
+  await flush();
+  assert.equal(loads, 1, "still fresh — no refetch");
+
+  // Simulate the value aging past maxAge without a real 1s wait.
+  const realNow = Date.now;
+  Date.now = () => realNow() + 2000;
+  try {
+    doc.dispatch("visibilitychange");
+    await flush();
+  } finally { Date.now = realNow; }
+  assert.equal(loads, 2, "stale past maxAge — refetches on visible");
+});
+
+test("refetchOn: ['visible'] with no maxAge always refetches on visible", async (t) => {
+  const { doc } = installFakeBrowserGlobals(t, { visibilityState: "hidden" });
+  let loads = 0;
+  const store = createStore(async () => ++loads, { refetchOn: ["visible"] });
+  await store.load();
+  assert.equal(loads, 1);
+
+  doc.visibilityState = "visible";
+  doc.dispatch("visibilitychange");
+  await flush();
+  assert.equal(loads, 2, "no maxAge → every visible refetches, even immediately");
+});
+
+test("refetchOn: ['visible'] ignores visibilitychange while hidden", async (t) => {
+  const { doc } = installFakeBrowserGlobals(t, { visibilityState: "hidden" });
+  let loads = 0;
+  const store = createStore(async () => ++loads, { refetchOn: ["visible"] });
+  await store.load();
+
+  doc.dispatch("visibilitychange"); // visibilityState is still "hidden"
+  await flush();
+  assert.equal(loads, 1, "a hidden→hidden (or tab-close) event must not refetch");
+});
+
+test("refetchOn: ['online'] refreshes unconditionally on window 'online'", async (t) => {
+  const { win } = installFakeBrowserGlobals(t);
+  let loads = 0;
+  const store = createStore(async () => ++loads, { refetchOn: ["online"] });
+  await store.load();
+  assert.equal(loads, 1);
+
+  win.dispatch("online");
+  await flush();
+  assert.equal(loads, 2, "online refetches regardless of maxAge (none was even passed)");
+});
+
+test("refetchOn: an aborted signal releases both listeners — no leaked module-level registration", async (t) => {
+  const { doc, win } = installFakeBrowserGlobals(t, { visibilityState: "visible" });
+  const controller = new AbortController();
+  let loads = 0;
+  const store = createStore(async () => ++loads, { refetchOn: ["visible", "online"], signal: controller.signal });
+  await store.load();
+  assert.equal(loads, 1);
+
+  controller.abort();
+  doc.dispatch("visibilitychange");
+  win.dispatch("online");
+  await flush();
+  assert.equal(loads, 1, "both listeners drained by the signal — neither event refetches after abort");
 });
