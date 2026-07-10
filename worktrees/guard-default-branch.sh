@@ -34,7 +34,10 @@ case "$tool" in
     verb=edit
     path=$(jq -r '.tool_input.file_path // .tool_input.notebook_path // empty' <<<"$input")
     [[ -n "$path" ]] || exit 0
-    case "$path" in /*) ;; *) path="$cwd/$path" ;; esac
+    # Absolute paths are used as-is; relative ones resolve against cwd. Windows
+    # drive-letter paths (C:\… or C:/…) are absolute too but don't start with /.
+    case "$path" in /*|[A-Za-z]:[/\\]*) ;; *) path="$cwd/$path" ;; esac
+    path=${path//\\//}   # normalize Windows backslashes so dirname/git see one separator
     dir=$(dirname "$path")
     # New file in a not-yet-created dir: walk up to the nearest existing ancestor.
     while [[ "$dir" != / && ! -d "$dir" ]]; do dir=$(dirname "$dir"); done
