@@ -15,6 +15,7 @@ test("a static response carries CSP / nosniff / referrer-policy, no HSTS", async
   expect(headers["content-security-policy"]).toContain("frame-ancestors 'none'");
   expect(headers["content-security-policy"]).toContain("trusted-types vanilla-templates");
   expect(headers["content-security-policy"]).toContain("require-trusted-types-for 'script'");
+  expect(headers["content-security-policy"]).not.toContain("unsafe-inline"); // no TEST=1 carve-out (serve.mjs) — unconditional CSP
   expect(headers["x-content-type-options"]).toBe("nosniff");
   expect(headers["referrer-policy"]).toBe("strict-origin-when-cross-origin");
   expect(headers["strict-transport-security"]).toBeUndefined(); // deliberately omitted — see reference/security.md

@@ -37,16 +37,10 @@ jobs:
         run: ./sync-from-web.sh --check
       - name: shell syntax (bash -n)
         if: ${{ !cancelled() }}
-        run: |
-          for f in install.sh \
-                   vanilla-components/install.sh \
-                   vanilla-components/vendor.sh \
-                   vanilla-components/sync-from-web.sh \
-                   vanilla-components/lib-stamp.sh \
-                   worktrees/*.sh; do
-            echo "bash -n $f"
-            bash -n "$f"
-          done
+        # Discovered by glob, not a hardcoded list — a new .sh anywhere in the
+        # repo is covered automatically instead of failing silently. Same
+        # command a session runs locally.
+        run: find . -name '*.sh' -not -path '*/node_modules/*' -print0 | xargs -0 -I{} bash -n {}
 
   browser:
     # Slow half: Playwright e2e (leak + interaction suites) for both skills,
@@ -63,6 +57,7 @@ jobs:
         working-directory: vanilla-web/testing
         run: npm ci || npm i
       - name: install test deps — vanilla-components
+        if: ${{ !cancelled() }}
         working-directory: vanilla-components/testing
         run: npm ci || npm i
       - name: playwright version (cache key)

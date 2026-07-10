@@ -1,4 +1,4 @@
-// canonical source: vanilla-web/templates.js@57e897c — vendored copy, do not edit here
+// canonical source: vanilla-web/templates.js@245bd3a — vendored copy, do not edit here
 // @ts-check
 // Canonical template + render helpers for the vanilla-web conventions
 // (see SKILL.md). Copy into <app>/web/lib/templates.js; extend, don't fork.
@@ -202,6 +202,8 @@ export function wireTheme(storageKey = "theme") {
  * telemetry: no timing, no interaction events, no fingerprinting. */
 export function wireErrorBar() {
   const errbar = document.getElementById("errbar");
+  /** @param {unknown} reason */
+  const isAbort = (reason) => reason instanceof DOMException && reason.name === "AbortError";
   /** @param {unknown} msg @param {string} src */
   const relay = (msg, src) => navigator.sendBeacon?.("/api/client-errors", JSON.stringify({
     msg: String(msg).slice(0, 2000),
@@ -219,11 +221,11 @@ export function wireErrorBar() {
     }
   };
   window.addEventListener("error", (e) => {
-    if (e.error instanceof DOMException && e.error.name === "AbortError") { console.debug(e.error); return; }
+    if (isAbort(e.error)) { console.debug(e.error); return; }
     show(e.message, "error");
   });
   window.addEventListener("unhandledrejection", (e) => {
-    if (e.reason instanceof DOMException && e.reason.name === "AbortError") { console.debug(e.reason); return; }
+    if (isAbort(e.reason)) { console.debug(e.reason); return; }
     show(`unhandled: ${e.reason}`, "unhandledrejection");
   });
 }
@@ -259,17 +261,16 @@ export function selectionInside(host) {
   );
 }
 
-/** @typedef {{ build: () => Node, sig?: string }} PendingSwap */
-/** Latest skipped {build, sig} per host — WeakMap, latest-wins: an
+/** @typedef {{ build: () => Node, sig?: string, controller: AbortController }} PendingSwap */
+/** One entry per host with a swap pending flush — WeakMap, latest-wins: a
+ * repeat skip on an already-armed host mutates `build`/`sig` in place (an
  * intermediate skipped build is correctly dropped since `build` reflects
- * current state whenever it finally runs. @type {WeakMap<Element, PendingSwap>} */
+ * current state whenever it finally runs) and keeps the SAME controller, so
+ * it does NOT arm a second listener — one armed flush per host, never
+ * appended. `controller` is aborted (detaching whatever listener(s) armed it)
+ * the moment the host flushes or a direct swap supersedes it.
+ * @type {WeakMap<Element, PendingSwap>} */
 const _pendingFlush = new WeakMap();
-/** One armed flush per host — set the first time a host is skipped, cleared
- * (via `.abort()`) the moment it flushes. A repeat skip on an already-armed
- * host just replaces `_pendingFlush`'s entry; it does NOT arm a second
- * listener, which is what keeps this at one flush per host, never appended.
- * @type {WeakMap<Element, AbortController>} */
-const _flushArmed = new WeakMap();
 
 /** Re-run renderRegion's normal guards now that whatever deferred the last
  * skip may have cleared — another interaction may have started in the
@@ -278,11 +279,10 @@ const _flushArmed = new WeakMap();
  * re-arm inside the recursive renderRegion call doesn't see a stale entry.
  * @param {Element} host */
 function _flushRegion(host) {
-  _flushArmed.get(host)?.abort();
-  _flushArmed.delete(host);
   const pending = _pendingFlush.get(host);
   if (!pending) return;
   _pendingFlush.delete(host);
+  pending.controller.abort();
   renderRegion(host, pending.build, { sig: pending.sig });
 }
 
@@ -293,10 +293,10 @@ function _flushRegion(host) {
  * @param {Element} host @param {() => Node} build @param {string | undefined} sig
  * @param {(signal: AbortSignal) => void} arm - attach whatever listener(s) fire on THIS skip's clear condition */
 function _deferSwap(host, build, sig, arm) {
-  _pendingFlush.set(host, { build, sig });
-  if (_flushArmed.has(host)) return; // already watching for this host's interaction to clear
+  const existing = _pendingFlush.get(host);
+  if (existing) { existing.build = build; existing.sig = sig; return; } // already watching for this host's interaction to clear
   const controller = new AbortController();
-  _flushArmed.set(host, controller);
+  _pendingFlush.set(host, { build, sig, controller });
   arm(controller.signal);
 }
 
@@ -357,8 +357,7 @@ export function renderRegion(host, build, opts = {}) {
     if (opts.sig != null && _regionSig.get(host) === opts.sig) return;
   }
   // This swap is happening now — any earlier deferred one is moot.
-  _flushArmed.get(host)?.abort();
-  _flushArmed.delete(host);
+  _pendingFlush.get(host)?.controller.abort();
   _pendingFlush.delete(host);
   if (opts.sig != null) _regionSig.set(host, opts.sig);
   host.replaceChildren(build());

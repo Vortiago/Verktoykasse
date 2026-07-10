@@ -25,9 +25,7 @@ function buildChecklistRow({ text, done = false, onToggle } = /** @type {any} */
   const el = /** @type {HTMLElement} */ (tpl("tpl-checklist-row").firstElementChild);
   pick(el, "text").textContent = text;
   const boxEl = pick(el, "box");
-  let current = done;
   const setDone = (/** @type {boolean} */ done) => {
-    current = done;
     el.dataset.done = done ? "true" : "false";
     boxEl.textContent = done ? "[x]" : "[ ]";
   };
@@ -35,7 +33,7 @@ function buildChecklistRow({ text, done = false, onToggle } = /** @type {any} */
 
   el.addEventListener("command", (e) => {
     const evt = /** @type {Event & { command: string }} */ (e);
-    if (evt.command === "--toggle") { const next = !current; setDone(next); onToggle?.(next); }
+    if (evt.command === "--toggle") { const next = el.dataset.done !== "true"; setDone(next); onToggle?.(next); }
   }, { signal });
 
   return { el, setDone };

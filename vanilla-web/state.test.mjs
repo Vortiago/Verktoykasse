@@ -7,9 +7,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createState } from "./state.js";
+import { makeFlush } from "./testing-util.mjs";
 
 /** Resolve the microtask queueMicrotask's notify sits behind. */
-const flush = async () => { for (let i = 0; i < 4; i++) await Promise.resolve(); };
+const flush = makeFlush(4);
 
 test("get() returns the initial value, then the latest set() value", () => {
   const s = createState({ n: 0 });

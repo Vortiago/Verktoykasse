@@ -13,38 +13,25 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createStore } from "./store.js";
+import { patchGlobal, makeFlush, fakeEventTarget } from "./testing-util.mjs";
 
 /** A store whose load never has to run for these synchronous-notify tests. */
 const newStore = () => createStore(async () => null);
 
 /** Resolve the microtasks createStore's load-chain (Promise.resolve().then(load)…) queues. */
-const flush = async () => { for (let i = 0; i < 8; i++) await Promise.resolve(); };
+const flush = makeFlush(8);
 
 /** Install fake document/window on globalThis for one test (#46's refetchOn
  * listeners are gated on `typeof document/window !== "undefined"`, so plain
  * node — no globals stubbed — exercises the "no browser" no-op path; every
  * OTHER test in this file relies on exactly that for its default-unchanged
- * assertion). Each fake supports addEventListener(type, fn, {signal}) +
- * dispatch(type), same shape as the live.leak.test.mjs / templates fakes. */
+ * assertion). Each fake is a fakeEventTarget, same double the live.leak.test.mjs
+ * / templates.transition.test.mjs fakes share. */
 function installFakeBrowserGlobals(t, { visibilityState = "visible" } = {}) {
-  /** @param {Map<string, Set<{fn: () => void}>>} store */
-  const make = (store) => ({
-    addEventListener(type, fn, opts) {
-      if (!store.has(type)) store.set(type, new Set());
-      const entry = { fn };
-      store.get(type).add(entry);
-      opts?.signal?.addEventListener("abort", () => store.get(type)?.delete(entry), { once: true });
-    },
-    dispatch(type) { for (const { fn } of [...(store.get(type) ?? [])]) fn(); },
-  });
-  const doc = { visibilityState, ...make(new Map()) };
-  const win = make(new Map());
-  for (const [name, value] of [["document", doc], ["window", win]]) {
-    const had = Object.prototype.hasOwnProperty.call(globalThis, name);
-    const prev = globalThis[name];
-    globalThis[name] = value;
-    t.after(() => { if (had) globalThis[name] = prev; else delete globalThis[name]; });
-  }
+  const doc = { visibilityState, ...fakeEventTarget() };
+  const win = fakeEventTarget();
+  patchGlobal(t, "document", doc);
+  patchGlobal(t, "window", win);
   return { doc, win };
 }
 

@@ -69,7 +69,9 @@ session from quietly bolting on a cache library.
 
 ## Node floor
 
-CI pins **Node 24** (the active LTS as of 2026-07) — that's the version a
-deploy should target. Individual toolkit scripts (e.g. `check-css-vars.mjs`)
-run fine on Node 22+; 24 is the floor to build the deploy environment against,
-not a hard runtime requirement of any one file.
+CI's pinned `node-version` (`.github/workflows/gate.yml`) is the version a
+deploy should target — treat that pin as the source of truth rather than a
+number restated here, which would just drift the next time CI bumps it.
+Individual toolkit scripts (e.g. `check-css-vars.mjs`) run fine on Node 22+;
+the CI pin is the floor to build the deploy environment against, not a hard
+runtime requirement of any one file.

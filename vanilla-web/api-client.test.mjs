@@ -7,14 +7,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { request, get, post, put, del, ApiError } from "./api-client.js";
+import { patchGlobal } from "./testing-util.mjs";
 
 /** Install a fetch double for one test, restoring the prior value after. */
-function installFetch(t, impl) {
-  const had = Object.prototype.hasOwnProperty.call(globalThis, "fetch");
-  const prev = globalThis.fetch;
-  globalThis.fetch = impl;
-  t.after(() => { if (had) globalThis.fetch = prev; else delete globalThis.fetch; });
-}
+const installFetch = (t, impl) => patchGlobal(t, "fetch", impl);
 
 test("request() composes a caller signal with the timeout signal instead of letting it win", (t) => {
   /** @type {AbortSignal} */

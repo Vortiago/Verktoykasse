@@ -21,8 +21,7 @@
 // from this file's own location (tools/ sits in the root it checks), so the
 // same file works in vanilla-web, vanilla-components, and any scaffolded app.
 // Zero-dep (node:child_process).
-import { globSync } from "node:fs";
-import { readFileSync } from "node:fs";
+import { globSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";

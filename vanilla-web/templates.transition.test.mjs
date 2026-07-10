@@ -10,6 +10,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { withTransition, renderRegion } from "./templates.js";
+import { fakeEventTarget as fakeTarget } from "./testing-util.mjs";
 
 /** Run `body` with a stubbed `globalThis.document`, restored afterwards; returns
  * whatever `body` returns. @param {any} doc @param {() => any} body */
@@ -63,33 +64,10 @@ test("falls back when startViewTransition is present but not callable", () => {
 // A skipped swap must flush the INSTANT the interaction clears, not only "the
 // first tick after" — there might not be one (a quiet SSE stream, a one-shot
 // store-triggered render, a long livePoll interval). Fakes below are plain
-// objects (no jsdom): an EventTarget-like double with addEventListener(type,
-// fn, {signal, once}) + dispatch(type), a fake `host` (contains/querySelector/
-// replaceChildren) and a fake `document` (activeElement/getSelection).
-
-/** @param {{ fn: Function, once?: boolean }[]} */
-function fakeTarget() {
-  /** @type {Map<string, Set<{ fn: Function, once?: boolean }>>} */
-  const listeners = new Map();
-  return {
-    /** @param {string} type @param {Function} fn @param {{ signal?: AbortSignal, once?: boolean }} [opts] */
-    addEventListener(type, fn, opts) {
-      if (!listeners.has(type)) listeners.set(type, new Set());
-      const entry = { fn, once: !!opts?.once };
-      listeners.get(type).add(entry);
-      opts?.signal?.addEventListener("abort", () => listeners.get(type)?.delete(entry), { once: true });
-    },
-    /** @param {string} type */
-    dispatch(type) {
-      for (const entry of [...(listeners.get(type) ?? [])]) {
-        entry.fn();
-        if (entry.once) listeners.get(type)?.delete(entry);
-      }
-    },
-    /** @param {string} type */
-    listenerCount(type) { return listeners.get(type)?.size ?? 0; },
-  };
-}
+// objects (no jsdom): fakeTarget (from testing-util.mjs) is an EventTarget-like
+// double with addEventListener(type, fn, {signal, once}) + dispatch(type), a
+// fake `host` (contains/querySelector/replaceChildren) and a fake `document`
+// (activeElement/getSelection).
 
 /** @param {{ insideEl?: unknown, overlay?: any }} [opts] */
 function fakeHost({ insideEl = null, overlay = null } = {}) {

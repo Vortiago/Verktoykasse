@@ -78,21 +78,13 @@ const MIN_COMPRESS = 1400; // don't bother below ~1 packet
 // a dashboard has no legitimate embedder. No HSTS here — this server is plain
 // HTTP behind a tailnet/proxy; HSTS belongs to whatever terminates TLS.
 // Loosening for an app that embeds remote images: add `https:` to img-src.
-//
-// TEST=1 exception: the shell e2e specs (tests/e2e/shell-*.spec.js) swap the
-// canon shell.js's registry import for a fixture one via an inline
-// `<script type="importmap">` (testing/fixtures/shell-harness.html) — import
-// maps cannot be external (the `src` attribute is disallowed on
-// type="importmap" by spec), so the only CSP-compliant ways to allow it are
-// 'unsafe-inline', a nonce, or a content hash. A hash would peg this header to
-// one fixture's exact bytes; 'unsafe-inline' scoped to TEST=1 (only ever set by
-// testing/playwright.config.js's webServer, never in prod) costs nothing in
-// the environment that matters and keeps require-trusted-types-for +
-// trusted-types enforced even under test — script-src is the only thing
-// loosened, and only for that inline import map's sake.
+// Unconditional — even under TEST=1: the shell e2e specs used to need
+// 'unsafe-inline' for an inline import map that swapped shell.js's registry
+// import; that's gone (see the /views/registry.js route below), so the CSP no
+// longer needs a test-only carve-out at all.
 const SECURITY_HEADERS = {
   "content-security-policy":
-    `default-src 'self'${TEST ? "; script-src 'self' 'unsafe-inline'" : ""}; frame-ancestors 'none'; trusted-types vanilla-templates; require-trusted-types-for 'script'`,
+    "default-src 'self'; frame-ancestors 'none'; trusted-types vanilla-templates; require-trusted-types-for 'script'",
   "x-content-type-options": "nosniff",
   "referrer-policy": "strict-origin-when-cross-origin",
 };
@@ -252,7 +244,19 @@ const server = createServer(async (req, res) => {
       return sendJson(res, 404, { error: "no such endpoint" });
     }
 
-    let filePath = normalize(join(ROOT, urlPath));
+    // Fixture views registry (TEST=1 only): the shell e2e specs need shell.js's
+    // `import { views } from "./views/registry.js"` to resolve to their fixture
+    // views (testing/fixtures/shell-harness/*) instead of the real, empty
+    // registry — this rewrite serves the fixture's bytes AT the exact URL
+    // shell.js imports, so the canon shell.js runs completely unmodified and
+    // the response still goes through the normal static pipeline below
+    // (ETag/compression/security headers included). Only this one path is
+    // rewritten; every other consumer of "/views/registry.js" under TEST=1
+    // (there are none today — no other fixture or spec references it) would
+    // see the same swap. Inert in prod (TEST unset).
+    let filePath = TEST && urlPath === "/views/registry.js"
+      ? join(ROOT, "testing", "fixtures", "shell-harness", "registry.js")
+      : normalize(join(ROOT, urlPath));
     if (!filePath.startsWith(ROOT)) {
       res.writeHead(403).end("Forbidden");
       return;

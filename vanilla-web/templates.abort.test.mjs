@@ -11,20 +11,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { loadTemplates, wireErrorBar } from "./templates.js";
-
-/** Install a value on globalThis for one test, restoring the prior value after.
- * Uses defineProperty (not assignment) because Node ships some globals
- * (`navigator`, `location`) as getter-only accessors — a plain `globalThis.x =`
- * throws on those. */
-function patchGlobal(t, name, value) {
-  const had = Object.prototype.hasOwnProperty.call(globalThis, name);
-  const prevDescriptor = had ? Object.getOwnPropertyDescriptor(globalThis, name) : undefined;
-  Object.defineProperty(globalThis, name, { value, configurable: true, writable: true, enumerable: true });
-  t.after(() => {
-    if (prevDescriptor) Object.defineProperty(globalThis, name, prevDescriptor);
-    else delete globalThis[name];
-  });
-}
+import { patchGlobal } from "./testing-util.mjs";
 
 /** A minimal fake `document` sufficient for loadTemplates: createElement()
  * returns one reusable holder (children irrelevant to these tests — they only

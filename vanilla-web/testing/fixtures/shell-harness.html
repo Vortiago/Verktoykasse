@@ -4,13 +4,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>shell-harness</title>
-  <!-- Swaps shell.js's internal "./views/registry.js" import for this fixture's
-       test views WITHOUT copying or modifying the real, canon shell.js — import
-       maps remap by the resolved absolute URL, so this works no matter which
-       page imports it (see #53/#60/#61/#62 specs in tests/e2e/). -->
-  <script type="importmap">
-    { "imports": { "/views/registry.js": "/testing/fixtures/shell-harness/registry.js" } }
-  </script>
+  <!-- shell.js's internal "./views/registry.js" import resolves to /views/registry.js,
+       which serve.mjs (TEST=1 only) rewrites to this fixture's test views — see
+       serve.mjs and testing/fixtures/shell-harness/registry.js. The real, canon
+       shell.js runs completely unmodified (see #53/#60/#61/#62 specs in tests/e2e/). -->
   <link rel="modulepreload" href="/shell.js" />
   <script type="module" src="/shell.js"></script>
 </head>

@@ -50,6 +50,13 @@ function viewIdFromHash() {
   return views.some((v) => v.id === id) ? id : views[0].id;
 }
 
+/** Move focus to the stage after a swap (success or failure) — screen readers
+ * announce from the top (#60). */
+function focusStage() {
+  stage.tabIndex = -1;
+  stage.focus({ preventScroll: false });
+}
+
 /** Minimal, textContent-only fallback painted into the stage when mount()
  * throws (#53) — no HTML strings, every node built and text-set directly.
  * The retry link is just the hash route for the SAME id: with currentView
@@ -92,22 +99,23 @@ async function switchView(id) {
         signal: controller.signal,
       });
     } catch (err) {
-      if (/** @type {{ name?: string }} */ (err)?.name === "AbortError") return; // cancelled mount: normal shutdown (#61)
+      // cancelled mount: normal shutdown (#61) — tied to THIS controller's own
+      // signal, not just the error's name, so a view that throws an unrelated
+      // AbortError of its own can't be mistaken for a navigation cancellation.
+      if (/** @type {{ name?: string }} */ (err)?.name === "AbortError" && controller.signal.aborted) return;
       window.reportError(err); // always surfaced (console + errbar), even if superseded below
       if (controller !== currentController) return; // a newer swap already owns the stage — don't clobber it
       controller.abort(); // release whatever the partial mount opened
       currentView = null; // nav link becomes the retry (#53)
       renderFallback(id, err);
-      stage.tabIndex = -1;
-      stage.focus({ preventScroll: false }); // the failure fallback also gets focus (#60)
+      focusStage(); // the failure fallback also gets focus
       return;
     }
     syncNav(id);
     // Only on real switches — the boot view keeps the server-sent title (#60).
     if (hasSwitchedOnce) document.title = entry.title ? `${entry.title} · ${APP_NAME}` : APP_NAME;
     hasSwitchedOnce = true;
-    stage.tabIndex = -1;
-    stage.focus({ preventScroll: false }); // route-change focus move — screen readers announce from the top (#60)
+    focusStage(); // route-change focus move
   };
   // Animate the swap where supported (crossfade for free), else swap in place.
   // startViewTransition awaits the async callback before animating; nothing

@@ -27,6 +27,7 @@ PAIRS=(
   "tools/check-css-vars.mjs|tools/check-css-vars.mjs"
   "tools/check-slots.mjs|tools/check-slots.mjs"
   "tools/check-conventions.mjs|tools/check-conventions.mjs"
+  "tools/js-scan.mjs|tools/js-scan.mjs"
 )
 
 strip="canonical source: vanilla-web"   # must be a prefix of the sync-mode stamp text

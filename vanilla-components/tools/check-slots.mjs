@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// canonical source: vanilla-web/tools/check-slots.mjs@57e897c — vendored copy, do not edit here
+// canonical source: vanilla-web/tools/check-slots.mjs@245bd3a — vendored copy, do not edit here
 // @ts-check
 // check-slots — static gate for the .html ↔ .js template seam, the one boundary
 // `tsc` cannot see. Template ids and data-slot names are stringly-typed:
@@ -22,73 +22,12 @@
 // node_modules/ and testing/ (deliberately-weird fixtures) are skipped.
 // Zero-dep; same shape + exit contract as check-css-vars. Exit 1 on any error.
 import { globSync, readFileSync } from "node:fs";
+import { lineOf, stripComments, argSpan } from "./js-scan.mjs";
 
 const ROOT = new URL("../", import.meta.url); // tools/ sits in the app/skill root
 const SKIP = /(^|\/)(node_modules|testing)\//;
 const html = globSync("**/*.html", { cwd: ROOT }).filter((p) => !SKIP.test(p + "/"));
 const js = globSync("**/*.js", { cwd: ROOT }).filter((p) => !SKIP.test(p + "/"));
-
-/** 1-based line of an index into text. @param {string} text @param {number} idx */
-const lineOf = (text, idx) => text.slice(0, idx).split("\n").length;
-
-/** Blank out comments (// and /* *​/ in JS, <!-- --> in HTML) preserving offsets,
- * so doc-comment examples like tpl("tpl-run-row") don't count as references.
- * Quote-aware for JS: comment markers inside strings/templates are kept.
- * @param {string} text @param {boolean} isHtml */
-function stripComments(text, isHtml) {
-  if (isHtml) return text.replace(/<!--[\s\S]*?-->/g, (m) => m.replace(/[^\n]/g, " "));
-  let out = "";
-  /** @type {string[]} */ const ctx = []; // open string contexts: " ' ` ${
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i], top = ctx[ctx.length - 1];
-    if (top === '"' || top === "'") {
-      out += c;
-      if (c === "\\") { out += text[++i] ?? ""; }
-      else if (c === top || c === "\n") ctx.pop();
-    } else if (top === "`") {
-      out += c;
-      if (c === "\\") { out += text[++i] ?? ""; }
-      else if (c === "`") ctx.pop();
-      else if (c === "$" && text[i + 1] === "{") { out += text[++i]; ctx.push("${"); }
-    } else { // code (top-level or inside ${…})
-      if (c === "}" && top === "${") { ctx.pop(); out += c; }
-      else if (c === '"' || c === "'" || c === "`") { ctx.push(c); out += c; }
-      else if (c === "/" && text[i + 1] === "/") { while (i < text.length && text[i] !== "\n") { out += " "; i++; } out += text[i] ?? ""; }
-      else if (c === "/" && text[i + 1] === "*") {
-        const end = text.indexOf("*/", i + 2);
-        const stop = end === -1 ? text.length : end + 2;
-        out += text.slice(i, stop).replace(/[^\n]/g, " ");
-        i = stop - 1;
-      } else out += c;
-    }
-  }
-  return out;
-}
-
-/** Balanced argument span of a call: text from after `(` at openIdx to its
- * matching `)`, skipping strings/templates. Null when unterminated.
- * @param {string} text @param {number} openIdx */
-function argSpan(text, openIdx) {
-  let depth = 0;
-  /** @type {string[]} */ const ctx = [];
-  for (let i = openIdx; i < text.length; i++) {
-    const c = text[i], top = ctx[ctx.length - 1];
-    if (top === '"' || top === "'") {
-      if (c === "\\") i++;
-      else if (c === top || c === "\n") ctx.pop();
-    } else if (top === "`") {
-      if (c === "\\") i++;
-      else if (c === "`") ctx.pop();
-      else if (c === "$" && text[i + 1] === "{") { ctx.push("${"); i++; }
-    } else {
-      if (c === '"' || c === "'" || c === "`") ctx.push(c);
-      else if (c === "(" || c === "{" || c === "[") depth++;
-      else if (c === ")" || c === "}" || c === "]") { depth--; if (depth === 0) return text.slice(openIdx + 1, i); }
-      if (top === "${" && c === "}" && depth >= 0) ctx.pop();
-    }
-  }
-  return null;
-}
 
 /** Top-level (depth-0) split of an argument list on commas. @param {string} args */
 function splitTop(args) {
@@ -134,17 +73,17 @@ for (const rel of js) {
   }
   // pick(el, "name") — balanced scan of the args, name = a plain-literal 2nd arg.
   for (const m of text.matchAll(/\bpick\s*\(/g)) {
-    const args = argSpan(text, m.index + m[0].length - 1);
-    if (args == null) continue;
-    const second = splitTop(args)[1]?.trim() ?? "";
+    const span = argSpan(text, m.index + m[0].length - 1);
+    if (span == null) continue;
+    const second = splitTop(span.args)[1]?.trim() ?? "";
     const lit = second.match(/^["'`]([\w-]+)["'`]$/);
     if (lit) nameRefs.push({ name: lit[1], file: rel, line: lineOf(text, m.index) });
   }
   // slot(frag, { key: v, shorthand, "quoted": v }) — top-level keys of the 2nd arg.
   for (const m of text.matchAll(/\bslot\s*\(/g)) {
-    const args = argSpan(text, m.index + m[0].length - 1);
-    if (args == null) continue;
-    const second = splitTop(args)[1]?.trim() ?? "";
+    const span = argSpan(text, m.index + m[0].length - 1);
+    if (span == null) continue;
+    const second = splitTop(span.args)[1]?.trim() ?? "";
     if (!second.startsWith("{")) continue;
     for (const entry of splitTop(second.slice(1, second.lastIndexOf("}")))) {
       const key = entry.trim().match(/^(?:["']([\w-]+)["']|([A-Za-z_$][\w$]*))\s*(?::|$)/);

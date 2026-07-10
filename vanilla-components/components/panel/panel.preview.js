@@ -1,7 +1,6 @@
 // @ts-check
 import { createPanel } from "./panel.js";
-
-let seq = 0; // unique id per rendered instance so the toggle button can commandfor it
+import { commandButton } from "../../previews/command-button.js";
 
 /** @type {import("../../preview.js").PreviewModule} */
 export default {
@@ -13,14 +12,7 @@ export default {
   render: async (props, signal) => {
     const p = await createPanel(props, signal);
     if ("collapsed" in props) {
-      const id = `panel-preview-${++seq}`;
-      p.el.id = id;
-      const toggle = document.createElement("button");
-      toggle.type = "button";
-      toggle.textContent = "Toggle";
-      toggle.setAttribute("command", "--toggle");
-      toggle.setAttribute("commandfor", id);
-      toggle.style.cssText = "float:inline-end; font:inherit; font-size:12px;";
+      const toggle = commandButton(p.el, "--toggle", "Toggle", { idPrefix: "panel-preview", style: "float:inline-end;" });
       p.headEl.append(toggle);
     }
     return p.el;

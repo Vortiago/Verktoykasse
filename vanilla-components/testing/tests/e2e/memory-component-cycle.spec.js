@@ -9,15 +9,12 @@
 // The detector's sensitivity is pinned separately by memory-detector-selftest.spec.js.
 import { test, expect } from "@playwright/test";
 import { cdpClient, settleGC, heapUsed, domCensus, tagBySelector, survivorsAfterGC, resetRefs, medianRatio } from "../../lib/mem.js";
+import { readRailHrefs } from "../../lib/rail.js";
 
 test("cycling every preview component through mount/unmount leaks no DOM, listeners or heap", async ({ page }) => {
   test.slow(); // many GC cycles
   const client = await cdpClient(page);
-  await page.goto("/preview.html");
-  await page.waitForSelector("#rail a");
-
-  const hrefs = await page.$$eval("#rail a", (els) => els.map((a) => a.getAttribute("href")).filter(Boolean));
-  expect(hrefs.length, "preview catalogue is non-empty").toBeGreaterThan(0);
+  const hrefs = await readRailHrefs(page);
 
   /** Navigate to a component and wait for its variants to render. */
   const show = async (href) => {

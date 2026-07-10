@@ -24,6 +24,7 @@
 // walks every card in both themes and produces the full snapshot set in one
 // pass — CI's job, per the pinned-environment rule (CONTEXT.md), not this repo.
 import { test, expect } from "@playwright/test";
+import { readRailHrefs } from "../../lib/rail.js";
 
 /** @type {readonly ("light" | "dark")[]} */
 const THEMES = ["light", "dark"];
@@ -31,11 +32,7 @@ const THEMES = ["light", "dark"];
 test("every preview card matches its baseline in both themes", async ({ page }) => {
   test.slow(); // every component x every variant x 2 themes
 
-  await page.goto("/preview.html");
-  await page.waitForSelector("#rail a");
-
-  const hrefs = await page.$$eval("#rail a", (els) => els.map((a) => a.getAttribute("href")).filter(Boolean));
-  expect(hrefs.length, "preview catalogue is non-empty").toBeGreaterThan(0);
+  const hrefs = await readRailHrefs(page);
 
   for (const href of hrefs) {
     const title = decodeURIComponent(String(href).replace(/^#\/?/, ""));

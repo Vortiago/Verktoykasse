@@ -1,7 +1,6 @@
 // @ts-check
 import { createAlert } from "./alert.js";
-
-let seq = 0; // unique id per rendered instance so an external button can commandfor it
+import { commandButton } from "../../previews/command-button.js";
 
 /** @type {import("../../preview.js").PreviewModule} */
 export default {
@@ -12,14 +11,8 @@ export default {
   render: async (props, signal) => {
     const c = await createAlert(props, signal);
     if (!props.dismissible) return c.el;
-    const id = `alert-preview-${++seq}`;
-    c.el.id = id;
-    const extBtn = document.createElement("button");
-    extBtn.type = "button";
-    extBtn.textContent = "Dismiss (external button)";
-    extBtn.setAttribute("command", "--dismiss");
-    extBtn.setAttribute("commandfor", id);
-    extBtn.style.cssText = "display:block; font:inherit; font-size:12px; margin-block-start:8px;";
+    const extBtn = commandButton(c.el, "--dismiss", "Dismiss (external button)",
+      { idPrefix: "alert-preview", style: "display:block; margin-block-start:8px;" });
     const box = document.createElement("div");
     box.append(c.el, extBtn);
     return box;
