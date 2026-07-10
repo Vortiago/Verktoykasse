@@ -1,5 +1,9 @@
 // @ts-check
 // Alert — an inline banner with a tone, optional title, and optional dismiss.
+// Dismiss is a custom Invoker Command (`command="--dismiss"`), not a click
+// listener: the ✕ commandForElement's straight at `el`, and the root's ONE
+// `command` listener runs `dismiss()` for either that internal ✕ or any
+// caller-authored button that `commandfor`s this alert's (caller-assigned) id.
 import { tpl, pick } from "../../lib/templates.js";
 import { defineComponent } from "../../lib/component.js";
 import { applyTone } from "../../lib/tone.js";
@@ -30,10 +34,21 @@ function buildAlert({ tone = null, title = null, message, dismissible = false, o
   // The close button lives in the template for the dismissible case; when not
   // dismissible, remove it entirely so its "×" glyph doesn't leak into the
   // alert's textContent (which would trip a consumer's exact-text assertions).
-  const closeBtn = pick(el, "close");
+  const closeBtn = /** @type {HTMLButtonElement & { commandForElement?: Element | null }} */ (pick(el, "close"));
   if (dismissible) {
     closeBtn.hidden = false;
-    closeBtn.addEventListener("click", () => { dismiss(); onDismiss?.(); }, { signal });
+    // Declarative face: a custom Invoker Command instead of a click listener.
+    // commandForElement (the IDL reflection) wires the button to `el` with no id
+    // needed — alert instances aren't given one. One root `command` listener
+    // replaces the old click listener; a caller-authored EXTERNAL button can
+    // dismiss this same alert too, via `commandfor` pointing at an id the caller
+    // sets on the root. Chrome/Edge ≥135 (see reference/compat.md).
+    closeBtn.commandForElement = el;
+    closeBtn.setAttribute("command", "--dismiss");
+    el.addEventListener("command", (e) => {
+      const evt = /** @type {Event & { command: string }} */ (e);
+      if (evt.command === "--dismiss") { dismiss(); onDismiss?.(); }
+    }, { signal });
   } else {
     closeBtn.remove();
   }

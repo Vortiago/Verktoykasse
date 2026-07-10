@@ -23,6 +23,12 @@
     padding: var(--space-m);
   }
 
+  /* collapsed: the body is hidden (native [hidden]); drop the head's bottom
+     border so it doesn't sit above an empty gap. */
+  :scope[data-collapsed="true"] .panel-head {
+    border-bottom-color: transparent;
+  }
+
   /* fill: stretch inside a flex column and let the body own the scroll —
      for console-style layouts (Slipestein's Live view). */
   :scope.is-fill {

@@ -1,8 +1,11 @@
 // @ts-check
 // Tooltip — a hover/focus card tethered to a trigger element. The tip rides the
-// top layer as a manual popover; CSS Anchor Positioning (position-anchor +
-// position-area + position-try-fallbacks, in tooltip.css) does the placement and
-// the edge-flip. No manual coordinate math. Shows on the trigger's hover/focus.
+// top layer as a "hint" popover (falling back to "manual" where unsupported);
+// CSS Anchor Positioning (position-anchor + position-area + position-try-fallbacks,
+// in tooltip.css) does the placement and the edge-flip. No manual coordinate math.
+// Shows on the trigger's hover/focus — hand-wired listeners, not yet Interest
+// Invokers (`interestfor`): that would delete these triggers declaratively too,
+// but it's still experimental (watch, don't adopt yet).
 import { tpl } from "../../lib/templates.js";
 import { defineComponent } from "../../lib/component.js";
 
@@ -16,6 +19,13 @@ let seq = 0; // unique anchor-name per instance
  */
 function buildTooltip(trigger, { content = null, className = "" } = {}, signal) {
   const el = /** @type {HTMLElement} */ (tpl("tpl-tooltip").firstElementChild);
+  // "hint" gets correct top-layer stacking against an open `auto` popover (e.g. a
+  // menu) without light-dismissing it — plain "manual" already avoids closing
+  // others, but hint is the mode built for tooltips specifically. The `popover`
+  // IDL is limited-to-known-values: an unsupported value doesn't stick, so
+  // reading it back is the feature-detect. Chromium 133+.
+  el.popover = "hint";
+  if (el.popover !== "hint") el.popover = "manual";
   if (className) el.className = (el.className + " " + className).trim();
 
   /** @param {string | Node | null} c */

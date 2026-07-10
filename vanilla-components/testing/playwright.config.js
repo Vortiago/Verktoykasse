@@ -12,6 +12,51 @@ import { defineConfig, devices } from "@playwright/test";
 const PORT = process.env.PORT || "8001";
 const baseURL = `http://localhost:${PORT}`;
 
+// Visual regression (issue #56) is a SEPARATE, opt-in project: Playwright runs
+// every configured project on a bare `npx playwright test` — there's no native
+// "excluded unless selected" project flag — so the only way to keep
+// visual.spec.js out of the default run is to not put the project in `projects`
+// at all unless it's actually being asked for. That check has to be an env var,
+// not a `process.argv` sniff: each worker is a SEPARATE forked process that
+// re-evaluates this config with its own argv (no `--project`, so a project
+// present only when argv says so vanishes mid-run with "Project not found in
+// the worker process") — but Playwright forks workers with the PARENT's env
+// inherited, so an env var survives the fork where argv doesn't.
+//   PW_VISUAL=1 npx playwright test --project=visual
+// `chromium` additionally `testIgnore`s the file as a second, belt-and-suspenders
+// guard (invisible to `--project=chromium` too, and to a future project added
+// without thinking about this one).
+const wantsVisual = process.env.PW_VISUAL === "1";
+
+const projects = [
+  { name: "chromium", use: { ...devices["Desktop Chrome"] }, testIgnore: /visual\.spec\.js/ },
+];
+if (wantsVisual) {
+  projects.push({
+    name: "visual",
+    testMatch: /visual\.spec\.js/,
+    use: {
+      ...devices["Desktop Chrome"],
+      // Static baselines: no animation-driven noise, no OS-preference drift.
+      reducedMotion: "reduce",
+      colorScheme: "light", // the spec itself emulates both themes per card
+    },
+    expect: {
+      toHaveScreenshot: {
+        // Baselines are CI's alone (see CONTEXT.md → Pinned environment); a
+        // small ratio catches real regressions without chasing local font/GPU
+        // antialiasing noise across environments.
+        maxDiffPixelRatio: 0.01,
+        animations: "disabled", // stop CSS/Web Animations before capturing (spinner/skeleton/pulse)
+      },
+    },
+    // Flat, predictable location instead of Playwright's default nested
+    // <test file>-snapshots/ folder — one place to point CI's baseline-commit
+    // step at. Resolves relative to this config file (testing/).
+    snapshotPathTemplate: "__screenshots__/{arg}{ext}",
+  });
+}
+
 export default defineConfig({
   testDir: "./tests/e2e",
   workers: 1,
@@ -32,7 +77,5 @@ export default defineConfig({
     url: `${baseURL}/preview.html`,
     reuseExistingServer: !process.env.CI,
   },
-  projects: [
-    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
-  ],
+  projects,
 });
