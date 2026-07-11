@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// canonical source: vanilla-web/tools/check-slots.mjs@8372963 — vendored copy, do not edit here
+// canonical source: vanilla-web/tools/check-slots.mjs@4dabf5c — vendored copy, do not edit here
 // @ts-check
 // check-slots — static gate for the .html ↔ .js template seam, the one boundary
 // `tsc` cannot see. Template ids and data-slot names are stringly-typed:

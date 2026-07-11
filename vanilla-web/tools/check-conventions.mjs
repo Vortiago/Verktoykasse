@@ -29,17 +29,17 @@
 //
 // The canonical lib files are exempt (they ARE the sanctioned helpers):
 // templates.js, render.js, chrome.js, shell.js, store.js, state.js,
-// api-client.js, format.js, live.js, preview.js, serve.mjs, and everything
-// under lib/, tools/, previews/, plus node_modules/ and testing/. Zero-dep;
-// same shape + exit contract as check-css-vars: file:line findings, exit 1 on
-// any finding.
+// api-client.js, format.js, live.js, preview.js, preview-source.js, serve.mjs,
+// and everything under lib/, tools/, previews/, plus node_modules/ and
+// testing/. Zero-dep; same shape + exit contract as check-css-vars: file:line
+// findings, exit 1 on any finding.
 import { globSync, readFileSync } from "node:fs";
 import { ROOT, SKIP, lineOf, stripComments, argSpan, splitTop, commentMatch } from "./js-scan.mjs";
 
 // This checker additionally skips tools/, previews/, and lib/ (the sanctioned
 // helpers live there) on top of the shared node_modules/testing base.
 const SKIP_EXTRA_DIRS = /(^|\/)(tools|previews|lib)\//;
-const SKIP_FILES = new Set(["templates.js", "render.js", "chrome.js", "shell.js", "store.js", "state.js", "api-client.js", "format.js", "live.js", "preview.js", "serve.mjs"]);
+const SKIP_FILES = new Set(["templates.js", "render.js", "chrome.js", "shell.js", "store.js", "state.js", "api-client.js", "format.js", "live.js", "preview.js", "preview-source.js", "serve.mjs"]);
 const files = globSync("**/*.js", { cwd: ROOT }).filter((p) => {
   if (SKIP.test(p + "/") || SKIP_EXTRA_DIRS.test(p + "/")) return false;
   return !SKIP_FILES.has(p.split("/").pop() ?? "");

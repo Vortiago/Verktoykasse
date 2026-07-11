@@ -143,6 +143,10 @@ variants).
 
 ## View source
 
+The widget behind this tab strip lives in its own module, `preview-source.js`
+(`wireSourceTabs`, imported and mounted once per shown component by
+`preview.js`) — everything below is that module's behavior.
+
 A `Preview | HTML | CSS | JS` tab strip sits above the frame stack — **once per
 component**, not per variant, since the underlying files are identical across
 every variant of a component. `HTML`/`CSS`/`JS` swap the frame stack out for
@@ -172,7 +176,9 @@ mis-highlight — cosmetic only, never a crash.
 ## Files (copy verbatim, like the other canonical pieces)
 
 - `preview.html` — the standalone page + harness `<template>`s
-- `preview.js` — the harness (rail, canvas, theme, view source, teardown)
+- `preview.js` — the harness (rail, canvas, usage snippet, theme, teardown)
+- `preview-source.js` — the view-source widget (fetch, tokenize, CSS Custom
+  Highlight, clipboard) behind `preview.js`'s tab strip
 - `preview.css` — chrome, `light-dark()`-themed, self-sufficient
 - `previews/new.mjs` — the scaffolder (one-time seed of a `*.preview.js`)
 - `previews/scan.mjs` — the generator (run by `serve.mjs`, or by hand)

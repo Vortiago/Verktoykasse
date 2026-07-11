@@ -50,7 +50,8 @@ web/
 │       ├── index.js     #   default export: the view contract
 │       ├── style.css    #   @scope'd to the view root
 │       └── *.html       #   view-private <template> files
-├── preview.html         # optional: standalone component catalogue (preview.js/.css)
+├── preview.html         # optional: standalone component catalogue
+│                        #   (preview.js/.css + preview-source.js view-source widget)
 └── previews/
     ├── new.mjs          #   scaffolder: seed a <name>.preview.js (one-time, no overwrite)
     ├── scan.mjs         #   generator: walks components/ for *.preview.js
@@ -62,7 +63,8 @@ Copy **verbatim** from the skill dir: `shell.js` (makes `location.hash`
 `AbortController` per mount; `document.startViewTransition` swaps; surfaces
 errors to `<output id="errbar">`), `lib/templates.js`, `lib/render.js`,
 `lib/chrome.js`, `serve.mjs`,
-`tsconfig.json`, `tools/check-css-vars.mjs` — plus `preview.*` + `previews/scan.mjs` if you want the
+`tsconfig.json`, `tools/check-css-vars.mjs` — plus `preview.*`, `preview-source.js`
++ `previews/scan.mjs` if you want the
 component catalogue (→ `reference/preview.md`). `index.html` preloads the module graph
 (`modulepreload` for `shell.js`, `views/registry.js`, `lib/templates.js`,
 `lib/render.js`, `lib/chrome.js`).

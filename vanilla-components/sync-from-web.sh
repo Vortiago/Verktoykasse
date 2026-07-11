@@ -18,6 +18,7 @@ COMP="$ROOT/vanilla-components"
 PAIRS=(
   "serve.mjs|serve.mjs"
   "preview.js|preview.js"
+  "preview-source.js|preview-source.js"
   "preview.css|preview.css"
   "previews/scan.mjs|previews/scan.mjs"
   "previews/new.mjs|previews/new.mjs"

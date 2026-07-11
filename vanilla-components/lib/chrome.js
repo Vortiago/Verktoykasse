@@ -1,4 +1,4 @@
-// canonical source: vanilla-web/chrome.js@8372963 — vendored copy, do not edit here
+// canonical source: vanilla-web/chrome.js@4dabf5c — vendored copy, do not edit here
 // @ts-check
 // Canonical page-chrome wiring for the vanilla-web conventions (see SKILL.md).
 // Copy into <app>/web/lib/chrome.js; extend, don't fork. Identity: the two
