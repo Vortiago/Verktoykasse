@@ -20,12 +20,14 @@
 // Abort semantics (#61): a mount that throws because ITS OWN signal was
 // aborted (a fast second navigation cancelling the first) is normal shutdown,
 // not a failure — the catch returns before touching currentView or painting
-// anything. An AbortError escaping mount is expected; see templates.js'
+// anything. An AbortError escaping mount is expected; see chrome.js'
 // wireErrorBar for the matching filter on the global error/unhandledrejection
 // hooks.
 
 import { views } from "./views/registry.js";
-import { loadCSS, every, wireTheme, wireErrorBar, withTransition } from "./lib/templates.js";
+import { loadCSS, every } from "./lib/templates.js";
+import { withTransition } from "./lib/render.js";
+import { wireTheme, wireErrorBar } from "./lib/chrome.js";
 
 const stage = /** @type {HTMLElement} */ (document.getElementById("stage"));
 
@@ -134,7 +136,7 @@ function syncNav(id) {
 }
 
 // Page chrome — theme toggle + error surfacing, shared with preview.js so the
-// two pages can't drift (see lib/templates.js).
+// two pages can't drift (see lib/chrome.js).
 wireTheme();
 wireErrorBar();
 

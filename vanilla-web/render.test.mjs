@@ -1,4 +1,5 @@
-// Functional guard for withTransition — the View Transition trigger.
+// Functional guards for render.js — withTransition (the View Transition
+// trigger) and renderRegion's deferred-flush machinery.
 //
 // withTransition wraps a user-initiated DOM mutation in
 // document.startViewTransition when the API is present, and MUST fall back to
@@ -9,7 +10,7 @@
 // globalThis — the same shape the browser provides.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { withTransition, renderRegion } from "./templates.js";
+import { withTransition, renderRegion } from "./render.js";
 import { fakeEventTarget as fakeTarget, patchGlobal } from "./testing-util.mjs";
 
 /** @param {any} ret */

@@ -6,6 +6,7 @@
 //   node <vanilla-web>/new-app.mjs <target-dir> [app-name]
 //
 // Copies the canonical set verbatim (shell.js, templates.js → lib/templates.js,
+// render.js → lib/render.js, chrome.js → lib/chrome.js,
 // api-client.js → lib/api-client.js, serve.mjs, tsconfig.json, tools/*.mjs),
 // stamping each copy `canonical source: vanilla-web/<path>@<rev>` so
 // tools/check-vendored.mjs can report drift later — and writes the per-app,
@@ -38,6 +39,8 @@ const rev = (() => {
 const canon = [
   ["shell.js", "shell.js"],
   ["templates.js", "lib/templates.js"], // the real module, not the skill-local lib/ shim
+  ["render.js", "lib/render.js"], // interaction-safe re-rendering — same real-vs-shim note
+  ["chrome.js", "lib/chrome.js"], // page-chrome wiring — same real-vs-shim note
   ["api-client.js", "lib/api-client.js"],
   ["serve.mjs", "serve.mjs"],
   ["tsconfig.json", "tsconfig.json"], // .json can't carry a comment stamp — copied bare
@@ -69,6 +72,8 @@ const indexHtml = `<!doctype html>
   <link rel="stylesheet" href="./shell.css" />
   <link rel="modulepreload" href="./shell.js" />
   <link rel="modulepreload" href="./lib/templates.js" />
+  <link rel="modulepreload" href="./lib/render.js" />
+  <link rel="modulepreload" href="./lib/chrome.js" />
   <link rel="modulepreload" href="./views/registry.js" />
 </head>
 <body>

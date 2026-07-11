@@ -26,8 +26,10 @@ host.appendChild(row);
 
 `templates.js` is the canonical helper module — copy into `lib/` verbatim;
 extend, don't fork. API: `loadTemplates`, `tpl`, `slot`, `pick`, `mount`,
-`loadCSS`, `every`, `wireTheme`, `wireErrorBar`, `renderRegion`,
-`selectionInside`.
+`loadCSS`, `every`, `withPending`. Interaction-safe re-rendering
+(`renderRegion`, `reconcileList`, `withTransition`, `selectionInside`) lives in
+the sibling `render.js`; page-chrome wiring (`wireTheme`, `wireErrorBar`) lives
+in `chrome.js` — components and `defineComponent` import only `templates.js`.
 
 ## Components — reusable UI lives in components/, one folder each
 

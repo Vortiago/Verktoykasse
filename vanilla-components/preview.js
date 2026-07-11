@@ -1,4 +1,4 @@
-// canonical source: vanilla-web/preview.js@60f9ef5 — vendored copy, do not edit here
+// canonical source: vanilla-web/preview.js@8372963 — vendored copy, do not edit here
 // @ts-check
 // Standalone component preview harness for the vanilla-web conventions
 // (see reference/preview.md). Loaded by preview.html as its OWN page — it is
@@ -13,7 +13,8 @@
 
 import { previews } from "./previews/registry.js";
 import { factoryNameFor } from "./previews/naming.mjs";
-import { tpl, pick, slot, mount, loadCSS, wireTheme, wireErrorBar, withPending } from "./lib/templates.js";
+import { tpl, pick, slot, mount, loadCSS, withPending } from "./lib/templates.js";
+import { wireTheme, wireErrorBar } from "./lib/chrome.js";
 
 /** A component preview module's default export.
  * @typedef {(props: any, signal: AbortSignal) => Element | Promise<Element>} RenderFn */

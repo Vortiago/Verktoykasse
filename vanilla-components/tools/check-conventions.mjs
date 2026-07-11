@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// canonical source: vanilla-web/tools/check-conventions.mjs@60f9ef5 — vendored copy, do not edit here
+// canonical source: vanilla-web/tools/check-conventions.mjs@8372963 — vendored copy, do not edit here
 // @ts-check
 // check-conventions — turns the mechanically checkable SKILL.md invariants into
 // gate failures. An LLM reads the skill once per session; this runs on every
@@ -29,17 +29,18 @@
 //                                  in place of one inline comment per call site).
 //
 // The canonical lib files are exempt (they ARE the sanctioned helpers):
-// templates.js, shell.js, store.js, state.js, api-client.js, format.js, live.js,
-// preview.js, serve.mjs, and everything under lib/, tools/, previews/, plus
-// node_modules/ and testing/. Zero-dep; same shape + exit contract as
-// check-css-vars: file:line findings, exit 1 on any finding.
+// templates.js, render.js, chrome.js, shell.js, store.js, state.js,
+// api-client.js, format.js, live.js, preview.js, serve.mjs, and everything
+// under lib/, tools/, previews/, plus node_modules/ and testing/. Zero-dep;
+// same shape + exit contract as check-css-vars: file:line findings, exit 1 on
+// any finding.
 import { globSync, readFileSync } from "node:fs";
 import { ROOT, SKIP, lineOf, stripComments, argSpan, splitTop, commentMatch } from "./js-scan.mjs";
 
 // This checker additionally skips tools/, previews/, and lib/ (the sanctioned
 // helpers live there) on top of the shared node_modules/testing base.
 const SKIP_EXTRA_DIRS = /(^|\/)(tools|previews|lib)\//;
-const SKIP_FILES = new Set(["templates.js", "shell.js", "store.js", "state.js", "api-client.js", "format.js", "live.js", "preview.js", "serve.mjs"]);
+const SKIP_FILES = new Set(["templates.js", "render.js", "chrome.js", "shell.js", "store.js", "state.js", "api-client.js", "format.js", "live.js", "preview.js", "serve.mjs"]);
 const files = globSync("**/*.js", { cwd: ROOT }).filter((p) => {
   if (SKIP.test(p + "/") || SKIP_EXTRA_DIRS.test(p + "/")) return false;
   return !SKIP_FILES.has(p.split("/").pop() ?? "");
@@ -120,11 +121,12 @@ for (const rel of files) {
     flag(m.index, m.index, "html-string", "DOMParser — markup belongs in a <template> .html file");
   }
 
-  // raw-swap — region swaps go through renderRegion/mount (lib/templates.js);
-  // a deliberate one-shot render opts out with a trailing `// static-render`.
+  // raw-swap — region swaps go through renderRegion (lib/render.js) / mount
+  // (lib/templates.js); a deliberate one-shot render opts out with a trailing
+  // `// static-render`.
   for (const m of text.matchAll(/\.replaceChildren\s*\(/g)) {
     flag(m.index, m.index, "raw-swap",
-      "raw replaceChildren — use renderRegion (or mount) from lib/templates.js; `// static-render` to opt out");
+      "raw replaceChildren — use renderRegion (lib/render.js) or mount (lib/templates.js); `// static-render` to opt out");
   }
 }
 

@@ -23,6 +23,8 @@ PAIRS=(
   "previews/new.mjs|previews/new.mjs"
   "previews/naming.mjs|previews/naming.mjs"
   "templates.js|lib/templates.js"
+  "render.js|lib/render.js"
+  "chrome.js|lib/chrome.js"
   "tools/check.mjs|tools/check.mjs"
   "tools/check-css-vars.mjs|tools/check-css-vars.mjs"
   "tools/check-slots.mjs|tools/check-slots.mjs"

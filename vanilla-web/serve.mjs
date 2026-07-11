@@ -13,7 +13,7 @@
 //   INLINE API  or handle /api/* in-file (this server IS the backend): add
 //               handlers at the marked hook (readJsonBody + sendJson helpers).
 //   CLIENT      POST /api/client-errors — sendBeacon target for wireErrorBar's
-//   ERRORS      relay (lib/templates.js #62): console.error("[client]", …) with
+//   ERRORS      relay (lib/chrome.js #62): console.error("[client]", …) with
 //               a timestamp, so a browser error lands somewhere an LLM session
 //               can read it. Flood-guarded (30/min, one warn when capped); no
 //               storage, no dashboard — the log line IS the feature.
@@ -158,7 +158,7 @@ function handleEvents(res) {
 }
 
 // ── Client-error relay (#62) ─────────────────────────────────────────────────
-// wireErrorBar (lib/templates.js) sendBeacons here — AFTER it filters
+// wireErrorBar (lib/chrome.js) sendBeacons here — AFTER it filters
 // AbortError, so a cancelled navigation never shows up. The log line IS the
 // feature: no storage, no dashboard, just somewhere an LLM session maintaining
 // the app can actually read what broke in someone's browser. Payload is a

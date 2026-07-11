@@ -54,7 +54,7 @@ tick or a pushed event), and fails if a node was rebuilt under the focus.
 The rules above keep *polled* swaps invisible. The opposite case — a change a
 person just triggered (switching a tab, opening a detail, expanding a panel,
 sorting a column, a user-clicked add/remove) — should be *visible*: wrap the DOM
-mutation in `withTransition(update)` (templates.js) and the browser crossfades between the
+mutation in `withTransition(update)` (render.js) and the browser crossfades between the
 before and after states via the View Transition API. Style it entirely in CSS
 with the `::view-transition-*` pseudo-elements; give elements that should morph
 across the change a shared `view-transition-name` (e.g. a `reconcileList` row

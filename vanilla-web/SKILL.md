@@ -32,7 +32,9 @@ web/
 ├── shell.css            # @layer tokens, utilities — see reference/css.md
 ├── shell.js             # routing + lifecycle + transitions — copy verbatim
 ├── lib/                 # copy the canonical modules you need from the skill dir:
-│   ├── templates.js     #   tpl/pick/slot/renderRegion/withPending/loadCSS/every (always)
+│   ├── templates.js     #   tpl/pick/slot/mount/loadCSS/every/withPending (always)
+│   ├── render.js        #   renderRegion/reconcileList/withTransition — interaction-safe re-renders (always)
+│   ├── chrome.js        #   wireTheme/wireErrorBar — page chrome, shared by shell.js/preview.js (always)
 │   ├── api-client.js    #   fetch + ApiError + 204 + timeout (API-backed apps)
 │   ├── store.js         #   subscribe/get/refresh singleton (shared state)
 │   ├── state.js         #   createState — view-local state for dense views → reference/state.md
@@ -58,10 +60,12 @@ web/
 Copy **verbatim** from the skill dir: `shell.js` (makes `location.hash`
 `#/<view-id>` the source of truth — deep links + back button free; one
 `AbortController` per mount; `document.startViewTransition` swaps; surfaces
-errors to `<output id="errbar">`), `lib/templates.js`, `serve.mjs`,
+errors to `<output id="errbar">`), `lib/templates.js`, `lib/render.js`,
+`lib/chrome.js`, `serve.mjs`,
 `tsconfig.json`, `tools/check-css-vars.mjs` — plus `preview.*` + `previews/scan.mjs` if you want the
 component catalogue (→ `reference/preview.md`). `index.html` preloads the module graph
-(`modulepreload` for `shell.js`, `views/registry.js`, `lib/templates.js`).
+(`modulepreload` for `shell.js`, `views/registry.js`, `lib/templates.js`,
+`lib/render.js`, `lib/chrome.js`).
 
 ## The view contract
 

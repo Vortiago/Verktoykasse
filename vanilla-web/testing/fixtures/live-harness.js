@@ -10,7 +10,8 @@
 //                        uses to confirm the detector trips)
 import { createStore } from "../../store.js";
 import { liveSSE } from "../../live.js";
-import { loadCSS, reconcileList } from "../../templates.js";
+import { loadCSS } from "../../templates.js";
+import { reconcileList } from "../../render.js";
 
 const leaky = new URLSearchParams(location.search).has("leaky");
 const stage = /** @type {HTMLElement} */ (document.getElementById("stage"));

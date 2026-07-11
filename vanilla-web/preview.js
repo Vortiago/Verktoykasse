@@ -12,7 +12,8 @@
 
 import { previews } from "./previews/registry.js";
 import { factoryNameFor } from "./previews/naming.mjs";
-import { tpl, pick, slot, mount, loadCSS, wireTheme, wireErrorBar, withPending } from "./lib/templates.js";
+import { tpl, pick, slot, mount, loadCSS, withPending } from "./lib/templates.js";
+import { wireTheme, wireErrorBar } from "./lib/chrome.js";
 
 /** A component preview module's default export.
  * @typedef {(props: any, signal: AbortSignal) => Element | Promise<Element>} RenderFn */

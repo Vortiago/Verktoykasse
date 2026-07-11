@@ -22,7 +22,7 @@ import "../components/skeleton/skeleton.element.js";
 import "../components/checklist-row/checklist-row.element.js";
 import "../components/stat-card/stat-card.element.js";
 import "../components/alert/alert.element.js";
-import { wireTheme, wireErrorBar } from "../lib/templates.js";
+import { wireTheme, wireErrorBar } from "../lib/chrome.js";
 
 wireErrorBar();
 wireTheme();
