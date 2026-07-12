@@ -13,17 +13,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { liveSSE, livePoll } from "./live.js";
+import { patchGlobal, makeFlush } from "./testing-util.mjs";
 
 /** Resolve the microtasks an awaited fetch chain queues after a synchronous tick. */
-const flush = async () => { for (let i = 0; i < 8; i++) await Promise.resolve(); };
-
-/** Install a value on globalThis for one test, restoring the prior value after. */
-function patchGlobal(t, name, value) {
-  const had = Object.prototype.hasOwnProperty.call(globalThis, name);
-  const prev = globalThis[name];
-  globalThis[name] = value;
-  t.after(() => { if (had) globalThis[name] = prev; else delete globalThis[name]; });
-}
+const flush = makeFlush(8);
 
 // ── liveSSE ─────────────────────────────────────────────────────────────────
 

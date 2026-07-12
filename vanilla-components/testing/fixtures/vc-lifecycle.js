@@ -20,23 +20,35 @@ const w = /** @type {any} */ (window);
 
 // One representative instance per registered tag, with real attributes so each
 // factory does real work (loads its CSS once, wires listeners, starts animations).
-const MARKUP = [
-  `<vc-button label="Go" variant="primary"></vc-button>`,
-  `<vc-chip text="ok" tone="success" dot></vc-chip>`,
-  `<vc-status-dot tone="warning" pulse label="live"></vc-status-dot>`,
-  `<vc-avatar name="Ada Lovelace" size="40"></vc-avatar>`,
-  `<vc-progress value="42" max="100" tone="success" label="load"></vc-progress>`,
-  `<vc-spinner size="24" label="loading"></vc-spinner>`,
-  `<vc-alert tone="info" title="Heads up" message="hello" dismissible></vc-alert>`,
-  `<vc-skeleton variant="text" lines="3"></vc-skeleton>`,
-].join("");
+// Built via createElement/setAttribute, not an innerHTML string — this toolkit's
+// own "no HTML strings in JS" convention, and it also means this fixture needs no
+// Trusted Types policy of its own now that serve.mjs enforces
+// require-trusted-types-for 'script' (#59) on everything it serves, fixtures
+// included; an attribute with no value (dot/pulse/dismissible below) is set "".
+/** @type {Array<[string, Record<string, string>]>} */
+const INSTANCES = [
+  ["vc-button", { label: "Go", variant: "primary" }],
+  ["vc-chip", { text: "ok", tone: "success", dot: "" }],
+  ["vc-status-dot", { tone: "warning", pulse: "", label: "live" }],
+  ["vc-avatar", { name: "Ada Lovelace", size: "40" }],
+  ["vc-progress", { value: "42", max: "100", tone: "success", label: "load" }],
+  ["vc-spinner", { size: "24", label: "loading" }],
+  ["vc-alert", { tone: "info", title: "Heads up", message: "hello", dismissible: "" }],
+  ["vc-skeleton", { variant: "text", lines: "3" }],
+];
 
 /** Append one .batch container holding `copies` of every tag. Appending connects
  * each <vc-*>, firing connectedCallback (async warm on first mount). @param {number} copies */
 w.__mount = (copies = 1) => {
   const batch = document.createElement("div");
   batch.className = "batch";
-  batch.innerHTML = MARKUP.repeat(copies);
+  for (let i = 0; i < copies; i++) {
+    for (const [tag, attrs] of INSTANCES) {
+      const el = document.createElement(tag);
+      for (const [name, value] of Object.entries(attrs)) el.setAttribute(name, value);
+      batch.append(el);
+    }
+  }
   host.append(batch);
 };
 

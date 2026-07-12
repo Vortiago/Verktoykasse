@@ -1,8 +1,9 @@
 @layer vanilla-components {
-/* Tooltip — a hover/focus card on the top layer (manual popover), tethered to its
-   trigger with CSS Anchor Positioning. The browser does the placement and the
-   edge-flip (position-area + position-try-fallbacks) — no coordinate math. The
-   instance sets `position-anchor` (a unique anchor-name) inline. Chromium 125+. */
+/* Tooltip — a hover/focus card on the top layer (a "hint" popover, falling back
+   to "manual" — see tooltip.js), tethered to its trigger with CSS Anchor
+   Positioning. The browser does the placement and the edge-flip (position-area +
+   position-try-fallbacks) — no coordinate math. The instance sets
+   `position-anchor` (a unique anchor-name) inline. Chromium 125+. */
 @scope (.tooltip) {
   :scope {
     margin: 0;

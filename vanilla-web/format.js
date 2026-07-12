@@ -92,14 +92,47 @@ export function relTime(when, locale) {
   return rtf.format(0, "second");
 }
 
-/** Compact duration from milliseconds: "45s", "1m 20s", "1h 5m". @param {number} ms */
-export function duration(ms) {
-  if (ms == null || ms < 0) return "—";
+// Intl.DurationFormat isn't in this TS version's lib.d.ts yet (Baseline
+// Chrome/Edge 129+, but the type declarations lag) — a local shape + a cast
+// through the global keeps the gate green without depending on an @types
+// package (zero-dep). Runtime uses the real global; absent it (older engine,
+// or a non-browser test runner without --harmony-intl-duration-format) this
+// throws, same as any other un-polyfilled Intl.* constructor here.
+/** @typedef {{ format(input: Partial<Record<"hours"|"minutes"|"seconds", number>>): string }} DurationFormatLike */
+const _DurationFormat = /** @type {{ new (locale: string, opts: { style: string, secondsDisplay?: string, minutesDisplay?: string }): DurationFormatLike }} */ (
+  /** @type {{ DurationFormat: unknown }} */ (/** @type {unknown} */ (Intl)).DurationFormat
+);
+
+/** @type {Map<string, DurationFormatLike>} */ const _dfCache = new Map(); // keyed `${tier}:${locale}`
+
+/** Memoized DurationFormat for one of the two tiers duration() needs: "seconds"
+ * (sub-hour — seconds always shown) or "minutes" (hour+ — minutes always
+ * shown, no seconds). @param {"seconds"|"minutes"} tier @param {string} [locale] */
+function durFmt(tier, locale) {
+  const loc = locale || DEFAULT_LOCALE;
+  const key = `${tier}:${loc}`;
+  let f = _dfCache.get(key);
+  if (!f) { f = new _DurationFormat(loc, { style: "narrow", [`${tier}Display`]: "always" }); _dfCache.set(key, f); }
+  return f;
+}
+
+/** Compact duration from milliseconds, via Intl.DurationFormat (`{ style:
+ * "narrow" }`) — locale-aware like every other formatter here (respects
+ * setLocale()), where the old hand-rolled version was English-only: "45s",
+ * "1m 20s", "1h 5m". The unit-splitting math stays hand-rolled (Intl formats a
+ * duration RECORD; it doesn't convert milliseconds); `secondsDisplay`/
+ * `minutesDisplay: "always"` keep a zero-valued trailing unit visible ("1m 0s",
+ * "1h 0m") — Intl's default "auto" display drops zero-valued units entirely,
+ * which would silently change the output shape. Non-finite input (NaN,
+ * Infinity) returns the "—" sentinel like null/negative, never a RangeError.
+ * @param {number} ms @param {string} [locale] */
+export function duration(ms, locale) {
+  if (ms == null || !Number.isFinite(ms) || ms < 0) return "—";
   const s = Math.round(ms / 1000);
-  if (s < 60) return `${s}s`;
+  if (s < 60) return durFmt("seconds", locale).format({ seconds: s });
   const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ${s % 60}s`;
-  return `${Math.floor(m / 60)}h ${m % 60}m`;
+  if (m < 60) return durFmt("seconds", locale).format({ minutes: m, seconds: s % 60 });
+  return durFmt("minutes", locale).format({ hours: Math.floor(m / 60), minutes: m % 60 });
 }
 
 /** Truncate with a remaining-count suffix. @param {string} str @param {number} max */

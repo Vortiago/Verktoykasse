@@ -8,9 +8,26 @@
 //                   aborts it on switch — nothing can be left behind;
 //   3. transitions — swaps run inside document.startViewTransition when
 //                   available (crossfade for free; plain swap elsewhere).
+//
+// Error containment (#53): mount() runs in a try/catch. A throw aborts the
+// fresh controller (releasing whatever the partial mount opened), resets
+// currentView to null (so the nav link that just failed is no longer a no-op
+// — clicking it again retries instead of switchView's early-return treating
+// the failed view as "already current"), and paints a minimal textContent-only
+// fallback into the stage. The error still reaches wireErrorBar/console via
+// window.reportError — containment, not silence.
+//
+// Abort semantics (#61): a mount that throws because ITS OWN signal was
+// aborted (a fast second navigation cancelling the first) is normal shutdown,
+// not a failure — the catch returns before touching currentView or painting
+// anything. An AbortError escaping mount is expected; see chrome.js'
+// wireErrorBar for the matching filter on the global error/unhandledrejection
+// hooks.
 
 import { views } from "./views/registry.js";
-import { loadCSS, every, wireTheme, wireErrorBar, withTransition } from "./lib/templates.js";
+import { loadCSS, every } from "./lib/templates.js";
+import { withTransition } from "./lib/render.js";
+import { wireTheme, wireErrorBar } from "./lib/chrome.js";
 
 const stage = /** @type {HTMLElement} */ (document.getElementById("stage"));
 
@@ -19,6 +36,12 @@ const stage = /** @type {HTMLElement} */ (document.getElementById("stage"));
 
 /** @type {View | null} */ let currentView = null;
 /** @type {AbortController | null} */ let currentController = null;
+// True once the first switchView() has completed (success or failure) — gates
+// the document.title rewrite so the boot view keeps the server-rendered title
+// until the user actually navigates (#60).
+let hasSwitchedOnce = false;
+// Captured once at boot, before any switch can overwrite it.
+const APP_NAME = document.title;
 
 /** App-wide data handed to every mount — fetch once at boot, or leave null
  * and let views fetch their own. @type {unknown} */
@@ -27,6 +50,34 @@ const appData = null;
 function viewIdFromHash() {
   const id = location.hash.replace(/^#\/?/, "");
   return views.some((v) => v.id === id) ? id : views[0].id;
+}
+
+/** Move focus to the stage after a swap (success or failure) — screen readers
+ * announce from the top (#60). */
+function focusStage() {
+  stage.tabIndex = -1;
+  stage.focus({ preventScroll: false });
+}
+
+/** Minimal, textContent-only fallback painted into the stage when mount()
+ * throws (#53) — no HTML strings, every node built and text-set directly.
+ * The retry link is just the hash route for the SAME id: with currentView
+ * reset to null, switchView(id) on that id is no longer switchView's
+ * early-return no-op, so the existing hash flow IS the retry — no new
+ * machinery. @param {string} id @param {unknown} err */
+function renderFallback(id, err) {
+  const wrap = document.createElement("div");
+  wrap.dataset.slot = "viewError";
+  const headline = document.createElement("p");
+  headline.textContent = "This view failed to load.";
+  const detail = document.createElement("p");
+  detail.textContent = String(/** @type {{ message?: string }} */ (err)?.message ?? err);
+  const retry = document.createElement("a");
+  retry.href = `#/${id}`;
+  retry.textContent = "Retry";
+  retry.dataset.slot = "retryLink";
+  wrap.append(headline, detail, retry);
+  stage.replaceChildren(wrap);
 }
 
 /** @param {string} id */
@@ -41,13 +92,34 @@ async function switchView(id) {
     currentView?.unmount();
     stage.replaceChildren();
     currentView = view;
-    currentController = new AbortController();
-    await view.mount(stage, appData, {
-      loadCSS,
-      every,
-      signal: currentController.signal,
-    });
+    const controller = new AbortController();
+    currentController = controller;
+    try {
+      await view.mount(stage, appData, {
+        loadCSS,
+        every,
+        signal: controller.signal,
+      });
+    } catch (err) {
+      // cancelled mount: normal shutdown (#61) — tied to THIS controller's own
+      // signal, not just the error's name, so a view that throws an unrelated
+      // AbortError of its own can't be mistaken for a navigation cancellation.
+      if (/** @type {{ name?: string }} */ (err)?.name === "AbortError" && controller.signal.aborted) return;
+      window.reportError(err); // always surfaced (console + errbar), even if superseded below
+      if (controller !== currentController) return; // a newer swap already owns the stage — don't clobber it
+      controller.abort(); // release whatever the partial mount opened
+      try { view.unmount(); } catch { /* half-mounted teardown is best-effort */ }
+      currentView = null; // nav link becomes the retry (#53)
+      hasSwitchedOnce = true; // a failed switch counts too — the next success must retitle (#60)
+      renderFallback(id, err);
+      focusStage(); // the failure fallback also gets focus
+      return;
+    }
     syncNav(id);
+    // Only on real switches — the boot view keeps the server-sent title (#60).
+    if (hasSwitchedOnce) document.title = entry.title ? `${entry.title} · ${APP_NAME}` : APP_NAME;
+    hasSwitchedOnce = true;
+    focusStage(); // route-change focus move
   };
   // Animate the swap where supported (crossfade for free), else swap in place.
   // startViewTransition awaits the async callback before animating; nothing
@@ -64,7 +136,7 @@ function syncNav(id) {
 }
 
 // Page chrome — theme toggle + error surfacing, shared with preview.js so the
-// two pages can't drift (see lib/templates.js).
+// two pages can't drift (see lib/chrome.js).
 wireTheme();
 wireErrorBar();
 

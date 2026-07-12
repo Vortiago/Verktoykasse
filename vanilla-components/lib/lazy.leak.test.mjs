@@ -14,11 +14,18 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { whenSized, onceVisible } from "./lazy.js";
 
+// Mirrors vanilla-web/testing-util.mjs's patchGlobal — defineProperty (not
+// plain assignment), since some real globals are getter-only accessors that a
+// bare `globalThis.x = …` throws on. No cross-skill imports, so this is a
+// deliberate local copy rather than a shared dependency.
 function patchGlobal(t, name, value) {
   const had = Object.prototype.hasOwnProperty.call(globalThis, name);
-  const prev = globalThis[name];
-  globalThis[name] = value;
-  t.after(() => { if (had) globalThis[name] = prev; else delete globalThis[name]; });
+  const prevDescriptor = had ? Object.getOwnPropertyDescriptor(globalThis, name) : undefined;
+  Object.defineProperty(globalThis, name, { value, configurable: true, writable: true, enumerable: true });
+  t.after(() => {
+    if (prevDescriptor) Object.defineProperty(globalThis, name, prevDescriptor);
+    else delete globalThis[name];
+  });
 }
 
 /** Observer double: records instances + observed target, exposes a disconnected

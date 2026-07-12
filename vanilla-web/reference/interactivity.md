@@ -54,7 +54,7 @@ tick or a pushed event), and fails if a node was rebuilt under the focus.
 The rules above keep *polled* swaps invisible. The opposite case — a change a
 person just triggered (switching a tab, opening a detail, expanding a panel,
 sorting a column, a user-clicked add/remove) — should be *visible*: wrap the DOM
-mutation in `withTransition(update)` (templates.js) and the browser crossfades between the
+mutation in `withTransition(update)` (render.js) and the browser crossfades between the
 before and after states via the View Transition API. Style it entirely in CSS
 with the `::view-transition-*` pseudo-elements; give elements that should morph
 across the change a shared `view-transition-name` (e.g. a `reconcileList` row
@@ -179,6 +179,55 @@ inbox.addEventListener("command", (e) => {
   if (e.command === "--archive") archive(e.source);
 }, { signal });
 ```
+
+**The pattern, precisely** (this is what `vanilla-components`' alert/checklist-row/
+panel wire): ONE `command` listener on the component's root, not one per button —
+`e.command` is the invoked value, `e.source` is the invoking button (works
+whether that button lives inside the component's own template or was authored
+by the caller). Targeting doesn't need an id both ways:
+
+- **A component's OWN internal button** (e.g. alert's ✕) wires itself to the
+  root via the `commandForElement` IDL property — `closeBtn.commandForElement =
+  el` — no id needed, since the component controls both ends and the root may
+  not have one.
+- **A caller-authored EXTERNAL button** targets the component the normal HTML
+  way: `commandfor="<id>"`, where the caller has put that id on the
+  component's root itself (`panelHandle.el.id = "notes"`).
+
+Callback props (`onDismiss`, `onToggle`, …) and custom commands are not
+competing mechanisms — they're the two ends of the SAME contract, for two
+different callers: a callback prop is how the component talks back to the JS
+that BUILT it (component-internal wiring — unaffected by any of this); a custom
+command is how markup ANYWHERE else on the page reaches in, declaratively, with
+no reference to the built handle at all. A component that grows a custom
+command keeps its callback prop too — the command handler in the factory calls
+it (`onDismiss?.()`, `onToggle?.(next)`) so both callers see the same event.
+
+**Recipe — `table-shell` row actions.** `table-shell` ships no command code of
+its own (rows are caller-filled, so there's no single root the shell could
+listen on for a caller's own row buttons) — but the pattern still applies, one
+level up, in the CALLER's own row-building code:
+
+```html
+<table id="run-table">…</table>
+<!-- caller fills tbody with rows like: -->
+<tr data-id="42">
+  <td>…</td>
+  <td><button command="--retry" commandfor="run-table">Retry</button></td>
+</tr>
+```
+```js
+runTable.addEventListener("command", (e) => {
+  if (e.command !== "--retry") return;
+  const row = /** @type {HTMLElement} */ (e.source).closest("tr");
+  retry(row?.dataset.id);
+}, { signal });
+```
+
+One listener on the table root — not one per row-button — regardless of how
+many rows `reconcileList` cycles through; `e.source.closest("tr")` recovers
+which row fired it. Chrome/Edge only for all of the above: `command`/`commandfor`
+≥135, `commandForElement` ≥135 (see `reference/compat.md`).
 
 ## Forms — native validation, no form layer
 

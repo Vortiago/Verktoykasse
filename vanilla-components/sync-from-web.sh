@@ -18,11 +18,19 @@ COMP="$ROOT/vanilla-components"
 PAIRS=(
   "serve.mjs|serve.mjs"
   "preview.js|preview.js"
+  "preview-source.js|preview-source.js"
   "preview.css|preview.css"
   "previews/scan.mjs|previews/scan.mjs"
   "previews/new.mjs|previews/new.mjs"
   "previews/naming.mjs|previews/naming.mjs"
   "templates.js|lib/templates.js"
+  "render.js|lib/render.js"
+  "chrome.js|lib/chrome.js"
+  "tools/check.mjs|tools/check.mjs"
+  "tools/check-css-vars.mjs|tools/check-css-vars.mjs"
+  "tools/check-slots.mjs|tools/check-slots.mjs"
+  "tools/check-conventions.mjs|tools/check-conventions.mjs"
+  "tools/js-scan.mjs|tools/js-scan.mjs"
 )
 
 strip="canonical source: vanilla-web"   # must be a prefix of the sync-mode stamp text

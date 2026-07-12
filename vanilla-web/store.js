@@ -10,31 +10,73 @@
 //   auth.get();  auth.subscribe(renderChrome, signal);  auth.refresh();  auth.set(null);
 //   // pass the view's mount signal so the subscription dies with the view —
 //   // without it you OWN the returned unsubscribe and must call it on unmount.
+//
+// Opt-in freshness (#46), for the pull-only case (no SSE upstream self-healing
+// on reconnect): a background tab left open overnight, or a laptop waking from
+// sleep, otherwise shows last-session data until something calls refresh().
+//
+//   export const stats = createStore(() => get("/stats"), { refetchOn: ["visible", "online"], maxAge: 60_000 });
+//
+// "visible" refetches on visibilitychange→visible IF the value is older than
+// maxAge (omit maxAge → always refetch on visible); "online" refetches on
+// window "online" unconditionally (no maxAge gate — reconnect means the data
+// is suspect regardless of age). Both listeners skip while a load is already
+// in flight: freshness is already coming, a second chain would just race it.
+// Race containment: load chains carry a generation; only the LATEST chain
+// writes value/loaded/lastLoadedAt and notifies — a superseded load resolving
+// late is dropped, never clobbering a newer result. Listeners are
+// module-level singletons by default (registered once at store creation,
+// alive for the app's lifetime — the same assumption every other module-level
+// store already makes); pass `signal` to release them instead (tests, or a
+// store created per-view).
 
 /**
  * @template T
  * @param {() => Promise<T>} load — fetches the value; called at most once until refresh()
+ * @param {{ refetchOn?: ("visible" | "online")[], maxAge?: number, signal?: AbortSignal }} [opts]
  */
-export function createStore(load) {
+export function createStore(load, opts) {
   /** @type {T | null} */ let value = null;
   let loaded = false;
+  let lastLoadedAt = 0;
+  let gen = 0;           // load-chain generation — only the latest chain writes/notifies
+  let loading = false;   // a chain is un-settled; refetchOn listeners skip while true
   /** @type {Promise<void> | null} */ let inflight = null;
   /** @type {Set<(v: T | null) => void>} */ const subs = new Set();
 
   const notify = () => { for (const cb of subs) cb(value); };
 
-  /** Fetch once; concurrent callers share the inflight promise. */
+  /** Fetch once; concurrent callers share the inflight promise. A chain
+   * superseded by refresh() mid-flight is dropped on settle (gen guard). */
   function ensure() {
     if (inflight) return inflight;
+    const g = ++gen;
+    loading = true;
     inflight = Promise.resolve()
       .then(load)
-      .then((v) => { value = v; })
-      .catch(() => { value = null; })           // failed load → null, not a throw
-      .finally(() => { loaded = true; notify(); });
+      .then((v) => { if (g === gen) value = v; },
+            () => { if (g === gen) value = null; })  // failed load → null, not a throw
+      .finally(() => {
+        if (g !== gen) return; // superseded — the newer chain owns value/loaded/notify
+        loading = false; loaded = true; lastLoadedAt = Date.now(); notify();
+      });
     return inflight;
   }
 
-  return {
+  const refetchOn = opts?.refetchOn ?? [];
+  if (refetchOn.includes("visible") && typeof document !== "undefined") {
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState !== "visible") return;
+      if (loading) return; // freshness already in flight
+      if (opts?.maxAge != null && Date.now() - lastLoadedAt < opts.maxAge) return; // still fresh
+      store.refresh();
+    }, { signal: opts?.signal });
+  }
+  if (refetchOn.includes("online") && typeof window !== "undefined") {
+    window.addEventListener("online", () => { if (!loading) store.refresh(); }, { signal: opts?.signal });
+  }
+
+  const store = {
     /** Kick the one-time load (idempotent). @returns {Promise<void>} */
     load: ensure,
     /** Force a re-fetch (after a mutation/login/logout). @returns {Promise<void>} */
@@ -60,4 +102,5 @@ export function createStore(load) {
       return off;
     },
   };
+  return store;
 }

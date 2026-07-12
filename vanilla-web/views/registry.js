@@ -11,8 +11,10 @@
  *   unmount(): void,
  * }} View */
 
-/** A registry entry: a view's id + a lazy loader for its module.
- * @typedef {{ id: string, load: () => Promise<{ default: View }> }} ViewEntry */
+/** A registry entry: a view's id + a lazy loader for its module. `title`
+ * (optional) feeds shell.js's `document.title = "<title> · <APP_NAME>"` on a
+ * real view switch (#60) — omit it and the view just doesn't relabel the tab.
+ * @typedef {{ id: string, title?: string, load: () => Promise<{ default: View }> }} ViewEntry */
 
 /** The app's routable views, in nav order. Empty here; an app fills it.
  * @type {ViewEntry[]} */

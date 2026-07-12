@@ -63,12 +63,12 @@ in `tones.css` (see Consume → Tone mixin).
 
 | Component | Factory | Key props |
 |---|---|---|
-| panel | `createPanel({ head?, body?, fill? }) → { el, headEl, bodyEl }` | head/body take string or Node; `fill` stretches + scrolls body |
+| panel | `createPanel({ head?, body?, fill?, collapsed? }[, signal]) → { el, headEl, bodyEl, setCollapsed }` | head/body take string or Node; `fill` stretches + scrolls body; root always wires a `--toggle` custom command — a caller's own head button can `commandfor` the panel's (caller-assigned) id to collapse/expand it, no panel-side JS. Chrome/Edge ≥135 |
 | stat-card | `createStatCard({ label, value, unit?, hint?, tone?, onSelect? }, signal?) → { el, update(value, hint?) }` | tone: ok\|warn\|bad\|accent; `update()` mutates in place for polled values |
 | chip | `createChip({ text, tone?, dot? }) → { el, setText(text) }` | tone: ok\|warn\|bad\|info\|accent, a raw CSS colour, or neutral; `dot` = leading dot |
 | status-dot | `createStatusDot({ tone?, pulse?, label? }) → { el, setTone(t), setPulse(on) }` | tone: neutral\|ok\|warn\|bad\|info\|accent or a raw CSS colour; `pulse` halo (respects reduced-motion) |
 | avatar | `createAvatar({ name?, initials?, src?, size?, tone? }) → { el, setName, setSrc }` | round initials-or-image badge; initials derived from `name`; `tone` (named or raw colour) fills it; override `--r-pill` to square it |
-| tooltip | `createTooltip(trigger, { content?, className? }, signal?) → { el, setContent, show(), hide(), dispose() }` | top-layer Popover tethered to the trigger via CSS anchor positioning (auto edge-flip, no coordinate math); shows on the trigger's hover/focus. Chromium 125+. |
+| tooltip | `createTooltip(trigger, { content?, className? }, signal?) → { el, setContent, show(), hide(), dispose() }` | top-layer `popover="hint"` (feature-detected, falls back to `manual`) tethered to the trigger via CSS anchor positioning (auto edge-flip, no coordinate math); shows on the trigger's hover/focus. Chromium 133+ for hint (125+ for anchor positioning); Interest Invokers (`interestfor`) is the watch-don't-adopt endgame for the show/hide triggers themselves. |
 | app-bar | `createAppBar({ brand, items, current?, onSelect? }, signal?) → { el, actionsEl, setCurrent }` | top bar: brand · underline-tab nav (`<a href="#/<id>">`) · `actionsEl` slot; `setCurrent(id)` marks active; optional per-item `accent` + trailing `chip` badge |
 | side-nav | `createSideNav({ groups, current?, onSelect? }, signal?) → { el, setCurrent }` | grouped left-pane nav; `journey` group variant = numbered pipeline + done-checks; item `chip` composes the chip atom |
 | view-header | `createViewHeader({ eyebrow?, title, sub?, actions?, dense? }) → { el, actionsEl, setTitle, setSub }` | stage header: eyebrow · title · sub · `actionsEl` slot; `dense` = compact one-line section/toolbar bar |
@@ -78,14 +78,14 @@ in `tones.css` (see Consume → Tone mixin).
 | progress | `createProgress({ value, max?, tone?, label? }) → { el, setValue(value, max?) }` | track+fill meter; tone: ok\|warn\|bad\|accent |
 | kv-row | `createKvRow({ label, value, tone? }) → { el, setValue(value) }` | key·value line (prop is `label` — `key` is React-reserved); tone colors value |
 | empty-state | `createEmptyState({ icon?, title, detail? }) → { el }` | centered "nothing here" placeholder |
-| alert | `createAlert({ tone?, title?, message, dismissible?, onDismiss? }, signal?) → { el, setMessage, dismiss }` | inline banner; tone colours border/fill/title; `role=alert` for bad, else status |
+| alert | `createAlert({ tone?, title?, message, dismissible?, onDismiss? }, signal?) → { el, setMessage, dismiss }` | inline banner; tone colours border/fill/title; `role=alert` for bad, else status; dismiss is a `--dismiss` custom command — the ✕ wires via `commandForElement` (no id needed), and an external caller button can too via `commandfor` on an id it sets on the root. Chrome/Edge ≥135 |
 | spinner | `createSpinner({ size?, label? }) → { el }` | indeterminate ring; colour = currentColor; slows (not freezes) under reduced-motion |
 | skeleton | `createSkeleton({ variant?, lines?, width?, height? }) → { el }` | shimmer placeholder; variant text\|block\|circle; static under reduced-motion |
 | segmented-control | `createSegmentedControl({ options, current?, onSelect? }, signal?) → { el, setCurrent }` | radio/toggle group; an option's `tone` (named or raw colour) colours it when active, else accent; `setCurrent(id)` marks active |
 | menu | `createMenu(trigger, { items, onSelect?, align? }, signal?) → { el, open(), close(), dispose() }` | popover action list anchored to the trigger (a `<button>` toggles it natively); items `{ id, label, icon?, disabled?, danger? }` or `"separator"`; light-dismiss + Esc. Chromium 125+ |
 | dialog | `createDialog({ title?, body?, actions?, scroll?, closeOnBackdrop? }, signal?) → { el, bodyEl, actionsEl, open(), close(), setTitle }` | native `<dialog>`; append `el`, then `open()`/`close()`; `scroll` caps height + scrolls a long body; `closeOnBackdrop` → native `closedby="any"`; ✕ + `actions` buttons close via Invoker Commands (`command="close"` `commandfor={el.id}`, no JS); `setTitle` updates the header |
 | table-shell | `createTableShell({ columns, rows?, caption? }) → { el, tbody, setRows }` | tokenized table skeleton: sticky header from `columns`, caller-fillable `tbody`; numeric columns (`align:"end"`) right-aligned mono |
-| checklist-row | `createChecklistRow({ text, done? }) → { el, setDone(done) }` | done/undone item: box marker + strikethrough/dim when done |
+| checklist-row | `createChecklistRow({ text, done?, onToggle? }[, signal]) → { el, setDone(done) }` | done/undone item: box marker + strikethrough/dim when done; owns no button itself — a caller-authored one drives a `--toggle` custom command on the row's root. Chrome/Edge ≥135 |
 | list-row | `createListRow({ title, meta?, leading?, trailing?, href?, onSelect? }, signal?) → { el, setTitle, setMeta }` | leading·title+meta·trailing row; renders `<a>` (href) / `<button>` (onSelect) / `<div>`; `leading`/`trailing` take a string or Node; draws its own top divider between rows |
 | scroll-stack | `createScrollStack({ children? }) → { el, append }` | a container that OWNS its overflow and lays children at natural height — the STACK complement to `panel.is-fill` / `table-shell` (which scroll ONE box). Stops stacked `overflow:clip` panels (every `panel` is) silently squishing + clipping with no scrollbar on a short viewport; `min-height:0` is load-bearing |
 
@@ -152,7 +152,7 @@ above can't happen), and an empty `connectedMoveCallback` stops a `reconcileList
 Tags (live attrs **bold**): `vc-button` (**label disabled pressed**), `vc-chip`
 (**text**), `vc-status-dot` (**tone pulse**), `vc-avatar` (**name src**), `vc-progress`
 (**value**), `vc-kv-row` (**value**), `vc-empty-state`, `vc-spinner`, `vc-skeleton`,
-`vc-checklist-row` (**done**), `vc-stat-card` (**value**), `vc-alert`
+`vc-checklist-row` (**done** · `vc-toggle` event), `vc-stat-card` (**value**), `vc-alert`
 (**message** · `dismiss` event).
 
 **No tag** (Node / array / callback props don't fit string attributes — factory only):
@@ -167,7 +167,8 @@ registry on startup; theme toggle exercises light/dark). The typecheck gate is
 
 ## Toolkit sync (maintainers)
 
-`serve.mjs`, `preview.{js,css}`, `previews/{scan,new}.mjs`, and `lib/templates.js`
+`serve.mjs`, `preview.{js,css}`, `preview-source.js`, `previews/{scan,new}.mjs`, and
+`lib/{templates,render,chrome}.js`
 are **vendored from the `vanilla-web` skill** (the canon) — committed copies stamped
 `canonical source: vanilla-web/…`. Edit them in `vanilla-web`, then re-run
 `./sync-from-web.sh`; a repo-local pre-commit hook (`sync-from-web.sh --precommit`)

@@ -10,7 +10,7 @@
 // state survived; a regression (deleted connectedMoveCallback, or a browser without
 // moveBefore) makes those assertions fail.
 import "../../../components/button/button.element.js";
-import { reconcileList } from "../../../lib/templates.js";
+import { reconcileList } from "../../../lib/render.js";
 
 const host = /** @type {HTMLElement} */ (document.getElementById("list"));
 const w = /** @type {any} */ (window);

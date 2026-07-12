@@ -67,7 +67,7 @@ Read this when writing `shell.css` or any view/component stylesheet.
 - Motion is opt-out globally: `shell.css` ends with the
   `prefers-reduced-motion: reduce` block above, which zeroes the
   `::view-transition-*` animations (add any overlay entry animations there too).
-  View transitions are *triggered* from JS — `withTransition()` (templates.js,
+  View transitions are *triggered* from JS — `withTransition()` (render.js,
   → `reference/interactivity.md`), for user-initiated changes only — but styled
   here: the crossfade lives in `::view-transition-old/new/group`, and elements
   that should morph across the change carry a shared `view-transition-name`.
@@ -106,7 +106,7 @@ snappy without ever leaving plain DOM:
   }
   ```
 
-- **`reconcileList` does the updates** (see `lib/templates.js` /
+- **`reconcileList` does the updates** (see `lib/render.js` /
   `reference/modules.md`): never `replaceChildren` a long list on a live update
   (SSE or poll) — rebuilding thousands of nodes is the jank. Reconcile keyed, in
   place, and

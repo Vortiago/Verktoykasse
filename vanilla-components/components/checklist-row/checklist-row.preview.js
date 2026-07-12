@@ -1,10 +1,21 @@
 // @ts-check
 import { createChecklistRow } from "./checklist-row.js";
+import { commandButton } from "../../previews/command-button.js";
 
 /** @type {import("../../preview.js").PreviewModule} */
 export default {
   title: "checklist-row",
-  render: (props) => createChecklistRow(props).then((c) => c.el),
+  // The row owns no control of its own — a caller-authored button elsewhere on
+  // the page drives the `--toggle` command via `commandfor`, hitting the row's
+  // ONE root listener (onToggle is the callback-prop half of the same wiring).
+  render: async (props, signal) => {
+    const c = await createChecklistRow(props, signal);
+    const btn = commandButton(c.el, "--toggle", "Toggle", { idPrefix: "checklist-row-preview" });
+    const box = document.createElement("div");
+    box.style.cssText = "display:flex; align-items:center; gap:var(--space-s);";
+    box.append(c.el, btn);
+    return box;
+  },
   variants: {
     done: { text: "Wire up the type gate", done: true },
     todo: { text: "Render-check design-sync", done: false },

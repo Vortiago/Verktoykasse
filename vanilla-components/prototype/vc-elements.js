@@ -2,6 +2,14 @@
 // Demo wiring for the <vc-*> custom-element showcase. Each import registers a tag
 // (side-effect only); the listeners below prove events/updaters still work through
 // the declarative face. This is a demo PAGE, not a component — peer of preview.js.
+//
+// gate-allow: signal-listener — this module-script runs once per page load and
+// is never re-mounted or torn down (no component lifecycle here), and every
+// listener below must keep firing for the page's lifetime (click counter, live
+// inputs, dismiss event) — none are one-shot, so `{ once: true }` would be
+// wrong, and `{ signal }` would tie to an AbortController that's never
+// aborted, i.e. dead weight. One file-level escape (check-conventions.mjs)
+// covers every listener in this file instead of one inline mark per call site.
 import "../components/button/button.element.js";
 import "../components/chip/chip.element.js";
 import "../components/status-dot/status-dot.element.js";
@@ -14,7 +22,7 @@ import "../components/skeleton/skeleton.element.js";
 import "../components/checklist-row/checklist-row.element.js";
 import "../components/stat-card/stat-card.element.js";
 import "../components/alert/alert.element.js";
-import { wireTheme, wireErrorBar } from "../lib/templates.js";
+import { wireTheme, wireErrorBar } from "../lib/chrome.js";
 
 wireErrorBar();
 wireTheme();

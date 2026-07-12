@@ -1,5 +1,7 @@
 # Verktøykasse
 
+[![gate](https://github.com/Vortiago/Verktoykasse/actions/workflows/gate.yml/badge.svg)](https://github.com/Vortiago/Verktoykasse/actions/workflows/gate.yml)
+
 *Verktøykasse* — Norwegian for **toolbox**.
 
 My general-purpose [Claude Code](https://claude.com/claude-code) skills:
