@@ -1,4 +1,4 @@
-// canonical source: vanilla-web/render.js@4dabf5c — vendored copy, do not edit here
+// canonical source: vanilla-web/render.js@11345e6 — vendored copy, do not edit here
 // @ts-check
 // Canonical interaction-safe re-rendering for the vanilla-web conventions (see
 // SKILL.md). Copy into <app>/web/lib/render.js; extend, don't fork. Identity:
@@ -13,7 +13,10 @@
 // rather than deferring a whole-region swap. withTransition is the opposite
 // case: a DISCRETE, user-initiated change that should animate, never a polled
 // re-render. selectionInside is exported standalone for in-place updaters
-// (outside renderRegion) that write text every tick.
+// (outside renderRegion) that write text every tick. markRegionStale forgets a
+// host's recorded sig after an out-of-band change (lazy body landed, in-place
+// mutate) so the next renderRegion call rebuilds — through the guards, unlike
+// force:true.
 //
 // This module imports nothing from templates.js or chrome.js, and nothing
 // there imports this — components and defineComponent (lib/component.js)
@@ -160,6 +163,17 @@ export function renderRegion(host, build, opts = {}) {
   _pendingFlush.delete(host);
   if (opts.sig != null) _regionSig.set(host, opts.sig);
   host.replaceChildren(build());
+}
+
+/** Forget `host`'s recorded sig so the NEXT renderRegion call rebuilds it.
+ * For out-of-band changes the sig can't see: a lazy-loaded body landed, a
+ * mutation just changed what `build()` would produce. Unlike `force:true`
+ * this doesn't swap anything itself — the rebuild still arrives through
+ * renderRegion's interaction guards, so it can't clobber a focused control,
+ * an open overlay, or a mid-copy selection.
+ * @param {Element} host */
+export function markRegionStale(host) {
+  _regionSig.delete(host);
 }
 
 /** Per-node reconcile key, set on nodes reconcileList creates. @type {WeakMap<Element, string>} */

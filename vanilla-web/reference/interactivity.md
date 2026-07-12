@@ -22,11 +22,15 @@ and text selections when they swap DOM. The rule set, in order of preference:
    raw `replaceChildren`/`innerHTML` on polled data. It skips the swap while a
    control inside `host` is focused, while a popover or `<dialog>` inside `host`
    is open, while a text selection touches `host`, or while `sig` is unchanged; a
-   deferred swap lands on the first tick after the interaction clears.
+   deferred swap flushes the instant the interaction clears — no next tick
+   required.
 3. **Signature hygiene:** `sig` is a cheap string of exactly what the region
    renders. A fast-ticking value must never share a sig with an O(content) region
    — one progress tick must not force a 3000-row table rebuild. Separate regions,
-   separate sigs.
+   separate sigs. For an out-of-band change the sig can't see (a lazy body
+   landed, a mutation just changed what `build()` returns), `markRegionStale(host)`
+   forgets the recorded sig so the next call rebuilds — never `force:true`,
+   which would clobber a held interaction.
 4. **Gate at the data layer too:** skip the whole render pass when the payload is
    unchanged (compare a JSON string or ETag). With SSE (see `reference/server.md`)
    this gate moves to the server: no change → no event → no render pass at all —

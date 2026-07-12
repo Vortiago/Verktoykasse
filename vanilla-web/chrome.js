@@ -24,7 +24,9 @@ export function wireTheme(storageKey = "theme") {
   };
   apply();
   btn?.addEventListener("click", () => {
-    current = themes[(themes.indexOf(current) + 1) % themes.length];
+    // ?? is for adopters compiling under noUncheckedIndexedAccess — the
+    // modulo keeps the index in range, but their tsc can't see that.
+    current = themes[(themes.indexOf(current) + 1) % themes.length] ?? "auto";
     localStorage.setItem(storageKey, current);
     apply();
   });
