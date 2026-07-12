@@ -10,7 +10,7 @@
 // globalThis — the same shape the browser provides.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { withTransition, renderRegion } from "./render.js";
+import { withTransition, renderRegion, markRegionStale } from "./render.js";
 import { fakeEventTarget as fakeTarget, patchGlobal } from "./testing-util.mjs";
 
 /** @param {any} ret */
@@ -177,6 +177,31 @@ test("renderRegion: a sig-unchanged skip is a no-op, not a deferral — nothing 
   assert.equal(host.swaps, 1, "sig unchanged → no second swap");
   assert.equal(builds, 1, "build() not even called on the sig-gated skip");
   assert.equal(host.listenerCount("focusout"), 0, "a sig-only skip has nothing to flush later — no listener armed");
+});
+
+test("markRegionStale: the next call rebuilds despite an unchanged sig — through the guards, not around them", (t) => {
+  const doc = fakeDocument();
+  patchGlobal(t, "document", doc);
+  const host = fakeHost();
+
+  renderRegion(host, () => ({ v: 1 }), { sig: "a" });
+  assert.equal(host.swaps, 1);
+  renderRegion(host, () => ({ v: 2 }), { sig: "a" });
+  assert.equal(host.swaps, 1, "unchanged sig skips (precondition)");
+
+  markRegionStale(host);
+  // A control is focused when the next tick arrives — staleness must not
+  // bypass the interaction guards (that would be force:true by another name).
+  const input = { tagName: "INPUT" };
+  doc.activeElement = input;
+  host._insideEl = input;
+  renderRegion(host, () => ({ v: 2 }), { sig: "a" });
+  assert.equal(host.swaps, 1, "stale rebuild still defers while a control inside host is focused");
+
+  doc.activeElement = null;
+  host.dispatch("focusout");
+  assert.equal(host.swaps, 2, "stale-marked region rebuilt despite the unchanged sig");
+  assert.deepEqual(host.lastNode, { v: 2 });
 });
 
 test("renderRegion: an overlay removed WITHOUT close/toggle flushes via the removal observer", (t) => {
