@@ -46,8 +46,16 @@ and text selections when they swap DOM. The rule set, in order of preference:
    for). Use it instead of hand-rolling the guards — a re-derived predicate drifts
    from canon, and it would miss things the real one covers, like the overlay
    branch's MutationObserver fallback for an overlay removed without
-   `close`/`toggle`. `selectionInside(host)` is still exported as its narrower
-   selection-only face, for an updater that genuinely only cares about that.
+   `close`/`toggle`.
+
+   `selectionInside(host)` remains exported as its narrower selection-only face,
+   and it is the cheaper one: `heldInside`'s overlay guard is a `querySelector`
+   over the host's subtree, where `selectionInside` is two property reads that
+   short-circuit on a collapsed selection. For a per-tick guard in front of a big
+   host, ask the narrow question when it's the only one that applies — a text-only
+   in-place updater with no focusable control and no popover/`<dialog>` inside it
+   wants `selectionInside`. Reach for `heldInside` wherever the host can hold focus
+   or an overlay, which is most hosts.
 
    Which shape you use depends on whether `renderRegion` renders that host at all:
 

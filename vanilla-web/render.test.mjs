@@ -62,24 +62,23 @@ test("falls back when startViewTransition is present but not callable", (t) => {
 // fake `host` (contains/querySelector/replaceChildren) and a fake `document`
 // (activeElement/getSelection).
 
-/** `_insideEl` is the ONE element tests move focus to and from (mutated in place
- * by several of them); `inside` seeds any OTHER nodes host.contains() should
- * claim — a second control, a button — which the #72 focusout tests need to say
- * "focus went from #a to #b, both inside the host".
- * @param {{ insideEl?: unknown, inside?: unknown[], overlay?: any }} [opts] */
-function fakeHost({ insideEl = null, inside = [], overlay = null } = {}) {
+/** `inside` seeds the nodes host.contains() claims — one focused control for most
+ * tests, two or more for the #72 focusout cases that say "focus went from #a to
+ * #b, both inside the host". `setInside(...nodes)` replaces the set, for the tests
+ * that move focus around mid-test.
+ * @param {{ inside?: unknown[], overlay?: any }} [opts] */
+function fakeHost({ inside = [], overlay = null } = {}) {
   const target = fakeTarget();
   const host = /** @type {any} */ ({
     ...target,
     tagName: "DIV",
     isConnected: true, // real Elements always carry this; the detached-host test flips it
-    _insideEl: insideEl,
     _inside: new Set(inside),
     _overlay: overlay,
-    // `node != null` matters: a real host.contains(null) is false, and the
-    // default _insideEl is null — without the check an absent relatedTarget
-    // would read as "inside".
-    contains(/** @type {unknown} */ node) { return node != null && (node === host._insideEl || host._inside.has(node)); },
+    setInside(/** @type {unknown[]} */ ...nodes) { host._inside = new Set(nodes); },
+    // `node != null` matters: a real host.contains(null) is false, so an absent
+    // relatedTarget must not read as "inside".
+    contains(/** @type {unknown} */ node) { return node != null && host._inside.has(node); },
     querySelector() { return host._overlay; },
     swaps: 0,
     lastNode: /** @type {unknown} */ (null),
@@ -88,17 +87,18 @@ function fakeHost({ insideEl = null, inside = [], overlay = null } = {}) {
   return host;
 }
 
-/** Selection double. `crosses` names the nodes its range intersects — the question
- * a real `Range.intersectsNode` answers, and the reason it beats the endpoint test:
- * a range that merely SPANS the host crosses it while neither endpoint is inside.
- * @param {{ anchorNode?: unknown, focusNode?: unknown, crosses?: unknown[] }} [opts] */
-function fakeSelection({ anchorNode = null, focusNode = anchorNode, crosses = [] } = {}) {
+/** Selection double. `crosses` names, per range, the nodes that range intersects —
+ * the only question `selectionInside` asks now. It deliberately models NO
+ * anchor/focus endpoints: a real `Range` that merely SPANS the host crosses it with
+ * neither endpoint inside, which is the whole point of #72's selection fix, so a
+ * double carrying endpoints would imply a question the code no longer asks.
+ * @param {{ crosses?: unknown[], ranges?: unknown[][] }} [opts] */
+function fakeSelection({ crosses = [], ranges = [crosses] } = {}) {
   return {
     isCollapsed: false,
-    rangeCount: 1,
-    anchorNode,
-    focusNode,
-    getRangeAt: () => ({ intersectsNode: (/** @type {unknown} */ node) => crosses.includes(node) }),
+    rangeCount: ranges.length,
+    getRangeAt: (/** @type {number} */ i) =>
+      ({ intersectsNode: (/** @type {unknown} */ node) => ranges[i].includes(node) }),
   };
 }
 
@@ -111,11 +111,26 @@ function fakeDocument({ activeElement = null, selection = null } = {}) {
   return { ...target, body: { tagName: "BODY" }, activeElement, getSelection: () => selection };
 }
 
-test("renderRegion: a swap deferred by focus flushes the instant focus leaves — no next tick required", (t) => {
-  const input = { tagName: "INPUT" };
-  const doc = fakeDocument({ activeElement: input });
+/** The setup every focus-hold test shares: a host holding a focused control, with
+ * `document` patched for the test's lifetime. `also` seeds further nodes inside the
+ * host — the element focus moves TO in the #72 cases.
+ * @param {any} t @param {{ control?: any, also?: unknown[] }} [opts] */
+function focusedHost(t, { control = { tagName: "INPUT" }, also = [] } = {}) {
+  const doc = fakeDocument({ activeElement: control });
   patchGlobal(t, "document", doc);
-  const host = fakeHost({ insideEl: input });
+  return { doc, control, host: fakeHost({ inside: [control, ...also] }) };
+}
+
+/** Fire the focusout a browser fires when focus moves from inside `host` to `next`
+ * (null for "onto nothing"): activeElement parks on <body> for the dispatch.
+ * @param {any} doc @param {any} host @param {unknown} next */
+function focusoutTo(doc, host, next) {
+  doc.activeElement = doc.body;
+  host.dispatch("focusout", { relatedTarget: next });
+}
+
+test("renderRegion: a swap deferred by focus flushes the instant focus leaves — no next tick required", (t) => {
+  const { doc, host } = focusedHost(t);
 
   let builds = 0;
   renderRegion(host, () => { builds++; return { id: "v1" }; });
@@ -134,10 +149,7 @@ test("renderRegion: a swap deferred by focus flushes the instant focus leaves �
 });
 
 test("renderRegion: repeated skips while still focused replace the pending build (latest-wins) and arm only one listener", (t) => {
-  const input = { tagName: "INPUT" };
-  const doc = fakeDocument({ activeElement: input });
-  patchGlobal(t, "document", doc);
-  const host = fakeHost({ insideEl: input });
+  const { doc, host } = focusedHost(t);
 
   renderRegion(host, () => ({ v: 1 }));
   renderRegion(host, () => ({ v: 2 })); // simulates a second poll tick arriving mid-focus
@@ -159,47 +171,33 @@ test("renderRegion: repeated skips while still focused replace the pending build
 // event that names where focus is going, so it's what the flush must ask.
 
 test("renderRegion: focusout that hands focus to another control INSIDE the host does not flush (#72)", (t) => {
-  const a = { tagName: "INPUT" };
   const b = { tagName: "INPUT" };
-  const doc = fakeDocument({ activeElement: a });
-  patchGlobal(t, "document", doc);
-  const host = fakeHost({ insideEl: a, inside: [b] });
+  const { doc, host } = focusedHost(t, { also: [b] });
 
   renderRegion(host, () => ({ v: 1 }));
-  assert.equal(host.swaps, 0, "deferred while #a is focused (precondition)");
+  assert.equal(host.swaps, 0, "deferred while the first control is focused (precondition)");
 
-  // Tab from #a to #b. The browser parks activeElement on <body> for the
-  // duration of focusout and names the incoming element in relatedTarget.
-  doc.activeElement = doc.body;
-  host.dispatch("focusout", { relatedTarget: b });
+  focusoutTo(doc, host, b); // Tab to the second control, still inside the host
 
   assert.equal(host.swaps, 0, "must NOT rebuild the host out from under the element about to be focused");
   assert.equal(host.listenerCount("focusout"), 1, "stays armed — focus is still held inside the host, so the swap is still owed");
 });
 
 test("renderRegion: focusout that hands focus OUTSIDE the host flushes and detaches", (t) => {
-  const a = { tagName: "INPUT" };
-  const doc = fakeDocument({ activeElement: a });
-  patchGlobal(t, "document", doc);
-  const host = fakeHost({ insideEl: a });
+  const { doc, host } = focusedHost(t);
 
   renderRegion(host, () => ({ v: 1 }));
-  doc.activeElement = doc.body;
-  host.dispatch("focusout", { relatedTarget: { tagName: "INPUT" } }); // a control in some OTHER region
+  focusoutTo(doc, host, { tagName: "INPUT" }); // a control in some OTHER region
 
   assert.equal(host.swaps, 1, "focus genuinely left the host — the deferred swap lands");
   assert.equal(host.listenerCount("focusout"), 0, "detached once it flushed");
 });
 
 test("renderRegion: focusout with no relatedTarget (click onto nothing) flushes", (t) => {
-  const a = { tagName: "INPUT" };
-  const doc = fakeDocument({ activeElement: a });
-  patchGlobal(t, "document", doc);
-  const host = fakeHost({ insideEl: a });
+  const { doc, host } = focusedHost(t);
 
   renderRegion(host, () => ({ v: 1 }));
-  doc.activeElement = doc.body;
-  host.dispatch("focusout", { relatedTarget: null });
+  focusoutTo(doc, host, null);
 
   assert.equal(host.swaps, 1, "nothing is receiving focus — nothing to clobber");
 });
@@ -210,15 +208,11 @@ test("renderRegion: focusout onto a NON-interactive element inside the host stil
   // incoming focus inside the host. This is what repairs the dead-button case —
   // mousedown on a button inside a held host fires focusout, and flushing there
   // removes the button before its `click` ever fires.
-  const a = { tagName: "INPUT" };
   const btn = { tagName: "BUTTON" }; // _isInteractive(btn) === false
-  const doc = fakeDocument({ activeElement: a });
-  patchGlobal(t, "document", doc);
-  const host = fakeHost({ insideEl: a, inside: [btn] });
+  const { doc, host } = focusedHost(t, { also: [btn] });
 
   renderRegion(host, () => ({ v: 1 }));
-  doc.activeElement = doc.body;
-  host.dispatch("focusout", { relatedTarget: btn });
+  focusoutTo(doc, host, btn);
 
   assert.equal(host.swaps, 0, "the button is about to be focused — do not rebuild it away mid focus-transition");
   assert.equal(host.listenerCount("focusout"), 1, "still armed; it flushes when focus finally leaves the host");
@@ -244,9 +238,8 @@ test("renderRegion: a swap deferred by an open popover/dialog flushes on 'toggle
 });
 
 test("renderRegion: a swap deferred by a text selection flushes on selectionchange only once the selection actually clears the host", (t) => {
-  const anchor = {};
-  const host = fakeHost({ insideEl: anchor }); // host.contains(anchor) === true
-  const selection = fakeSelection({ anchorNode: anchor, crosses: [host] });
+  const host = fakeHost();
+  const selection = fakeSelection({ crosses: [host] }); // a range touching the host
   const doc = fakeDocument({ selection });
   patchGlobal(t, "document", doc);
 
@@ -286,31 +279,25 @@ test("renderRegion: a sig-unchanged skip is a no-op, not a deferral — nothing 
 // question that actually covers it — and a strict superset of the endpoint test,
 // since a boundary point inside the host implies the range intersects it.
 
-test("selectionInside: a range that starts before the host and ends after it holds (#72)", (t) => {
-  const before = {}, after = {};
-  const host = fakeHost(); // contains neither endpoint
+test("selectionInside: any range intersecting the host holds — spanning it or lying within it alike (#72)", (t) => {
+  // One test, not two, because at this seam the two cases are indistinguishable:
+  // a range spanning the host and a range wholly inside it BOTH answer true to
+  // intersectsNode, which is precisely the superset claim. That they're different
+  // arrangements of real DOM is only observable in a browser, so the spanning case
+  // — the one that regressed — is pinned in testing/tests/e2e/render-hold.spec.js.
+  const host = fakeHost();
   patchGlobal(t, "document", fakeDocument({
-    selection: fakeSelection({ anchorNode: before, focusNode: after, crosses: [host] }),
+    selection: fakeSelection({ crosses: [host] }),
   }));
 
-  assert.equal(selectionInside(host), true, "the selection spans the host — rebuilding it would destroy the selection mid-copy");
-});
-
-test("selectionInside: a selection wholly inside the host still holds — intersectsNode is a superset, not a swap", (t) => {
-  const inner = {};
-  const host = fakeHost({ insideEl: inner });
-  patchGlobal(t, "document", fakeDocument({
-    selection: fakeSelection({ anchorNode: inner, crosses: [host] }),
-  }));
-
-  assert.equal(selectionInside(host), true);
+  assert.equal(selectionInside(host), true, "rebuilding a host the selection touches would destroy it mid-copy");
 });
 
 test("selectionInside: a selection that misses the host entirely does not hold, and every range is asked", (t) => {
   const host = fakeHost();
   const other = {};
   patchGlobal(t, "document", fakeDocument({
-    selection: fakeSelection({ anchorNode: other, crosses: [other] }),
+    selection: fakeSelection({ crosses: [other] }),
   }));
   assert.equal(selectionInside(host), false, "a selection elsewhere on the page holds nothing here");
 
@@ -318,13 +305,7 @@ test("selectionInside: a selection that misses the host entirely does not hold, 
   // one: here the host is crossed by the SECOND, which a first-range-only check
   // would miss.
   patchGlobal(t, "document", fakeDocument({
-    selection: {
-      isCollapsed: false,
-      rangeCount: 2,
-      anchorNode: other,
-      focusNode: other,
-      getRangeAt: (/** @type {number} */ i) => ({ intersectsNode: (/** @type {unknown} */ n) => i === 1 && n === host }),
-    },
+    selection: fakeSelection({ ranges: [[other], [host]] }),
   }));
   assert.equal(selectionInside(host), true, "every range is asked, not just the first");
 });
@@ -344,32 +325,30 @@ test("heldInside: true for a focused control, an open overlay, and a live select
 
   const input = { tagName: "INPUT" };
   doc.activeElement = input;
-  host._insideEl = input;
+  host.setInside(input);
   assert.equal(heldInside(host), true, "a focused control inside the host");
 
   doc.activeElement = null;
-  host._insideEl = null;
+  host.setInside();
   host._overlay = fakeTarget();
   assert.equal(heldInside(host), true, "an open popover/<dialog> inside the host");
 
   host._overlay = null;
   const anchor = {};
-  host._insideEl = anchor;
-  doc.getSelection = () => fakeSelection({ anchorNode: anchor, crosses: [host] });
+  host.setInside(anchor);
+  doc.getSelection = () => fakeSelection({ crosses: [host] });
   assert.equal(heldInside(host), true, "a text selection touching the host");
 });
 
 test("heldInside: false for a focused NON-interactive element inside the host — the entry guard holds only for controls", (t) => {
   const btn = { tagName: "BUTTON" };
   patchGlobal(t, "document", fakeDocument({ activeElement: btn }));
-  const host = fakeHost({ insideEl: btn });
+  const host = fakeHost({ inside: [btn] });
   assert.equal(heldInside(host), false, "a focused button is not an interaction hold (an indefinite hold there is worse than the clobber)");
 });
 
 test("heldInside is the same decision renderRegion makes — a held host is never swapped", (t) => {
-  const input = { tagName: "INPUT" };
-  patchGlobal(t, "document", fakeDocument({ activeElement: input }));
-  const host = fakeHost({ insideEl: input });
+  const { host } = focusedHost(t);
 
   assert.equal(heldInside(host), true);
   renderRegion(host, () => ({ v: 1 }));
@@ -388,16 +367,13 @@ test("renderRegion returns whether the region was HELD — false on a swap, fals
 
   const input = { tagName: "INPUT" };
   doc.activeElement = input;
-  host._insideEl = input;
+  host.setInside(input);
   assert.equal(renderRegion(host, () => ({ v: 2 }), { sig: "b" }), true, "held by focus");
   assert.equal(renderRegion(host, () => ({ v: 2 }), { sig: "b", force: true }), false, "force:true never holds");
 });
 
 test("renderRegion { defer: false }: reports the hold and arms nothing — the caller owns the retry", (t) => {
-  const input = { tagName: "INPUT" };
-  const doc = fakeDocument({ activeElement: input });
-  patchGlobal(t, "document", doc);
-  const host = fakeHost({ insideEl: input });
+  const { doc, host } = focusedHost(t);
 
   let builds = 0;
   assert.equal(renderRegion(host, () => { builds++; return { v: 1 }; }, { sig: "a", defer: false }), true, "held");
@@ -417,10 +393,7 @@ test("renderRegion { defer: false }: reports the hold and arms nothing — the c
 });
 
 test("renderRegion { defer: false } abandons a self-flush left armed by an earlier defer:true call (#72)", (t) => {
-  const input = { tagName: "INPUT" };
-  const doc = fakeDocument({ activeElement: input });
-  patchGlobal(t, "document", doc);
-  const host = fakeHost({ insideEl: input });
+  const { doc, host } = focusedHost(t);
 
   renderRegion(host, () => ({ v: "frozen" })); // a legacy call arms a listener and captures THIS build
   assert.equal(host.listenerCount("focusout"), 1, "precondition: canon is holding its own pending swap");
@@ -448,7 +421,7 @@ test("markRegionStale: the next call rebuilds despite an unchanged sig — throu
   // bypass the interaction guards (that would be force:true by another name).
   const input = { tagName: "INPUT" };
   doc.activeElement = input;
-  host._insideEl = input;
+  host.setInside(input);
   renderRegion(host, () => ({ v: 2 }), { sig: "a" });
   assert.equal(host.swaps, 1, "stale rebuild still defers while a control inside host is focused");
 
@@ -491,10 +464,7 @@ test("renderRegion: an overlay removed WITHOUT close/toggle flushes via the remo
 });
 
 test("renderRegion: a detached host drops its pending swap — cleared, never rendered", (t) => {
-  const input = { tagName: "INPUT" };
-  const doc = fakeDocument({ activeElement: input });
-  patchGlobal(t, "document", doc);
-  const host = fakeHost({ insideEl: input });
+  const { doc, host } = focusedHost(t);
 
   renderRegion(host, () => ({ v: "stale" }));
   assert.equal(host.listenerCount("focusout"), 1, "deferred by focus");
@@ -510,10 +480,7 @@ test("renderRegion: a detached host drops its pending swap — cleared, never re
 });
 
 test("renderRegion: a later direct swap clears any earlier pending flush for the same host", (t) => {
-  const input = { tagName: "INPUT" };
-  const doc = fakeDocument({ activeElement: input });
-  patchGlobal(t, "document", doc);
-  const host = fakeHost({ insideEl: input });
+  const { doc, host } = focusedHost(t);
 
   renderRegion(host, () => ({ v: "stale" })); // deferred by focus
   assert.equal(host.listenerCount("focusout"), 1);

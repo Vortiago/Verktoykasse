@@ -17,6 +17,14 @@ const w = /** @type {any} */ (window);
 w.__builds = 0;
 w.__clicks = 0;
 
+/** @param {string} id @param {string} label */
+function control(id, label) {
+  const el = document.createElement("input");
+  el.id = id; // the ids are for asserting document.activeElement, not for selecting
+  el.setAttribute("aria-label", label);
+  return el;
+}
+
 /** One region render: two controls, a button, and a text node, all inside the
  * host. `label` proves WHICH build landed once a deferred swap finally lands. */
 function build(/** @type {string} */ label) {
@@ -24,13 +32,8 @@ function build(/** @type {string} */ label) {
   const wrap = document.createElement("div");
   wrap.dataset.slot = "regionBody";
 
-  const a = document.createElement("input");
-  a.id = "a";
-  a.setAttribute("aria-label", "first control");
-
-  const b = document.createElement("input");
-  b.id = "b";
-  b.setAttribute("aria-label", "second control");
+  const a = control("a", "first control");
+  const b = control("b", "second control");
 
   // The dead-button case: mousedown inside a held region fires focusout, and a
   // flush there removes this node before its `click` can fire.
@@ -59,12 +62,14 @@ region.addEventListener("click", (e) => {
  * @param {string} label @param {{ defer?: boolean }} [opts] */
 w.__render = (label, opts = {}) => renderRegion(region, () => build(label), { sig: label, ...opts });
 
-/** Mark the live text node, so a later rebuild is visible as a lost stamp. */
+/** Mark the live text node, so a later rebuild is visible as a lost stamp. Writing
+ * onto a node the spec can't reach needs page JS; READING it back doesn't — the
+ * node carries a data-slot, so the spec asserts on the attribute through the
+ * normal locator (and gets auto-retry with it). */
 w.__stamp = () => {
   const text = document.getElementById("text");
   if (text) text.dataset.stamp = "kept";
 };
-w.__stamped = () => document.getElementById("text")?.dataset.stamp === "kept";
 
 /** Select from #lead to #tail — a range SPANNING the region with neither endpoint
  * inside it. Uses setBaseAndExtent over the two text nodes so the selection is a

@@ -1,4 +1,4 @@
-// canonical source: vanilla-web/render.js@500e67a — vendored copy, do not edit here
+// canonical source: vanilla-web/render.js@8ebd116 — vendored copy, do not edit here
 // @ts-check
 // Canonical interaction-safe re-rendering for the vanilla-web conventions (see
 // SKILL.md). Copy into <app>/web/lib/render.js; extend, don't fork. Identity:
@@ -16,14 +16,10 @@
 // change (lazy body landed, in-place mutate) so the next renderRegion call
 // rebuilds — through the guards, unlike force:true.
 //
-// The hold itself is exported as a predicate: heldInside(host) is the same
-// focus/overlay/selection decision renderRegion makes internally, for the render
-// shapes renderRegion can't serve (a reconcileList driven by materialized items,
-// an in-place updater that rewrites text every tick, a selection straddling a
-// host). selectionInside is the narrower selection-only face of it. An app with
-// its own tick-retry loop pairs it with renderRegion's `defer:false` so ONE
-// definition of "held" covers every shape. See docs/adr/0002 for why the hold is
-// a predicate and a held swap has a single owner.
+// The hold itself is exported as a predicate — heldInside, below, for the render
+// shapes renderRegion can't serve; selectionInside is its narrower selection-only
+// face. See docs/adr/0002 for why the hold is a predicate and a held swap has a
+// single owner.
 //
 // This module imports nothing from templates.js or chrome.js, and nothing
 // there imports this — components and defineComponent (lib/component.js)
@@ -91,8 +87,15 @@ function _holdCause(host) {
  * driven by materialized items (a held render must re-derive from live state, not
  * replay a captured build), an in-place updater that rewrites text every tick (no
  * build closure exists to replay), or a selection straddling a host (no event of
- * its own to listen for). Note it is a strict superset of `selectionInside` —
- * prefer it unless you specifically mean only the selection.
+ * its own to listen for).
+ *
+ * It is a strict superset of `selectionInside`, and costs more: the overlay guard
+ * is a `querySelector` over the host's subtree, where `selectionInside` is two
+ * property reads that short-circuit on a collapsed selection. On a per-tick guard
+ * in front of a big host, ask the narrow question when it's the only one that
+ * applies — a text-only in-place updater, with no focusable control and no
+ * popover/`<dialog>` inside it, wants `selectionInside`. Use `heldInside` wherever
+ * the host can hold focus or an overlay, which is most hosts.
  *
  *   if (heldInside(listHost)) { retryNextTick = true; return; }
  *   reconcileList(listHost, items, keyOf, create, update);
@@ -135,8 +138,7 @@ function _dropPending(host) {
 function _flushRegion(host) {
   const pending = _pendingFlush.get(host);
   if (!pending) return;
-  _pendingFlush.delete(host);
-  pending.controller.abort();
+  _dropPending(host); // read the entry first: this detaches and forgets it
   if (!host.isConnected) return;
   renderRegion(host, pending.build, { sig: pending.sig });
 }
