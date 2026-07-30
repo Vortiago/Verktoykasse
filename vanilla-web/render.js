@@ -11,11 +11,19 @@
 // use reconcileList instead — it updates in place around the interaction
 // rather than deferring a whole-region swap. withTransition is the opposite
 // case: a DISCRETE, user-initiated change that should animate, never a polled
-// re-render. selectionInside is exported standalone for in-place updaters
-// (outside renderRegion) that write text every tick. markRegionStale forgets a
-// host's recorded sig after an out-of-band change (lazy body landed, in-place
-// mutate) so the next renderRegion call rebuilds — through the guards, unlike
-// force:true.
+// re-render. markRegionStale forgets a host's recorded sig after an out-of-band
+// change (lazy body landed, in-place mutate) so the next renderRegion call
+// rebuilds — through the guards, unlike force:true.
+//
+// The hold itself is exported as a predicate: heldInside(host) is the same
+// focus/overlay/selection decision renderRegion makes internally, for the render
+// shapes renderRegion can't serve (a reconcileList driven by materialized items,
+// an in-place updater that rewrites text every tick, a selection straddling a
+// host). selectionInside is the narrower selection-only face of it, for in-place
+// updaters that only care about that. An app with its own tick-retry loop pairs
+// heldInside with renderRegion's `defer:false` so ONE definition of "held" covers
+// every shape — reimplementing the predicates app-side is what #72 was filed
+// about.
 //
 // This module imports nothing from templates.js or chrome.js, and nothing
 // there imports this — components and defineComponent (lib/component.js)
@@ -33,18 +41,65 @@ function _isInteractive(el) {
   );
 }
 
-/** True while a non-collapsed text selection starts or ends inside `host`.
- * Rebuilding (or rewriting textContent of) a node the selection touches
- * destroys the selection mid-copy. Exported for in-place updaters that write
- * text every tick without going through renderRegion.
+/** True while a non-collapsed text selection TOUCHES `host` — starts in it, ends
+ * in it, lies within it, or merely spans it. Rebuilding (or rewriting textContent
+ * of) a node the selection touches destroys the selection mid-copy. Exported for
+ * in-place updaters that write text every tick without going through
+ * renderRegion; `heldInside` is the fuller predicate.
+ *
+ * `Range.intersectsNode` rather than an anchor/focus containment test, and it's a
+ * strict SUPERSET of one, not a different case (#72): a boundary point inside
+ * `host` sits between the points just before and just after it, so every
+ * selection the endpoint test caught still holds. What it adds is the range that
+ * starts BEFORE `host` and ends AFTER it — ⌘A over a panel — where neither
+ * endpoint is inside and the endpoint test reported false. Every range is asked,
+ * since a multi-range selection can cross `host` with any of them.
  * @param {Element} host */
 export function selectionInside(host) {
   const sel = document.getSelection();
   if (!sel || sel.isCollapsed || sel.rangeCount === 0) return false;
-  return (
-    (!!sel.anchorNode && host.contains(sel.anchorNode)) ||
-    (!!sel.focusNode && host.contains(sel.focusNode))
-  );
+  for (let i = 0; i < sel.rangeCount; i++) {
+    if (sel.getRangeAt(i).intersectsNode(host)) return true;
+  }
+  return false;
+}
+
+/** @typedef {{ kind: "focus" } | { kind: "overlay", overlay: Element } | { kind: "selection" }} HoldCause */
+
+/** Why `host` is holding — or null if it isn't. THE definition of the interaction
+ * hold: renderRegion switches on the cause to arm the matching flush listener,
+ * `heldInside` exposes the boolean face, and neither can drift from the other
+ * because there is only one copy. Order matters only for which listener a
+ * deferred swap arms; any non-null cause holds.
+ * @param {Element} host @returns {HoldCause | null} */
+function _holdCause(host) {
+  const active = document.activeElement;
+  if (active && active !== document.body && host.contains(active) && _isInteractive(active)) return { kind: "focus" };
+  const overlay = host.querySelector(":popover-open, dialog[open]");
+  if (overlay) return { kind: "overlay", overlay };
+  if (selectionInside(host)) return { kind: "selection" };
+  return null;
+}
+
+/** True while `host` holds a live interaction — a control inside it is focused, a
+ * popover/<dialog> inside it is open, or a text selection touches it. The exact
+ * decision `renderRegion` makes internally, exported so an app that owns its own
+ * retry loop shares ONE definition of "held" instead of reimplementing the
+ * predicates (which then drift from canon — the reason #72 was filed).
+ *
+ * Reach for it for the render shapes `renderRegion` can't serve: a `reconcileList`
+ * driven by materialized items (a held render must re-derive from live state, not
+ * replay a captured build), an in-place updater that rewrites text every tick (no
+ * build closure exists to replay), or a selection straddling a host (no event of
+ * its own to listen for). Note it is a strict superset of `selectionInside` —
+ * prefer it unless you specifically mean only the selection.
+ *
+ *   if (heldInside(listHost)) { retryNextTick = true; return; }
+ *   reconcileList(listHost, items, keyOf, create, update);
+ *
+ * @param {Element} host */
+export function heldInside(host) {
+  return _holdCause(host) !== null;
 }
 
 /** @typedef {{ build: () => Node, sig?: string, controller: AbortController }} PendingSwap */
@@ -54,9 +109,19 @@ export function selectionInside(host) {
  * current state whenever it finally runs) and keeps the SAME controller, so
  * it does NOT arm a second listener — one armed flush per host, never
  * appended. `controller` is aborted (detaching whatever listener(s) armed it)
- * the moment the host flushes or a direct swap supersedes it.
+ * the moment the host flushes, a direct swap supersedes it, or a `defer:false`
+ * call takes the retry over.
  * @type {WeakMap<Element, PendingSwap>} */
 const _pendingFlush = new WeakMap();
+
+/** Forget any pending self-flush for `host` — abort its listener(s)/observer and
+ * drop the entry. Called when this module stops owning the swap: a direct swap
+ * supersedes it, or `defer:false` hands the retry to the caller.
+ * @param {Element} host */
+function _dropPending(host) {
+  _pendingFlush.get(host)?.controller.abort();
+  _pendingFlush.delete(host);
+}
 
 /** Re-run renderRegion's normal guards now that whatever deferred the last
  * skip may have cleared — another interaction may have started in the
@@ -77,9 +142,14 @@ function _flushRegion(host) {
 }
 
 /** Stash the latest skipped build for `host` and, only if nothing is armed for
- * it yet, attach the one-shot listener that will flush it (#42 — "on the first
- * tick after the interaction clears" assumes there IS a next tick; this fires
- * the instant the interaction itself clears, tick or no tick).
+ * it yet, attach the listener(s) that will flush it (#42 — "on the first tick
+ * after the interaction clears" assumes there IS a next tick; this fires the
+ * instant the interaction itself clears, tick or no tick). Whether a listener is
+ * `once` is the caller's call, not this function's: the overlay branch's
+ * toggle/close are, while focusout and selectionchange must stay armed across
+ * events that don't actually clear the hold (focus moving between controls inside
+ * the host; a selection being extended). All of them detach together via the
+ * shared controller.
  * @param {Element} host @param {() => Node} build @param {string | undefined} sig
  * @param {(signal: AbortSignal) => void} arm - attach whatever listener(s) fire on THIS skip's clear condition */
 function _deferSwap(host, build, sig, arm) {
@@ -101,29 +171,86 @@ function _deferSwap(host, build, sig, arm) {
  *   - otherwise replaceChildren(build()).
  * `build` only runs when we actually swap, so a skipped tick is cheap. A swap
  * deferred by focus/overlay/selection flushes the INSTANT that condition
- * clears — a one-shot listener armed per host (focusout / toggle+close /
- * selectionchange), not a wait for the next poll tick, so a quiet SSE stream
- * or a one-shot store-triggered render can't strand stale DOM (#42). Never
- * advance `sig` on a skip (handled here: sig is only recorded when swapping).
- * `force:true` swaps unconditionally and clears any pending flush for `host`.
+ * clears — one listener set armed per host (focusout / toggle+close+removal
+ * observer / selectionchange), not a wait for the next poll tick, so a quiet
+ * SSE stream or a one-shot store-triggered render can't strand stale DOM (#42).
+ * Never advance `sig` on a skip (handled here: sig is only recorded when
+ * swapping). `force:true` swaps unconditionally and clears any pending flush
+ * for `host`.
  *
  * Sig hygiene: `sig` is a cheap string of exactly what this region renders.
  * A fast-ticking value must never share a sig with an O(content) region —
  * give it its own region or mutate it in place.
  *
+ * `defer:false` picks the other deferral strategy: report the hold and let the
+ * CALLER retry, arming nothing and recording nothing. For an app that already
+ * lands held renders through its own tick-retry flag — because its keyed lists
+ * and in-place updaters must re-derive from live state rather than replay a
+ * captured build — this is how it shares canon's definition of "held" instead of
+ * reimplementing the predicates (#72). Pick one strategy per host: a `defer:false`
+ * call also drops any self-flush an earlier `defer:true` call left armed, since
+ * two hold registries on one host drift apart.
+ *
  * @param {Element} host
  * @param {() => Node} build
- * @param {{ sig?: string, force?: boolean }} [opts] */
+ * @param {{ sig?: string, force?: boolean, defer?: boolean }} [opts]
+ * @returns {boolean} true when the region was HELD — deferred (defer:true, the
+ * default) or merely reported (defer:false). false when it swapped, AND false for
+ * a sig-unchanged skip, which is a no-op with nothing to retry: that's why the
+ * value is "held" rather than "swapped", so a `while (held) retry` loop
+ * terminates. `true` does not promise a swap is owed — the guards run before the
+ * sig gate, so a held call may sig-skip once the hold clears. Only actionable
+ * under `defer:false`; informational otherwise (acting on it while canon is also
+ * self-flushing gives you the two registries this option exists to avoid). */
 export function renderRegion(host, build, opts = {}) {
+  // `defer:false` hands the retry to the caller, so this module must not also own
+  // one for `host`: drop any self-flush an earlier defer:true call left armed.
+  // Two hold registries on one host diverge — canon's entry freezes at its tick's
+  // build while the caller's absorbs newer ones, then canon flushes the stale one
+  // in behind it. That is #72 item 2, so it's enforced here rather than merely
+  // documented. Pick one strategy per host.
+  if (opts.defer === false) _dropPending(host);
   if (!opts.force) {
-    const active = document.activeElement;
-    if (active && active !== document.body && host.contains(active) && _isInteractive(active)) {
+    const cause = _holdCause(host);
+    if (cause && opts.defer === false) return true; // report it; arm nothing, record nothing
+    if (cause?.kind === "focus") {
       _deferSwap(host, build, opts.sig, (signal) =>
-        host.addEventListener("focusout", () => _flushRegion(host), { signal, once: true }));
-      return;
+        // `focusout` fires BEFORE the incoming element is focused, and for its
+        // whole duration document.activeElement is <body> — so a flush that
+        // re-read the guards would see an idle host and swap on top of whatever
+        // was about to receive focus (#72). `relatedTarget` names that element;
+        // it is the question this flush actually has to ask.
+        //
+        // Plain CONTAINMENT, deliberately not the _holdCause predicate: the
+        // entry guard holds only for controls, but a swap must not land on ANY
+        // incoming focus inside the host. That asymmetry is what keeps a button
+        // inside a held region clickable — mousedown fires focusout, and
+        // flushing there removes the button before its `click` ever fires. The
+        // cost is bounded: focus parked on a non-interactive element inside the
+        // host leaves the region stale until focus moves again (self-healing on
+        // the next focusout, superseded by the next direct call on a polled app).
+        //
+        // NOT once: focus moving between controls inside the host must keep the
+        // listener armed. Teardown is still structural — the pending entry's
+        // shared controller detaches it on flush, on supersession by a direct
+        // swap, and on host detachment.
+        //
+        // Two edges, both consistent: a window blur fires focusout with a null
+        // relatedTarget while activeElement stays on the control, so the
+        // re-entrant renderRegion call simply re-defers and re-arms (which is why
+        // the flush re-runs the guards instead of swapping directly). And if the
+        // incoming element is removed before focus lands, focus falls to <body>
+        // with no further focusout — the swap strands on a quiet stream until the
+        // next direct call.
+        host.addEventListener("focusout", (e) => {
+          const next = /** @type {Element | null} */ (/** @type {FocusEvent} */ (e).relatedTarget);
+          if (next && host.contains(next)) return; // focus stayed inside — still held
+          _flushRegion(host);
+        }, { signal }));
+      return true;
     }
-    const overlay = host.querySelector(":popover-open, dialog[open]");
-    if (overlay) {
+    if (cause?.kind === "overlay") {
+      const { overlay } = cause;
       _deferSwap(host, build, opts.sig, (signal) => {
         // toggle covers popovers (and dialogs, which also fire it); close is
         // dialog-only — attach both, harmless for whichever doesn't fire.
@@ -141,9 +268,9 @@ export function renderRegion(host, build, opts = {}) {
           signal.addEventListener("abort", () => mo.disconnect(), { once: true });
         }
       });
-      return;
+      return true;
     }
-    if (selectionInside(host)) {
+    if (cause?.kind === "selection") {
       _deferSwap(host, build, opts.sig, (signal) =>
         // Chatty and document-level, so attach ONLY while a flush is pending
         // (armed here, detached in _flushRegion via the shared AbortController)
@@ -153,15 +280,14 @@ export function renderRegion(host, build, opts = {}) {
         document.addEventListener("selectionchange", () => {
           if (!selectionInside(host)) _flushRegion(host);
         }, { signal }));
-      return;
+      return true;
     }
-    if (opts.sig != null && _regionSig.get(host) === opts.sig) return;
+    if (opts.sig != null && _regionSig.get(host) === opts.sig) return false; // a no-op, not a hold
   }
-  // This swap is happening now — any earlier deferred one is moot.
-  _pendingFlush.get(host)?.controller.abort();
-  _pendingFlush.delete(host);
+  _dropPending(host); // this swap is happening now — any earlier deferred one is moot
   if (opts.sig != null) _regionSig.set(host, opts.sig);
   host.replaceChildren(build());
+  return false;
 }
 
 /** Forget `host`'s recorded sig so the NEXT renderRegion call rebuilds it.

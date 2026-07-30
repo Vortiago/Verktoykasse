@@ -33,7 +33,7 @@ web/
 ├── shell.js             # routing + lifecycle + transitions — copy verbatim
 ├── lib/                 # copy the canonical modules you need from the skill dir:
 │   ├── templates.js     #   tpl/pick/slot/mount/loadCSS/every/withPending (always)
-│   ├── render.js        #   renderRegion/reconcileList/withTransition — interaction-safe re-renders (always)
+│   ├── render.js        #   renderRegion/heldInside/reconcileList/withTransition — interaction-safe re-renders (always)
 │   ├── chrome.js        #   wireTheme/wireErrorBar — page chrome, shared by shell.js/preview.js (always)
 │   ├── api-client.js    #   fetch + ApiError + 204 + timeout (API-backed apps)
 │   ├── store.js         #   subscribe/get/refresh singleton (shared state)
@@ -134,9 +134,11 @@ it needs it.
   upstreams. → `reference/server.md`
 - **Re-renders** of live data (SSE-driven or polled) go through `renderRegion`
   (never raw `replaceChildren`/`innerHTML`); mutate in place for fast-ticking
-  values. A *user-initiated* change (tab switch, open detail, expand/sort)
-  may animate via `withTransition` (View Transitions) — never the polled path.
-  → `reference/interactivity.md`
+  values. `heldInside(host)` exposes the same interaction hold as a predicate for
+  the shapes `renderRegion` can't serve (in-place updaters, `reconcileList`) —
+  ask it, never re-derive the guards. A *user-initiated* change (tab switch, open
+  detail, expand/sort) may animate via `withTransition` (View Transitions) —
+  never the polled path. → `reference/interactivity.md`
 - **Overlays** use native `<dialog>` / `popover` / `<details>` — never
   hand-rolled. → `reference/interactivity.md`
 - **Forms** use native validation (`required`/`pattern`, `reportValidity()`,
