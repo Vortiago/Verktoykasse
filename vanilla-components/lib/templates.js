@@ -1,11 +1,11 @@
-// canonical source: vanilla-web/templates.js@4dabf5c — vendored copy, do not edit here
+// canonical source: vanilla-web/templates.js@500e67a — vendored copy, do not edit here
 // @ts-check
 // Canonical template + view-lifecycle helpers for the vanilla-web conventions
 // (see SKILL.md). Copy into <app>/web/lib/templates.js; extend, don't fork.
 // Identity: the .html seam (fetch a component's markup, clone it, fill it) plus
 // the small view-lifecycle helpers every mount() reaches for (loadCSS, every,
-// withPending). Interaction-safe re-rendering (renderRegion/reconcileList/
-// withTransition) lives in render.js; page-chrome wiring (wireTheme/
+// withPending). Interaction-safe re-rendering (renderRegion/heldInside/
+// reconcileList/withTransition) lives in render.js; page-chrome wiring (wireTheme/
 // wireErrorBar) lives in chrome.js — split out so components and
 // defineComponent, which import ONLY this file, don't pull in either.
 //

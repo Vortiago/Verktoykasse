@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>render-hold — interaction-hold target (#72)</title>
+</head>
+<body>
+  <!-- #lead and #tail sit OUTSIDE the region on purpose: the selection scenario
+       drags from one to the other, so the range spans #region while neither of
+       its endpoints is inside it — the case the old endpoint-only guard missed. -->
+  <p id="lead">lead text before the region</p>
+  <section id="region"></section>
+  <p id="tail">tail text after the region</p>
+  <input id="outside" aria-label="a control outside the region" />
+  <script type="module" src="./render-hold.js"></script>
+</body>
+</html>

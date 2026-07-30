@@ -19,11 +19,15 @@ and text selections when they swap DOM. The rule set, in order of preference:
    progress, appended feed lines): update `textContent` / toggle `hidden` on
    existing nodes. No swap → nothing to clobber.
 2. **Every region swap goes through `renderRegion(host, build, {sig})`** — never
-   raw `replaceChildren`/`innerHTML` on polled data. It skips the swap while a
-   control inside `host` is focused, while a popover or `<dialog>` inside `host`
-   is open, while a text selection touches `host`, or while `sig` is unchanged; a
-   deferred swap flushes the instant the interaction clears — no next tick
-   required.
+   raw `replaceChildren`/`innerHTML` on polled data. It skips the swap when `sig`
+   is unchanged, and — if it isn't — while a control inside `host` is focused,
+   while a popover or `<dialog>` inside `host` is open, or while a text selection
+   touches `host`; a deferred swap flushes the instant the interaction clears — no
+   next tick required. The sig is checked *first*, because it's a no-op rather
+   than a deferral: the sig is recorded only on a swap, so an unchanged one proves
+   the DOM already matches and nothing is owed even if the host is held. It
+   **returns whether the region was held**: `false` means it swapped *or* the sig
+   was unchanged (nothing to retry), so a `while (held) retry` loop terminates.
 3. **Signature hygiene:** `sig` is a cheap string of exactly what the region
    renders. A fast-ticking value must never share a sig with an O(content) region
    — one progress tick must not force a 3000-row table rebuild. Separate regions,
@@ -35,8 +39,44 @@ and text selections when they swap DOM. The rule set, in order of preference:
    unchanged (compare a JSON string or ETag). With SSE (see `reference/server.md`)
    this gate moves to the server: no change → no event → no render pass at all —
    the strongest anti-flicker move is the render that never fires.
-5. For in-place updaters that write text the user might be selecting, check
-   `selectionInside(host)` first and defer — same rule as the focus guard.
+5. **The hold is a predicate — `heldInside(host)`.** It's the same
+   focus/overlay/selection decision `renderRegion` makes internally, exported for
+   the render shapes `renderRegion` can't serve: an in-place updater that rewrites
+   text every tick (no build closure exists to replay), or a `reconcileList` driven
+   by materialized items (a held render must re-derive from live state, not replay a
+   captured build). Use it instead of hand-rolling the guards — a re-derived
+   predicate drifts from canon, and it would miss things the real one covers, like
+   the overlay branch's MutationObserver fallback for an overlay removed without
+   `close`/`toggle`.
+
+   `selectionInside(host)` remains exported as its narrower selection-only face,
+   and it is the cheaper one: `heldInside`'s overlay guard is a `querySelector`
+   over the host's subtree, where `selectionInside` short-circuits on a collapsed
+   selection and otherwise does one boundary comparison per range. For a per-tick
+   guard in front of a big host, ask the narrow question when it's the only one
+   that applies — a text-only in-place updater with no focusable control and no
+   popover/`<dialog>` inside it wants `selectionInside`. Reach for `heldInside`
+   wherever the host can hold focus or an overlay, which is most hosts.
+
+   Which shape you use depends on whether `renderRegion` renders that host at all:
+
+   ```js
+   // A host renderRegion never touches (a reconcileList target, an in-place
+   // updater): ask the predicate and skip. There's no canon registry to collide with.
+   if (heldInside(listHost)) { retryNextTick = true; return; }
+   reconcileList(listHost, items, keyOf, create, update);
+
+   // A host renderRegion DOES render: keep routing it through renderRegion with
+   // defer:false, which reports the hold and arms nothing.
+   if (renderRegion(panel, build, { sig, defer: false })) retryNextTick = true;
+   ```
+
+   Pick one strategy per host: two hold registries on the same host drift apart —
+   canon's pending entry freezes at its tick's build while the app's absorbs newer
+   ones, then canon flushes the stale one in behind it. A `defer:false` call drops
+   any self-flush canon left armed, which is what keeps the two from coexisting —
+   so for a `renderRegion` host use that call, **not** a bare `heldInside` early
+   return, which never reaches the pending entry.
 6. **Long, keyed lists use `reconcileList`, not `renderRegion`.** Where
    `renderRegion` DEFERS a swap of a whole region while a control inside is
    focused, `reconcileList(host, items, keyOf, create, update)` updates a list
@@ -49,9 +89,24 @@ and text selections when they swap DOM. The rule set, in order of preference:
    `content-visibility: auto` on the rows for off-screen skipping — the native
    virtual-list recipe (see `reference/css.md`).
 
+Two things the selection guard gets asked about. It uses `Range.intersectsNode`,
+which is a strict **superset** of testing the selection's endpoints, not a
+different case: a boundary point inside the host implies the range intersects it,
+so everything an endpoint test caught still holds — plus the range that starts
+*before* the host and ends *after* it (⌘A over a panel), where neither endpoint is
+inside. And every range is asked, since a multi-range selection can cross the host
+with any of them.
+
 Apps with live updates (SSE or polling) + interactive controls should carry an
 e2e clobber guard: a test that focuses every control, crosses an update (a poll
-tick or a pushed event), and fails if a node was rebuilt under the focus.
+tick or a pushed event), and fails if a node was rebuilt under the focus. The
+toolkit's own is `testing/tests/e2e/render-hold.spec.js` — copy its shape. Note
+what it pins beyond the obvious: a swap deferred by focus must not land when focus
+moves to *another element inside the same host*, because `focusout` fires before
+the incoming element is focused (and parks `document.activeElement` on `<body>`
+for its duration), so a flush that re-read the guards would rebuild the host out
+from under whatever was about to receive focus — including a button mid-mousedown,
+which silently swallows its `click`.
 
 ## Animating a user-initiated change — `withTransition`
 
@@ -162,7 +217,11 @@ No DIY absolutely-positioned overlay divs with open/close state in JS:
   animation hooks.
 - `renderRegion` defers swaps while a popover or `<dialog>` inside the host is
   open (same guard as focus/selection), so live re-renders can't snap an open
-  menu shut.
+  menu shut. It flushes on `toggle`/`close` *and* on the overlay leaving the DOM
+  without either event (`overlay.remove()`, a parent re-render) — a
+  MutationObserver covers that, so a pending swap can't strand on a quiet stream.
+  That fallback is one more reason to ask `heldInside(host)` rather than
+  re-deriving the guard in an app: a hand-rolled one wouldn't have it.
 
 ## Actions — delegated commands, not a fan of `onclick`s
 

@@ -58,6 +58,14 @@ The markup-facing way to reach component behaviour — `<vc-*>` elements, invoke
 commands, popovers — as opposed to the factory (JS) contract underneath.
 
 **Interaction hold**:
-`renderRegion`'s refusal to swap DOM while focus, an open popover/dialog, or a
-text selection is live inside the host; the swap is deferred, not dropped.
+The condition of a host that a person is mid-interaction inside it — a control
+focused, a popover/dialog open, or a text selection touching it. A live
+re-render must not swap DOM out from under one.
 _Avoid_: render skip, debounce
+
+**Held swap**:
+A region render deferred by an interaction hold rather than discarded. Exactly
+one party owns landing it: the renderer itself, or the caller that asked only to
+be told the host was held. It is dropped rather than landed if a later render
+proves the DOM has caught up on its own.
+_Avoid_: dropped render, skipped render, stale render

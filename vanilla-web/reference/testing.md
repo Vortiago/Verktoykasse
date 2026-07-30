@@ -57,6 +57,24 @@ it's the test that earns its keep:
 > tick or a pushed event) → assert no node was rebuilt out from under the focus
 > (a `<select>` stays open, a caret stays put, a selection survives).
 
+The toolkit's own instance is `testing/tests/e2e/render-hold.spec.js` (fixture
+`testing/fixtures/render-hold.*`) — start from its shape. Three cases are easy to
+miss and are what make the test earn its keep, because none of them can be proved
+against a hand-written test double:
+
+- **Focus moving *within* the host.** `focusout` fires before the incoming element
+  is focused and parks `document.activeElement` on `<body>` for its duration, so a
+  flush that re-reads the guards rebuilds the host out from under the element about
+  to receive focus. Tab between two controls in one region and assert a stamped
+  child node survives.
+- **A button mid-mousedown.** Chrome focuses a button on mousedown, so clicking one
+  inside a held region fires `focusout` — and a flush there removes the button
+  before its `click` can fire. Assert the handler ran.
+- **A selection that spans the host** with neither endpoint inside it, which
+  endpoint-only guards miss. Drive it with `setBaseAndExtent` across the region and
+  assert `Range.intersectsNode` agrees before asserting the hold, or the test is
+  vacuous.
+
 Pin **render-signature hygiene** alongside it: a value that churns every tick
 (progress, counters, captions) must not share a render signature with an
 O(content) region, or every tick rebuilds the whole region. Assert an identity
