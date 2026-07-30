@@ -64,7 +64,8 @@ re-render must not swap DOM out from under one.
 _Avoid_: render skip, debounce
 
 **Held swap**:
-A region render deferred by an interaction hold — owed, not dropped. Exactly one
-party owns landing it: the renderer itself, or the caller that asked only to be
-told the host was held.
+A region render deferred by an interaction hold rather than discarded. Exactly
+one party owns landing it: the renderer itself, or the caller that asked only to
+be told the host was held. It is dropped rather than landed if a later render
+proves the DOM has caught up on its own.
 _Avoid_: dropped render, skipped render, stale render
