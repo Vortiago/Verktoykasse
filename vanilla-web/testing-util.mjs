@@ -7,17 +7,31 @@
 //   makeFlush(n)                 build a flush() draining n microtask turns
 //   fakeEventTarget()            minimal addEventListener/dispatch double
 
+/** Names already patched by the running test, so a repeat patch of the same name
+ * doesn't register a second restore. @type {WeakMap<object, Set<string>>} */
+const _patchedNames = new WeakMap();
+
 /** Install a value on globalThis for the life of one node:test, restoring the
  * exact prior property descriptor after. Uses defineProperty (not plain
  * assignment) because some real globals (`navigator`, `location`) are
  * getter-only accessors in ESM/strict mode — a plain `globalThis.x = ...`
  * throws on those; defineProperty works uniformly for both cases and for the
  * plain writable data properties (`fetch`, `EventSource`, …) the other call
- * sites patch. */
+ * sites patch.
+ *
+ * Patching the SAME name twice in one test overwrites the value but registers only
+ * ONE restore — the first, which is the only one that knows the real prior
+ * descriptor. Without that guard the second restore runs last (`t.after` hooks fire
+ * in registration order) and puts the FIRST fake back on globalThis, where every
+ * later test in the file inherits it. Silent, and miserable to trace back. */
 export function patchGlobal(t, name, value) {
+  const patched = _patchedNames.get(t) ?? new Set();
+  _patchedNames.set(t, patched);
   const had = Object.prototype.hasOwnProperty.call(globalThis, name);
   const prevDescriptor = had ? Object.getOwnPropertyDescriptor(globalThis, name) : undefined;
   Object.defineProperty(globalThis, name, { value, configurable: true, writable: true, enumerable: true });
+  if (patched.has(name)) return; // the first patch's restore already covers this name
+  patched.add(name);
   t.after(() => {
     if (prevDescriptor) Object.defineProperty(globalThis, name, prevDescriptor);
     else delete globalThis[name];

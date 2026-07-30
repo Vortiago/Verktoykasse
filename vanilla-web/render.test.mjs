@@ -139,8 +139,7 @@ test("renderRegion: a swap deferred by focus flushes the instant focus leaves �
   assert.equal(host.listenerCount("focusout"), 1, "exactly one focusout listener armed");
 
   // Focus actually leaves (activeElement updates, THEN the browser fires focusout).
-  doc.activeElement = null;
-  host.dispatch("focusout", { relatedTarget: null });
+  focusoutTo(doc, host, null);
 
   assert.equal(host.swaps, 1, "flushed the instant focusout fired — no further renderRegion call needed");
   assert.equal(builds, 1);
@@ -156,8 +155,7 @@ test("renderRegion: repeated skips while still focused replace the pending build
   renderRegion(host, () => ({ v: 3 })); // and a third
   assert.equal(host.listenerCount("focusout"), 1, "still exactly one armed listener after three skips — no accumulation");
 
-  doc.activeElement = null;
-  host.dispatch("focusout", { relatedTarget: null });
+  focusoutTo(doc, host, null);
   assert.equal(host.swaps, 1);
   assert.deepEqual(host.lastNode, { v: 3 }, "the LATEST skipped build wins; the two intermediate ones are dropped");
 });
@@ -296,17 +294,17 @@ test("selectionInside: any range intersecting the host holds — spanning it or 
 test("selectionInside: a selection that misses the host entirely does not hold, and every range is asked", (t) => {
   const host = fakeHost();
   const other = {};
-  patchGlobal(t, "document", fakeDocument({
-    selection: fakeSelection({ crosses: [other] }),
-  }));
+  // Swap the selection on the patched document rather than patching `document`
+  // twice — one fake per test reads straighter, and the second case is only a
+  // different selection, not a different document.
+  const doc = fakeDocument({ selection: fakeSelection({ crosses: [other] }) });
+  patchGlobal(t, "document", doc);
   assert.equal(selectionInside(host), false, "a selection elsewhere on the page holds nothing here");
 
   // Selection exposes a LIST of ranges, so ask all of them rather than assuming
   // one: here the host is crossed by the SECOND, which a first-range-only check
   // would miss.
-  patchGlobal(t, "document", fakeDocument({
-    selection: fakeSelection({ ranges: [[other], [host]] }),
-  }));
+  doc.getSelection = () => fakeSelection({ ranges: [[other], [host]] });
   assert.equal(selectionInside(host), true, "every range is asked, not just the first");
 });
 
@@ -333,9 +331,9 @@ test("heldInside: true for a focused control, an open overlay, and a live select
   host._overlay = fakeTarget();
   assert.equal(heldInside(host), true, "an open popover/<dialog> inside the host");
 
+  // No setInside() here on purpose: the selection guard asks the RANGE whether it
+  // crosses the host, never whether the host contains an endpoint (#72).
   host._overlay = null;
-  const anchor = {};
-  host.setInside(anchor);
   doc.getSelection = () => fakeSelection({ crosses: [host] });
   assert.equal(heldInside(host), true, "a text selection touching the host");
 });
@@ -381,8 +379,7 @@ test("renderRegion { defer: false }: reports the hold and arms nothing — the c
   assert.equal(builds, 0, "build() still not called on a hold — cheap skip");
   assert.equal(host.listenerCount("focusout"), 0, "no listener armed: canon owns no hold registry under defer:false");
 
-  doc.activeElement = null;
-  host.dispatch("focusout", { relatedTarget: null });
+  focusoutTo(doc, host, null);
   assert.equal(host.swaps, 0, "no stale replay — canon never captured a build to flush");
 
   // The app's own retry loop calls again with FRESH state. The sig was never
@@ -401,8 +398,7 @@ test("renderRegion { defer: false } abandons a self-flush left armed by an earli
   assert.equal(renderRegion(host, () => ({ v: "fresh" }), { defer: false }), true, "still held");
   assert.equal(host.listenerCount("focusout"), 0, "canon's registry is dropped — two holds on one host can't diverge");
 
-  doc.activeElement = null;
-  host.dispatch("focusout", { relatedTarget: null });
+  focusoutTo(doc, host, null);
   assert.equal(host.swaps, 0, "the frozen build can never flush in behind the caller's own retry");
 });
 
@@ -425,8 +421,7 @@ test("markRegionStale: the next call rebuilds despite an unchanged sig — throu
   renderRegion(host, () => ({ v: 2 }), { sig: "a" });
   assert.equal(host.swaps, 1, "stale rebuild still defers while a control inside host is focused");
 
-  doc.activeElement = null;
-  host.dispatch("focusout", { relatedTarget: null });
+  focusoutTo(doc, host, null);
   assert.equal(host.swaps, 2, "stale-marked region rebuilt despite the unchanged sig");
   assert.deepEqual(host.lastNode, { v: 2 });
 });
@@ -470,8 +465,7 @@ test("renderRegion: a detached host drops its pending swap — cleared, never re
   assert.equal(host.listenerCount("focusout"), 1, "deferred by focus");
 
   host.isConnected = false; // the host itself was removed (view unmount / parent re-render)
-  doc.activeElement = null;
-  host.dispatch("focusout", { relatedTarget: null });
+  focusoutTo(doc, host, null);
 
   assert.equal(host.swaps, 0, "no render into a detached host");
   assert.equal(host.listenerCount("focusout"), 0, "listener detached — controller aborted");
@@ -490,7 +484,6 @@ test("renderRegion: a later direct swap clears any earlier pending flush for the
   assert.deepEqual(host.lastNode, { v: "fresh" });
   assert.equal(host.listenerCount("focusout"), 0, "the earlier pending flush (and its listener) is cleared by the direct swap");
 
-  doc.activeElement = null;
-  host.dispatch("focusout", { relatedTarget: null }); // nothing armed — must be a no-op
+  focusoutTo(doc, host, null); // nothing armed — must be a no-op
   assert.equal(host.swaps, 1, "no extra swap fires — the stale pending build never runs");
 });

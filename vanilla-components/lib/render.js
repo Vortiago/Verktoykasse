@@ -1,4 +1,4 @@
-// canonical source: vanilla-web/render.js@8ebd116 — vendored copy, do not edit here
+// canonical source: vanilla-web/render.js@4030109 — vendored copy, do not edit here
 // @ts-check
 // Canonical interaction-safe re-rendering for the vanilla-web conventions (see
 // SKILL.md). Copy into <app>/web/lib/render.js; extend, don't fork. Identity:
@@ -90,12 +90,13 @@ function _holdCause(host) {
  * its own to listen for).
  *
  * It is a strict superset of `selectionInside`, and costs more: the overlay guard
- * is a `querySelector` over the host's subtree, where `selectionInside` is two
- * property reads that short-circuit on a collapsed selection. On a per-tick guard
- * in front of a big host, ask the narrow question when it's the only one that
- * applies — a text-only in-place updater, with no focusable control and no
- * popover/`<dialog>` inside it, wants `selectionInside`. Use `heldInside` wherever
- * the host can hold focus or an overlay, which is most hosts.
+ * is a `querySelector` over the host's subtree, where `selectionInside`
+ * short-circuits on a collapsed selection and otherwise does one boundary
+ * comparison per range. On a per-tick guard in front of a big host, ask the narrow
+ * question when it's the only one that applies — a text-only in-place updater,
+ * with no focusable control and no popover/`<dialog>` inside it, wants
+ * `selectionInside`. Use `heldInside` wherever the host can hold focus or an
+ * overlay, which is most hosts.
  *
  *   if (heldInside(listHost)) { retryNextTick = true; return; }
  *   reconcileList(listHost, items, keyOf, create, update);
@@ -218,74 +219,76 @@ export function renderRegion(host, build, opts = {}) {
   if (opts.defer === false) _dropPending(host);
   if (!opts.force) {
     const cause = _holdCause(host);
-    if (cause && opts.defer === false) return true; // report it; arm nothing, record nothing
-    if (cause?.kind === "focus") {
-      _deferSwap(host, build, opts.sig, (signal) =>
-        // `focusout` fires BEFORE the incoming element is focused, and for its
-        // whole duration document.activeElement is <body> — so a flush that
-        // re-read the guards would see an idle host and swap on top of whatever
-        // was about to receive focus (#72). `relatedTarget` names that element;
-        // it is the question this flush actually has to ask.
-        //
-        // Plain CONTAINMENT, deliberately not the _holdCause predicate: the
-        // entry guard holds only for controls, but a swap must not land on ANY
-        // incoming focus inside the host. That asymmetry is what keeps a button
-        // inside a held region clickable — mousedown fires focusout, and
-        // flushing there removes the button before its `click` ever fires. The
-        // cost is bounded: focus parked on a non-interactive element inside the
-        // host leaves the region stale until focus moves again (self-healing on
-        // the next focusout, superseded by the next direct call on a polled app).
-        //
-        // NOT once: focus moving between controls inside the host must keep the
-        // listener armed. Teardown is still structural — the pending entry's
-        // shared controller detaches it on flush, on supersession by a direct
-        // swap, and on host detachment.
-        //
-        // Two edges, both consistent: a window blur fires focusout with a null
-        // relatedTarget while activeElement stays on the control, so the
-        // re-entrant renderRegion call simply re-defers and re-arms (which is why
-        // the flush re-runs the guards instead of swapping directly). And if the
-        // incoming element is removed before focus lands, focus falls to <body>
-        // with no further focusout — the swap strands on a quiet stream until the
-        // next direct call.
-        host.addEventListener("focusout", (e) => {
-          const next = /** @type {Element | null} */ (/** @type {FocusEvent} */ (e).relatedTarget);
-          if (next && host.contains(next)) return; // focus stayed inside — still held
-          _flushRegion(host);
-        }, { signal }));
-      return true;
-    }
-    if (cause?.kind === "overlay") {
-      const { overlay } = cause;
-      _deferSwap(host, build, opts.sig, (signal) => {
-        // toggle covers popovers (and dialogs, which also fire it); close is
-        // dialog-only — attach both, harmless for whichever doesn't fire.
-        overlay.addEventListener("toggle", () => _flushRegion(host), { signal, once: true });
-        overlay.addEventListener("close", () => _flushRegion(host), { signal, once: true });
-        // Removal WITHOUT close/toggle (overlay.remove(), a parent re-render)
-        // fires neither event and would strand the pending swap on a quiet
-        // stream — watch the subtree, flush (re-running all guards) once the
-        // overlay left the DOM. Lives only while this flush is pending: same
-        // abort that detaches the listeners disconnects it. Feature-guarded —
-        // the node tests' fake documents have no MutationObserver.
-        if (typeof MutationObserver !== "undefined") {
-          const mo = new MutationObserver(() => { if (!overlay.isConnected) _flushRegion(host); });
-          mo.observe(host, { childList: true, subtree: true });
-          signal.addEventListener("abort", () => mo.disconnect(), { once: true });
-        }
-      });
-      return true;
-    }
-    if (cause?.kind === "selection") {
-      _deferSwap(host, build, opts.sig, (signal) =>
-        // Chatty and document-level, so attach ONLY while a flush is pending
-        // (armed here, detached in _flushRegion via the shared AbortController)
-        // — never left listening between renders. Re-checks selectionInside
-        // itself: most selectionchange events fire while the selection is
-        // still inside host (extending it), and must not flush prematurely.
-        document.addEventListener("selectionchange", () => {
-          if (!selectionInside(host)) _flushRegion(host);
-        }, { signal }));
+    // ONE `return true` for every cause, so "any non-null cause holds" is structural
+    // rather than repeated per branch: a kind added to HoldCause without an arm here
+    // still defers (stale until the next call re-derives it) instead of falling
+    // through to the swap and clobbering the interaction heldInside reports.
+    if (cause) {
+      if (opts.defer === false) return true; // report it; arm nothing, record nothing
+      if (cause.kind === "focus") {
+        _deferSwap(host, build, opts.sig, (signal) =>
+          // `focusout` fires BEFORE the incoming element is focused, and for its
+          // whole duration document.activeElement is <body> — so a flush that
+          // re-read the guards would see an idle host and swap on top of whatever
+          // was about to receive focus (#72). `relatedTarget` names that element;
+          // it is the question this flush actually has to ask.
+          //
+          // Plain CONTAINMENT, deliberately not the _holdCause predicate: the
+          // entry guard holds only for controls, but a swap must not land on ANY
+          // incoming focus inside the host. That asymmetry is what keeps a button
+          // inside a held region clickable — mousedown fires focusout, and
+          // flushing there removes the button before its `click` ever fires. The
+          // cost is bounded: focus parked on a non-interactive element inside the
+          // host leaves the region stale until focus moves again (self-healing on
+          // the next focusout, superseded by the next direct call on a polled app).
+          //
+          // NOT once: focus moving between controls inside the host must keep the
+          // listener armed. Teardown is still structural — the pending entry's
+          // shared controller detaches it on flush, on supersession by a direct
+          // swap, and on host detachment.
+          //
+          // Two edges, both consistent: a window blur fires focusout with a null
+          // relatedTarget while activeElement stays on the control, so the
+          // re-entrant renderRegion call simply re-defers and re-arms (which is why
+          // the flush re-runs the guards instead of swapping directly). And if the
+          // incoming element is removed before focus lands, focus falls to <body>
+          // with no further focusout — the swap strands on a quiet stream until the
+          // next direct call.
+          host.addEventListener("focusout", (e) => {
+            const next = /** @type {Element | null} */ (/** @type {FocusEvent} */ (e).relatedTarget);
+            if (next && host.contains(next)) return; // focus stayed inside — still held
+            _flushRegion(host);
+          }, { signal }));
+      } else if (cause.kind === "overlay") {
+        const { overlay } = cause;
+        _deferSwap(host, build, opts.sig, (signal) => {
+          // toggle covers popovers (and dialogs, which also fire it); close is
+          // dialog-only — attach both, harmless for whichever doesn't fire.
+          overlay.addEventListener("toggle", () => _flushRegion(host), { signal, once: true });
+          overlay.addEventListener("close", () => _flushRegion(host), { signal, once: true });
+          // Removal WITHOUT close/toggle (overlay.remove(), a parent re-render)
+          // fires neither event and would strand the pending swap on a quiet
+          // stream — watch the subtree, flush (re-running all guards) once the
+          // overlay left the DOM. Lives only while this flush is pending: same
+          // abort that detaches the listeners disconnects it. Feature-guarded —
+          // the node tests' fake documents have no MutationObserver.
+          if (typeof MutationObserver !== "undefined") {
+            const mo = new MutationObserver(() => { if (!overlay.isConnected) _flushRegion(host); });
+            mo.observe(host, { childList: true, subtree: true });
+            signal.addEventListener("abort", () => mo.disconnect(), { once: true });
+          }
+        });
+      } else if (cause.kind === "selection") {
+        _deferSwap(host, build, opts.sig, (signal) =>
+          // Chatty and document-level, so attach ONLY while a flush is pending
+          // (armed here, detached in _flushRegion via the shared AbortController)
+          // — never left listening between renders. Re-checks selectionInside
+          // itself: most selectionchange events fire while the selection is
+          // still inside host (extending it), and must not flush prematurely.
+          document.addEventListener("selectionchange", () => {
+            if (!selectionInside(host)) _flushRegion(host);
+          }, { signal }));
+      }
       return true;
     }
     if (opts.sig != null && _regionSig.get(host) === opts.sig) return false; // a no-op, not a hold

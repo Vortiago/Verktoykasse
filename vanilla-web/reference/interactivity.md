@@ -50,12 +50,12 @@ and text selections when they swap DOM. The rule set, in order of preference:
 
    `selectionInside(host)` remains exported as its narrower selection-only face,
    and it is the cheaper one: `heldInside`'s overlay guard is a `querySelector`
-   over the host's subtree, where `selectionInside` is two property reads that
-   short-circuit on a collapsed selection. For a per-tick guard in front of a big
-   host, ask the narrow question when it's the only one that applies — a text-only
-   in-place updater with no focusable control and no popover/`<dialog>` inside it
-   wants `selectionInside`. Reach for `heldInside` wherever the host can hold focus
-   or an overlay, which is most hosts.
+   over the host's subtree, where `selectionInside` short-circuits on a collapsed
+   selection and otherwise does one boundary comparison per range. For a per-tick
+   guard in front of a big host, ask the narrow question when it's the only one
+   that applies — a text-only in-place updater with no focusable control and no
+   popover/`<dialog>` inside it wants `selectionInside`. Reach for `heldInside`
+   wherever the host can hold focus or an overlay, which is most hosts.
 
    Which shape you use depends on whether `renderRegion` renders that host at all:
 
