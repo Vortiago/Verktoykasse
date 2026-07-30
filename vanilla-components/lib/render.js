@@ -1,4 +1,4 @@
-// canonical source: vanilla-web/render.js@1af3b8d — vendored copy, do not edit here
+// canonical source: vanilla-web/render.js@500e67a — vendored copy, do not edit here
 // @ts-check
 // Canonical interaction-safe re-rendering for the vanilla-web conventions (see
 // SKILL.md). Copy into <app>/web/lib/render.js; extend, don't fork. Identity:
@@ -20,11 +20,10 @@
 // focus/overlay/selection decision renderRegion makes internally, for the render
 // shapes renderRegion can't serve (a reconcileList driven by materialized items,
 // an in-place updater that rewrites text every tick, a selection straddling a
-// host). selectionInside is the narrower selection-only face of it, for in-place
-// updaters that only care about that. An app with its own tick-retry loop pairs
-// heldInside with renderRegion's `defer:false` so ONE definition of "held" covers
-// every shape — reimplementing the predicates app-side is what #72 was filed
-// about.
+// host). selectionInside is the narrower selection-only face of it. An app with
+// its own tick-retry loop pairs it with renderRegion's `defer:false` so ONE
+// definition of "held" covers every shape. See docs/adr/0002 for why the hold is
+// a predicate and a held swap has a single owner.
 //
 // This module imports nothing from templates.js or chrome.js, and nothing
 // there imports this — components and defineComponent (lib/component.js)
@@ -166,7 +165,8 @@ function _deferSwap(host, build, sig, arm) {
  *     contenteditable) — an open dropdown must not snap shut;
  *   - skip while a popover or <dialog> inside `host` is open — a swap would
  *     destroy it mid-use;
- *   - skip while a text selection starts or ends inside `host`;
+ *   - skip while a text selection TOUCHES `host` — starting or ending inside it,
+ *     lying within it, or merely spanning it (see selectionInside);
  *   - skip when a caller-supplied `sig` is unchanged (perf + flicker) — this
  *     one is a no-op, not a deferral: nothing new to flush later;
  *   - otherwise replaceChildren(build()).
@@ -188,9 +188,12 @@ function _deferSwap(host, build, sig, arm) {
  * lands held renders through its own tick-retry flag — because its keyed lists
  * and in-place updaters must re-derive from live state rather than replay a
  * captured build — this is how it shares canon's definition of "held" instead of
- * reimplementing the predicates (#72). Pick one strategy per host: a `defer:false`
- * call also drops any self-flush an earlier `defer:true` call left armed, since
- * two hold registries on one host drift apart.
+ * reimplementing the predicates (#72, docs/adr/0002). Pick one strategy per host;
+ * a `defer:false` call drops any self-flush an earlier `defer:true` call left
+ * armed. Note that disowning happens HERE, on the call — so a host this module
+ * has ever deferred must keep coming through `renderRegion` (with `defer:false`)
+ * rather than being skipped by a bare `heldInside` early return, which cannot
+ * reach the pending entry.
  *
  * @param {Element} host
  * @param {() => Node} build
@@ -206,10 +209,10 @@ function _deferSwap(host, build, sig, arm) {
 export function renderRegion(host, build, opts = {}) {
   // `defer:false` hands the retry to the caller, so this module must not also own
   // one for `host`: drop any self-flush an earlier defer:true call left armed.
-  // Two hold registries on one host diverge — canon's entry freezes at its tick's
-  // build while the caller's absorbs newer ones, then canon flushes the stale one
-  // in behind it. That is #72 item 2, so it's enforced here rather than merely
-  // documented. Pick one strategy per host.
+  // Two hold registries on one host diverge — this module's entry freezes at its
+  // tick's build while the caller's absorbs newer ones, then this one flushes the
+  // stale build in behind it, stranding the caller's fresher one. That is #72
+  // item 2, enforced here rather than left to a convention.
   if (opts.defer === false) _dropPending(host);
   if (!opts.force) {
     const cause = _holdCause(host);

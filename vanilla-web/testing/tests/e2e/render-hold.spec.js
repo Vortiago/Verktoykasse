@@ -14,9 +14,9 @@ const FIXTURE = "/testing/fixtures/render-hold.html";
 
 test("a deferred swap does not land on the element receiving focus, and lands once focus leaves", async ({ page }) => {
   await page.goto(FIXTURE);
-  await expect(page.locator("#a")).toBeVisible();
+  await expect(page.getByLabel("first control")).toBeVisible();
 
-  await page.locator("#a").focus();
+  await page.getByLabel("first control").focus();
   const buildsBefore = await page.evaluate(() => window.__builds);
 
   // Two poll ticks arrive while #a is focused. Both must be held, latest-wins.
@@ -35,15 +35,15 @@ test("a deferred swap does not land on the element receiving focus, and lands on
 
   // Focus genuinely leaves the region: now the held swap is owed and must land,
   // carrying the LATEST build, not the first one that was deferred.
-  await page.locator("#outside").focus();
-  await expect(page.locator("#text")).toHaveText("build:t2");
+  await page.getByLabel("a control outside the region").focus();
+  await expect(page.getByTestId("regionText")).toHaveText("build:t2");
   expect(await page.evaluate(() => window.__builds)).toBe(buildsBefore + 1);
   expect(await page.evaluate(() => window.__stamped())).toBe(false);
 });
 
 test("programmatic focus inside the region is protected too, not just Tab", async ({ page }) => {
   await page.goto(FIXTURE);
-  await page.locator("#a").focus();
+  await page.getByLabel("first control").focus();
   await page.evaluate(() => window.__render("t1"));
   await page.evaluate(() => window.__stamp());
 
@@ -56,10 +56,10 @@ test("programmatic focus inside the region is protected too, not just Tab", asyn
 
 test("a button inside a held region still receives its click — the flush must not remove it mid-mousedown", async ({ page }) => {
   await page.goto(FIXTURE);
-  await page.locator("#a").focus();
+  await page.getByLabel("first control").focus();
   await page.evaluate(() => window.__render("t1")); // held by the focus on #a
 
-  await page.locator("#btn").click();
+  await page.getByRole("button", { name: "act" }).click();
 
   // Chrome focuses a button on mousedown, so this click DOES fire focusout with
   // relatedTarget=#btn. If that assertion fails the scenario never reproduced and
@@ -82,22 +82,22 @@ test("a selection spanning the region holds a swap, though neither endpoint is i
 
   // Collapse the selection: selectionchange fires and the held swap lands.
   await page.evaluate(() => document.getSelection()?.removeAllRanges());
-  await expect(page.locator("#text")).toHaveText("build:t1");
+  await expect(page.getByTestId("regionText")).toHaveText("build:t1");
 });
 
 test("defer:false reports the hold and arms nothing — the caller's own retry lands the fresh build", async ({ page }) => {
   await page.goto(FIXTURE);
-  await page.locator("#a").focus();
+  await page.getByLabel("first control").focus();
   const buildsBefore = await page.evaluate(() => window.__builds);
 
   expect(await page.evaluate(() => window.__render("t1", { defer: false }))).toBe(true);
   expect(await page.evaluate(() => window.__builds)).toBe(buildsBefore);
 
   // Focus leaves. With nothing armed, nothing flushes on its own.
-  await page.locator("#outside").focus();
+  await page.getByLabel("a control outside the region").focus();
   expect(await page.evaluate(() => window.__builds)).toBe(buildsBefore);
 
   // The app's retry re-derives from current state and swaps.
   expect(await page.evaluate(() => window.__render("t2", { defer: false }))).toBe(false);
-  await expect(page.locator("#text")).toHaveText("build:t2");
+  await expect(page.getByTestId("regionText")).toHaveText("build:t2");
 });

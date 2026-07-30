@@ -40,6 +40,7 @@ function build(/** @type {string} */ label) {
 
   const text = document.createElement("p");
   text.id = "text";
+  text.dataset.slot = "regionText"; // structural seam, no role — the data-slot handle
   text.textContent = `build:${label}`;
 
   wrap.append(a, b, btn, text);

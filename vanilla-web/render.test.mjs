@@ -314,8 +314,9 @@ test("selectionInside: a selection that misses the host entirely does not hold, 
   }));
   assert.equal(selectionInside(host), false, "a selection elsewhere on the page holds nothing here");
 
-  // A multi-range selection (ctrl-drag in Firefox, a table-cell selection): the
-  // host is crossed by the SECOND range, so a first-range-only check would miss it.
+  // Selection exposes a LIST of ranges, so ask all of them rather than assuming
+  // one: here the host is crossed by the SECOND, which a first-range-only check
+  // would miss.
   patchGlobal(t, "document", fakeDocument({
     selection: {
       isCollapsed: false,

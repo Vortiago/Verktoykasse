@@ -49,17 +49,25 @@ and text selections when they swap DOM. The rule set, in order of preference:
    `close`/`toggle`. `selectionInside(host)` is still exported as its narrower
    selection-only face, for an updater that genuinely only cares about that.
 
-   An app that already lands held renders through its own tick-retry flag should
-   pair `heldInside` with **`renderRegion(host, build, {sig, defer: false})`**,
-   which reports the hold and arms nothing instead of self-flushing. Pick one
-   strategy per host: two hold registries on the same host drift apart — canon's
-   pending entry freezes at its tick's build while the app's absorbs newer ones,
-   then canon flushes the stale one in behind it.
+   Which shape you use depends on whether `renderRegion` renders that host at all:
 
    ```js
+   // A host renderRegion never touches (a reconcileList target, an in-place
+   // updater): ask the predicate and skip. There's no canon registry to collide with.
    if (heldInside(listHost)) { retryNextTick = true; return; }
    reconcileList(listHost, items, keyOf, create, update);
+
+   // A host renderRegion DOES render: keep routing it through renderRegion with
+   // defer:false, which reports the hold and arms nothing.
+   if (renderRegion(panel, build, { sig, defer: false })) retryNextTick = true;
    ```
+
+   Pick one strategy per host: two hold registries on the same host drift apart —
+   canon's pending entry freezes at its tick's build while the app's absorbs newer
+   ones, then canon flushes the stale one in behind it. A `defer:false` call drops
+   any self-flush canon left armed, which is what keeps the two from coexisting —
+   so for a `renderRegion` host use that call, **not** a bare `heldInside` early
+   return, which never reaches the pending entry.
 6. **Long, keyed lists use `reconcileList`, not `renderRegion`.** Where
    `renderRegion` DEFERS a swap of a whole region while a control inside is
    focused, `reconcileList(host, items, keyOf, create, update)` updates a list

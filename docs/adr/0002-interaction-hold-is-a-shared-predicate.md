@@ -46,9 +46,15 @@ Separate the *question* from the *answer*, and give the answer a single owner.
   region was **held**, and `defer:false` reports the hold without arming anything. An app
   that already owns a tick-retry loop now shares canon's predicate instead of reproducing it.
 
-- **Exactly one owner per host, enforced.** A `defer:false` call aborts and drops any
-  self-flush an earlier `defer:true` call left armed. Mixing strategies is the divergence in
-  (2), so it's made impossible rather than documented as unwise.
+- **Exactly one owner per host, enforced on the call.** A `defer:false` call aborts and drops
+  any self-flush an earlier `defer:true` call left armed, so the divergence in (2) cannot
+  survive a host that keeps coming through `renderRegion`. Note the limit of that guarantee:
+  disowning happens *on the call*, so a host this module has ever deferred must keep being
+  routed through `renderRegion` (with `defer:false`) rather than skipped by a bare
+  `heldInside` early return — which cannot reach the pending entry. The early-return shape is
+  for the hosts `renderRegion` never renders (a `reconcileList` target, an in-place updater),
+  where there is no registry to disown. There is deliberately no separate "release this host"
+  export: the issue asked for a shared predicate and an injectable strategy, not a lifecycle.
 
 - **The return value is "held", not "swapped"** — deliberately, so that a sig-unchanged skip
   returns `false`. A skip is a no-op with nothing to retry; had the value been "swapped", a
