@@ -269,6 +269,36 @@ test("renderRegion: a sig-unchanged skip is a no-op, not a deferral — nothing 
   assert.equal(host.listenerCount("focusout"), 0, "a sig-only skip has nothing to flush later — no listener armed");
 });
 
+test("renderRegion: a sig-unchanged skip also DROPS a pending flush — a build older than the DOM must not land later", (t) => {
+  // The entry guard holds only for controls, and the focusout listener is no
+  // longer `once`, so a pending swap survives focus moving to a <button> inside
+  // the host. If a later tick then sig-skips (the data went back to what is on
+  // screen) while that entry is still armed, the flush would swap the OLDER
+  // captured build in when focus finally leaves. `_regionSig` is written only on a
+  // swap, so an unchanged sig proves the DOM is already current: nothing is owed.
+  const btn = { tagName: "BUTTON" }; // _isInteractive(btn) === false
+  const { doc, host } = focusedHost(t, { also: [btn] });
+
+  renderRegion(host, () => ({ v: "S1" }), { sig: "S1", force: true }); // prime: DOM and sig are S1
+  assert.equal(host.swaps, 1);
+
+  renderRegion(host, () => ({ v: "S2" }), { sig: "S2" }); // held by the focused control
+  assert.equal(host.swaps, 1, "deferred (precondition)");
+  assert.equal(host.listenerCount("focusout"), 1);
+
+  focusoutTo(doc, host, btn); // focus parks on the button: no flush, listener stays armed
+  assert.equal(host.swaps, 1);
+  assert.equal(host.listenerCount("focusout"), 1, "still armed (precondition for the case under test)");
+
+  doc.activeElement = btn; // and the host no longer HOLDS — the guard ignores buttons
+  renderRegion(host, () => ({ v: "S1" }), { sig: "S1" }); // data is back to what's rendered → skip
+  assert.equal(host.swaps, 1, "sig unchanged → no swap");
+  assert.equal(host.listenerCount("focusout"), 0, "the pending S2 build is dropped, its listener detached");
+
+  focusoutTo(doc, host, null);
+  assert.equal(host.swaps, 1, "nothing flushes: the stale S2 build can never land on top of current S1 DOM");
+});
+
 // ── #72: selectionInside asks about the whole range, not its endpoints ────────
 //
 // Testing only anchorNode/focusNode misses ⌘A over a panel: a range that starts

@@ -40,12 +40,11 @@ and text selections when they swap DOM. The rule set, in order of preference:
 5. **The hold is a predicate — `heldInside(host)`.** It's the same
    focus/overlay/selection decision `renderRegion` makes internally, exported for
    the render shapes `renderRegion` can't serve: an in-place updater that rewrites
-   text every tick (no build closure exists to replay), a `reconcileList` driven by
-   materialized items (a held render must re-derive from live state, not replay a
-   captured build), or a selection straddling a host (no event of its own to listen
-   for). Use it instead of hand-rolling the guards — a re-derived predicate drifts
-   from canon, and it would miss things the real one covers, like the overlay
-   branch's MutationObserver fallback for an overlay removed without
+   text every tick (no build closure exists to replay), or a `reconcileList` driven
+   by materialized items (a held render must re-derive from live state, not replay a
+   captured build). Use it instead of hand-rolling the guards — a re-derived
+   predicate drifts from canon, and it would miss things the real one covers, like
+   the overlay branch's MutationObserver fallback for an overlay removed without
    `close`/`toggle`.
 
    `selectionInside(host)` remains exported as its narrower selection-only face,

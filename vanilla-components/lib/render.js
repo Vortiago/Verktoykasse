@@ -1,4 +1,4 @@
-// canonical source: vanilla-web/render.js@4030109 — vendored copy, do not edit here
+// canonical source: vanilla-web/render.js@fb4706e — vendored copy, do not edit here
 // @ts-check
 // Canonical interaction-safe re-rendering for the vanilla-web conventions (see
 // SKILL.md). Copy into <app>/web/lib/render.js; extend, don't fork. Identity:
@@ -85,9 +85,8 @@ function _holdCause(host) {
  *
  * Reach for it for the render shapes `renderRegion` can't serve: a `reconcileList`
  * driven by materialized items (a held render must re-derive from live state, not
- * replay a captured build), an in-place updater that rewrites text every tick (no
- * build closure exists to replay), or a selection straddling a host (no event of
- * its own to listen for).
+ * replay a captured build), or an in-place updater that rewrites text every tick
+ * (no build closure exists to replay).
  *
  * It is a strict superset of `selectionInside`, and costs more: the overlay guard
  * is a `querySelector` over the host's subtree, where `selectionInside`
@@ -113,14 +112,14 @@ export function heldInside(host) {
  * current state whenever it finally runs) and keeps the SAME controller, so
  * it does NOT arm a second listener — one armed flush per host, never
  * appended. `controller` is aborted (detaching whatever listener(s) armed it)
- * the moment the host flushes, a direct swap supersedes it, or a `defer:false`
- * call takes the retry over.
+ * the moment the host flushes, or any later call finds the host unheld (or asked
+ * not to defer) and supersedes the entry — see renderRegion's invariant.
  * @type {WeakMap<Element, PendingSwap>} */
 const _pendingFlush = new WeakMap();
 
 /** Forget any pending self-flush for `host` — abort its listener(s)/observer and
- * drop the entry. Called when this module stops owning the swap: a direct swap
- * supersedes it, or `defer:false` hands the retry to the caller.
+ * drop the entry. Called from every renderRegion path except the one that owns
+ * the entry (held + defer:true); see the invariant comment there.
  * @param {Element} host */
 function _dropPending(host) {
   _pendingFlush.get(host)?.controller.abort();
@@ -171,7 +170,9 @@ function _deferSwap(host, build, sig, arm) {
  *   - skip while a text selection TOUCHES `host` — starting or ending inside it,
  *     lying within it, or merely spanning it (see selectionInside);
  *   - skip when a caller-supplied `sig` is unchanged (perf + flicker) — this
- *     one is a no-op, not a deferral: nothing new to flush later;
+ *     one is a no-op, not a deferral: nothing new to flush later, and any
+ *     EARLIER pending flush is dropped (the DOM already matches this sig, so a
+ *     build captured before it is stale);
  *   - otherwise replaceChildren(build()).
  * `build` only runs when we actually swap, so a skipped tick is cheap. A swap
  * deferred by focus/overlay/selection flushes the INSTANT that condition
@@ -210,13 +211,20 @@ function _deferSwap(host, build, sig, arm) {
  * under `defer:false`; informational otherwise (acting on it while canon is also
  * self-flushing gives you the two registries this option exists to avoid). */
 export function renderRegion(host, build, opts = {}) {
-  // `defer:false` hands the retry to the caller, so this module must not also own
-  // one for `host`: drop any self-flush an earlier defer:true call left armed.
-  // Two hold registries on one host diverge — this module's entry freezes at its
-  // tick's build while the caller's absorbs newer ones, then this one flushes the
-  // stale build in behind it, stranding the caller's fresher one. That is #72
-  // item 2, enforced here rather than left to a convention.
-  if (opts.defer === false) _dropPending(host);
+  // Pending-entry invariant, structural: EVERY path below drops `host`'s pending
+  // self-flush except the one that owns it — held with defer:true, where
+  // _deferSwap updates the entry in place (latest-wins). Both other shapes would
+  // otherwise strand a build older than the DOM:
+  //   - a sig-unchanged skip: `_regionSig` is written only on a swap, so an
+  //     unchanged sig means the DOM already matches current state and a build
+  //     captured back when the host was held is stale. Reachable since the
+  //     focusout listener stopped being `once` — the entry now survives focus
+  //     moving to a non-interactive element inside the host, which the entry
+  //     guard does not hold for, so the next tick sig-skips with it still armed.
+  //   - `defer:false`: the caller owns the retry, so this module must not keep a
+  //     second registry on the same host (#72 item 2 — two of them diverge: this
+  //     one's entry freezes at its tick's build while the caller's absorbs newer
+  //     ones, then this one flushes the stale build in behind the fresher one).
   if (!opts.force) {
     const cause = _holdCause(host);
     // ONE `return true` for every cause, so "any non-null cause holds" is structural
@@ -224,36 +232,22 @@ export function renderRegion(host, build, opts = {}) {
     // still defers (stale until the next call re-derives it) instead of falling
     // through to the swap and clobbering the interaction heldInside reports.
     if (cause) {
-      if (opts.defer === false) return true; // report it; arm nothing, record nothing
+      if (opts.defer === false) { _dropPending(host); return true; } // report it; arm nothing, record nothing
       if (cause.kind === "focus") {
         _deferSwap(host, build, opts.sig, (signal) =>
-          // `focusout` fires BEFORE the incoming element is focused, and for its
-          // whole duration document.activeElement is <body> — so a flush that
-          // re-read the guards would see an idle host and swap on top of whatever
-          // was about to receive focus (#72). `relatedTarget` names that element;
-          // it is the question this flush actually has to ask.
-          //
-          // Plain CONTAINMENT, deliberately not the _holdCause predicate: the
-          // entry guard holds only for controls, but a swap must not land on ANY
-          // incoming focus inside the host. That asymmetry is what keeps a button
-          // inside a held region clickable — mousedown fires focusout, and
-          // flushing there removes the button before its `click` ever fires. The
-          // cost is bounded: focus parked on a non-interactive element inside the
-          // host leaves the region stale until focus moves again (self-healing on
-          // the next focusout, superseded by the next direct call on a polled app).
-          //
-          // NOT once: focus moving between controls inside the host must keep the
-          // listener armed. Teardown is still structural — the pending entry's
-          // shared controller detaches it on flush, on supersession by a direct
-          // swap, and on host detachment.
-          //
-          // Two edges, both consistent: a window blur fires focusout with a null
-          // relatedTarget while activeElement stays on the control, so the
-          // re-entrant renderRegion call simply re-defers and re-arms (which is why
-          // the flush re-runs the guards instead of swapping directly). And if the
-          // incoming element is removed before focus lands, focus falls to <body>
-          // with no further focusout — the swap strands on a quiet stream until the
-          // next direct call.
+          // `focusout` fires BEFORE the incoming element is focused, and parks
+          // document.activeElement on <body> for its whole duration — so this
+          // flush asks `relatedTarget`, never the guards, which would see an idle
+          // host and swap on top of the element about to receive focus (#72).
+          // Plain CONTAINMENT, deliberately not _holdCause: the entry guard holds
+          // only for controls, but a swap must not land on ANY incoming focus
+          // inside the host — that asymmetry is what keeps a <button> inside a
+          // held region clickable (mousedown fires focusout; flushing there would
+          // remove the button before its `click`). NOT `once`, so focus moving
+          // between controls inside the host stays armed; teardown is still the
+          // pending entry's shared controller. docs/adr/0002 records the cost
+          // accepted: focus parked on a non-interactive element inside the host
+          // leaves the region stale until focus moves again.
           host.addEventListener("focusout", (e) => {
             const next = /** @type {Element | null} */ (/** @type {FocusEvent} */ (e).relatedTarget);
             if (next && host.contains(next)) return; // focus stayed inside — still held
@@ -291,9 +285,9 @@ export function renderRegion(host, build, opts = {}) {
       }
       return true;
     }
-    if (opts.sig != null && _regionSig.get(host) === opts.sig) return false; // a no-op, not a hold
+    if (opts.sig != null && _regionSig.get(host) === opts.sig) { _dropPending(host); return false; } // a no-op, not a hold
   }
-  _dropPending(host); // this swap is happening now — any earlier deferred one is moot
+  _dropPending(host);
   if (opts.sig != null) _regionSig.set(host, opts.sig);
   host.replaceChildren(build());
   return false;
