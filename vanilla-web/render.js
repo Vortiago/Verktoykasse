@@ -162,16 +162,18 @@ function _deferSwap(host, build, sig, arm) {
 }
 
 /** Render `build()`'s output into `host` WITHOUT clobbering live interaction:
+ *   - skip when a caller-supplied `sig` is unchanged (perf + flicker) — checked
+ *     FIRST, before the hold guards, because it is a no-op rather than a
+ *     deferral: `sig` is recorded only on a swap, so an unchanged one proves the
+ *     DOM already matches and nothing is owed even if the host is held. Any
+ *     EARLIER pending flush is dropped with it (a build captured before this sig
+ *     is stale);
  *   - skip while a control inside `host` is focused (select/input/textarea/
  *     contenteditable) — an open dropdown must not snap shut;
  *   - skip while a popover or <dialog> inside `host` is open — a swap would
  *     destroy it mid-use;
  *   - skip while a text selection TOUCHES `host` — starting or ending inside it,
  *     lying within it, or merely spanning it (see selectionInside);
- *   - skip when a caller-supplied `sig` is unchanged (perf + flicker) — this
- *     one is a no-op, not a deferral: nothing new to flush later, and any
- *     EARLIER pending flush is dropped (the DOM already matches this sig, so a
- *     build captured before it is stale);
  *   - otherwise replaceChildren(build()).
  * `build` only runs when we actually swap, so a skipped tick is cheap. A swap
  * deferred by focus/overlay/selection flushes the INSTANT that condition
@@ -205,31 +207,41 @@ function _deferSwap(host, build, sig, arm) {
  * default) or merely reported (defer:false). false when it swapped, AND false for
  * a sig-unchanged skip, which is a no-op with nothing to retry: that's why the
  * value is "held" rather than "swapped", so a `while (held) retry` loop
- * terminates. `true` does not promise a swap is owed — the guards run before the
- * sig gate, so a held call may sig-skip once the hold clears. Only actionable
- * under `defer:false`; informational otherwise (acting on it while canon is also
+ * terminates. Because the sig gate runs first, `true` means a swap really is owed
+ * — a held call whose sig is unchanged reports `false`. Only actionable under
+ * `defer:false`; informational otherwise (acting on it while canon is also
  * self-flushing gives you the two registries this option exists to avoid). */
 export function renderRegion(host, build, opts = {}) {
   // Pending-entry invariant, structural: EVERY path below drops `host`'s pending
   // self-flush except the one that owns it — held with defer:true, where
   // _deferSwap updates the entry in place (latest-wins). Both other shapes would
   // otherwise strand a build older than the DOM:
-  //   - a sig-unchanged skip: `_regionSig` is written only on a swap, so an
-  //     unchanged sig means the DOM already matches current state and a build
-  //     captured back when the host was held is stale. Reachable since the
-  //     focusout listener stopped being `once` — the entry now survives focus
-  //     moving to a non-interactive element inside the host, which the entry
-  //     guard does not hold for, so the next tick sig-skips with it still armed.
+  //   - a sig-unchanged skip: the DOM already matches, so a build captured back
+  //     when the host was held is stale. Reachable since the focusout listener
+  //     stopped being `once` — the entry now survives focus moving to a
+  //     non-interactive element inside the host, which the entry guard does not
+  //     hold for, so the next tick sig-skips with it still armed.
   //   - `defer:false`: the caller owns the retry, so this module must not keep a
   //     second registry on the same host (#72 item 2 — two of them diverge: this
   //     one's entry freezes at its tick's build while the caller's absorbs newer
   //     ones, then this one flushes the stale build in behind the fresher one).
   if (!opts.force) {
+    // Sig gate FIRST, ahead of the hold guards. `_regionSig` is written only on a
+    // swap, so an unchanged sig proves the DOM already matches current state:
+    // nothing is owed, whether or not the host is held. Asking the guards first
+    // would stash a build closure (and everything that tick captured — an item
+    // array, a row list) and arm a listener for the whole hold, only to discard it
+    // all as a no-op on flush. `markRegionStale(host)` is the escape hatch for a
+    // change the sig can't see; it forgets the sig, so this gate won't match.
+    if (opts.sig != null && _regionSig.get(host) === opts.sig) { _dropPending(host); return false; }
     const cause = _holdCause(host);
     // ONE `return true` for every cause, so "any non-null cause holds" is structural
-    // rather than repeated per branch: a kind added to HoldCause without an arm here
-    // still defers (stale until the next call re-derives it) instead of falling
-    // through to the swap and clobbering the interaction heldInside reports.
+    // rather than repeated per branch: a kind added to HoldCause without an arm
+    // here still reports held and skips the swap, rather than falling through and
+    // clobbering the interaction heldInside reports. It does NOT defer — with no
+    // arm, _deferSwap never runs, so nothing is stashed and no flush is scheduled;
+    // the region stays stale until a later call re-derives the cause. Safe, but
+    // add the arm.
     if (cause) {
       if (opts.defer === false) { _dropPending(host); return true; } // report it; arm nothing, record nothing
       if (cause.kind === "focus") {
@@ -284,7 +296,6 @@ export function renderRegion(host, build, opts = {}) {
       }
       return true;
     }
-    if (opts.sig != null && _regionSig.get(host) === opts.sig) { _dropPending(host); return false; } // a no-op, not a hold
   }
   _dropPending(host);
   if (opts.sig != null) _regionSig.set(host, opts.sig);

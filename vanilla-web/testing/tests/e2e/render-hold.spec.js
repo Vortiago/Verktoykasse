@@ -54,14 +54,24 @@ test("a deferred swap does not land on the element receiving focus, and lands on
 test("programmatic focus inside the region is protected too, not just Tab", async ({ page }) => {
   await page.goto(FIXTURE);
   await page.getByLabel("first control").focus();
+  const buildsBefore = await builds(page);
   await page.evaluate(() => window.__render("t1"));
   await page.evaluate(() => window.__stamp());
 
   // The issue reports the same failure via b.focus() as via Tab.
   await page.evaluate(() => document.getElementById("b")?.focus());
 
-  await stamp(page);
+  // Focus really did move INTO the region — without this the rest is vacuous,
+  // since a b.focus() that silently failed would also leave the stamp intact.
   expect(await activeId(page)).toBe("b");
+  await stamp(page);
+  expect(await builds(page)).toBe(buildsBefore, "nothing rebuilt: the hold is still owed, not discarded");
+
+  // And the swap is still OWED — pin the outcome, not just the non-event, or a
+  // flush that rebuilt identical markup would pass unnoticed.
+  await page.getByLabel("a control outside the region").focus();
+  await expect(page.getByTestId("regionText")).toHaveText("build:t1");
+  expect(await builds(page)).toBe(buildsBefore + 1);
 });
 
 test("a button inside a held region still receives its click — the flush must not remove it mid-mousedown", async ({ page }) => {

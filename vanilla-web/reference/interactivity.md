@@ -19,13 +19,15 @@ and text selections when they swap DOM. The rule set, in order of preference:
    progress, appended feed lines): update `textContent` / toggle `hidden` on
    existing nodes. No swap → nothing to clobber.
 2. **Every region swap goes through `renderRegion(host, build, {sig})`** — never
-   raw `replaceChildren`/`innerHTML` on polled data. It skips the swap while a
-   control inside `host` is focused, while a popover or `<dialog>` inside `host`
-   is open, while a text selection touches `host`, or while `sig` is unchanged; a
-   deferred swap flushes the instant the interaction clears — no next tick
-   required. It **returns whether the region was held**: `false` means it swapped
-   *or* the sig was unchanged (a no-op with nothing to retry), so a
-   `while (held) retry` loop terminates.
+   raw `replaceChildren`/`innerHTML` on polled data. It skips the swap when `sig`
+   is unchanged, and — if it isn't — while a control inside `host` is focused,
+   while a popover or `<dialog>` inside `host` is open, or while a text selection
+   touches `host`; a deferred swap flushes the instant the interaction clears — no
+   next tick required. The sig is checked *first*, because it's a no-op rather
+   than a deferral: the sig is recorded only on a swap, so an unchanged one proves
+   the DOM already matches and nothing is owed even if the host is held. It
+   **returns whether the region was held**: `false` means it swapped *or* the sig
+   was unchanged (nothing to retry), so a `while (held) retry` loop terminates.
 3. **Signature hygiene:** `sig` is a cheap string of exactly what the region
    renders. A fast-ticking value must never share a sig with an O(content) region
    — one progress tick must not force a 3000-row table rebuild. Separate regions,

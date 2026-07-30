@@ -299,6 +299,30 @@ test("renderRegion: a sig-unchanged skip also DROPS a pending flush — a build 
   assert.equal(host.swaps, 1, "nothing flushes: the stale S2 build can never land on top of current S1 DOM");
 });
 
+test("renderRegion: a HELD host with an unchanged sig is a no-op — nothing stashed, nothing armed, reports not-held", (t) => {
+  // The sig gate runs ahead of the hold guards on purpose: the sig is recorded
+  // only on a swap, so an unchanged one proves the DOM already matches and nothing
+  // is owed even while the host is held. Guards-first would retain the build
+  // closure (and everything that tick captured) plus a listener for the whole
+  // hold, then throw it away as a no-op on flush.
+  const { doc, host } = focusedHost(t);
+
+  renderRegion(host, () => ({ v: "S1" }), { sig: "S1", force: true }); // prime: DOM and sig are S1
+  assert.equal(host.swaps, 1);
+
+  let builds = 0;
+  assert.equal(
+    renderRegion(host, () => { builds++; return { v: "S1" }; }, { sig: "S1" }),
+    false,
+    "held, but the sig is unchanged — nothing is owed, so it reports not-held",
+  );
+  assert.equal(builds, 0, "build() never ran");
+  assert.equal(host.listenerCount("focusout"), 0, "no listener armed for a swap that isn't owed");
+
+  focusoutTo(doc, host, null);
+  assert.equal(host.swaps, 1, "and nothing flushes when focus finally leaves");
+});
+
 // ── #72: selectionInside asks about the whole range, not its endpoints ────────
 //
 // Testing only anchorNode/focusNode misses ⌘A over a panel: a range that starts
@@ -430,6 +454,37 @@ test("renderRegion { defer: false } abandons a self-flush left armed by an earli
 
   focusoutTo(doc, host, null);
   assert.equal(host.swaps, 0, "the frozen build can never flush in behind the caller's own retry");
+});
+
+test("renderRegion { defer: false }: arms nothing for an OVERLAY or SELECTION hold either", (t) => {
+  // defer:false sits above the per-cause branches, so it's cause-independent
+  // today — but only the focus cause is covered above. Without these, a refactor
+  // that pushed the check down into the branches would still let the overlay arm
+  // attach toggle/close/MutationObserver (re-creating the second registry #72 is
+  // about) with a green suite.
+  const overlay = /** @type {any} */ ({ ...fakeTarget(), isConnected: true });
+  const doc = fakeDocument();
+  patchGlobal(t, "document", doc);
+  const host = fakeHost({ overlay });
+  /** @type {any[]} */ const observers = [];
+  class FakeMO {
+    /** @param {() => void} cb */
+    constructor(cb) { this.cb = cb; observers.push(this); }
+    observe() {} disconnect() {}
+  }
+  patchGlobal(t, "MutationObserver", FakeMO);
+
+  assert.equal(renderRegion(host, () => ({ v: 1 }), { defer: false }), true, "overlay hold reported");
+  assert.equal(host.swaps, 0);
+  assert.equal(overlay.listenerCount("toggle"), 0, "no toggle listener armed under defer:false");
+  assert.equal(overlay.listenerCount("close"), 0, "no close listener armed");
+  assert.equal(observers.length, 0, "no removal observer armed");
+
+  host._overlay = null;
+  doc.getSelection = () => fakeSelection({ crosses: [host] });
+  assert.equal(renderRegion(host, () => ({ v: 2 }), { defer: false }), true, "selection hold reported");
+  assert.equal(host.swaps, 0);
+  assert.equal(doc.listenerCount("selectionchange"), 0, "no document-level listener armed under defer:false");
 });
 
 test("markRegionStale: the next call rebuilds despite an unchanged sig — through the guards, not around them", (t) => {

@@ -60,6 +60,15 @@ Separate the *question* from the *answer*, and give the answer a single owner.
   returns `false`. A skip is a no-op with nothing to retry; had the value been "swapped", a
   consumer's `while (!swapped) retry` loop would spin forever on an unchanged signature.
 
+- **The sig gate moved ahead of the hold guards.** `sig` is recorded only on a swap, so an
+  unchanged one proves the DOM already matches current state — nothing is owed, held or not.
+  Asking the guards first meant a held tick with an unchanged sig stashed a build closure
+  (retaining whatever that tick captured, e.g. a whole row array, for the entire duration of
+  the hold) and armed a listener, only for the flush to discard it as a no-op. Checking the
+  sig first makes that call a true no-op, and makes `true` mean a swap really is owed.
+  `markRegionStale(host)` remains the escape hatch for a change the sig can't see: it forgets
+  the recorded sig, so the gate doesn't match and the rebuild still arrives through the guards.
+
 - **The flush guard asks about containment, not the hold predicate.** The `focusout` flush
   proceeds only when `relatedTarget` is absent or outside the host — deliberately *not*
   `_holdCause` evaluated against the incoming element. The entry guard holds only for
@@ -81,6 +90,23 @@ Separate the *question* from the *answer*, and give the answer a single owner.
 - **The entry guard still does not hold for non-interactive focus.** A polled tick will
   rebuild a region under a focused `<button>`. That is deliberate: an indefinite hold on a
   focused button would freeze the region for as long as it keeps focus.
+- **The one-owner rule is enforced in one direction only.** A `defer:false` call disowns this
+  module's registry, but a later *default* (`defer:true`) call on the same host silently
+  re-arms it while the app still holds its own retry flag — a shared render helper, a
+  component refresh, or `withTransition(() => renderRegion(H, build))` that omits the option
+  is enough. Nothing detects it. `defer` is per-call, so a host's strategy is a property of
+  every call site rather than of the host, and making it stick would mean remembering the
+  choice per host — more lifecycle than the issue asked for. Wrapping the call
+  (`const render = (h, b, sig) => renderRegion(h, b, { sig, defer: false })`) is the
+  discipline that actually holds.
+- **One ⌘A now holds every region on the page**, where the endpoint test held only the one or
+  two regions containing an endpoint — a correct consequence of `intersectsNode` (a swap
+  anywhere under the selection destroys it), but each held host also attaches its *own*
+  document-level `selectionchange` listener, each re-running `selectionInside` on every
+  selection change while the user drags. On a 20-region dashboard that is 20 listeners and
+  the whole page paused until the selection clears. Acceptable at this scale and bounded by
+  the pending-entry lifetime; a single shared document listener fanning out to held hosts is
+  the fix if it ever bites.
 - **`selectionInside` now asks `Range.intersectsNode`**, a strict superset of the old
   endpoint test — every selection that held before still holds, plus the range that spans
   the host with neither endpoint inside (⌘A over a panel).
