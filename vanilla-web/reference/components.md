@@ -24,6 +24,27 @@ pick(row, "date").textContent = run.date;   // pick() throws on a typo'd slot
 host.appendChild(row);
 ```
 
+**A marker on the template's ROOT is only reachable from the fragment.**
+`pick`/`slot` are `querySelector(All)`-based, and those never match the context
+node — only its descendants. So `tpl(id)` (a `DocumentFragment`, whose child the
+root is) sees a root marker, while `tpl(id).firstElementChild` (the root element
+itself) does not:
+
+```js
+const node = tpl("tpl-item");                      // fragment
+pick(node, "link")                                 // ✓ root marker is reachable
+
+const el = tpl("tpl-item").firstElementChild;      // the root ELEMENT
+pick(el, "link")                                   // ✗ throws: slot not found
+slot(el, { link: v })                              // ✗ worse — silent, renders nothing
+```
+
+Both forms are legitimate (`app-bar` and `side-nav` keep the fragment for exactly
+this reason). The rule is only that the two must agree: if you take
+`.firstElementChild`, put the markers on children and address the root directly.
+`tools/check-slots.mjs` enforces this — it errors when a name read through a root
+element is a root-only marker, and names the failure mode (throw vs silent).
+
 `templates.js` is the canonical helper module — copy into `lib/` verbatim;
 extend, don't fork. API: `loadTemplates`, `tpl`, `slot`, `pick`, `mount`,
 `loadCSS`, `every`, `withPending`. Interaction-safe re-rendering

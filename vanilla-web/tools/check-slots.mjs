@@ -11,6 +11,8 @@
 //
 //   error    tpl() id with no <template id> in any .html
 //   error    pick()/slot()/selector name with no data-slot marker anywhere
+//   error    a data-slot on a template's ROOT read through that root element
+//            (the unreachable-root-slot rule — see below)
 //   warning  template or data-slot never referenced from JS (dead markup —
 //            non-fatal: tests may reach slots via querySelector/getByTestId)
 //
@@ -18,6 +20,25 @@
 // fragment, so the checker can't know which template it targets — pooling all
 // ids/names still catches the typo class, which is the point. JS-created
 // markers (dataset.slot = "x", setAttribute("data-slot", …)) count as defined.
+//
+// THE ROOT-SLOT RULE. pick()/slot() are querySelector(All)-based, and those never
+// match the context node itself — only descendants. So a data-slot on a
+// template's own root element behaves in two opposite ways:
+//
+//   const node = tpl("tpl-x");                    // DocumentFragment
+//   pick(node, "link")                            // ✓ root IS a child of the fragment
+//
+//   const el = tpl("tpl-x").firstElementChild;    // the root ELEMENT
+//   pick(el, "link")                              // ✗ throws: slot not found
+//   slot(el, { link: v })                         // ✗ WORSE: silent, renders nothing
+//
+// The fragment form is a legitimate shipped idiom (app-bar and side-nav both use
+// it), so this cannot be an HTML-only "no root slots" rule — it would fail
+// working library code. The checker therefore keys on `.firstElementChild` (or
+// .firstChild / .children[0]) and only errors when a name read through that root
+// element is a root marker and not also on a descendant. Variable linking is
+// windowed to the next redeclaration of the same name, because helper functions
+// in one file routinely each declare their own `el`.
 // node_modules/ and testing/ (deliberately-weird fixtures) are skipped.
 // Zero-dep; same shape + exit contract as check-css-vars. Exit 1 on any error.
 import { globSync, readFileSync } from "node:fs";
@@ -48,6 +69,10 @@ function splitTop(args) {
 // ── Collect definitions from .html ──────────────────────────────────────────
 /** @type {Map<string, {file: string, line: number}>} */ const templates = new Map();
 /** @type {Map<string, {file: string, line: number}>} */ const slotDefs = new Map();
+/** Per template, which slot markers sit on its ROOT element vs on a descendant —
+ * the distinction the root-slot rule turns on.
+ * @type {Map<string, {root: Set<string>, deep: Set<string>, file: string, line: number}>} */
+const tplShape = new Map();
 
 for (const rel of html) {
   const text = stripComments(readFileSync(new URL(rel, ROOT), "utf8"), true);
@@ -57,14 +82,32 @@ for (const rel of html) {
   for (const m of text.matchAll(/\bdata-slot=["']([\w-]+)["']/g)) {
     if (!slotDefs.has(m[1])) slotDefs.set(m[1], { file: rel, line: lineOf(text, m.index) });
   }
+  // Split each template's markers into root-element vs descendant.
+  for (const m of text.matchAll(/<template\b[^>]*\bid=["'](tpl-[\w-]+)["'][^>]*>([\s\S]*?)<\/template>/g)) {
+    const id = m[1], body = m[2];
+    if (tplShape.has(id)) continue;
+    /** @type {Set<string>} */ const root = new Set();
+    /** @type {Set<string>} */ const deep = new Set();
+    const first = body.match(/<([a-zA-Z][\w-]*)\b([^>]*?)\/?>/);
+    if (first) {
+      for (const a of (first[2] || "").matchAll(/\bdata-slot=["']([\w-]+)["']/g)) root.add(a[1]);
+      for (const a of body.slice((first.index ?? 0) + first[0].length).matchAll(/\bdata-slot=["']([\w-]+)["']/g)) deep.add(a[1]);
+    }
+    tplShape.set(id, { root, deep, file: rel, line: lineOf(text, m.index) });
+  }
 }
 
 // ── Collect references from .js ──────────────────────────────────────────────
 /** @type {Array<{id: string, file: string, line: number}>} */ const tplRefs = [];
 /** @type {Array<{name: string, file: string, line: number}>} */ const nameRefs = [];
 
+/** Root-slot rule violations. @type {string[]} */ const rootErrors = [];
+
 for (const rel of js) {
   const text = stripComments(readFileSync(new URL(rel, ROOT), "utf8"), false);
+  /** This file's reads, with the receiver and offset the root-slot rule needs.
+   * @type {Array<{name: string, arg: string, idx: number, via: "pick" | "slot"}>} */
+  const localRefs = [];
   for (const m of text.matchAll(/\btpl\(\s*["'`]([\w-]+)["'`]/g)) {
     tplRefs.push({ id: m[1], file: rel, line: lineOf(text, m.index) });
   }
@@ -72,20 +115,48 @@ for (const rel of js) {
   for (const m of text.matchAll(/\bpick\s*\(/g)) {
     const span = argSpan(text, m.index + m[0].length - 1);
     if (span == null) continue;
-    const second = splitTop(span.args)[1]?.trim() ?? "";
+    const parts = splitTop(span.args);
+    const second = parts[1]?.trim() ?? "";
     const lit = second.match(/^["'`]([\w-]+)["'`]$/);
-    if (lit) nameRefs.push({ name: lit[1], file: rel, line: lineOf(text, m.index) });
+    if (lit) localRefs.push({ name: lit[1], arg: (parts[0] ?? "").trim(), idx: m.index, via: "pick" });
   }
   // slot(frag, { key: v, shorthand, "quoted": v }) — top-level keys of the 2nd arg.
   for (const m of text.matchAll(/\bslot\s*\(/g)) {
     const span = argSpan(text, m.index + m[0].length - 1);
     if (span == null) continue;
-    const second = splitTop(span.args)[1]?.trim() ?? "";
+    const parts = splitTop(span.args);
+    const second = parts[1]?.trim() ?? "";
     if (!second.startsWith("{")) continue;
     for (const entry of splitTop(second.slice(1, second.lastIndexOf("}")))) {
       const key = entry.trim().match(/^(?:["']([\w-]+)["']|([A-Za-z_$][\w$]*))\s*(?::|$)/);
       const name = key?.[1] ?? key?.[2];
-      if (name && !entry.trim().startsWith("...")) nameRefs.push({ name, file: rel, line: lineOf(text, m.index) });
+      if (name && !entry.trim().startsWith("...")) {
+        localRefs.push({ name, arg: (parts[0] ?? "").trim(), idx: m.index, via: "slot" });
+      }
+    }
+  }
+  for (const r of localRefs) nameRefs.push({ name: r.name, file: rel, line: lineOf(text, r.idx) });
+
+  // `tpl("ID").firstElementChild` hands back the ROOT ELEMENT — from there a
+  // marker ON that root is invisible. Link the declared variable to its reads,
+  // stopping at the next redeclaration of the same name (helpers each declare
+  // their own `el`, so a file-wide link would cross-contaminate).
+  for (const d of text.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*[^;\n]*?\btpl\(\s*["'`]([\w-]+)["'`]\s*\)\s*\.\s*(?:firstElementChild|firstChild|children\s*\[\s*0\s*\])/g)) {
+    const varName = d[1], id = d[2];
+    const shape = tplShape.get(id);
+    if (!shape || shape.root.size === 0) continue;
+    const from = (d.index ?? 0) + d[0].length;
+    const rd = text.slice(from).search(new RegExp(`\\b(?:const|let|var)\\s+${varName}\\b`));
+    const limit = rd === -1 ? text.length : from + rd;
+    for (const r of localRefs) {
+      if (r.idx < from || r.idx >= limit || r.arg !== varName) continue;
+      if (!shape.root.has(r.name) || shape.deep.has(r.name)) continue;
+      rootErrors.push(
+        `${rel}:${lineOf(text, r.idx)}  ${r.via}(${varName}, "${r.name}") reads a marker that sits on the ROOT of `
+        + `<template id="${id}"> (${shape.file}:${shape.line}). ${varName} IS that root element, and `
+        + `querySelector never matches the context node — ${r.via === "slot" ? "slot() silently renders nothing" : "pick() throws at runtime"}. `
+        + `Move data-slot="${r.name}" onto a child, or drop it and address ${varName} directly.`,
+      );
     }
   }
   // Selector references — querySelector('[data-slot="x"]') and friends.
@@ -107,6 +178,7 @@ const errors = [
     .map((r) => `${r.file}:${r.line}  tpl("${r.id}") — no <template id="${r.id}"> in any .html`),
   ...nameRefs.filter((r) => !slotDefs.has(r.name))
     .map((r) => `${r.file}:${r.line}  slot "${r.name}" — no data-slot="${r.name}" marker in any template`),
+  ...rootErrors,
 ];
 const usedTpl = new Set(tplRefs.map((r) => r.id));
 const usedName = new Set(nameRefs.map((r) => r.name));
