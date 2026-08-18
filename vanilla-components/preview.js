@@ -1,4 +1,4 @@
-// canonical source: vanilla-web/preview.js@4dabf5c — vendored copy, do not edit here
+// canonical source: vanilla-web/preview.js@b78a4af — vendored copy, do not edit here
 // @ts-check
 // Standalone component preview harness for the vanilla-web conventions
 // (see reference/preview.md). Loaded by preview.html as its OWN page — it is
