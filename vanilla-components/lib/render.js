@@ -1,4 +1,4 @@
-// canonical source: vanilla-web/render.js@7bc8235 — vendored copy, do not edit here
+// canonical source: vanilla-web/render.js@b78a4af — vendored copy, do not edit here
 // @ts-check
 // Canonical interaction-safe re-rendering for the vanilla-web conventions (see
 // SKILL.md). Copy into <app>/web/lib/render.js; extend, don't fork. Identity:
