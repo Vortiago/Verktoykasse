@@ -7,15 +7,12 @@ paths:
 # Simplified Technical English
 
 Write documentation people actually read: short, plain, one word per idea. This
-file is the single source of these rules. It loads automatically when you touch a
-markdown file, and the `ste-review` agent reviews against it. Nothing restates it,
-so there is one place to change a rule.
+file is the single source of these rules. It loads when you touch a markdown
+file, and the `ste-review` subagent reviews against it. The rules cover a commit
+message body and a PR body too.
 
-The rules apply to a commit message body and a PR body too, but no other skill
-references this file yet. Ask `ste-review` if you want either checked.
-
-Based on ASD-STE100 Simplified Technical English. Not compliant with it, and no
-compliance is claimed. An `[ASD n.n]` tag is a cross-reference, nothing more.
+Based on ASD-STE100 Simplified Technical English. It claims no compliance, and an
+`[ASD n.n]` tag is a cross-reference, nothing more.
 
 ## Always
 
@@ -42,7 +39,13 @@ A possessive is not a contraction. `the user's call` is correct.
 **No Latin abbreviation.** `[ASD GR-6]`
 
 ```
-e.g.  i.e.  etc.  vs.  via              →  for example  that is  and so on  against  through
+e.g.  i.e.  etc.  vs.                    →  for example  that is  and so on  versus
+```
+
+**Write `through` or `with`, not `via`.** Pick whichever reads as English.
+
+```
+install via npm  →  install with npm      routed via  →  routed through
 ```
 
 **No filler opener.** Delete it and start with the point.
@@ -54,19 +57,41 @@ At this point in time                    →  Now
 Please note that                         →  (delete)
 ```
 
+**Delete a claim word that carries no fact.** State the fact or say nothing.
+
+```
+simply  easily  seamlessly  just  →  (delete)
+robust  powerful  comprehensive   →  name what it does
+```
+
+**Use the plain verb.** An inflated verb hides how small the action is.
+
+```
+utilise  leverage  facilitate  →  use  use  help
+```
+
 **Use the verb, not the noun built from it.** `[ASD 3.7]`
 
 ```
-make a decision      →  decide
-perform a check on   →  check
-provide the ability to  →  let
-give consideration to   →  consider
+make a decision  →  decide      perform a check on  →  check
 ```
 
-**One verb, not two.** `[ASD 9.3]`
+**Use a single-word verb.** `[ASD 9.3]`
 
 ```
 kick off  spin up  tear down             →  start  start  remove
+```
+
+**Present tense for behaviour.** Reserve the future for a future event.
+
+```
+This will create a config file.          →  This creates a config file.
+```
+
+**Write British English.**
+
+```
+utilize  behavior  center  analyze       →  utilise  behaviour  centre  analyse
 ```
 
 ## Keep it short
@@ -79,6 +104,23 @@ These are limits, not targets. A parenthesised aside, a hyphenated compound, a
 number with its unit, quoted text and a code span each count as one word.
 `[ASD 8.5 to 8.7]`
 
+## Shape of a document
+
+**Open with the point.** The first sentence says what the thing is and does.
+
+```
+This document provides an overview of the gate.
+   →  The gate is the set of checks a session must pass before shipping.
+```
+
+**End when the content ends.** A closing summary restates the body, so delete it.
+
+**A list is for parallel items.** Write an argument, or a chain of reasoning, as
+prose.
+
+**Spell out an abbreviation at first use**, unless the field owns it. `API`,
+`CI` and `URL` need none here.
+
 ## Procedures
 
 **One instruction per step.** `[ASD 5.2]` A `then` inside a step is a second step.
@@ -90,7 +132,7 @@ number with its unit, quoted text and a code span each count as one word.
 ```
 
 **Start a step with the action.** `[ASD 5.3]` A step that opens with `The`, `It`,
-`There` or `You` plus a verb of being is a description, not an instruction.
+`There` or `You` plus a verb of being or a modal is a description.
 
 ```
 1. The operator is required to open the console.   →  1. Open the console.
@@ -107,14 +149,15 @@ If the cache misses, query the datastore.
 
 **One term for one concept.** Pick one word for a thing and keep it for the whole
 document. `[ASD 1.11]` This is the most valuable rule here, and the one that no
-mechanical check can catch.
+mechanical check can catch. It covers the reader as much as the subject.
 
 ```
-endpoint / route / URL / path  for one idea   →  pick one and keep it
+endpoint / route / URL / path  for one idea    →  pick one and keep it
+you / the user / the operator  for one reader  →  pick one and keep it
 ```
 
-**Active voice, with the actor named.** `[ASD 3.6]` In description, passive is
-allowed only when the actor is genuinely unknown.
+**Active voice, with the actor named.** `[ASD 3.6]` In description, use the
+passive only when the actor is genuinely unknown.
 
 ```
 The file is read by the loader.   →  The loader reads the file.
@@ -129,42 +172,20 @@ Widget Service Data Access Layer Configuration Manager
 
 **One topic per paragraph.** `[ASD 6.5]`
 
+**Keep the reason where a reader needs judgement.** Cut it from a mechanical
+step. A prohibition with no reason leaves the reader guessing what to do instead.
+
 ## Rules we deliberately reject
 
 These are real ASD-STE100 rules. Do not apply them here, and this is why.
 
-- **The modal restriction** (approve only `can`, `will`, `must`; rewrite `should`
-  to `must`). The worst rule for text an agent reads: it turns a soft default into
-  a hard requirement, and destroys the hedging an agent needs. `may have failed`
-  is not `failed`.
+- **The modal restriction** (approve only `can`, `will`, `must`, and rewrite
+  `should` to `must`). It turns a soft default into a hard requirement and
+  destroys the hedging an agent needs. `may have failed` is not `failed`.
 - **An approved-word allowlist.** Flagging every word outside a fixed list fires
   constantly on ordinary prose, and it fights the advice to write in the words a
   reader actually uses.
 - **The ban on compound tenses.** It loses a state distinction that matters:
   `the job has completed` is not `the job completed`.
-- **Cutting the rationale.** One Anthropic worked example labels a 4-word
-  prohibition less effective than a 27-word sentence that explains itself. Keep
-  the reason where a reader needs judgement. Cut it from a mechanical step.
-- **American spelling.** Write British English, as the rest of this repo does.
-
-## Not covered by these rules
-
-These rules apply to prose that is yours to edit. They leave alone:
-
-- **Fenced code and inline code spans.** A semicolon in JavaScript is syntax.
-- **A blockquote.** It is a verbatim quotation, and editing its punctuation would
-  falsify it.
-- **A quoted error message, a command line, a path, a URL, an identifier.**
-- **A table cell** may drop articles and use fragments. It is a label, not prose.
-
-When a rule genuinely fights the meaning, keep the meaning and say why in the
-text. These rules serve the reader.
-
-## The honest limits
-
-- The rules fix the form of a text, not its substance. A paragraph with nothing
-  to say comes out short, clean, and still empty.
-- No published evidence measures this style as **input** to a model against agent
-  task success. Applying it to files an agent reads is an experiment.
-- A standing critique worth knowing: the standard is in the training set, so
-  restating it may be partly redundant.
+- **Cutting the rationale**, which the rule above replaces.
+- **American spelling**, which the British English rule above replaces.
