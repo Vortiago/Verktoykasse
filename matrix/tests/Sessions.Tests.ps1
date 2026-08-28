@@ -215,6 +215,27 @@ Describe 'Get-SessionFact' {
         $fact.Branch | Should -Be 'matrix'          # the newest record wins
     }
 
+    It 'does not cache a read that failed' {
+        # The session is appending to this file as we read it. A moment's sharing
+        # violation must not blank the header for the rest of the run, exactly as a
+        # missing transcript does not.
+        $id = 'sid-locked'
+        $path = Join-Path $fakeHome "projects\D--repos-matrix\$id.jsonl"
+        (@{ type = 'user'; message = @{ content = 'the opening prompt of this session' } } |
+            ConvertTo-Json -Compress -Depth 5) | Set-Content -LiteralPath $path -Encoding utf8
+        $script:TranscriptIndex = $null
+
+        $lock = [System.IO.File]::Open($path, 'Open', 'ReadWrite', 'None')
+        try {
+            (Get-SessionFact ([pscustomobject]@{ SessionId = $id })).Task | Should -Be ''
+            $script:SessionFact.ContainsKey($id) | Should -BeFalse
+        } finally { $lock.Dispose() }
+
+        # The lock is gone, so the next look gets the answer.
+        (Get-SessionFact ([pscustomobject]@{ SessionId = $id })).Task |
+            Should -Be 'the opening prompt of this session'
+    }
+
     It 'has nothing for a session with no transcript yet, and does not cache that' {
         # Caching the miss would blank the header of a session started mid-run for the
         # rest of the run.

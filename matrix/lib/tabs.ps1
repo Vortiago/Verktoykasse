@@ -218,9 +218,16 @@ function Update-SessionTabMap {
         after the registry already carries the session. Latching that miss hides the
         session until its status happens to change, which for a session nobody has
         prompted yet is never.
+
+        That re-try backs off to MaxRetryMs. A session Claude never titles a tab for -
+        "Show status in terminal tab" off, or a background session with no tab at all -
+        is missing for the whole run, and a fixed 2 s re-try is then a ~100 ms stall
+        every 2 s forever. The first re-tries stay fast, which is what a tab catching up
+        needs; a permanent miss decays to idle.
     .PARAMETER State
         Mutated in place. Sig: the session set the map was built from. Map: sessionId ->
         tab. RetryAt: when to re-read after an incomplete map, 0 for no re-try.
+        RetryWait: the current backoff, reset whenever the session set changes.
     .PARAMETER ReadTab
         Returns every terminal tab. Injected, so this is testable without a desktop.
     .PARAMETER Now
@@ -231,7 +238,8 @@ function Update-SessionTabMap {
         [Parameter(Mandatory)] [hashtable] $State,
         [Parameter(Mandatory)] [scriptblock] $ReadTab,
         [Parameter(Mandatory)] [long] $Now,
-        [int] $RetryMs = 2000
+        [int] $RetryMs    = 2000,
+        [int] $MaxRetryMs = 30000
     )
 
     $sig = ($Session | ForEach-Object { "$($_.Pid):$($_.Status)" }) -join '|'
@@ -243,9 +251,15 @@ function Update-SessionTabMap {
     # and come back next poll, or -ThisWindow blanks the screen.
     if ($tabs.Count -eq 0) { return }
 
-    $fresh = Resolve-SessionTab -Session $Session -Tab $tabs
+    $fresh   = Resolve-SessionTab -Session $Session -Tab $tabs
+    $settled = $sig -eq $State.Sig          # same session set, so this was a re-try
     $State.Sig = $sig
     $State.Map = Merge-SessionTab -Session $Session -Fresh $fresh -Previous $State.Map
     $miss = @($Session | Where-Object { -not $State.Map.ContainsKey($_.SessionId) }).Count
-    $State.RetryAt = if ($miss) { $Now + $RetryMs } else { 0 }
+    if (-not $miss) { $State.RetryAt = 0; $State.RetryWait = 0; return }
+
+    $wait = if ($settled -and $State.RetryWait) { [Math]::Min($State.RetryWait * 2, $MaxRetryMs) }
+            else { $RetryMs }
+    $State.RetryWait = $wait
+    $State.RetryAt   = $Now + $wait
 }

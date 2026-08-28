@@ -11,7 +11,8 @@
     same profile instead of adding another. -Remove takes it out.
 
     settings.json is backed up next to itself first. It is rewritten from parsed JSON,
-    so hand-written comments and formatting in it do not survive; the backup does.
+    so hand-written comments and formatting in it do not survive; the backup does. That
+    backup is written once and never overwritten, so it stays the original.
 
 .PARAMETER Name
     Profile name, as it appears in the dropdown. Default "Matrix".
@@ -132,7 +133,9 @@ if ($settings.profiles -is [array]) { $settings.profiles = $newList } else { $se
 $backup  = "$SettingsPath.matrix-bak"
 $applied = $PSCmdlet.ShouldProcess($SettingsPath, $action)
 if ($applied) {
-    [System.IO.File]::WriteAllText($backup, $raw)
+    # First run only. Run two and overwriting would replace the hand-written original
+    # with the copy this script already rewrote, which is the thing the backup is for.
+    if (-not [System.IO.File]::Exists($backup)) { [System.IO.File]::WriteAllText($backup, $raw) }
     # Depth well past the deepest thing Windows Terminal nests, or it silently truncates.
     [System.IO.File]::WriteAllText($SettingsPath, ($settings | ConvertTo-Json -Depth 32))
 }

@@ -13,7 +13,7 @@ BeforeAll {
         [pscustomobject]@{ SessionId = $id; Pid = $pid_; Status = $status; Task = $task
                            Name = $task; Cwd = '' }
     }
-    function New-TabState { @{ Sig = ''; Map = @{}; RetryAt = 0 } }
+    function New-TabState { @{ Sig = ''; Map = @{}; RetryAt = 0; RetryWait = 0 } }
 }
 
 Describe 'Update-SessionTabMap' {
@@ -134,6 +134,50 @@ Describe 'Update-SessionTabMap' {
             $state.Sig | Should -Be ''               # nothing was learned, so nothing is latched
             Update-SessionTabMap -Session @($alpha) -State $state -ReadTab { $script:settledTabs } -Now 100
             $state.Map.Count | Should -Be 1
+        }
+    }
+
+    Context 'a session that can never be matched' {
+        BeforeEach {
+            # "Show status in terminal tab" off: no tab carries a glyph, so nothing can
+            # ever match and the re-try would otherwise stall the rain for the whole run.
+            $script:blind = @(
+                (New-TestTab 900 0 'Matrix' 'none'),
+                (New-TestTab 900 1 'PowerShell' 'none')
+            )
+        }
+
+        It 'backs the re-try off instead of reading the tabs every two seconds' {
+            $reader = { $script:reads++; $script:blind }
+            $now = 0
+            $waits = foreach ($i in 1..6) {
+                Update-SessionTabMap -Session @($alpha) -State $state -ReadTab $reader -Now $now
+                $now = $state.RetryAt
+                $state.RetryWait
+            }
+            $waits | Should -Be @(2000, 4000, 8000, 16000, 30000, 30000)
+        }
+
+        It 'goes back to a fast re-try the moment the session set changes' {
+            # A tab catching up needs the early re-tries to stay quick.
+            $reader = { $script:reads++; $script:blind }
+            $now = 0
+            1..4 | ForEach-Object {
+                Update-SessionTabMap -Session @($alpha) -State $state -ReadTab $reader -Now $now
+                $now = $state.RetryAt
+            }
+            $state.RetryWait | Should -BeGreaterThan 2000
+
+            Update-SessionTabMap -Session @($alpha, $beta) -State $state -ReadTab $reader -Now $now
+            $state.RetryWait | Should -Be 2000
+        }
+
+        It 'stops re-trying once everything is matched' {
+            Update-SessionTabMap -Session @($alpha) -State $state -ReadTab { $script:blind } -Now 0
+            $state.RetryAt | Should -BeGreaterThan 0
+            Update-SessionTabMap -Session @($alpha) -State $state -ReadTab { $script:settledTabs } -Now $state.RetryAt
+            $state.RetryAt   | Should -Be 0
+            $state.RetryWait | Should -Be 0
         }
     }
 

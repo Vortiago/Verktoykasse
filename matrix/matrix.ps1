@@ -162,7 +162,7 @@ if ($needTabs) {
 
 # Owned here, kept current by Update-SessionTabMap. Map is sessionId -> tab, and the
 # tab carries the handle of the window holding it.
-$tabState = @{ Sig = ''; Map = @{}; RetryAt = 0 }
+$tabState = @{ Sig = ''; Map = @{}; RetryAt = 0; RetryWait = 0 }
 $tabClock = [System.Diagnostics.Stopwatch]::StartNew()
 
 # -Density and -Speed are absolute in the other modes and multipliers here, so the
@@ -194,7 +194,9 @@ function Get-LiveSession {
 }
 
 function Get-SessionLanes {
-    param([Parameter(Mandatory)] [object[]] $Live)
+    # AllowEmptyCollection: no sessions is the normal first case, and a Mandatory
+    # collection parameter rejects an empty array before the body ever runs.
+    param([Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Live)
     if ($Live.Count -eq 0) {
         $where = if ($ThisWindow) { 'none in this terminal window' } else { 'waiting for one to start' }
         return , @(New-Lane (Get-SessionStyle 'gone').Rgb (0.3 * $Speed) (0.12 * $densScale) `
@@ -316,9 +318,16 @@ try {
             $sizeTick = $sizeEvery
             try   { $nw = [Console]::WindowWidth; $nh = [Console]::WindowHeight }
             catch { $nw = 80; $nh = 25 }
+            # Too small to rain in: draw nothing, keep looking every 100 ms, and force a
+            # resize on the way back. Committing the size here instead would leave the
+            # renderer on the old geometry while every later check saw no change.
+            if ($nw -lt 2 -or $nh -lt 2) {
+                $W = -1; $sizeTick = 0
+                [System.Threading.Thread]::Sleep(100)
+                continue
+            }
             if ($W -ne $nw -or $H -ne $nh) {
                 $W = $nw; $H = $nh
-                if ($W -lt 2 -or $H -lt 2) { [System.Threading.Thread]::Sleep(100); continue }
                 $renderer.Resize($W, $H)
                 Write-Raw $CLS
                 if (-not $lanes) {

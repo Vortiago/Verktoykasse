@@ -23,7 +23,8 @@ takes it out. `-Arguments` and `-NoRetro` change what it runs.
 
 `settings.json` is copied to `settings.json.matrix-bak` first, then rewritten
 from parsed JSON. Comments and hand formatting in it do not survive that; the
-backup does.
+backup does. It is written once and never overwritten, so a second run cannot
+replace the hand-written original with the copy this script already rewrote.
 
 **Open it as a tab, not as a window.** `-ThisWindow` scopes the lanes to the
 window the rain starts in. Its own window holds no Claude sessions, so it would

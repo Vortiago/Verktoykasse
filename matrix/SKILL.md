@@ -51,7 +51,8 @@ as a tab, not as a window** - `-ThisWindow` scopes the lanes to the window the
 rain starts in, and its own window holds no sessions.
 
 `settings.json` is backed up to `settings.json.matrix-bak` first, then rewritten
-from parsed JSON, so comments and hand formatting in it do not survive.
+from parsed JSON, so comments and hand formatting in it do not survive. The backup
+is written once, so it stays the original however often you run this.
 
 ## Files
 

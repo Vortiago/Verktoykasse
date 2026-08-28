@@ -173,8 +173,10 @@ function Get-SessionFact {
                     if ($m.Success) { $fact.Branch = $m.Groups[1].Value }
                 }
             } finally { $fs.Dispose() }
+            # Only a read that got through is cached. A file locked for a moment must not
+            # blank the header for the rest of the run, same as a missing transcript.
+            $script:SessionFact[$id] = $fact
         } catch { }
-        $script:SessionFact[$id] = $fact
     }
     $fact
 }
