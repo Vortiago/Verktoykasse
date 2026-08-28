@@ -149,7 +149,7 @@ These are real ASD-STE100 rules. Do not apply them here, and this is why.
 
 ## Not covered by these rules
 
-Never apply the rules to text that is not yours to edit:
+These rules apply to prose that is yours to edit. They leave alone:
 
 - **Fenced code and inline code spans.** A semicolon in JavaScript is syntax.
 - **A blockquote.** It is a verbatim quotation, and editing its punctuation would
