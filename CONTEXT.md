@@ -69,33 +69,3 @@ one party owns landing it: the renderer itself, or the caller that asked only to
 be told the host was held. It is dropped rather than landed if a later render
 proves the DOM has caught up on its own.
 _Avoid_: dropped render, skipped render, stale render
-
-### Documentation language
-
-**Rules file**:
-`simplified-technical-english/ste-rules.md`, the single statement of the writing
-rules. Symlinked to `~/.claude/rules/`, where its `paths:` frontmatter loads it
-whenever Claude touches a markdown file. A consumer points at this path instead
-of restating a rule. Today the only consumer is the `ste-review` subagent: no
-other skill references it while it is new and unproven.
-_Avoid_: style guide, linter config
-
-**Path-scoped rule**:
-A file in `.claude/rules/` whose `paths:` frontmatter limits it to matching files,
-so it enters context on demand rather than every session. How guidance reaches an
-agent here, as opposed to a skill, which the agent must choose to invoke.
-
-**Honest limits of the writing rules**:
-The rules fix the form of a text, not its substance. A paragraph with nothing to
-say comes out short, clean, and still empty. No published evidence measures this
-style as *input* to a model against agent task success, so applying it to files
-an agent reads is an experiment. The standard is also in the training set, so
-restating it may be partly redundant. This sits here rather than in the rules
-file, because a rule file that is injected into context should not tell the model
-its own rules might be redundant.
-
-**Guidance, not enforcement**:
-The deliberate position of these rules. They shape what an agent writes by being
-in its context, and `ste-review` audits on request. Nothing blocks a write or a
-commit. A mechanical checker was built and removed: it enforced the rules a
-pattern can decide, and those are the least valuable ones.
