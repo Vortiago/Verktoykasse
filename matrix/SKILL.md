@@ -64,7 +64,7 @@ from parsed JSON, so comments and hand formatting in it do not survive.
 | `lib/palette.ps1` | colour ramps, precomputed as SGR escape strings |
 | `lib/sessions.ps1` | the Claude Code session registry and its status |
 | `lib/tabs.ps1` | Windows Terminal tabs, over UI Automation |
-| `test-tabmap.ps1` | the tab match and its carry-forward: `pwsh -NoProfile -File .\test-tabmap.ps1` |
+| `tests/` | Pester suite: `Invoke-Pester ./tests`. Needs Pester 5 or later |
 
 Status comes from `~/.claude/sessions/<pid>.json`, the registry each session
 writes for peer discovery. Why that and not the peer pipe, why the tab match is a
