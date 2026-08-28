@@ -7,7 +7,7 @@
 # ~/.claude/hooks/guard-default-branch.sh by worktrees/install.sh. Edit it here.
 #
 # Matches:
-#   Edit | Write | MultiEdit | NotebookEdit  → checks tool_input.file_path
+#   Edit | Write | NotebookEdit               → checks tool_input.file_path
 #   Bash, only `git commit` / `git add …`    → checks the session cwd
 #
 # Contract (https://code.claude.com/docs/en/hooks#pretooluse):
@@ -30,7 +30,7 @@ IFS=$'\t' read -r tool cwd <<<"$(jq -r '[.tool_name, .cwd] | @tsv' <<<"$input")"
 
 # Resolve the target directory + the verb used in the block message.
 case "$tool" in
-  Edit|Write|MultiEdit|NotebookEdit)
+  Edit|Write|NotebookEdit)
     verb=edit
     path=$(jq -r '.tool_input.file_path // .tool_input.notebook_path // empty' <<<"$input")
     [[ -n "$path" ]] || exit 0

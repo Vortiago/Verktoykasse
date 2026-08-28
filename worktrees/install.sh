@@ -87,7 +87,7 @@ else:
     backup = settings + ".pre-verktoykasse"
     if os.path.exists(settings) and not os.path.exists(backup):
         shutil.copy2(settings, backup)
-    entries.append({"matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash",
+    entries.append({"matcher": "Edit|Write|NotebookEdit|Bash",
                     "hooks": [{"type": "command", "command": hook}]})
     os.makedirs(os.path.dirname(settings), exist_ok=True)
     with open(settings, "w") as f:
