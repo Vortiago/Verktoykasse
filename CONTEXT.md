@@ -1,6 +1,6 @@
 # Verktøykasse
 
-A toolbox of LLM-consumed skills; the vanilla-* skills carry a zero-dependency,
+A toolbox of LLM-consumed skills. The vanilla-* skills carry a zero-dependency,
 no-build web toolkit whose files are distributed by copying, never by packaging.
 
 ## Language
@@ -9,7 +9,7 @@ no-build web toolkit whose files are distributed by copying, never by packaging.
 
 **Canon**:
 The single authoritative copy of a shared file. For the web toolkit it lives in
-`vanilla-web`; every other copy is derived from it.
+`vanilla-web`, and every other copy is derived from it.
 _Avoid_: master copy, upstream, source of truth
 
 **Vendored copy**:
@@ -24,23 +24,23 @@ _Avoid_: banner, watermark
 
 **Stale**:
 A vendored copy that is untouched locally but whose canon has since moved.
-Resolved by re-copying; never an error.
+Resolved by re-copying, and never an error.
 
 **Forked**:
-A vendored copy that differs from what its stamp says was copied — a local edit
-that violates the extend-don't-fork invariant. Always an error.
+A vendored copy that differs from what its stamp says was copied: a local edit
+that violates the extend-do-not-fork invariant. Always an error.
 _Avoid_: diverged, dirty
 
 ### Quality
 
 **Gate**:
-The set of mechanical checks a session must pass before shipping; one command,
+The set of mechanical checks a session must pass before shipping. One command,
 same locally and in CI.
 _Avoid_: pipeline, checks, lint suite
 
 **Gate half**:
 One member check of the gate (typecheck, a `check-*` script, the test run). The
-gate discovers its halves; adding one is a file drop, not a docs change.
+gate discovers its halves, so adding one is a file drop, not a docs change.
 
 **Pinned environment**:
 The single environment whose rendering owns the visual-regression baselines
@@ -48,17 +48,17 @@ The single environment whose rendering owns the visual-regression baselines
 
 **Explore issue**:
 An issue whose resolution requires a prototype or measurement before an
-implement/close decision — not committable work as filed.
+implement/close decision. Not committable work as filed.
 _Avoid_: spike (the outcome is a decision recorded on the issue, not code)
 
 ### Web toolkit
 
 **Declarative face**:
-The markup-facing way to reach component behaviour — `<vc-*>` elements, invoker
-commands, popovers — as opposed to the factory (JS) contract underneath.
+The markup-facing way to reach component behaviour (`<vc-*>` elements, invoker
+commands, popovers), as opposed to the factory (JS) contract underneath.
 
 **Interaction hold**:
-The condition of a host that a person is mid-interaction inside it — a control
+The condition of a host that a person is mid-interaction inside it: a control
 focused, a popover/dialog open, or a text selection touching it. A live
 re-render must not swap DOM out from under one.
 _Avoid_: render skip, debounce
@@ -69,3 +69,23 @@ one party owns landing it: the renderer itself, or the caller that asked only to
 be told the host was held. It is dropped rather than landed if a later render
 proves the DOM has caught up on its own.
 _Avoid_: dropped render, skipped render, stale render
+
+### Documentation language
+
+**Rules file**:
+`simplified-technical-english/ste-rules.md`, the single statement of the writing
+rules. Symlinked to `~/.claude/rules/`, where its `paths:` frontmatter loads it
+whenever Claude touches a markdown file. Every consumer (the `ste-review`
+subagent, `conventional-commits`) points at this path instead of restating a rule.
+_Avoid_: style guide, linter config
+
+**Path-scoped rule**:
+A file in `.claude/rules/` whose `paths:` frontmatter limits it to matching files,
+so it enters context on demand rather than every session. How guidance reaches an
+agent here, as opposed to a skill, which the agent must choose to invoke.
+
+**Guidance, not enforcement**:
+The deliberate position of these rules. They shape what an agent writes by being
+in its context, and `ste-review` audits on request. Nothing blocks a write or a
+commit. A mechanical checker was built and removed: it enforced the rules a
+pattern can decide, and those are the least valuable ones.
