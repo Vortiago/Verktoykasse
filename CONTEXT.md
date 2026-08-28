@@ -75,8 +75,9 @@ _Avoid_: dropped render, skipped render, stale render
 **Rules file**:
 `simplified-technical-english/ste-rules.md`, the single statement of the writing
 rules. Symlinked to `~/.claude/rules/`, where its `paths:` frontmatter loads it
-whenever Claude touches a markdown file. Every consumer (the `ste-review`
-subagent, `conventional-commits`) points at this path instead of restating a rule.
+whenever Claude touches a markdown file. A consumer points at this path instead
+of restating a rule. Today the only consumer is the `ste-review` subagent: no
+other skill references it while it is new and unproven.
 _Avoid_: style guide, linter config
 
 **Path-scoped rule**:

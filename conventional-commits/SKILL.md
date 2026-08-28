@@ -56,12 +56,6 @@ Squash-merged into the commit body. **Never empty.** Scale to the diff:
 - Trivial → one line of *why*: `Bump eslint 9.1→9.2, no config change.`
 - Substantial → 1–3 sentences of *why* (not a restated diff), then trailers.
 
-Write the subject and the body in Simplified Technical English:
-`~/.claude/rules/ste-rules.md`. That file is the single source of those rules, so
-this skill does not restate them. In short: no semicolon, no em dash, no
-contraction, no Latin abbreviation, and one term per concept. The header line and
-the trailers below are exempt.
-
 Trailers, one per line:
 
 ```

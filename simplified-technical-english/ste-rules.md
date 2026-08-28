@@ -8,9 +8,11 @@ paths:
 
 Write documentation people actually read: short, plain, one word per idea. This
 file is the single source of these rules. It loads automatically when you touch a
-markdown file, the `ste-review` agent reviews against it, and
-`conventional-commits` points at it for commit messages and PR bodies. Nothing
-restates it, so there is one place to change a rule.
+markdown file, and the `ste-review` agent reviews against it. Nothing restates it,
+so there is one place to change a rule.
+
+The rules apply to a commit message body and a PR body too, but no other skill
+references this file yet. Ask `ste-review` if you want either checked.
 
 Based on ASD-STE100 Simplified Technical English. Not compliant with it, and no
 compliance is claimed. An `[ASD n.n]` tag is a cross-reference, nothing more.

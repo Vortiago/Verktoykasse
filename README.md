@@ -81,8 +81,8 @@ do not belong here.
   [`ste-review.md`](simplified-technical-english/ste-review.md) is a subagent that
   reviews on demand (`@ste-review`), covering markdown, **code comments and
   docstrings**, commit messages and PR bodies, and judging the things no pattern
-  can catch, above all one term per concept. `conventional-commits` points at the
-  same rules file rather than restating it, so a rule changes in one place.
+  can catch, above all one term per concept. Nothing else references the file
+  yet, so no other skill depends on it while it is new.
 
 ## Install
 
