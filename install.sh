@@ -38,8 +38,19 @@ link() { # $1 = repo dir, $2 = live path
     echo "backup  $live -> $live.pre-verktoykasse"
   fi
   mkdir -p "$(dirname "$live")"
-  ln -s "$target" "$live"
-  echo "linked  $live -> $target"
+  # On Git Bash, `ln -s` COPIES by default: the live path becomes a detached
+  # snapshot, so later edits in the repo never reach the installed skill and a
+  # skill that claims "canonical copy lives here" quietly stops being true.
+  # winsymlinks:nativestrict makes it a real symlink (and fail loudly if it
+  # cannot). Harmless on macOS and Linux, where MSYS is ignored.
+  MSYS=winsymlinks:nativestrict ln -s "$target" "$live" 2>/dev/null \
+    || ln -s "$target" "$live"
+  if [[ -L $live ]]; then
+    echo "linked  $live -> $target"
+  else
+    echo "COPIED  $live (not a symlink: edits in the repo will NOT reach it)" >&2
+    echo "        enable Windows Developer Mode, or run the shell as admin, then re-run" >&2
+  fi
 }
 
 install_skill() { # $1 = skill name — installed for the current $TARGET
