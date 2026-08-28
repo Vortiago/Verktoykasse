@@ -72,6 +72,19 @@ and don't belong here.
   per-story matrix + a close / do-not-close verdict. Scales to a fan-out workflow
   for large PRDs. User-invocable as `/verify-prd-implemented`.
 
+- **[matrix](matrix/SKILL.md)** shows every open Claude Code session as Matrix
+  rain in a PowerShell console: one vertical lane per session, coloured and paced
+  by its status (green working, amber idle, red blocked on an answer), under a
+  header naming the session, how long it has held that status, and its opening
+  prompt. `-ThisWindow` keeps only the sessions in the Windows Terminal window
+  the rain runs in; `-Click` makes a left click on a lane raise that session's
+  tab. Status comes from `~/.claude/sessions/<pid>.json`, the peer-discovery
+  registry every session writes, rather than the peer pipe a script cannot
+  subscribe to; the tab comes from UI Automation, because Windows Terminal hosts
+  every window in one process. Ships `install-terminal-profile.ps1`, which adds a
+  Windows Terminal profile that opens the view with the CRT effect on.
+  User-invocable as `/matrix`. Windows only.
+
 ## Install
 
 ```sh

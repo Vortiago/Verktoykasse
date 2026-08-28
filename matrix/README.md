@@ -1,0 +1,137 @@
+# How the rain works
+
+`matrix.ps1` runs in the alternate screen buffer, so scrollback survives, and
+exits on any key. The glyphs are half-width katakana, which render one cell wide
+so the grid stays square.
+
+[SKILL.md](SKILL.md) is how to run it and what each flag does. This file is what
+sits behind them.
+
+## The Windows Terminal profile
+
+`install-terminal-profile.ps1` adds one profile that opens the session view with
+the CRT effect on:
+
+```
+-Fps 60 -Stats -Sessions -ThisWindow -Click
+```
+
+It appears in the dropdown at once, because Windows Terminal reloads
+`settings.json` as it is saved. The profile GUID is derived from `-Name`, so
+running it again updates that profile instead of adding another, and `-Remove`
+takes it out. `-Arguments` and `-NoRetro` change what it runs.
+
+`settings.json` is copied to `settings.json.matrix-bak` first, then rewritten
+from parsed JSON. Comments and hand formatting in it do not survive that; the
+backup does.
+
+**Open it as a tab, not as a window.** `-ThisWindow` scopes the lanes to the
+window the rain starts in. Its own window holds no Claude sessions, so it would
+correctly report that there are none.
+
+## Session status
+
+`-Sessions` splits the screen into one vertical lane per open session. Every
+lane rains the same katakana; what tells them apart is colour, fall rate, and a
+fixed header:
+
+```
+matrix-session-status       <- name, or folder · branch
+working 6m                  <- status, and how long it has held it
+Let's copy in the           <- the opening prompt, wrapped
+matrix.ps1 script from D:
+root. I want us to make i…
+```
+
+The name is whatever `/rename` set. Claude Code omits `nameSource` for those and
+writes `derived` for the ones it made up itself (`matrix-session-status-9a`),
+which say less than the folder and branch do, so those are replaced.
+
+A narrow lane drops rows rather than wrapping them into stubs: under 18 columns
+the task goes, under 10 the name goes too.
+
+Colour and fall rate track the status:
+
+| Registry `status` | Lane | Rate |
+| --- | --- | --- |
+| `busy` | green | fast |
+| `idle` | amber, turn ended and the prompt is showing | slow |
+| `waiting` | red, blocked on an answer; `waitingFor` names it | crawling |
+
+Status comes from `~/.claude/sessions/<pid>.json`, the registry each session
+writes for peer discovery. That is the same source `ListAgents` reads, and it
+updates the moment a session changes state.
+
+The registry also names a per-session pipe, `\\.\pipe\LOCAL\cc-msg-<hash>`,
+which carries the peer message protocol and its `notify_idle` subscription.
+**A script cannot subscribe to it.** The receiver vets the reply address
+against `verifiedPeerPid` and its own socket namespace, and drops a frame whose
+requester has no bound inbox of its own, so only a registered session can ask
+to be told. Nothing here touches the pipe.
+
+Liveness is a PID check plus the recorded `procStart` FILETIME, which is what
+stops a recycled PID from resurrecting a dead session.
+
+## This window only, and clicking a lane
+
+```powershell
+.\matrix.ps1 -Sessions -ThisWindow -Click
+```
+
+`-ThisWindow` keeps only the sessions running in the same Windows Terminal
+window as the rain. `-Click` makes a left click on a lane switch to that
+session's tab. Both rest on the same tab map:
+
+| Step | How |
+| --- | --- |
+| Find the windows | `EnumWindows` for visible `CASCADIA_HOSTING_WINDOW_CLASS` handles |
+| Find our window | the terminal in front when the rain starts |
+| Find each window's tabs | UI Automation, `TabItem` descendants of that window handle |
+| Read the click | `ENABLE_MOUSE_INPUT` on, QuickEdit off, then decode `MOUSE_EVENT` records |
+| Switch the tab | every WT tab exposes `SelectionItemPattern`, so `Select()` raises it |
+| Pick a session's tab | a guess, see below |
+
+**Do not try to do this from the process tree.** Windows Terminal hosts every
+window in a single process, so all of them share one `WindowsTerminal.exe` and
+`claude.exe <- pwsh.exe <- WindowsTerminal.exe` resolves to the same PID for
+every session on the machine.
+
+Nothing exact identifies our own window either: ConPTY leaves `GetConsoleWindow`
+null, and the terminal exposes only its chrome to UI Automation, no text to
+search. Naming our own tab and looking for that name *is* exact, and was tried,
+but Windows Terminal pins a tab renamed by hand and ignores it - and it
+overwrites the tab title of everyone whose tab is not pinned. The window in
+front is one call, has no side effects, and is right whenever the rain is
+started by typing in it, so that is what is used. Read at startup, before
+anything slow.
+
+Nothing maps a console process to the tab hosting it, so a session's tab is
+matched on its title. Claude Code writes that title itself: a status glyph, then
+a summary of the turn.
+
+| Glyph | Means |
+| --- | --- |
+| `U+25D0` `U+25D1` | working - two frames of a spinner, 960 ms apart |
+| `U+2733` | not working |
+
+The glyph is checked against the status we already have, and the rest of the
+title against the session's opening prompt. The lane header names the tab it
+would open (`working 6m [tab 3]`), so a wrong match is visible rather than
+silent, and the number is the one Ctrl+Alt+N uses.
+
+Because a session is placed in a window by its tab, `-ThisWindow` drops a
+session whose tab it cannot match, rather than guessing that it is ours.
+
+QuickEdit goes back on at exit. While the rain runs, that window cannot select
+text with the mouse.
+
+The tab read costs ~40 ms, more than a frame, so it only runs when a session
+appears, goes, or changes status.
+
+Both need `showStatusInTerminalTab` on in Claude Code, or the tabs carry no
+glyph and nothing matches.
+
+So start the rain from the window you want scoped, and leave that window in
+front while it starts. `-ThisWindow` stops with an explanation rather than
+quietly showing every session, because a filter that silently does nothing reads
+as a bug.
