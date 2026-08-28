@@ -157,14 +157,49 @@ function Resolve-SessionTab {
     }
 
     # Sort-Object is not stable, so ties need their own key or an equal-scoring pair
-    # switches tabs between rebuilds.
+    # switches tabs between rebuilds. The key is the window too: two windows both have
+    # a tab 3.
     $usedTab = @{}; $usedSes = @{}
-    foreach ($p in ($pairs | Sort-Object @{E = 'Score'; D = $true}, SessionId, @{E = { $_.Tab.Index }})) {
+    foreach ($p in ($pairs | Sort-Object @{E = 'Score'; D = $true}, SessionId, @{E = { "$($_.Tab.Hwnd):$($_.Tab.Index)" }})) {
         if ($p.Score -le 0) { break }                      # a negative match is no match
         $key = "$($p.Tab.Hwnd):$($p.Tab.Index)"
         if ($usedTab[$key] -or $usedSes[$p.SessionId]) { continue }
         $usedTab[$key] = $true; $usedSes[$p.SessionId] = $true
         $map[$p.SessionId] = $p.Tab
+    }
+    $map
+}
+
+function Merge-SessionTab {
+    <#
+    .SYNOPSIS
+        Fold a fresh match into the previous one, keeping a session's last tab when this
+        pass could not match it.
+    .DESCRIPTION
+        A tab is retitled every turn and its glyph lags the registry, so a rebuild can
+        fail to re-match a session it matched a moment ago. Dropping the lane on that is
+        wrong: the old tab is the best evidence there is until a better one arrives. A
+        fresh match always wins, and a tab this pass gave to someone else is never
+        carried.
+    #>
+    param(
+        [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Session,
+        [Parameter(Mandatory)] [hashtable] $Fresh,
+        [Parameter(Mandatory)] [hashtable] $Previous
+    )
+
+    $map   = @{}
+    $taken = @{}
+    foreach ($k in $Fresh.Keys) {
+        $map[$k] = $Fresh[$k]
+        $taken["$($Fresh[$k].Hwnd):$($Fresh[$k].Index)"] = $true
+    }
+    foreach ($s in $Session) {
+        if ($map.ContainsKey($s.SessionId)) { continue }
+        $old = $Previous[$s.SessionId]
+        if (-not $old -or $taken["$($old.Hwnd):$($old.Index)"]) { continue }
+        $map[$s.SessionId] = $old
+        $taken["$($old.Hwnd):$($old.Index)"] = $true
     }
     $map
 }

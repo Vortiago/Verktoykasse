@@ -125,9 +125,6 @@ session whose tab it cannot match, rather than guessing that it is ours.
 QuickEdit goes back on at exit. While the rain runs, that window cannot select
 text with the mouse.
 
-The tab read costs ~40 ms, more than a frame, so it only runs when a session
-appears, goes, or changes status.
-
 Both need `showStatusInTerminalTab` on in Claude Code, or the tabs carry no
 glyph and nothing matches.
 
@@ -135,3 +132,24 @@ So start the rain from the window you want scoped, and leave that window in
 front while it starts. `-ThisWindow` stops with an explanation rather than
 quietly showing every session, because a filter that silently does nothing reads
 as a bug.
+
+### A match that has not caught up
+
+The tab read costs ~100 ms, more than three frames, so it runs only when a
+session appears, goes, or changes status. That cadence alone is wrong, because
+the tab is always behind the registry: Claude titles a new tab, and moves its
+glyph from one turn to the next, after the registry already says the session is
+there or busy. A rebuild that lands in that gap matches nothing.
+
+So a rebuild that misses a session is never the last word:
+
+- **The miss is re-tried** every 2 s until every session has a tab. Latching it
+  instead is what made a new session invisible until its status happened to
+  change, which for a session nobody has prompted yet is never.
+- **A session keeps its last tab** when a rebuild cannot re-match it. The old tab
+  is the best evidence there is until a better one arrives, and dropping it made
+  a lane vanish the moment its session was prompted. A fresh match always wins,
+  and a tab this pass gave to someone else is never carried.
+
+`test-tabmap.ps1` covers both, and the tie-break that keeps an equal-scoring
+pair from following window z-order.

@@ -168,6 +168,9 @@ $myTabs = if ($needTabs) {
 } else { @() }
 $tabOf  = @{}                         # sessionId -> tab, which carries its window handle
 $tabSig = ''                          # pids and statuses the map was built from
+$tabRetryAt = 0                       # ms deadline to re-try an incomplete map, 0 = none
+$tabClock   = [System.Diagnostics.Stopwatch]::StartNew()
+$TAB_RETRY_MS = 2000
 
 # -Density and -Speed are absolute in the other modes and multipliers here, so the
 # per-status rates are scaled relative to the defaults rather than replaced.
@@ -175,21 +178,30 @@ $densScale = $Density / 0.25
 
 function Get-LiveSession {
     # The only place that reads the registry: the priming pass and the poll must agree,
-    # or the first frame differs from every frame after it. The tab map is rebuilt only
-    # when a session appears, goes, or changes status, because reading the tabs over UI
-    # Automation costs more than a frame.
+    # or the first frame differs from every frame after it.
     $live = @(Get-ClaudeSession -IncludeBackground:$IncludeBackground)
 
     if ($needTabs) {
         $sig = ($live | ForEach-Object { "$($_.Pid):$($_.Status)" }) -join '|'
-        if ($sig -ne $script:tabSig) {
+        # A session set that has not changed keeps its map, because reading the tabs
+        # costs ~100 ms, more than three frames. An INCOMPLETE map is re-tried on a
+        # timer as well: Claude titles a new tab, and moves its glyph, some time after
+        # the registry already carries the session, and latching that miss would hide
+        # the session until its status happened to change.
+        $due = $script:tabRetryAt -gt 0 -and $script:tabClock.ElapsedMilliseconds -ge $script:tabRetryAt
+        if ($sig -ne $script:tabSig -or $due) {
             foreach ($s in $live) { $s | Add-Member -NotePropertyName Task -NotePropertyValue (Get-SessionFact $s).Task -Force }
             $tabs = @(Get-AllTerminalTab)
             $map  = Resolve-SessionTab -Session $live -Tab $tabs -Exclude $myTabs
             # No windows at all is UI Automation failing, not an answer. Keep the last
             # good map and retry next poll, or -ThisWindow blanks the screen until some
             # session happens to change status.
-            if ($tabs.Count -gt 0) { $script:tabSig = $sig; $script:tabOf = $map }
+            if ($tabs.Count -gt 0) {
+                $script:tabSig = $sig
+                $script:tabOf  = Merge-SessionTab -Session $live -Fresh $map -Previous $script:tabOf
+                $miss = @($live | Where-Object { -not $script:tabOf.ContainsKey($_.SessionId) }).Count
+                $script:tabRetryAt = if ($miss) { $script:tabClock.ElapsedMilliseconds + $TAB_RETRY_MS } else { 0 }
+            }
         }
         # A session with no matched tab cannot be placed in a window, so -ThisWindow
         # drops it rather than guessing that it is ours.
