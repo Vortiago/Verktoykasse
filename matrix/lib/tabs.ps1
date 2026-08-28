@@ -79,12 +79,9 @@ function Get-TerminalTab {
         $found = $root.FindAll([System.Windows.Automation.TreeScope]::Descendants, $cond)
     } catch { return @() }
 
-    $selProp = [System.Windows.Automation.SelectionItemPattern]::IsSelectedProperty
     $out = for ($i = 0; $i -lt $found.Count; $i++) {
         $name = ''
         try { $name = [string]$found[$i].Current.Name } catch { }
-        $sel = $false
-        try { $sel = [bool]$found[$i].GetCurrentPropertyValue($selProp) } catch { }
         $lead = if ($name.Length -gt 0) { $name[0] } else { [char]0 }
         [pscustomobject]@{
             Hwnd       = $Hwnd
@@ -93,7 +90,6 @@ function Get-TerminalTab {
             Text       = $name.TrimStart(($script:BusyGlyph + $script:IdleGlyph)).Trim()
             IsBusy     = $script:BusyGlyph -contains $lead
             IsIdle     = $lead -eq $script:IdleGlyph
-            IsSelected = $sel
             Element    = $found[$i]
         }
     }
@@ -213,6 +209,12 @@ function Merge-SessionTab {
     $map
 }
 
+function Get-NextWait {
+    # Doubles while the same sessions keep missing, restarts when the set changes.
+    param([int] $Wait, [bool] $Settled, [int] $RetryMs, [int] $MaxRetryMs)
+    if ($Settled -and $Wait) { [Math]::Min($Wait * 2, $MaxRetryMs) } else { $RetryMs }
+}
+
 function Update-SessionTabMap {
     <#
     .SYNOPSIS
@@ -233,7 +235,9 @@ function Update-SessionTabMap {
     .PARAMETER State
         Mutated in place. Sig: the session set the map was built from. Map: sessionId ->
         tab. RetryAt: when to re-read after an incomplete map, 0 for no re-try.
-        RetryWait: the current backoff, reset whenever the session set changes.
+        RetryWait: the current backoff. Set: the session set, which is what resets the
+        backoff. Sig carries status too, so resetting on Sig would restart the backoff
+        every time any session changed status, and a permanent miss would never decay.
     .PARAMETER ReadTab
         Returns every terminal tab. Injected, so this is testable without a desktop.
     .PARAMETER Now
@@ -249,23 +253,33 @@ function Update-SessionTabMap {
     )
 
     $sig = ($Session | ForEach-Object { "$($_.Pid):$($_.Status)" }) -join '|'
+    $set = (($Session | ForEach-Object { $_.Pid } | Sort-Object) -join '|')
     $due = $State.RetryAt -gt 0 -and $Now -ge $State.RetryAt
     if ($sig -eq $State.Sig -and -not $due) { return }
 
+    $settled = $set -eq $State.Set          # same sessions, so any wait already served counts
+
     $tabs = @(& $ReadTab)
     # No windows at all is UI Automation failing, not an answer: keep the last good map
-    # and come back next poll, or -ThisWindow blanks the screen.
-    if ($tabs.Count -eq 0) { return }
+    # and come back later. Backed off like a miss, or a desktop that never answers is
+    # re-read on every poll for the rest of the run.
+    if ($tabs.Count -eq 0) {
+        $State.Set     = $set
+        $State.RetryWait = Get-NextWait $State.RetryWait $settled $RetryMs $MaxRetryMs
+        $State.RetryAt   = $Now + $State.RetryWait
+        return
+    }
 
-    $fresh   = Resolve-SessionTab -Session $Session -Tab $tabs
-    $settled = $sig -eq $State.Sig          # same session set, so this was a re-try
+    $fresh     = Resolve-SessionTab -Session $Session -Tab $tabs
     $State.Sig = $sig
+    $State.Set = $set
     $State.Map = Merge-SessionTab -Session $Session -Fresh $fresh -Previous $State.Map
-    $miss = @($Session | Where-Object { -not $State.Map.ContainsKey($_.SessionId) }).Count
+    # Counted against the FRESH match, not the merged map. A carried tab is the last good
+    # guess, not a confirmation: its window and index are from an earlier pass, so a
+    # session living on one must keep re-trying until a fresh pass agrees.
+    $miss = @($Session | Where-Object { -not $fresh.ContainsKey($_.SessionId) }).Count
     if (-not $miss) { $State.RetryAt = 0; $State.RetryWait = 0; return }
 
-    $wait = if ($settled -and $State.RetryWait) { [Math]::Min($State.RetryWait * 2, $MaxRetryMs) }
-            else { $RetryMs }
-    $State.RetryWait = $wait
-    $State.RetryAt   = $Now + $wait
+    $State.RetryWait = Get-NextWait $State.RetryWait $settled $RetryMs $MaxRetryMs
+    $State.RetryAt   = $Now + $State.RetryWait
 }

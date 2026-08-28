@@ -162,7 +162,7 @@ if ($needTabs) {
 
 # Owned here, kept current by Update-SessionTabMap. Map is sessionId -> tab, and the
 # tab carries the handle of the window holding it.
-$tabState = @{ Sig = ''; Map = @{}; RetryAt = 0; RetryWait = 0 }
+$tabState = @{ Sig = ''; Set = ''; Map = @{}; RetryAt = 0; RetryWait = 0 }
 $tabClock = [System.Diagnostics.Stopwatch]::StartNew()
 
 # -Density and -Speed are absolute in the other modes and multipliers here, so the
@@ -238,13 +238,12 @@ function Write-Raw {
 
 # The first poll is the expensive one: it walks the transcript folder once and reads the
 # head and tail of each session's own. That would show as a frozen first frame, so it is
-# paid out here, before the screen is handed over. What it read seeds the first frame,
-# so the walk is not repeated the moment the loop starts.
-$primed = $null
+# paid out here, before the screen is handed over. The loop still polls on its first
+# iteration: the transcript index and the per-session facts are cached by then, so that
+# poll is a few small JSON reads, and it is what makes the opening frame current.
 if ($Sessions) {
     Write-Host 'Reading Claude sessions...' -ForegroundColor DarkGray
-    $primed = @(Get-LiveSession)
-    foreach ($s in $primed) { [void](Get-SessionTitle $s) }
+    foreach ($s in (Get-LiveSession)) { [void](Get-SessionTitle $s) }
 }
 
 try { [Console]::TreatControlCAsInput = $true } catch { }
@@ -273,14 +272,14 @@ $statSw  = [System.Diagnostics.Stopwatch]::StartNew()
 $frameMs = 1000.0 / $Fps
 $pollMs  = $PollSeconds * 1000.0
 $nextDue = $frameMs
-$pollDue = if ($null -ne $primed) { $pollMs } else { 0.0 }   # primed: do not walk it twice
+$pollDue = 0.0
 $frames  = 0
 $buildMs = 0.0
 $sizeEvery = [Math]::Max(1, [int]($Fps / 4))   # check the window size ~4x a second
 $sizeTick  = 0
 $prevSec   = 0.0
 $W = 0; $H = 0
-$lanes      = if ($null -ne $primed) { Get-SessionLanes $primed } else { $null }
+$lanes      = $null
 $laneBounds = $null         # col0[] and wid[], for routing a click back to a lane
 
 try {

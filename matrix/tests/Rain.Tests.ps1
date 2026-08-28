@@ -66,11 +66,8 @@ Describe 'matrix.ps1 -Sessions' {
         $r.Stdout   | Should -Match 'no claude sessions'
     }
 
-    It 'draws the first frame from the priming pass, before any poll is due' {
-        # -PollSeconds 30 across a 2 s run means no poll can fire. Anything on the screen
-        # came from the read done before the screen was handed over, which used to be
-        # thrown away and paid for again on the first frame.
-        $r = Invoke-Rain $liveHome @('-Sessions', '-PollSeconds', '30', '-Seconds', '2', '-Fps', '10')
+    It 'draws a live session, status and all' {
+        $r = Invoke-Rain $liveHome @('-Sessions', '-Seconds', '2', '-Fps', '10')
         $r.ExitCode | Should -Be 0
         (Remove-Sgr $r.Stdout) | Should -Match 'working'
     }

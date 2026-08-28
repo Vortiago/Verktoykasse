@@ -9,7 +9,7 @@ BeforeAll {
         [pscustomobject]@{ SessionId = $id; Pid = $pid_; Status = $status; Task = $task
                            Name = $task; Cwd = '' }
     }
-    function New-TabState { @{ Sig = ''; Map = @{}; RetryAt = 0; RetryWait = 0 } }
+    function New-TabState { @{ Sig = ''; Set = ''; Map = @{}; RetryAt = 0; RetryWait = 0 } }
 }
 
 Describe 'Update-SessionTabMap' {
@@ -174,6 +174,48 @@ Describe 'Update-SessionTabMap' {
             Update-SessionTabMap -Session @($alpha) -State $state -ReadTab { $script:settledTabs } -Now $state.RetryAt
             $state.RetryAt   | Should -Be 0
             $state.RetryWait | Should -Be 0
+        }
+
+        It 'keeps backing off while a session only changes status' {
+            # Sig carries status, so resetting the backoff on Sig restarted it every turn
+            # anyone took. A permanent miss then never decayed, and the ~100 ms read this
+            # backoff exists to ration went on running every 2 s for the whole session.
+            $reader = { $script:reads++; $script:blind }
+            $now = 0
+            $waits = foreach ($i in 1..4) {
+                $alpha.Status = if ($i % 2) { 'busy' } else { 'idle' }
+                Update-SessionTabMap -Session @($alpha) -State $state -ReadTab $reader -Now $now
+                $now = $state.RetryAt
+                $state.RetryWait
+            }
+            $waits | Should -Be @(2000, 4000, 8000, 16000)
+        }
+
+        It 'keeps re-trying while a session is living on a carried tab' {
+            # The carry keeps the lane on screen, but the tab it names came from an
+            # earlier pass: its window and index can both be stale. Counting it as a
+            # match disarmed the re-try, so nothing ever re-checked it.
+            Update-SessionTabMap -Session @($alpha) -State $state -ReadTab { $script:settledTabs } -Now 0
+            $state.RetryAt | Should -Be 0
+
+            $alpha.Status = 'busy'          # rebuild, with no glyph anywhere to match on
+            Update-SessionTabMap -Session @($alpha) -State $state -ReadTab { $script:blind } -Now 100
+            $state.Map['sid-a'] | Should -Not -BeNullOrEmpty      # the lane survives
+            $state.RetryAt      | Should -BeGreaterThan 100       # but it is not settled
+        }
+
+        It 'backs off when the desktop cannot be read at all' {
+            # Zero windows is UI Automation failing, and the early return left RetryAt in
+            # the past, so a desktop that never answers was re-read on every single poll.
+            $reader = { $script:reads++; @() }
+            $now = 0
+            $waits = foreach ($i in 1..4) {
+                Update-SessionTabMap -Session @($alpha) -State $state -ReadTab $reader -Now $now
+                $now = $state.RetryAt
+                $state.RetryWait
+            }
+            $waits     | Should -Be @(2000, 4000, 8000, 16000)
+            $state.Sig | Should -Be ''      # nothing was learned, so nothing is latched
         }
     }
 
