@@ -11,10 +11,12 @@ $TASK_ROWS = 3    # header rows the wrapped task gets when the lane is wide enou
 $script:PaletteKey = $null
 
 function New-Lane {
+    # Session is what a click on this lane raises. It rides on the lane rather than in a
+    # second array the caller keeps in step by hand, because nothing can then desync.
     param([int[]] $Rgb, [double] $Fall, [double] $Dens,
-          [string] $Title, [string] $Status, [string] $Task)
+          [string] $Title, [string] $Status, [string] $Task, [object] $Session)
     [pscustomobject]@{ Rgb = $Rgb; Fall = $Fall; Dens = $Dens
-                       Title = $Title; Status = $Status; Task = $Task }
+                       Title = $Title; Status = $Status; Task = $Task; Session = $Session }
 }
 
 function Split-Wrap {
@@ -136,6 +138,21 @@ function Set-RendererLanes {
 
     # Returned rather than parked in a shared variable: the caller routes clicks with it.
     , @($col0, $wid)
+}
+
+function Get-LaneAtColumn {
+    <#
+    .SYNOPSIS
+        Which lane owns screen column X. -1 for a gutter, or past the last lane.
+    .PARAMETER Bounds
+        The col0[]/wid[] pair Set-RendererLanes returns.
+    #>
+    param([Parameter(Mandatory)] [object[]] $Bounds, [int] $X)
+    $col0, $wid = $Bounds
+    for ($l = 0; $l -lt $col0.Count; $l++) {
+        if ($X -ge $col0[$l] -and $X -lt $col0[$l] + $wid[$l]) { return $l }
+    }
+    -1
 }
 
 function Format-Age {

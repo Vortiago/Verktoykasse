@@ -555,10 +555,7 @@ namespace MatrixWin__TAG__
             var hits = new List<long>();
             EnumWindows((h, l) =>
             {
-                var cn = new StringBuilder(64);
-                GetClassName(h, cn, cn.Capacity);
-                if (cn.ToString() == "CASCADIA_HOSTING_WINDOW_CLASS" && IsWindowVisible(h))
-                    hits.Add(h.ToInt64());
+                if (IsTerminal(h) && IsWindowVisible(h)) hits.Add(h.ToInt64());
                 return true;
             }, IntPtr.Zero);
             return hits.ToArray();

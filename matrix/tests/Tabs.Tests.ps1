@@ -1,13 +1,8 @@
 BeforeAll {
     . (Join-Path $PSScriptRoot '..\lib\tabs.ps1')
+    . (Join-Path $PSScriptRoot 'Fixtures.ps1')
 
-    function New-TestTab ($hwnd, $index, $text, $glyph) {
-        # $glyph: 'busy', 'idle', or 'none' for a tab Claude has not titled
-        [pscustomobject]@{
-            Hwnd = $hwnd; Index = $index; Text = $text
-            IsBusy = $glyph -eq 'busy'; IsIdle = $glyph -eq 'idle'
-        }
-    }
+    # No Pid and an empty Name, so scoring here rests on the task alone.
     function New-TestSession ($id, $status, $task) {
         [pscustomobject]@{ SessionId = $id; Status = $status; Task = $task; Name = ''; Cwd = '' }
     }
@@ -130,5 +125,22 @@ Describe 'Merge-SessionTab' {
 
     It 'returns nothing for no sessions, whatever it was given' {
         (Merge-SessionTab -Session @() -Fresh @{} -Previous @{ A = $t1 }).Count | Should -Be 0
+    }
+}
+
+Describe 'Resolve-SessionTab, one tab and one session' {
+    It 'takes the only Claude tab even when the glyph disagrees' {
+        # Pinning a deliberate bypass of the scoring. The tab title lags the registry, so
+        # a busy session whose tab still shows idle is the ordinary case, not a mismatch,
+        # and with one candidate and one session there is nothing else it could be. The
+        # general path would score this -4 and reject it.
+        $map = Resolve-SessionTab -Session @((New-TestSession 'sid' 'busy' 'nothing in common')) `
+                                  -Tab @((New-TestTab 1 0 'unrelated title' 'idle'))
+        $map['sid'].Index | Should -Be 0
+    }
+
+    It 'still ignores a tab Claude never titled' {
+        (Resolve-SessionTab -Session @((New-TestSession 'sid' 'busy' 'work')) `
+                            -Tab @((New-TestTab 1 0 'pwsh' 'none'))).Count | Should -Be 0
     }
 }

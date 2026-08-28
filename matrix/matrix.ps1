@@ -174,10 +174,13 @@ function Get-LiveSession {
     # or the first frame differs from every frame after it.
     $live = @(Get-ClaudeSession -IncludeBackground:$IncludeBackground)
 
+    # The task, read once and carried on the session. The tab matcher scores against it
+    # and the lane header prints it, so the shape must not depend on which flags are set.
+    foreach ($s in $live) {
+        $s | Add-Member -NotePropertyName Task -NotePropertyValue (Get-SessionFact $s).Task -Force
+    }
+
     if ($needTabs) {
-        # The task is what the tab title is matched against. Get-SessionFact caches a
-        # hit, so this is a hashtable lookup once a session has a transcript.
-        foreach ($s in $live) { $s | Add-Member -NotePropertyName Task -NotePropertyValue (Get-SessionFact $s).Task -Force }
         Update-SessionTabMap -Session $live -State $script:tabState `
                              -Now $script:tabClock.ElapsedMilliseconds -ReadTab { Get-AllTerminalTab }
 
@@ -212,7 +215,7 @@ function Get-SessionLanes {
         $tab = $script:tabState.Map[$s.SessionId]
         if ($tab) { $status = "$status [tab $($tab.Index + 1)]" }
         New-Lane $st.Rgb ($st.Speed * $Speed) ($st.Density * $densScale) `
-                 (Get-SessionTitle $s) (ConvertTo-CellText $status) (Get-SessionFact $s).Task
+                 (Get-SessionTitle $s) (ConvertTo-CellText $status) $s.Task $s
     }
     , @($out)
 }
@@ -235,10 +238,13 @@ function Write-Raw {
 
 # The first poll is the expensive one: it walks the transcript folder once and reads the
 # head and tail of each session's own. That would show as a frozen first frame, so it is
-# paid out here, before the screen is handed over.
+# paid out here, before the screen is handed over. What it read seeds the first frame,
+# so the walk is not repeated the moment the loop starts.
+$primed = $null
 if ($Sessions) {
     Write-Host 'Reading Claude sessions...' -ForegroundColor DarkGray
-    foreach ($s in (Get-LiveSession)) { [void](Get-SessionTitle $s) }
+    $primed = @(Get-LiveSession)
+    foreach ($s in $primed) { [void](Get-SessionTitle $s) }
 }
 
 try { [Console]::TreatControlCAsInput = $true } catch { }
@@ -267,16 +273,15 @@ $statSw  = [System.Diagnostics.Stopwatch]::StartNew()
 $frameMs = 1000.0 / $Fps
 $pollMs  = $PollSeconds * 1000.0
 $nextDue = $frameMs
-$pollDue = 0.0
+$pollDue = if ($null -ne $primed) { $pollMs } else { 0.0 }   # primed: do not walk it twice
 $frames  = 0
 $buildMs = 0.0
 $sizeEvery = [Math]::Max(1, [int]($Fps / 4))   # check the window size ~4x a second
 $sizeTick  = 0
 $prevSec   = 0.0
 $W = 0; $H = 0
-$lanes  = $null
-$laneSession = @()
-$laneBounds  = $null        # col0[] and wid[], for routing a click back to a lane
+$lanes      = if ($null -ne $primed) { Get-SessionLanes $primed } else { $null }
+$laneBounds = $null         # col0[] and wid[], for routing a click back to a lane
 
 try {
     while ($true) {
@@ -286,13 +291,11 @@ try {
         $what = $VT::PollInput([ref]$cx, [ref]$cy)
         if ($what -eq $VT::EXIT) { break }
         if ($what -eq $VT::CLICK -and $Click -and $laneBounds) {
-            $col0, $wid = $laneBounds
-            for ($l = 0; $l -lt $col0.Count; $l++) {
-                if ($cx -lt $col0[$l] -or $cx -ge $col0[$l] + $wid[$l]) { continue }
-                $s = if ($l -lt $laneSession.Count) { $laneSession[$l] } else { $null }
-                $tab = if ($s) { $tabState.Map[$s.SessionId] } else { $null }
+            $l = Get-LaneAtColumn -Bounds $laneBounds -X $cx
+            $s = if ($l -ge 0) { $lanes[$l].Session } else { $null }
+            if ($s) {
+                $tab = $tabState.Map[$s.SessionId]
                 if ($tab) { [void](Select-TerminalTab $tab) }
-                break
             }
         }
         if ($Seconds -gt 0 -and $clock.Elapsed.TotalSeconds -ge $Seconds) { break }
@@ -305,9 +308,7 @@ try {
         # age in each header current.
         if ($Sessions -and $nowMs -ge $pollDue) {
             $pollDue = $nowMs + $pollMs
-            $live = @(Get-LiveSession)
-            $laneSession = $live                      # lane index -> session, for click routing
-            $lanes = Get-SessionLanes $live
+            $lanes = Get-SessionLanes @(Get-LiveSession)
             $relay = $true
         }
 

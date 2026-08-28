@@ -61,7 +61,7 @@ is written once, so it stays the original however often you run this.
 | `matrix.ps1` | parameters, lane layout, the frame loop |
 | `lib/console.ps1` | compiling tagged types, the alternate-screen escapes, the one-cell text filter |
 | `lib/types.ps1` | the C#, all compiled in one call: input filter, frame simulator/encoder, window finder |
-| `lib/lanes.ps1` | a lane's colours, header and layout across the width |
+| `lib/lanes.ps1` | a lane's colours, header, layout across the width, and which lane owns a column |
 | `lib/palette.ps1` | colour ramps, precomputed as SGR escape strings |
 | `lib/sessions.ps1` | the Claude Code session registry and its status |
 | `lib/tabs.ps1` | Windows Terminal tabs, over UI Automation |

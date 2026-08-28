@@ -79,6 +79,12 @@ Describe 'New-Lane' {
         $lane.Fall  | Should -Be 1.5
         $lane.Title | Should -Be 'title'
     }
+
+    It 'carries the session a click on it opens, so no parallel array can desync' {
+        $s = [pscustomobject]@{ SessionId = 'sid-1' }
+        (New-Lane @(1, 2, 3) 1 0.2 't' 's' $null $s).Session.SessionId | Should -Be 'sid-1'
+        (New-Lane @(1, 2, 3) 1 0.2 't' 's' $null).Session | Should -BeNullOrEmpty
+    }
 }
 
 Describe 'Set-RendererLanes' {
@@ -174,5 +180,32 @@ Describe 'Set-RendererLanes' {
         $r.Palettes | Should -BeNullOrEmpty            # same colours, no rebuild
         [void](Set-RendererLanes -Renderer $r -Lane @($red) -Width 40)
         $r.Palettes | Should -Not -BeNullOrEmpty
+    }
+}
+
+Describe 'Get-LaneAtColumn' {
+    # Extracted from the frame loop, where the click routing was three hops of indexing
+    # that nothing could reach. Bounds come straight from Set-RendererLanes.
+    BeforeAll {
+        $script:PaletteKey = $null
+        $script:bounds = Set-RendererLanes -Renderer (New-FakeRenderer) -Width 40 `
+            -Lane @((New-Lane @(0, 255, 0) 1 0.2 't1' 's' $null),
+                    (New-Lane @(0, 255, 0) 1 0.2 't2' 's' $null))
+    }
+
+    It 'finds the lane a column belongs to' {
+        Get-LaneAtColumn -Bounds $bounds -X 0  | Should -Be 0
+        Get-LaneAtColumn -Bounds $bounds -X 19 | Should -Be 0
+        Get-LaneAtColumn -Bounds $bounds -X 21 | Should -Be 1
+        Get-LaneAtColumn -Bounds $bounds -X 39 | Should -Be 1
+    }
+
+    It 'owns no lane in the gutter' {
+        Get-LaneAtColumn -Bounds $bounds -X 20 | Should -Be -1
+    }
+
+    It 'owns no lane off the end, which is where a click on a resized window lands' {
+        Get-LaneAtColumn -Bounds $bounds -X 40   | Should -Be -1
+        Get-LaneAtColumn -Bounds $bounds -X 4000 | Should -Be -1
     }
 }

@@ -2,13 +2,9 @@
 # missed once stayed missed, and a prompted session lost the tab it already had.
 BeforeAll {
     . (Join-Path $PSScriptRoot '..\lib\tabs.ps1')
+    . (Join-Path $PSScriptRoot 'Fixtures.ps1')
 
-    function New-TestTab ($hwnd, $index, $text, $glyph) {
-        [pscustomobject]@{
-            Hwnd = $hwnd; Index = $index; Text = $text
-            IsBusy = $glyph -eq 'busy'; IsIdle = $glyph -eq 'idle'
-        }
-    }
+    # Pid too: the map's signature is built from it.
     function New-TestSession ($id, $pid_, $status, $task) {
         [pscustomobject]@{ SessionId = $id; Pid = $pid_; Status = $status; Task = $task
                            Name = $task; Cwd = '' }

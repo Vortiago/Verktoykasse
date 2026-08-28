@@ -44,7 +44,7 @@ function Get-ColourRamp {
         $ramp[$i] = Get-Sgr (0, 0, 0) $Rgb ([Math]::Pow($i / $Levels, 1.6)) 0
     }
     $ramp[$Levels + 1] = Get-Sgr $Rgb (255, 255, 255) 0.8 1
-    $ramp[$Levels + 2] = "$script:ESC[1;38;2;235;235;235m"     # the -Stats line
+    $ramp[$Levels + 2] = Get-Sgr (0, 0, 0) (235, 235, 235) 1.0 1   # the -Stats line
     $script:RampCache[$key] = $ramp
     $ramp
 }

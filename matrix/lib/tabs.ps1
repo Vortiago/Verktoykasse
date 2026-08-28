@@ -117,6 +117,13 @@ function Get-MatchToken {
     @(($Text.ToLowerInvariant() -split '[^a-z0-9]+') | Where-Object { $_.Length -ge 4 })
 }
 
+function Get-TabKey {
+    # A tab's identity within one pass. The window is part of it: two windows both have
+    # a tab 3. Not an identity across passes, because closing a tab renumbers the rest.
+    param($Tab)
+    "$($Tab.Hwnd):$($Tab.Index)"
+}
+
 function Resolve-SessionTab {
     <#
     .SYNOPSIS
@@ -160,12 +167,11 @@ function Resolve-SessionTab {
     }
 
     # Sort-Object is not stable, so ties need their own key or an equal-scoring pair
-    # switches tabs between rebuilds. The key is the window too: two windows both have
-    # a tab 3.
+    # switches tabs between rebuilds.
     $usedTab = @{}; $usedSes = @{}
-    foreach ($p in ($pairs | Sort-Object @{E = 'Score'; D = $true}, SessionId, @{E = { "$($_.Tab.Hwnd):$($_.Tab.Index)" }})) {
+    foreach ($p in ($pairs | Sort-Object @{E = 'Score'; D = $true}, SessionId, @{E = { Get-TabKey $_.Tab }})) {
         if ($p.Score -le 0) { break }                      # a negative match is no match
-        $key = "$($p.Tab.Hwnd):$($p.Tab.Index)"
+        $key = Get-TabKey $p.Tab
         if ($usedTab[$key] -or $usedSes[$p.SessionId]) { continue }
         $usedTab[$key] = $true; $usedSes[$p.SessionId] = $true
         $map[$p.SessionId] = $p.Tab
@@ -195,14 +201,14 @@ function Merge-SessionTab {
     $taken = @{}
     foreach ($k in $Fresh.Keys) {
         $map[$k] = $Fresh[$k]
-        $taken["$($Fresh[$k].Hwnd):$($Fresh[$k].Index)"] = $true
+        $taken[(Get-TabKey $Fresh[$k])] = $true
     }
     foreach ($s in $Session) {
         if ($map.ContainsKey($s.SessionId)) { continue }
         $old = $Previous[$s.SessionId]
-        if (-not $old -or $taken["$($old.Hwnd):$($old.Index)"]) { continue }
+        if (-not $old -or $taken[(Get-TabKey $old)]) { continue }
         $map[$s.SessionId] = $old
-        $taken["$($old.Hwnd):$($old.Index)"] = $true
+        $taken[(Get-TabKey $old)] = $true
     }
     $map
 }

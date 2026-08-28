@@ -8,6 +8,24 @@ BeforeAll {
     $script:emptyHome = Join-Path ([System.IO.Path]::GetTempPath()) "matrix-rain-tests-$PID"
     New-Item -ItemType Directory -Path (Join-Path $emptyHome 'sessions') -Force | Out-Null
 
+    # A Claude home holding one session that is genuinely alive: this process, which
+    # outlives every child the tests start. Its transcript carries a word nothing else
+    # in a frame could produce.
+    $script:liveHome = Join-Path ([System.IO.Path]::GetTempPath()) "matrix-rain-live-$PID"
+    $script:liveTask = 'zeppelin over the harbour'
+    New-Item -ItemType Directory -Path (Join-Path $liveHome 'sessions') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $liveHome 'projects\P') -Force | Out-Null
+    @{  pid       = $PID
+        procStart = "$([System.Diagnostics.Process]::GetCurrentProcess().StartTime.ToFileTimeUtc())"
+        sessionId = 'sid-live'; kind = 'interactive'; name = 'sid-live'
+        cwd       = 'D:\repos\matrix'; status = 'busy'
+        startedAt = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+        statusUpdatedAt = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+    } | ConvertTo-Json -Compress |
+        Set-Content -LiteralPath (Join-Path $liveHome "sessions\$PID.json") -Encoding utf8
+    (@{ type = 'user'; message = @{ content = $liveTask } } | ConvertTo-Json -Compress -Depth 5) |
+        Set-Content -LiteralPath (Join-Path $liveHome 'projects\P\sid-live.jsonl') -Encoding utf8
+
     function Invoke-Rain ($claudeHome, [string[]] $argv) {
         $out = Join-Path ([System.IO.Path]::GetTempPath()) "matrix-rain-$PID.out"
         $err = Join-Path ([System.IO.Path]::GetTempPath()) "matrix-rain-$PID.err"
@@ -26,10 +44,14 @@ BeforeAll {
             Remove-Item $out, $err -Force -ErrorAction SilentlyContinue
         }
     }
+
+    # Header text survives the frame diff as one run, so it is greppable once the colour
+    # changes are out of the way.
+    function Remove-Sgr ([string] $Text) { $Text -replace "$([char]27)\[[0-9;?]*[A-Za-z]", '' }
 }
 
 AfterAll {
-    Remove-Item -LiteralPath $emptyHome -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $emptyHome, $liveHome -Recurse -Force -ErrorAction SilentlyContinue
 }
 
 Describe 'matrix.ps1 -Sessions' {
@@ -42,6 +64,22 @@ Describe 'matrix.ps1 -Sessions' {
         $r.Stderr   | Should -Not -Match 'Cannot bind argument'
         $r.ExitCode | Should -Be 0
         $r.Stdout   | Should -Match 'no claude sessions'
+    }
+
+    It 'draws the first frame from the priming pass, before any poll is due' {
+        # -PollSeconds 30 across a 2 s run means no poll can fire. Anything on the screen
+        # came from the read done before the screen was handed over, which used to be
+        # thrown away and paid for again on the first frame.
+        $r = Invoke-Rain $liveHome @('-Sessions', '-PollSeconds', '30', '-Seconds', '2', '-Fps', '10')
+        $r.ExitCode | Should -Be 0
+        (Remove-Sgr $r.Stdout) | Should -Match 'working'
+    }
+
+    It 'puts the task in the header whether or not tabs are wanted' {
+        # The lane reads .Task off the session, so the staple that puts it there must not
+        # be conditional on -Click or -ThisWindow, which are what ask for the tab map.
+        $r = Invoke-Rain $liveHome @('-Sessions', '-Seconds', '2', '-Fps', '10')
+        (Remove-Sgr $r.Stdout) | Should -Match 'zeppelin'
     }
 }
 
