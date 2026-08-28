@@ -125,17 +125,20 @@ function Resolve-SessionTab {
         Scores every session/tab pair, then takes the best pairs first, one tab per
         session. Returns a hashtable of sessionId -> tab; the tab carries the Hwnd of
         the window holding it.
-    .PARAMETER Exclude
-        Tabs never to match, as "hwnd:index", such as the tab this rain runs in.
+    .NOTES
+        The tab the rain itself runs in needs no excluding: it carries no Claude glyph,
+        so it is not a candidate. Excluding it by "hwnd:index" was worse than useless,
+        because an index is not an identity. Close a tab and every index to its right
+        shifts down, and the stored one then names a real session's tab, which -ThisWindow
+        would hide for the rest of the run.
     #>
     param(
         [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Session,
-        [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Tab,
-        [string[]] $Exclude = @()
+        [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Tab
     )
 
     $map = @{}
-    $cand = @($Tab | Where-Object { ($_.IsBusy -or $_.IsIdle) -and $Exclude -notcontains "$($_.Hwnd):$($_.Index)" })
+    $cand = @($Tab | Where-Object { $_.IsBusy -or $_.IsIdle })
     if ($cand.Count -eq 0 -or $Session.Count -eq 0) { return $map }
 
     # One Claude tab and one session leaves nothing to guess.
@@ -202,4 +205,47 @@ function Merge-SessionTab {
         $taken["$($old.Hwnd):$($old.Index)"] = $true
     }
     $map
+}
+
+function Update-SessionTabMap {
+    <#
+    .SYNOPSIS
+        Keep the session -> tab map current, at the lowest cost that stays correct.
+    .DESCRIPTION
+        Reading the tabs costs ~100 ms, more than three frames, so it runs only when the
+        session set changes. An INCOMPLETE map is re-read on a timer as well, because a
+        tab is always behind the registry: Claude titles a new tab, and moves its glyph,
+        after the registry already carries the session. Latching that miss hides the
+        session until its status happens to change, which for a session nobody has
+        prompted yet is never.
+    .PARAMETER State
+        Mutated in place. Sig: the session set the map was built from. Map: sessionId ->
+        tab. RetryAt: when to re-read after an incomplete map, 0 for no re-try.
+    .PARAMETER ReadTab
+        Returns every terminal tab. Injected, so this is testable without a desktop.
+    .PARAMETER Now
+        Monotonic milliseconds. Injected for the same reason.
+    #>
+    param(
+        [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Session,
+        [Parameter(Mandatory)] [hashtable] $State,
+        [Parameter(Mandatory)] [scriptblock] $ReadTab,
+        [Parameter(Mandatory)] [long] $Now,
+        [int] $RetryMs = 2000
+    )
+
+    $sig = ($Session | ForEach-Object { "$($_.Pid):$($_.Status)" }) -join '|'
+    $due = $State.RetryAt -gt 0 -and $Now -ge $State.RetryAt
+    if ($sig -eq $State.Sig -and -not $due) { return }
+
+    $tabs = @(& $ReadTab)
+    # No windows at all is UI Automation failing, not an answer: keep the last good map
+    # and come back next poll, or -ThisWindow blanks the screen.
+    if ($tabs.Count -eq 0) { return }
+
+    $fresh = Resolve-SessionTab -Session $Session -Tab $tabs
+    $State.Sig = $sig
+    $State.Map = Merge-SessionTab -Session $Session -Fresh $fresh -Previous $State.Map
+    $miss = @($Session | Where-Object { -not $State.Map.ContainsKey($_.SessionId) }).Count
+    $State.RetryAt = if ($miss) { $Now + $RetryMs } else { 0 }
 }

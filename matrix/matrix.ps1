@@ -160,17 +160,10 @@ if ($needTabs) {
     }
 }
 
-# Our own tab is the selected one in our window, and is never the answer to a click.
-# Keyed "hwnd:index", the form Resolve-SessionTab excludes on.
-$myTabs = if ($needTabs) {
-    @(Get-TerminalTab -Hwnd $hostHwnd | Where-Object { $_.IsSelected } |
-      ForEach-Object { "$($_.Hwnd):$($_.Index)" })
-} else { @() }
-$tabOf  = @{}                         # sessionId -> tab, which carries its window handle
-$tabSig = ''                          # pids and statuses the map was built from
-$tabRetryAt = 0                       # ms deadline to re-try an incomplete map, 0 = none
-$tabClock   = [System.Diagnostics.Stopwatch]::StartNew()
-$TAB_RETRY_MS = 2000
+# Owned here, kept current by Update-SessionTabMap. Map is sessionId -> tab, and the
+# tab carries the handle of the window holding it.
+$tabState = @{ Sig = ''; Map = @{}; RetryAt = 0 }
+$tabClock = [System.Diagnostics.Stopwatch]::StartNew()
 
 # -Density and -Speed are absolute in the other modes and multipliers here, so the
 # per-status rates are scaled relative to the defaults rather than replaced.
@@ -182,31 +175,16 @@ function Get-LiveSession {
     $live = @(Get-ClaudeSession -IncludeBackground:$IncludeBackground)
 
     if ($needTabs) {
-        $sig = ($live | ForEach-Object { "$($_.Pid):$($_.Status)" }) -join '|'
-        # A session set that has not changed keeps its map, because reading the tabs
-        # costs ~100 ms, more than three frames. An INCOMPLETE map is re-tried on a
-        # timer as well: Claude titles a new tab, and moves its glyph, some time after
-        # the registry already carries the session, and latching that miss would hide
-        # the session until its status happened to change.
-        $due = $script:tabRetryAt -gt 0 -and $script:tabClock.ElapsedMilliseconds -ge $script:tabRetryAt
-        if ($sig -ne $script:tabSig -or $due) {
-            foreach ($s in $live) { $s | Add-Member -NotePropertyName Task -NotePropertyValue (Get-SessionFact $s).Task -Force }
-            $tabs = @(Get-AllTerminalTab)
-            $map  = Resolve-SessionTab -Session $live -Tab $tabs -Exclude $myTabs
-            # No windows at all is UI Automation failing, not an answer. Keep the last
-            # good map and retry next poll, or -ThisWindow blanks the screen until some
-            # session happens to change status.
-            if ($tabs.Count -gt 0) {
-                $script:tabSig = $sig
-                $script:tabOf  = Merge-SessionTab -Session $live -Fresh $map -Previous $script:tabOf
-                $miss = @($live | Where-Object { -not $script:tabOf.ContainsKey($_.SessionId) }).Count
-                $script:tabRetryAt = if ($miss) { $script:tabClock.ElapsedMilliseconds + $TAB_RETRY_MS } else { 0 }
-            }
-        }
+        # The task is what the tab title is matched against. Get-SessionFact caches a
+        # hit, so this is a hashtable lookup once a session has a transcript.
+        foreach ($s in $live) { $s | Add-Member -NotePropertyName Task -NotePropertyValue (Get-SessionFact $s).Task -Force }
+        Update-SessionTabMap -Session $live -State $script:tabState `
+                             -Now $script:tabClock.ElapsedMilliseconds -ReadTab { Get-AllTerminalTab }
+
         # A session with no matched tab cannot be placed in a window, so -ThisWindow
         # drops it rather than guessing that it is ours.
         if ($ThisWindow) {
-            $live = @($live | Where-Object { $script:tabOf[$_.SessionId].Hwnd -eq $hostHwnd })
+            $live = @($live | Where-Object { $script:tabState.Map[$_.SessionId].Hwnd -eq $hostHwnd })
         }
     }
 
@@ -229,7 +207,7 @@ function Get-SessionLanes {
         if ($s.WaitingFor) { $status = "$status : $($s.WaitingFor)" }
         if ($age)          { $status = "$status $age" }
         # name the tab a click would open, so a wrong match is visible not silent
-        $tab = $script:tabOf[$s.SessionId]
+        $tab = $script:tabState.Map[$s.SessionId]
         if ($tab) { $status = "$status [tab $($tab.Index + 1)]" }
         New-Lane $st.Rgb ($st.Speed * $Speed) ($st.Density * $densScale) `
                  (Get-SessionTitle $s) (ConvertTo-CellText $status) (Get-SessionFact $s).Task
@@ -310,7 +288,7 @@ try {
             for ($l = 0; $l -lt $col0.Count; $l++) {
                 if ($cx -lt $col0[$l] -or $cx -ge $col0[$l] + $wid[$l]) { continue }
                 $s = if ($l -lt $laneSession.Count) { $laneSession[$l] } else { $null }
-                $tab = if ($s) { $tabOf[$s.SessionId] } else { $null }
+                $tab = if ($s) { $tabState.Map[$s.SessionId] } else { $null }
                 if ($tab) { [void](Select-TerminalTab $tab) }
                 break
             }

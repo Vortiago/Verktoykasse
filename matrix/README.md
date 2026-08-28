@@ -151,5 +151,12 @@ So a rebuild that misses a session is never the last word:
   a lane vanish the moment its session was prompted. A fresh match always wins,
   and a tab this pass gave to someone else is never carried.
 
-`test-tabmap.ps1` covers both, and the tie-break that keeps an equal-scoring
-pair from following window z-order.
+A second fault worked the other way. The rain used to memorise its own tab, as
+`window:index`, and refuse to match any session to it. But an index is not an
+identity: close a tab and every index to its right shifts down, so the memorised
+one came to name a real session's tab, and `-ThisWindow` hid that session for the
+rest of the run. Nothing is memorised now, and nothing needs to be: the rain
+writes no tab title, so its tab carries no Claude glyph and was never a candidate.
+
+`tests/TabMap.Tests.ps1` replays all of it: a session appearing, a session
+prompted, the tabs renumbered, and the desktop refusing to be read.
