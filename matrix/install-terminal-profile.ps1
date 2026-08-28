@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Adds a Windows Terminal profile that opens the rain, with the CRT effect on.
+    Adds a Windows Terminal profile that opens the rain.
 
 .DESCRIPTION
     Writes one profile into Windows Terminal's settings.json. Windows Terminal reloads
@@ -20,8 +20,10 @@
 .PARAMETER Arguments
     Arguments passed to matrix.ps1. Default is the session view with the stats line.
 
-.PARAMETER NoRetro
-    Leave the CRT effect off. It is on by default, which is the point of this.
+.PARAMETER Retro
+    Turn the CRT effect on. Off unless asked for: it is a matter of taste, and Windows
+    Terminal's own profile settings can toggle it afterwards. A re-run keeps whatever
+    was set there.
 
 .PARAMETER Remove
     Delete the profile instead of adding it.
@@ -34,6 +36,9 @@
 
 .EXAMPLE
     .\install-terminal-profile.ps1
+
+.EXAMPLE
+    .\install-terminal-profile.ps1 -Retro
 
 .EXAMPLE
     .\install-terminal-profile.ps1 -Name 'Matrix (plain)' -Arguments '-Fps 60'
@@ -50,7 +55,7 @@
 param(
     [string] $Name      = 'Matrix',
     [string] $Arguments = '-Fps 60 -Stats -Sessions -ThisWindow -Click',
-    [switch] $NoRetro,
+    [switch] $Retro,
     [switch] $Remove,
     [string] $SettingsPath
 )
@@ -102,8 +107,9 @@ catch { throw "Could not parse $SettingsPath : $($_.Exception.Message)" }
 $list = if ($settings.profiles -is [array]) { $settings.profiles } else { $settings.profiles.list }
 if ($null -eq $list) { throw 'settings.json has no profiles list.' }
 
+$old     = @($list | Where-Object { $_.guid -eq $guid })[0]
 $keep    = @($list | Where-Object { $_.guid -ne $guid })
-$existed = $keep.Count -ne @($list).Count
+$existed = $null -ne $old
 
 if ($Remove -and -not $existed) {
     Write-Host "No profile named '$Name' ($guid) to remove." -ForegroundColor Yellow
@@ -120,7 +126,10 @@ if (-not $Remove) {
         icon             = [char]::ConvertFromUtf32(0x1F7E9)       # green square
         hidden           = $false
     }
-    if (-not $NoRetro) { $entry['experimental.retroTerminalEffect'] = $true }
+    # Off unless asked for. The entry is rewritten whole, so a re-run would otherwise
+    # throw away a setting the user turned on in Windows Terminal's own profile UI.
+    $retro = if ($Retro) { $true } elseif ($old) { [bool]$old.'experimental.retroTerminalEffect' } else { $false }
+    if ($retro) { $entry['experimental.retroTerminalEffect'] = $true }
 }
 
 $action = if ($Remove) { "remove profile '$Name'" }
@@ -131,21 +140,30 @@ $newList = if ($Remove) { $keep } else { $keep + [pscustomobject]$entry }
 if ($settings.profiles -is [array]) { $settings.profiles = $newList } else { $settings.profiles.list = $newList }
 
 $backup  = "$SettingsPath.matrix-bak"
+$hadBak  = [System.IO.File]::Exists($backup)
 $applied = $PSCmdlet.ShouldProcess($SettingsPath, $action)
 if ($applied) {
     # First run only. Run two and overwriting would replace the hand-written original
     # with the copy this script already rewrote, which is the thing the backup is for.
-    if (-not [System.IO.File]::Exists($backup)) { [System.IO.File]::WriteAllText($backup, $raw) }
+    if (-not $hadBak) { [System.IO.File]::WriteAllText($backup, $raw) }
     # Depth well past the deepest thing Windows Terminal nests, or it silently truncates.
     [System.IO.File]::WriteAllText($SettingsPath, ($settings | ConvertTo-Json -Depth 32))
 }
 
 Write-Host ("{0} {1}" -f $(if ($applied) { 'Done:' } else { 'Would' }), $action) -ForegroundColor $(if ($applied) { 'Green' } else { 'Yellow' })
 Write-Host "  settings : $SettingsPath"
-if ($applied) { Write-Host "  backup   : $backup" }
+if ($applied) {
+    # Say which run it holds. It is the settings before the FIRST install, not before
+    # this one, so restoring it undoes every hand edit since, not just this run.
+    $when = if ($hadBak) { ' (from the first install, not this run)' } else { '' }
+    Write-Host "  backup   : $backup$when"
+}
 if ($entry) { Write-Host "  runs     : $($entry.commandline)" -ForegroundColor DarkGray }
 if ($applied -and $entry) {
     Write-Host ''
     Write-Host 'It is in the dropdown now; Windows Terminal reloads settings as they are saved.' -ForegroundColor Cyan
     Write-Host 'Open it as a TAB in the window whose sessions you want -ThisWindow to scope to.' -ForegroundColor Cyan
+    if (-not $retro) {
+        Write-Host 'CRT effect is off. -Retro turns it on, or toggle it in the profile settings.' -ForegroundColor DarkGray
+    }
 }

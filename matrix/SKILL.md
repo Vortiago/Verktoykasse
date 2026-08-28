@@ -43,12 +43,16 @@ Any key exits. Mouse activity and terminal shortcuts do not.
 ```powershell
 .\install-terminal-profile.ps1 -WhatIf     # what it would change
 .\install-terminal-profile.ps1
+.\install-terminal-profile.ps1 -Retro      # with the CRT effect
 .\install-terminal-profile.ps1 -Remove
 ```
 
-Adds one profile that opens the session view with the CRT effect on. **Open it
-as a tab, not as a window** - `-ThisWindow` scopes the lanes to the window the
-rain starts in, and its own window holds no sessions.
+Adds one profile that opens the session view. **Open it as a tab, not as a
+window** - `-ThisWindow` scopes the lanes to the window the rain starts in, and
+its own window holds no sessions.
+
+The CRT effect is off unless you pass `-Retro`. Windows Terminal's own profile
+settings toggle it too, and a re-run of this script keeps what you set there.
 
 `settings.json` is backed up to `settings.json.matrix-bak` first, then rewritten
 from parsed JSON, so comments and hand formatting in it do not survive. The backup

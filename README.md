@@ -82,7 +82,7 @@ and don't belong here.
   registry every session writes, rather than the peer pipe a script cannot
   subscribe to; the tab comes from UI Automation, because Windows Terminal hosts
   every window in one process. Ships `install-terminal-profile.ps1`, which adds a
-  Windows Terminal profile that opens the view with the CRT effect on.
+  Windows Terminal profile that opens the view.
   User-invocable as `/matrix`. Windows only.
 
 ## Install

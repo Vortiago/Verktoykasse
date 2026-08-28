@@ -9,8 +9,7 @@ sits behind them.
 
 ## The Windows Terminal profile
 
-`install-terminal-profile.ps1` adds one profile that opens the session view with
-the CRT effect on:
+`install-terminal-profile.ps1` adds one profile that opens the session view:
 
 ```
 -Fps 60 -Stats -Sessions -ThisWindow -Click
@@ -19,7 +18,11 @@ the CRT effect on:
 It appears in the dropdown at once, because Windows Terminal reloads
 `settings.json` as it is saved. The profile GUID is derived from `-Name`, so
 running it again updates that profile instead of adding another, and `-Remove`
-takes it out. `-Arguments` and `-NoRetro` change what it runs.
+takes it out. `-Arguments` changes what it runs.
+
+The CRT effect is off unless `-Retro` asks for it. The profile entry is rewritten
+whole on every run, so the script reads the effect back off the existing profile
+first: turn it on in Windows Terminal's own settings and a re-run keeps it.
 
 `settings.json` is copied to `settings.json.matrix-bak` first, then rewritten
 from parsed JSON. Comments and hand formatting in it do not survive that; the
