@@ -42,6 +42,18 @@ jobs:
         # command a session runs locally.
         run: find . -name '*.sh' -not -path '*/node_modules/*' -print0 | xargs -0 -I{} bash -n {}
 
+  pester:
+    # matrix/ is PowerShell and its e2e tests drive Windows console APIs, so this
+    # is the one job not on ubuntu. Same command a session runs locally.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: gate — matrix
+        working-directory: matrix
+        shell: pwsh
+        # -CI makes a failed run fail the step; bare Invoke-Pester returns green.
+        run: Invoke-Pester ./tests -CI
+
   browser:
     # Slow half: Playwright e2e (leak + interaction suites) for both skills,
     # plus the vanilla-components visual project. CI is the pinned environment
