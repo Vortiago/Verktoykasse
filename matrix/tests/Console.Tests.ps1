@@ -12,18 +12,25 @@ Describe 'ConvertTo-CellText' {
     }
 
     It 'leaves plain ASCII alone' {
-        $asciiTest = "matrix-session-status ${[char]0x00B7} working 6m"
+        $asciiTest = 'matrix-session-status working 6m'
         ConvertTo-CellText $asciiTest | Should -Be $asciiTest
     }
 
     It 'keeps Latin-1 and Latin Extended-A, which the encoder handles' {
-        # Use [char] casts so file encoding never corrupts the test data
-        $expected = "Verkt${[char]0x00F8}ykasse ${[char]0x00C6}rlig ${[char]0x0101}"
+        # $([char]...) subexpressions so file encoding never corrupts the test data.
+        # (${[char]...} is a braced VARIABLE lookup: it expands to nothing, and this
+        # test then asserted on pure ASCII while claiming to cover Latin-1.)
+        $expected = "Verkt$([char]0x00F8)ykasse $([char]0x00C6)rlig $([char]0x0101) $([char]0x00B7)"
         ConvertTo-CellText $expected | Should -Be $expected
     }
 
     It 'replaces control characters' {
         ConvertTo-CellText "a`tb`nc`r$E" | Should -Be 'a b c  '
+    }
+
+    It 'replaces the C1 range, which is control codes, not text' {
+        # U+009B is an 8-bit CSI: a /rename name carrying it must not reach the screen.
+        ConvertTo-CellText ('a' + [char]0x009B + 'b' + [char]0x0085) | Should -Be 'a b '
     }
 
     It 'replaces anything that would draw wider than one cell' {
@@ -84,9 +91,10 @@ namespace PesterProbe__TAG__
         $b::Answer() | Should -Be 43
     }
 
-    It 'names the cached assembly for the edition, so 5.1 and 7 do not evict each other' {
+    It 'names the cached assembly for the edition and runtime, so no two evict or poison each other' {
         [void](Add-TaggedTypes $src 'PesterProbe{0}.Probe')
-        Get-ChildItem ([System.IO.Path]::GetTempPath()) -Filter "matrix-PesterProbe-*-$($PSVersionTable.PSEdition).dll" |
+        $rt = "net$([System.Environment]::Version.Major)"
+        Get-ChildItem ([System.IO.Path]::GetTempPath()) -Filter "matrix-PesterProbe-*-$rt.dll" |
             Should -Not -BeNullOrEmpty
     }
 }

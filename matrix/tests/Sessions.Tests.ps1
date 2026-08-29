@@ -166,11 +166,15 @@ Describe 'Get-ClaudeSession' {
     }
 
     It 'never opens the sibling key files, which hold peer credentials' {
-        'this is not JSON and must never be parsed' |
+        # A VALID live record in the .key file: if the enumeration ever widened past
+        # *.json this would parse and surface, so its absence is what proves the claim.
+        # (A garbage fixture proved nothing - unparseable files are skipped anyway.)
+        (New-Record 'sid-from-key-file' 'busy' | ConvertTo-Json -Compress) |
             Set-Content -LiteralPath (Join-Path $fakeHome 'sessions\1234.abcd.key')
         Write-Registry 'a' (New-Record 'sid-a' 'busy')
-        { Get-ClaudeSession } | Should -Not -Throw
-        @(Get-ClaudeSession) | Should -HaveCount 1
+        $live = @(Get-ClaudeSession)
+        $live | Should -HaveCount 1
+        $live[0].SessionId | Should -Be 'sid-a'
     }
 
     It 'fills in what a record leaves out' {
@@ -243,6 +247,23 @@ Describe 'Get-SessionFact' {
         (Get-SessionFact $s).Task | Should -Be ''
         $script:SessionFact.ContainsKey('sid-none') | Should -BeFalse
     }
+
+    It 'does not latch an empty prompt while the transcript is still short' {
+        # The registry lists a session the moment it starts, and its transcript exists
+        # for a beat before the first user turn lands. Caching that gap as "no prompt"
+        # blanked the header for the whole run.
+        $id = 'sid-young'
+        $path = Join-Path $fakeHome "projects\D--repos-matrix\$id.jsonl"
+        (@{ type = 'assistant'; gitBranch = 'matrix' } | ConvertTo-Json -Compress -Depth 5) |
+            Set-Content -LiteralPath $path -Encoding utf8
+        (Get-SessionFact ([pscustomobject]@{ SessionId = $id })).Task | Should -Be ''
+        $script:SessionFact.ContainsKey($id) | Should -BeFalse      # not latched
+
+        (@{ type = 'user'; message = @{ content = 'the prompt that arrived a moment later' } } |
+            ConvertTo-Json -Compress -Depth 5) | Add-Content -LiteralPath $path -Encoding utf8
+        (Get-SessionFact ([pscustomobject]@{ SessionId = $id })).Task |
+            Should -Be 'the prompt that arrived a moment later'
+    }
 }
 
 Describe 'Get-SessionTitle' {
@@ -270,9 +291,10 @@ Describe 'Get-SessionTitle' {
         $id = 'sid-title'
         (@{ type = 'assistant'; gitBranch = 'feature-x' } | ConvertTo-Json -Compress -Depth 5) |
             Set-Content -LiteralPath (Join-Path $fakeHome "projects\D--repos-matrix\$id.jsonl") -Encoding utf8
+        # [char] escape, so the expectation never depends on this file's encoding.
         Get-SessionTitle ([pscustomobject]@{
             NameSource = 'derived'; Name = 'x'; Cwd = 'D:\repos\matrix'; SessionId = $id }) |
-            Should -Be 'matrix · feature-x'
+            Should -Be "matrix $([char]0x00B7) feature-x"
     }
 
     It 'leaves out a branch that names nothing' {

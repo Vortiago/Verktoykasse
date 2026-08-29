@@ -69,9 +69,11 @@
     ignored, so clicks, Ctrl+wheel zoom, scrolling, Alt+Enter and Ctrl+Shift+C do not
     stop it. Arrow and page keys are treated as scrolling, not as "any key".
 #>
+#requires -Version 7
 [CmdletBinding(DefaultParameterSetName = 'Rain')]
 param(
-    [Parameter(ParameterSetName = 'Rain')]
+    # In every set, as the help promises: -Sessions ignores it (lanes are coloured by
+    # status). Confined to the Rain set it made `-Sessions -Palette X` a binding error.
     [ValidateSet('Green', 'Amber', 'Cyan', 'Magenta', 'Mono')]
                                                          [string]   $Palette = 'Green',
 
@@ -116,7 +118,7 @@ try {
     }
 } catch { }
 
-# --- UTF-8 output, or the katakana turn into "?" on Windows PowerShell 5.1 ----------
+# --- UTF-8 output, or a console on a legacy codepage turns the katakana into "?" ----
 $prevEncoding = $null
 try {
     $prevEncoding = [Console]::OutputEncoding
@@ -162,7 +164,7 @@ if ($needTabs) {
 
 # Owned here, kept current by Update-SessionTabMap. Map is sessionId -> tab, and the
 # tab carries the handle of the window holding it.
-$tabState = @{ Sig = ''; Set = ''; Map = @{}; RetryAt = 0; RetryWait = 0 }
+$tabState = New-TabState
 $tabClock = [System.Diagnostics.Stopwatch]::StartNew()
 
 # -Density and -Speed are absolute in the other modes and multipliers here, so the
@@ -236,6 +238,23 @@ function Write-Raw {
     $rawOut.Flush()
 }
 
+# Clicks only arrive once mouse reporting is on and QuickEdit is off. QuickEdit goes
+# back on at exit, or the window is left unable to select text. Captured BEFORE
+# TreatControlCAsInput below rewrites the same console mode word, so the finally's
+# SetStdinMode($prevStdin) restores the true original, ENABLE_PROCESSED_INPUT included.
+$prevStdin = $null
+if ($Click) {
+    try {
+        $prevStdin = $VT::GetStdinMode()
+        [void]$VT::SetStdinMode((($prevStdin -bor $VT::MOUSE_ON) -band (-bnot $VT::QUICK_EDIT)))
+    } catch { $prevStdin = $null }
+}
+
+# Before the slow priming pass below: a Ctrl+C in that gap must arrive as a queued key
+# that the first PollInput turns into a clean exit through the finally, not a hard kill
+# that skips every restore there (and leaves the console encoding switched).
+try { [Console]::TreatControlCAsInput = $true } catch { }
+
 # The first poll is the expensive one: it walks the transcript folder once and reads the
 # head and tail of each session's own. That would show as a frozen first frame, so it is
 # paid out here, before the screen is handed over. The loop still polls on its first
@@ -246,18 +265,7 @@ if ($Sessions) {
     foreach ($s in (Get-LiveSession)) { [void](Get-SessionTitle $s) }
 }
 
-try { [Console]::TreatControlCAsInput = $true } catch { }
 try { [Console]::CursorVisible = $false } catch { }
-
-# Clicks only arrive once mouse reporting is on and QuickEdit is off. QuickEdit goes
-# back on at exit, or the window is left unable to select text.
-$prevStdin = $null
-if ($Click) {
-    try {
-        $prevStdin = $VT::GetStdinMode()
-        [void]$VT::SetStdinMode((($prevStdin -bor $VT::MOUSE_ON) -band (-bnot $VT::QUICK_EDIT)))
-    } catch { $prevStdin = $null }
-}
 
 Write-Raw $ENTER_SCREEN
 

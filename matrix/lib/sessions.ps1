@@ -38,8 +38,10 @@ function Test-SessionAlive {
     try {
         if (-not $ProcStart) { return $true }
         try { $ft = $p.StartTime.ToFileTimeUtc() } catch { return $true }   # no rights to read it
-        # 2 s of slop: the file holds the value Claude read, not our conversion of it
-        return [Math]::Abs($ft - [int64]$ProcStart) -lt 20000000
+        # 2 s of slop: the file holds the value Claude read, not our conversion of it.
+        # An unreadable procStart cannot verify anything: keep the session, same as
+        # having no rights - the cast must not kill the poll under EAP=Stop.
+        try { return [Math]::Abs($ft - [int64]$ProcStart) -lt 20000000 } catch { return $true }
     } finally { $p.Dispose() }
 }
 
@@ -61,21 +63,26 @@ function Get-ClaudeSession {
         try { $r = ConvertFrom-Json ([System.IO.File]::ReadAllText($f)) } catch { continue }
         if (-not $r.pid -or -not $r.sessionId) { continue }
         if (-not $IncludeBackground -and $r.kind -ne 'interactive') { continue }
-        if (-not (Test-SessionAlive -ProcessId $r.pid -ProcStart $r.procStart)) { continue }
+        # The try covers the casts too: one malformed field (a pid or timestamp that
+        # does not cast) skips the record exactly as unreadable JSON does, instead of
+        # killing the whole rain under the script's ErrorActionPreference = Stop.
+        try {
+            if (-not (Test-SessionAlive -ProcessId $r.pid -ProcStart $r.procStart)) { continue }
 
-        $status = if ($r.status) { [string]$r.status } else { 'idle' }
-        [pscustomobject]@{
-            Pid        = [int]$r.pid
-            SessionId  = [string]$r.sessionId
-            Name       = if ($r.name) { [string]$r.name } else { "claude-$($r.pid)" }
-            NameSource = if ($r.nameSource) { [string]$r.nameSource } else { 'user' }
-            Cwd        = if ($r.cwd)  { [string]$r.cwd }  else { '?' }
-            Status     = $status
-            WaitingFor = if ($r.waitingFor) { [string]$r.waitingFor } else { '' }
-            StartedAt  = [int64]$r.startedAt
-            UpdatedAt  = [int64]$r.statusUpdatedAt
-            Style      = Get-SessionStyle $status
-        }
+            $status = if ($r.status) { [string]$r.status } else { 'idle' }
+            [pscustomobject]@{
+                Pid        = [int]$r.pid
+                SessionId  = [string]$r.sessionId
+                Name       = if ($r.name) { [string]$r.name } else { "claude-$($r.pid)" }
+                NameSource = if ($r.nameSource) { [string]$r.nameSource } else { 'user' }
+                Cwd        = if ($r.cwd)  { [string]$r.cwd }  else { '?' }
+                Status     = $status
+                WaitingFor = if ($r.waitingFor) { [string]$r.waitingFor } else { '' }
+                StartedAt  = [int64]$r.startedAt
+                UpdatedAt  = [int64]$r.statusUpdatedAt
+                Style      = Get-SessionStyle $status
+            }
+        } catch { continue }
     }
 
     @($out) | Sort-Object StartedAt
@@ -98,15 +105,21 @@ function Update-TranscriptIndex {
     $script:TranscriptIndex = @{}
     $script:IndexBuiltAt    = [datetime]::UtcNow
     if (-not [System.IO.Directory]::Exists($root)) { return }
-    foreach ($f in [System.IO.Directory]::EnumerateFiles($root, '*.jsonl', 'AllDirectories')) {
-        $id  = [System.IO.Path]::GetFileNameWithoutExtension($f)
-        $old = $script:TranscriptIndex[$id]
-        # a session id can appear under two project folders; the newest file wins
-        if (-not $old -or
-            [System.IO.File]::GetLastWriteTimeUtc($f) -gt [System.IO.File]::GetLastWriteTimeUtc($old)) {
-            $script:TranscriptIndex[$id] = $f
+    # The walk must not kill the poll: an ACL'd subfolder, a junction, or a project
+    # folder deleted mid-walk throws out of the lazy enumeration, and this runs
+    # outside every caller's try. Whatever was indexed before the throw is kept;
+    # the 10 s rebuild throttle picks up the rest.
+    try {
+        foreach ($f in [System.IO.Directory]::EnumerateFiles($root, '*.jsonl', 'AllDirectories')) {
+            $id  = [System.IO.Path]::GetFileNameWithoutExtension($f)
+            $old = $script:TranscriptIndex[$id]
+            # a session id can appear under two project folders; the newest file wins
+            if (-not $old -or
+                [System.IO.File]::GetLastWriteTimeUtc($f) -gt [System.IO.File]::GetLastWriteTimeUtc($old)) {
+                $script:TranscriptIndex[$id] = $f
+            }
         }
-    }
+    } catch { }
 }
 
 function Get-SessionTranscript {
@@ -154,9 +167,15 @@ function Get-SessionFact {
             try {
                 $enc  = [System.Text.UTF8Encoding]::new($false)
                 $head = [System.IO.StreamReader]::new($fs, $enc, $false, 4096, $true)
+                $headEof = $false
                 for ($i = 0; $i -lt $HeadLines -and -not $fact.Task; $i++) {
                     $line = $head.ReadLine()
-                    if ($null -eq $line) { break }
+                    if ($null -eq $line) { $headEof = $true; break }
+                    # the reader is told not to detect encodings, so a BOM someone put
+                    # on the transcript would otherwise hide line 1 from the parser
+                    if ($i -eq 0 -and $line.Length -gt 0 -and $line[0] -eq [char]0xFEFF) {
+                        $line = $line.Substring(1)
+                    }
                     $fact.Task = Read-TaskLine $line
                 }
                 $head.Dispose()
@@ -173,9 +192,18 @@ function Get-SessionFact {
                     if ($m.Success) { $fact.Branch = $m.Groups[1].Value }
                 }
             } finally { $fs.Dispose() }
-            # Only a read that got through is cached. A file locked for a moment must not
-            # blank the header for the rest of the run, same as a missing transcript.
-            $script:SessionFact[$id] = $fact
+            # Only a read that got through is cached - and only when it answered. A file
+            # locked for a moment must not blank the header for the rest of the run, same
+            # as a missing transcript. Nor must the gap between a session starting and
+            # its first prompt landing: a head that ended before HeadLines with no prompt
+            # is a transcript still being born, so it is re-read next poll - until it
+            # goes quiet. A short transcript nothing has written for 30 s has said all
+            # it will say (a /command opener), and without settling it here it would be
+            # re-opened on every poll for the rest of the run.
+            if ($fact.Task -or -not $headEof -or
+                ([datetime]::UtcNow - [System.IO.File]::GetLastWriteTimeUtc($path)).TotalSeconds -ge 30) {
+                $script:SessionFact[$id] = $fact
+            }
         } catch { }
     }
     $fact
@@ -195,6 +223,9 @@ function Read-TaskLine {
 
     $t = ConvertTo-CellText (((Remove-HarnessTag $t) -replace '\s+', ' ').Trim())
     if ($t.StartsWith('Caveat:') -or $t.StartsWith('/') -or $t.Length -lt 8) { return '' }
+    # Three header rows never show more than ~2 KB, and the tab matcher tokenizes the
+    # head of it; carrying a pasted multi-KB prompt is pure per-poll wrap cost.
+    if ($t.Length -gt 2048) { $t = $t.Substring(0, 2048) }
     $t
 }
 
@@ -221,9 +252,10 @@ function Get-SessionTitle {
         if ($trim -match '[\\/]' -and $trim -notmatch '^[A-Za-z]:$') { $leaf = Split-Path $trim -Leaf }
         elseif ($trim) { $leaf = $trim }
     }
-    # HEAD is what a cwd outside a work tree reports, and it names nothing
+    # HEAD is what a cwd outside a work tree reports, and it names nothing.
+    # U+00B7 via escape, so nothing ever depends on how this file's bytes are decoded.
     $branch = (Get-SessionFact $Session).Branch
-    $title = if ($branch -and $branch -ne 'HEAD' -and $branch -ne $leaf) { "$leaf · $branch" } else { $leaf }
+    $title = if ($branch -and $branch -ne 'HEAD' -and $branch -ne $leaf) { "$leaf $([char]0x00B7) $branch" } else { $leaf }
     ConvertTo-CellText $title
 }
 

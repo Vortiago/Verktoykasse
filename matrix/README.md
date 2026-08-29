@@ -20,9 +20,11 @@ It appears in the dropdown at once, because Windows Terminal reloads
 running it again updates that profile instead of adding another, and `-Remove`
 takes it out. `-Arguments` changes what it runs.
 
-The CRT effect is off unless `-Retro` asks for it. The profile entry is rewritten
-whole on every run, so the script reads the effect back off the existing profile
-first: turn it on in Windows Terminal's own settings and a re-run keeps it.
+The CRT effect is off unless `-Retro` asks for it. On a re-run the script
+rewrites only what it owns (name, command line, icon) and carries everything
+else on the profile over from the existing entry - colour scheme, font,
+opacity, the CRT effect - so what you set in Windows Terminal's own settings
+survives, and the profile keeps its place in the dropdown.
 
 `settings.json` is copied to `settings.json.matrix-bak` first, then rewritten
 from parsed JSON. Comments and hand formatting in it do not survive that; the
@@ -121,7 +123,9 @@ a summary of the turn.
 The glyph is checked against the status we already have, and the rest of the
 title against the session's opening prompt. The lane header names the tab it
 would open (`working 6m [tab 3]`), so a wrong match is visible rather than
-silent, and the number is the one Ctrl+Alt+N uses.
+silent, and the number is the one Ctrl+Alt+N uses in that session's window -
+tabs are numbered per window, so for a session in another window the number
+only means something once you are there.
 
 Because a session is placed in a window by its tab, `-ThisWindow` drops a
 session whose tab it cannot match, rather than guessing that it is ours.
@@ -147,7 +151,8 @@ there or busy. A rebuild that lands in that gap matches nothing.
 
 So a rebuild that misses a session is never the last word:
 
-- **The miss is re-tried** every 2 s until every session has a tab. Latching it
+- **The miss is re-tried**, starting at 2 s and backing off to 30 s while the
+  same sessions keep missing, until every session has a tab. Latching it
   instead is what made a new session invisible until its status happened to
   change, which for a session nobody has prompted yet is never.
 - **A session keeps its last tab** when a rebuild cannot re-match it. The old tab

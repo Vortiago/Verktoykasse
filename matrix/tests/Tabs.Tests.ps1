@@ -129,13 +129,20 @@ Describe 'Merge-SessionTab' {
 }
 
 Describe 'Resolve-SessionTab, one tab and one session' {
-    It 'takes the only Claude tab even when the glyph disagrees' {
-        # Pinning a deliberate bypass of the scoring. The tab title lags the registry, so
-        # a busy session whose tab still shows idle is the ordinary case, not a mismatch,
-        # and with one candidate and one session there is nothing else it could be. The
-        # general path would score this -4 and reject it.
+    It 'does not latch a lone tab that shares nothing with the session' {
+        # The lone glyph tab can be a leftover from an exited claude in another window,
+        # and a match here would disarm the caller's re-try, so a wrong latch lasts the
+        # whole run. A miss keeps the re-try armed until the real tab is titled.
         $map = Resolve-SessionTab -Session @((New-TestSession 'sid' 'busy' 'nothing in common')) `
                                   -Tab @((New-TestTab 1 0 'unrelated title' 'idle'))
+        $map.Count | Should -Be 0
+    }
+
+    It 'still matches through a lagging glyph when the words agree' {
+        # The ordinary acquisition case: the registry flips to busy before the tab glyph
+        # follows, but the title already carries the session's own words.
+        $map = Resolve-SessionTab -Session @((New-TestSession 'sid' 'busy' 'refactor the parser')) `
+                                  -Tab @((New-TestTab 1 0 'parser refactor' 'idle'))
         $map['sid'].Index | Should -Be 0
     }
 

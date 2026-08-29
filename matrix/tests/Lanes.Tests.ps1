@@ -34,7 +34,8 @@ Describe 'Split-Wrap' {
     It 'ends a truncated wrap in an ellipsis, so it does not read as a finished sentence' {
         $out = @(Split-Wrap -Text 'one two three four five six' -Width 9 -MaxLines 2)
         $out.Count | Should -Be 2
-        $out[-1] | Should -Match '…$'
+        # [char] escape, so the expectation never depends on this file's encoding.
+        $out[-1].EndsWith([char]0x2026) | Should -BeTrue
     }
 
     It 'leaves a wrap that fits alone' {
@@ -69,6 +70,14 @@ Describe 'Format-Age' {
         Format-Age ($now - 5000)      | Should -Be '5s'
         Format-Age ($now - 300000)    | Should -Be '5m'
         Format-Age ($now - 7200000)   | Should -Be '2h'
+    }
+
+    It 'never rounds an age up, so a unit boundary cannot overshoot' {
+        # [int] alone rounds half to even: 90 s said "2m" and 3590 s said "60m".
+        $now = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+        Format-Age ($now - 90000)     | Should -Be '1m'
+        Format-Age ($now - 3590000)   | Should -Be '59m'
+        Format-Age ($now - 5400000)   | Should -Be '1h'
     }
 }
 

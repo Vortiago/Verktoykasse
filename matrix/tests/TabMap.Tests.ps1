@@ -4,12 +4,12 @@ BeforeAll {
     . (Join-Path $PSScriptRoot '..\lib\tabs.ps1')
     . (Join-Path $PSScriptRoot 'Fixtures.ps1')
 
-    # Pid too: the map's signature is built from it.
+    # Pid too: the map's signature is built from it. New-TabState comes from tabs.ps1,
+    # so the tests cannot drift from the shape matrix.ps1 actually initialises.
     function New-TestSession ($id, $pid_, $status, $task) {
         [pscustomobject]@{ SessionId = $id; Pid = $pid_; Status = $status; Task = $task
                            Name = $task; Cwd = '' }
     }
-    function New-TabState { @{ Sig = ''; Set = ''; Map = @{}; RetryAt = 0; RetryWait = 0 } }
 }
 
 Describe 'Update-SessionTabMap' {
@@ -127,8 +127,8 @@ Describe 'Update-SessionTabMap' {
         It 'comes back to it, rather than treating no windows as an answer' {
             $alpha.Status = 'busy'
             Update-SessionTabMap -Session @($alpha) -State $state -ReadTab { @() } -Now 0
-            $state.Sig | Should -Be ''               # nothing was learned, so nothing is latched
-            Update-SessionTabMap -Session @($alpha) -State $state -ReadTab { $script:settledTabs } -Now 100
+            $state.RetryAt | Should -BeGreaterThan 0          # armed to look again
+            Update-SessionTabMap -Session @($alpha) -State $state -ReadTab { $script:settledTabs } -Now $state.RetryAt
             $state.Map.Count | Should -Be 1
         }
     }
@@ -214,8 +214,13 @@ Describe 'Update-SessionTabMap' {
                 $now = $state.RetryAt
                 $state.RetryWait
             }
-            $waits     | Should -Be @(2000, 4000, 8000, 16000)
-            $state.Sig | Should -Be ''      # nothing was learned, so nothing is latched
+            $waits | Should -Be @(2000, 4000, 8000, 16000)
+
+            # A poll BETWEEN re-tries must not read. The failed attempt has to latch
+            # Sig, or this gate stays open and the ~100 ms read the backoff exists to
+            # ration runs on every poll for the whole outage.
+            Update-SessionTabMap -Session @($alpha) -State $state -ReadTab $reader -Now ($now - 1)
+            $reads | Should -Be 4
         }
     }
 

@@ -51,6 +51,7 @@
     profile as a TAB in the window whose sessions you want to watch. Opened as its own
     window it will correctly report that there are no sessions in it.
 #>
+#requires -Version 7
 [CmdletBinding(SupportsShouldProcess)]
 param(
     [string] $Name      = 'Matrix',
@@ -91,17 +92,15 @@ if (-not [System.IO.File]::Exists($SettingsPath)) { throw "Not found: $SettingsP
 $scriptPath = Join-Path $PSScriptRoot 'matrix.ps1'
 if (-not [System.IO.File]::Exists($scriptPath)) { throw "matrix.ps1 not found at: $scriptPath" }
 
-# Resolved now, so the profile does not depend on PATH later. PowerShell 7 if it is
-# here: the assembly cache is keyed on PSEdition, so a profile that picks the other one
-# pays a second compile for the same rain.
+# Resolved now, so the profile does not depend on PATH later.
 $shell = Get-Command pwsh.exe -ErrorAction SilentlyContinue
-if (-not $shell) { $shell = Get-Command powershell.exe -ErrorAction SilentlyContinue }
-if (-not $shell) { throw 'Neither pwsh.exe nor powershell.exe found.' }
+if (-not $shell) { throw 'pwsh.exe not found. The rain needs PowerShell 7+.' }
 
 $guid = Get-ProfileGuid $Name
 $raw  = [System.IO.File]::ReadAllText($SettingsPath)
-try { $settings = $raw | ConvertFrom-Json -ErrorAction Stop }
-catch { throw "Could not parse $SettingsPath : $($_.Exception.Message)" }
+# pwsh's ConvertFrom-Json accepts the JSONC Windows Terminal writes: comments and
+# trailing commas parse; only the rewrite below drops them (the backup keeps them).
+$settings = $raw | ConvertFrom-Json -ErrorAction Stop
 
 # profiles is either a bare array or { defaults, list }
 $list = if ($settings.profiles -is [array]) { $settings.profiles } else { $settings.profiles.list }
@@ -126,16 +125,26 @@ if (-not $Remove) {
         icon             = [char]::ConvertFromUtf32(0x1F7E9)       # green square
         hidden           = $false
     }
-    # Off unless asked for. The entry is rewritten whole, so a re-run would otherwise
-    # throw away a setting the user turned on in Windows Terminal's own profile UI.
-    $retro = if ($Retro) { $true } elseif ($old) { [bool]$old.'experimental.retroTerminalEffect' } else { $false }
-    if ($retro) { $entry['experimental.retroTerminalEffect'] = $true }
+    # Everything this script does not own is carried over from the old entry, so a
+    # re-run keeps what the user set in Windows Terminal's own profile UI - colour
+    # scheme, font, opacity, the CRT effect, all of it - instead of wiping it.
+    if ($old) {
+        foreach ($p in $old.PSObject.Properties) {
+            if (-not $entry.Contains($p.Name)) { $entry[$p.Name] = $p.Value }
+        }
+    }
+    # -Retro forces the effect on; otherwise whatever the carry-over brought stands.
+    if ($Retro) { $entry['experimental.retroTerminalEffect'] = $true }
+    $retro = [bool]$entry['experimental.retroTerminalEffect']
 }
 
 $action = if ($Remove) { "remove profile '$Name'" }
           elseif ($existed) { "update profile '$Name'" }
           else { "add profile '$Name'" }
-$newList = if ($Remove) { $keep } else { $keep + [pscustomobject]$entry }
+# An existing profile is replaced in place, so a re-run does not shuffle the dropdown.
+$newList = if ($Remove) { $keep }
+           elseif ($existed) { @($list | ForEach-Object { if ($_.guid -eq $guid) { [pscustomobject]$entry } else { $_ } }) }
+           else { $keep + [pscustomobject]$entry }
 
 if ($settings.profiles -is [array]) { $settings.profiles = $newList } else { $settings.profiles.list = $newList }
 

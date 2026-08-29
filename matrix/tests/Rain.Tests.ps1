@@ -2,7 +2,13 @@
 # rain itself, because the faults they cover only exist once the parts are wired up.
 BeforeAll {
     $script:rain = Join-Path $PSScriptRoot '..\matrix.ps1'
-    $script:pwshExe = (Get-Process -Id $PID).Path
+    # pwsh installed as a dotnet global tool runs under the dotnet muxer, so the process
+    # path alone cannot relaunch it: the muxer needs pwsh.dll as its first argument.
+    $script:pwshExe  = [Environment]::ProcessPath
+    $script:pwshArgs = @()
+    if ([IO.Path]::GetFileNameWithoutExtension($pwshExe) -eq 'dotnet') {
+        $script:pwshArgs = @(Join-Path $PSHOME 'pwsh.dll')
+    }
 
     # A Claude home with no sessions in it at all.
     $script:emptyHome = Join-Path ([System.IO.Path]::GetTempPath()) "matrix-rain-tests-$PID"
@@ -29,18 +35,21 @@ BeforeAll {
     function Invoke-Rain ($claudeHome, [string[]] $argv) {
         $out = Join-Path ([System.IO.Path]::GetTempPath()) "matrix-rain-$PID.out"
         $err = Join-Path ([System.IO.Path]::GetTempPath()) "matrix-rain-$PID.err"
+        # Restored, not nulled: a developer running the suite with a real
+        # CLAUDE_CONFIG_DIR must not have it deleted from their process.
+        $prevHome = $env:CLAUDE_CONFIG_DIR
         $env:CLAUDE_CONFIG_DIR = $claudeHome
         try {
             $p = Start-Process -FilePath $pwshExe -PassThru -Wait -NoNewWindow `
                     -RedirectStandardOutput $out -RedirectStandardError $err `
-                    -ArgumentList (@('-NoProfile', '-File', $rain) + $argv)
+                    -ArgumentList ($pwshArgs + @('-NoProfile', '-File', $rain) + $argv)
             [pscustomobject]@{
                 ExitCode = $p.ExitCode
                 Stdout   = (Get-Content -LiteralPath $out -Raw -ErrorAction SilentlyContinue)
                 Stderr   = (Get-Content -LiteralPath $err -Raw -ErrorAction SilentlyContinue)
             }
         } finally {
-            $env:CLAUDE_CONFIG_DIR = $null
+            $env:CLAUDE_CONFIG_DIR = $prevHome
             Remove-Item $out, $err -Force -ErrorAction SilentlyContinue
         }
     }
@@ -54,7 +63,9 @@ AfterAll {
     Remove-Item -LiteralPath $emptyHome, $liveHome -Recurse -Force -ErrorAction SilentlyContinue
 }
 
-Describe 'matrix.ps1 -Sessions' {
+# Windows only: the rain's input loop P/Invokes kernel32, so the script itself cannot
+# run elsewhere. The lib suites cover everything else cross-platform.
+Describe 'matrix.ps1 -Sessions' -Skip:(-not $IsWindows) {
     It 'says so when there are no sessions, rather than dying on the empty list' {
         # A Mandatory collection parameter rejects an empty array before the body runs,
         # so the lane function's own "no sessions" branch was unreachable and the rain
@@ -80,7 +91,7 @@ Describe 'matrix.ps1 -Sessions' {
     }
 }
 
-Describe 'matrix.ps1' {
+Describe 'matrix.ps1' -Skip:(-not $IsWindows) {
     It 'rains, in every mode that does not need a desktop' {
         foreach ($argv in @('-Seconds', '1', '-Fps', '10'),
                           @('-Ascii', '-Seconds', '1', '-Fps', '10'),

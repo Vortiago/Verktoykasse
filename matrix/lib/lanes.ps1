@@ -159,9 +159,11 @@ function Get-LaneAtColumn {
 function Format-Age {
     param([int64] $EpochMs)
     if ($EpochMs -le 0) { return '' }
-    $s = [int](([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() - $EpochMs) / 1000)
+    # Floor, not a bare [int] cast: the cast rounds half to even, which showed 90 s
+    # as "2m" and 3590 s as the out-of-unit "60m". An age never rounds up.
+    $s = [int][Math]::Floor(([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() - $EpochMs) / 1000)
     if ($s -lt 0)    { return '' }
     if ($s -lt 60)   { return "${s}s" }
-    if ($s -lt 3600) { return "$([int]($s / 60))m" }
-    return "$([int]($s / 3600))h"
+    if ($s -lt 3600) { return "$([int][Math]::Floor($s / 60))m" }
+    return "$([int][Math]::Floor($s / 3600))h"
 }

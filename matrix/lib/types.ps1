@@ -194,6 +194,7 @@ namespace MatrixRain__TAG__
         double[] laneSpeed, laneDensity;
         string[] header;                         // header[lane*headerLevel.Length + row]
         int[] headerLevel;                       // row -> level within the lane's palette
+        int hdrRowsPainted;                      // high-water mark, for the dirty clear
         bool labelsDirty, paletteDirty;
 
         string overlay;
@@ -302,23 +303,14 @@ namespace MatrixRain__TAG__
                 colLane[x] = L;
                 int want = L < 0 ? -1 : L * stride;
 
-                // A column that changed lane restarts. One that only changed colour
-                // keeps falling and is recoloured in place, or a slow lane would hold its
-                // old colour until the head moved.
+                // A column that changed lane restarts; an unmoved column keeps falling.
+                // Recolouring an unmoved column is SetPalettes' job: colPal is a pure
+                // function of the lane index, so a changed palette base always means
+                // `moved` - the old repack-in-place branch here was unreachable.
                 if (moved)
                 {
                     head[x] = double.NaN;
                     for (int y = 0; y < h; y++) cur[y * w + x] = BLANK;
-                }
-                else if (colPal[x] != want && colPal[x] >= 0 && want >= 0)
-                {
-                    for (int y = 0; y < h; y++)
-                    {
-                        int i = y * w + x;
-                        int idx = (cur[i] >> 16) - 1;
-                        if (idx < 0) continue;
-                        cur[i] = Pack(want + (idx - colPal[x]), cur[i] & 0xFFFF);
-                    }
                 }
                 colPal[x] = want;
             }
@@ -395,9 +387,15 @@ namespace MatrixRain__TAG__
             if (labelsDirty)
             {
                 labelsDirty = false;
-                for (int j = 0; j < w * Math.Min(h, per); j++) cur[j] = BLANK;
+                // Clear what WAS painted too, not just the new height: a header that
+                // shrank (task rows dropped, or fewer rows per lane) otherwise leaves
+                // its old rows stamped in cells the new layout never repaints -
+                // gutter columns, and lanes whose slow rain takes seconds to pass.
+                int wipe = Math.Min(h, Math.Max(per, hdrRowsPainted));
+                for (int j = 0; j < w * wipe; j++) cur[j] = BLANK;
                 for (int j = 0; j < lenHdr.Length; j++) lenHdr[j] = 0;
             }
+            hdrRowsPainted = rows;
 
             for (int L = 0; L < laneCount; L++)
                 for (int r = 0; r < rows; r++)
@@ -532,6 +530,7 @@ namespace MatrixWin__TAG__
         [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr hwnd);
         [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
         [DllImport("user32.dll")] static extern IntPtr GetAncestor(IntPtr h, uint flags);
+        [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr hwnd);
 
         static bool IsTerminal(IntPtr h)
         {
@@ -546,6 +545,15 @@ namespace MatrixWin__TAG__
         {
             IntPtr h = GetAncestor(GetForegroundWindow(), 2);   // GA_ROOT
             return (h != IntPtr.Zero && IsTerminal(h)) ? h.ToInt64() : 0;
+        }
+
+        // Raise a window. Selecting a tab flips it only inside its own window; a
+        // session in ANOTHER Windows Terminal window would switch invisibly while the
+        // rain kept focus. The foreground process is allowed to hand focus over, and
+        // at click time that is us.
+        public static bool Activate(long hwnd)
+        {
+            return SetForegroundWindow(new IntPtr(hwnd));
         }
 
         // Every Windows Terminal window, visible ones only: a hidden one holds no tab

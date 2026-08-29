@@ -3,27 +3,31 @@
 #
 # Kept apart from types.ps1, which is only the C# sources.
 
-# One cell per character or the header shears: no control codes, and nothing outside
-# Latin-1/Latin Extended-A, which the renderer's inline UTF-8 encoder handles.
+# One cell per character or the header shears: no control codes (C0, DEL or C1), and
+# nothing outside Latin-1/Latin Extended-A, which the renderer's inline UTF-8 encoder
+# handles.
+#
+# The allowed set is built once, programmatically, so file encoding never matters:
+# ASCII printable \x20-\x7E + printable Latin-1 Supplement \xA0-\xFF (which carries the
+# middle dot the titles use) + Latin Extended-A U+0100-U+017F. The C1 range \x80-\x9F
+# stays out: those are control codes (U+009B is an 8-bit CSI), and a user-set /rename
+# name must not be able to put one on the screen.
+#
+# A HashSet for O(1) lookup instead of regex: PowerShell's -replace with interpolated
+# character classes is fragile (backslash escaping, metacharacters). Script scope, not
+# per call: this runs for every header string of every session on every poll.
+$script:CellAllowed = [System.Collections.Generic.HashSet[char]]::new()
+foreach ($cellCode in @(0x20..0x7E) + @(0xA0..0xFF) + @(0x0100..0x017F)) {
+    [void]$script:CellAllowed.Add([char]$cellCode)
+}
+
 function ConvertTo-CellText {
     param([string] $Text)
-    # Build the allowed-char set programmatically so file encoding never matters.
-    # ASCII printable \x20-\x7E + middle dot (U+00B7) + Latin-1 Supplement \x80-\xFF
-    # + Latin Extended-A U+0100-U+017F.
-    #
-    # Using a HashSet for O(1) lookup instead of regex: PowerShell's -replace with
-    # interpolated character classes is fragile (backslash escaping, metacharacters).
-    # A char-by-char pass is fast enough for the short strings involved.
-    $allowed = [System.Collections.Generic.HashSet[char]]::new()
-    $codes = @(0x20..0x7E) + @(0x00B7) + @(0x80..0xFF) + @(0x0100..0x017F)
-    for ($j = 0; $j -lt $codes.Length; $j++) {
-        [void]$allowed.Add([char]$codes[$j])
-    }
     $sb = [System.Text.StringBuilder]::new($Text.Length)
     $chars = $Text.ToCharArray()
     for ($i = 0; $i -lt $chars.Length; $i++) {
         $c = $chars[$i]
-        if ($allowed.Contains($c)) {
+        if ($script:CellAllowed.Contains($c)) {
             [void]$sb.Append($c)
         } else {
             [void]$sb.Append(' ')
@@ -47,7 +51,10 @@ $script:LEAVE_SCREEN = "$script:ESC[0m$script:CLS$script:ESC[?1007h$script:ESC[?
 #
 # That hash also names a cached assembly in TEMP, because compiling shells out to csc and
 # the cached DLL loads an order of magnitude faster. The tag invalidates it on any source
-# edit, and PSEdition is in the name because 5.1 and 7 target different frameworks.
+# edit, and the runtime major version is in the name: two pwsh installs on different
+# .NET majors (a stable and a preview) must not load each other's build - LoadFrom is
+# lazy, so a wrong-runtime DLL resolves here and only fails at first use, past every
+# fallback.
 # Anything that goes wrong falls back to compiling in memory. See README.md.
 function Add-TaggedTypes {
     param([string] $Source, [string[]] $TypeNames)   # names hold {0} where the tag goes
@@ -59,7 +66,8 @@ function Add-TaggedTypes {
         # One cache per source family: two sources compiled through here must not
         # evict each other. Only the renderer uses this today.
         $stem = ($TypeNames[0] -split '[.{]')[0]
-        $dll  = Join-Path ([System.IO.Path]::GetTempPath()) "matrix-$stem-$tag-$($PSVersionTable.PSEdition).dll"
+        $rt   = "net$([System.Environment]::Version.Major)"
+        $dll  = Join-Path ([System.IO.Path]::GetTempPath()) "matrix-$stem-$tag-$rt.dll"
         try {
             if (-not [System.IO.File]::Exists($dll)) {
                 # Compile to a private name and move it into place: a loaded assembly is
@@ -71,10 +79,10 @@ function Add-TaggedTypes {
                 } finally { Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue }
 
                 # Only this tag is reachable now, so drop what earlier edits left behind.
-                # The edition stays in the filter: the two editions cache side by side,
-                # and a wider glob makes them evict each other on every alternation.
+                # The runtime stays in the filter: runtimes cache side by side, and a
+                # wider glob makes them evict each other on every alternation.
                 # A copy another process still has loaded is locked; skip it.
-                Get-ChildItem -LiteralPath ([System.IO.Path]::GetTempPath()) -Filter "matrix-$stem-*-$($PSVersionTable.PSEdition).dll" -File -ErrorAction SilentlyContinue |
+                Get-ChildItem -LiteralPath ([System.IO.Path]::GetTempPath()) -Filter "matrix-$stem-*-$rt.dll" -File -ErrorAction SilentlyContinue |
                     Where-Object { $_.FullName -ne $dll } |
                     Remove-Item -Force -ErrorAction SilentlyContinue
             }

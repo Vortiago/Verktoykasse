@@ -98,10 +98,13 @@ function Get-TerminalTab {
 
 function Select-TerminalTab {
     # Brings a tab to the front. SelectionItem is the pattern every WT tab exposes.
+    # Select() flips the tab only within its own window, so the window is raised too,
+    # or a click on a session in another window would switch it invisibly.
     param([Parameter(Mandatory)] $Tab)
     try {
         $p = $Tab.Element.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern)
         $p.Select()
+        if ($Tab.Hwnd) { [void]$WinFinder::Activate($Tab.Hwnd) }
         $true
     } catch { $false }
 }
@@ -144,12 +147,10 @@ function Resolve-SessionTab {
     $cand = @($Tab | Where-Object { $_.IsBusy -or $_.IsIdle })
     if ($cand.Count -eq 0 -or $Session.Count -eq 0) { return $map }
 
-    # One Claude tab and one session leaves nothing to guess.
-    if ($cand.Count -eq 1 -and $Session.Count -eq 1) {
-        $map[$Session[0].SessionId] = $cand[0]
-        return $map
-    }
-
+    # One tab and one session still goes through the scoring: the lone glyph tab can be
+    # a leftover from an exited claude in another window, and latching it silently would
+    # also disarm the caller's re-try. A true match scores positive on its own; a lag
+    # miss is carried by Merge-SessionTab and re-tried.
     $pairs = foreach ($s in $Session) {
         $want = Get-MatchToken (($s.Task, $s.Name, $s.Cwd) -join ' ')
         foreach ($t in $cand) {
@@ -215,6 +216,12 @@ function Get-NextWait {
     if ($Settled -and $Wait) { [Math]::Min($Wait * 2, $MaxRetryMs) } else { $RetryMs }
 }
 
+function New-TabState {
+    # The state Update-SessionTabMap owns, spelled in one place: matrix.ps1 and the
+    # tests must not each hand-roll the shape. Fields are documented on .PARAMETER State.
+    @{ Sig = ''; Set = ''; Map = @{}; RetryAt = 0; RetryWait = 0 }
+}
+
 function Update-SessionTabMap {
     <#
     .SYNOPSIS
@@ -233,7 +240,8 @@ function Update-SessionTabMap {
         every 2 s forever. The first re-tries stay fast, which is what a tab catching up
         needs; a permanent miss decays to idle.
     .PARAMETER State
-        Mutated in place. Sig: the session set the map was built from. Map: sessionId ->
+        Mutated in place. Sig: the session set last acted on - a map build, or a tab
+        read that failed and armed a re-try. Map: sessionId ->
         tab. RetryAt: when to re-read after an incomplete map, 0 for no re-try.
         RetryWait: the current backoff. Set: the session set, which is what resets the
         backoff. Sig carries status too, so resetting on Sig would restart the backoff
@@ -253,17 +261,22 @@ function Update-SessionTabMap {
     )
 
     $sig = ($Session | ForEach-Object { "$($_.Pid):$($_.Status)" }) -join '|'
-    $set = (($Session | ForEach-Object { $_.Pid } | Sort-Object) -join '|')
     $due = $State.RetryAt -gt 0 -and $Now -ge $State.RetryAt
     if ($sig -eq $State.Sig -and -not $due) { return }
 
+    # Past the gate only: on the common no-change poll it would be computed and thrown away.
+    $set     = (($Session | ForEach-Object { $_.Pid } | Sort-Object) -join '|')
     $settled = $set -eq $State.Set          # same sessions, so any wait already served counts
 
     $tabs = @(& $ReadTab)
     # No windows at all is UI Automation failing, not an answer: keep the last good map
     # and come back later. Backed off like a miss, or a desktop that never answers is
-    # re-read on every poll for the rest of the run.
+    # re-read on every poll for the rest of the run. Sig is latched here too: leaving it
+    # behind held the gate above open, and the ~100 ms read this backoff exists to
+    # ration then ran on every poll for the whole outage (fullscreen terminal, locked
+    # desktop). RetryAt is what drives the next look.
     if ($tabs.Count -eq 0) {
+        $State.Sig     = $sig
         $State.Set     = $set
         $State.RetryWait = Get-NextWait $State.RetryWait $settled $RetryMs $MaxRetryMs
         $State.RetryAt   = $Now + $State.RetryWait
