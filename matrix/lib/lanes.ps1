@@ -49,7 +49,8 @@ function Split-Wrap {
     if ($cut -and $out.Count -gt 0) {
         $last = $out[$out.Count - 1]
         if ($last.Length -ge $Width) { $last = $last.Substring(0, $Width - 1) }
-        $out[$out.Count - 1] = "$last…"
+        # U+2026 horizontal ellipsis via escape so file encoding never mangles it
+        $out[$out.Count - 1] = "$last$([char]0x2026)"
     }
     # no comma-wrap: the caller collects with @(), which would nest a wrapped array into
     # one element and stringify it back into a single space-joined line

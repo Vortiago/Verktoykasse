@@ -12,12 +12,14 @@ Describe 'ConvertTo-CellText' {
     }
 
     It 'leaves plain ASCII alone' {
-        ConvertTo-CellText 'matrix-session-status · working 6m' |
-            Should -Be 'matrix-session-status · working 6m'
+        $asciiTest = "matrix-session-status ${[char]0x00B7} working 6m"
+        ConvertTo-CellText $asciiTest | Should -Be $asciiTest
     }
 
     It 'keeps Latin-1 and Latin Extended-A, which the encoder handles' {
-        ConvertTo-CellText 'Verktøykasse Ærlig ā' | Should -Be 'Verktøykasse Ærlig ā'
+        # Use [char] casts so file encoding never corrupts the test data
+        $expected = "Verkt${[char]0x00F8}ykasse ${[char]0x00C6}rlig ${[char]0x0101}"
+        ConvertTo-CellText $expected | Should -Be $expected
     }
 
     It 'replaces control characters' {

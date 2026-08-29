@@ -7,7 +7,29 @@
 # Latin-1/Latin Extended-A, which the renderer's inline UTF-8 encoder handles.
 function ConvertTo-CellText {
     param([string] $Text)
-    $Text -replace '[^\x20-\x7E\u00B7\u00C0-\u024F]', ' '
+    # Build the allowed-char set programmatically so file encoding never matters.
+    # ASCII printable \x20-\x7E + middle dot (U+00B7) + Latin-1 Supplement \x80-\xFF
+    # + Latin Extended-A U+0100-U+017F.
+    #
+    # Using a HashSet for O(1) lookup instead of regex: PowerShell's -replace with
+    # interpolated character classes is fragile (backslash escaping, metacharacters).
+    # A char-by-char pass is fast enough for the short strings involved.
+    $allowed = [System.Collections.Generic.HashSet[char]]::new()
+    $codes = @(0x20..0x7E) + @(0x00B7) + @(0x80..0xFF) + @(0x0100..0x017F)
+    for ($j = 0; $j -lt $codes.Length; $j++) {
+        [void]$allowed.Add([char]$codes[$j])
+    }
+    $sb = [System.Text.StringBuilder]::new($Text.Length)
+    $chars = $Text.ToCharArray()
+    for ($i = 0; $i -lt $chars.Length; $i++) {
+        $c = $chars[$i]
+        if ($allowed.Contains($c)) {
+            [void]$sb.Append($c)
+        } else {
+            [void]$sb.Append(' ')
+        }
+    }
+    $sb.ToString()
 }
 
 $script:ESC = [char]27
