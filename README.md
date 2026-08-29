@@ -10,7 +10,7 @@ here and symlinked into `~/.claude/skills/` dotfiles-style. Project-specific
 skills live with their projects; third-party skills are installed separately
 and don't belong here.
 
-## Skills
+## Tools & Skills
 
 - **[vanilla-web](vanilla-web/SKILL.md)** — how websites get built here:
   vanilla ES modules, HTML `<template>` components loaded by JS (no HTML
@@ -71,6 +71,14 @@ and don't belong here.
   [`test-patterns.md`](verify-prd-implemented/test-patterns.md), and returns a
   per-story matrix + a close / do-not-close verdict. Scales to a fan-out workflow
   for large PRDs. User-invocable as `/verify-prd-implemented`.
+
+- **[oclaude](oclaude/README.md)** — run Claude Code against local Ollama models.
+  Ollama >= 0.32 serves the Anthropic Messages API natively; oclaude points
+  `ANTHROPIC_BASE_URL` at localhost, sets `ANTHROPIC_AUTH_TOKEN=ollama`, and
+  configures 20+ `CLAUDE_CODE_*` knobs so Claude Code works well with local
+  models. Tiered model map (OPUS / SONNET / HAIKU / FABLE), derived tags
+  that pin context windows, daemon lifecycle management, and a built-in
+  advisor subagent. PowerShell only (Windows).
 
 ## Install
 
