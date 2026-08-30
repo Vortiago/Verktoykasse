@@ -20,10 +20,10 @@ function Get-OClaudeConfig {
     }
     # derived tag -> base model + pinned context. Rebuild with oclaude-build-models.
     # Context is nearly free on this architecture (one KV layer, 40 recurrent), so the
-    # 35B's ~41 GiB resident is almost all weights -- which is why a second runner of the
-    # same tag is expensive and why another consumer should share this one rather than
-    # load its own. Headroom still matters: the scheduler clamps its budget to free
-    # SYSTEM ram on this APU.
+    # 35B's ~41 GiB resident is almost all weights. That is why a second runner of the
+    # same tag is expensive: anything else wanting this model should reuse the loaded
+    # one rather than load its own. Headroom still matters: the scheduler clamps its
+    # budget to free SYSTEM ram on this APU.
     # Params are Qwen's "precise coding" preset. Do not restore Ollama's default
     # presence_penalty 1.5 -- it fights the exact repetition file paths need.
     # use_mmap false was measured and is not worth it: same free memory, slower load.
@@ -44,17 +44,8 @@ function Get-OClaudeConfig {
             NumCtx = 128000
             Params = [ordered]@{ temperature = 0.2; top_k = 80; repeat_penalty = 1.05 }
         }
-        # Not a tier, and oclaude itself never calls it: an embedder for a separate
-        # /api/search consumer, built here so one place owns every derived tag. Drop
-        # this entry if nothing on your box embeds. 8192, not the model's 40k -- the
-        # pin only exists to stop the daemon default being applied here.
-        #
-        # A tag name can be spelled out as a literal by such a consumer, so renaming
-        # one here can break it with a "no provider serves both" at its call site.
-        'cc-embed'         = @{
-            From   = 'qwen3-embedding:8b-q8_0'
-            NumCtx = 8192
-        }
+        # A tag that no tier points at is still built and still pulled, so add one
+        # here only for something that actually uses it.
     }
     $names = [ordered]@{
         OPUS   = 'Qwen3.6 35B-A3B q8 256k (local)'
@@ -84,8 +75,9 @@ function Get-OClaudeConfig {
         KeepAlive       = '4h'
         MaxLoadedModels = 3                # keep EXPLICIT: 0 is not "unlimited". sched.go
                                            #   defaults maxRunners to 3 x GPU count when <= 0,
-                                           #   so 0 silently means 3 anyway. The three here are
-                                           #   cc-chat-35b-q8, cc-fast-8b and cc-embed
+                                           #   so 0 silently means 3 anyway. Two are in use here
+                                           #   (cc-chat-35b-q8 and cc-fast-8b); the third slot
+                                           #   is headroom for a tag you add
         NumParallel     = 2                # INERT for every tier here: sched.go:507 blocklists
                                            #   these architectures (qwen35moe and lfm2moe among
                                            #   them), forces 1 and logs it, so two sessions
