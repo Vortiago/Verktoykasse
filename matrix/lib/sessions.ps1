@@ -17,9 +17,10 @@ $script:ClaudeHome = if ($env:CLAUDE_CONFIG_DIR) { $env:CLAUDE_CONFIG_DIR }
 $script:SessionStyle = Import-PowerShellDataFile (Join-Path $PSScriptRoot '..' 'styles.psd1')
 
 function Get-SessionStyle {
+    # A status this table does not know degrades to idle.
     param([string] $Status)
     $s = $script:SessionStyle[$Status]
-    if ($s) { $s } else { $script:SessionStyle['gone'] }
+    if ($s) { $s } else { $script:SessionStyle['idle'] }
 }
 
 function Test-SessionAlive {

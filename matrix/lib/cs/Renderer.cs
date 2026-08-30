@@ -11,8 +11,8 @@ namespace MatrixRain__TAG__
     //
     // The screen splits into LANES, one vertical band per Claude session. A lane owns
     // its palette, fall speed, spawn density and header lines. A working session
-    // rains fast and green; one awaiting an answer crawls and is red. A column with
-    // lane -1 is a gutter and never rains.
+    // rains fast and green; one awaiting an answer crawls red and upward (a negative
+    // fall speed rises). A column with lane -1 is a gutter and never rains.
     //
     // Colour index = lane*STRIDE + level. Level 0..lv is the trail ramp, lv+1 the
     // head, lv+2 the stats overlay. STRIDE is lv+3, so palette p starts at p*STRIDE.
@@ -184,33 +184,41 @@ namespace MatrixRain__TAG__
                 int pal = colPal[x];
                 if (pal < 0) continue;                    // Resize() ran, SetLanes() has not
 
+                // A negative lane speed rains upward: spawn below the screen, trail
+                // hanging below the head, exit off the top.
                 if (double.IsNaN(head[x]))
                 {
                     if (rnd.NextDouble() < laneDensity[L] * 2.5 * dt)
                     {
-                        head[x] = -rnd.Next(0, Math.Max(2, h / 2));
+                        int lead = rnd.Next(0, Math.Max(2, h / 2));
+                        head[x] = laneSpeed[L] < 0 ? h - 1 + lead : -lead;
                         speed[x] = (0.25 + rnd.NextDouble() * 0.85) * 30.0 * laneSpeed[L];
                         len[x] = MIN_TRAIL + rnd.Next(0, spread);
                     }
                     continue;
                 }
 
+                int dir = speed[x] < 0 ? -1 : 1;
                 int wasY = (int)Math.Floor(head[x]);
                 head[x] += speed[x] * dt;
                 int y = (int)Math.Floor(head[x]);
                 int trail = len[x];
 
                 // blank whatever the tail has moved past
-                for (int ty = wasY - trail; ty <= y - trail; ty++)
+                int steps = (y - wasY) * dir;
+                for (int q = 0; q <= steps; q++)
+                {
+                    int ty = wasY + dir * (q - trail);
                     if (ty >= 0 && ty < h) cur[ty * w + x] = BLANK;
+                }
 
-                // paint the trail: bright head fading down to the tail
+                // paint the trail: bright head fading back toward the tail
                 int[] ramp = levelFor[trail];
                 for (int k = 0; k < trail; k++)
                 {
-                    int ty = y - k;
-                    if (ty < 0) break;                    // the rest is above the screen
-                    if (ty >= h) continue;
+                    int ty = y - dir * k;
+                    if (dir > 0 ? ty < 0 : ty >= h) break;   // the rest is off-screen behind the head
+                    if (dir > 0 ? ty >= h : ty < 0) continue;
                     int i = ty * w + x;
 
                     char c = (char)(cur[i] & 0xFFFF);
@@ -220,7 +228,7 @@ namespace MatrixRain__TAG__
                     cur[i] = Pack(pal + (k == 0 ? lv + 1 : ramp[k]), c);
                 }
 
-                if (y - trail >= h) head[x] = double.NaN;  // fell off the bottom
+                if (dir > 0 ? y - trail >= h : y + trail < 0) head[x] = double.NaN;  // fell off the screen
             }
         }
 

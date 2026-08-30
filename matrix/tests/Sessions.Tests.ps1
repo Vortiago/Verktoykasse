@@ -43,9 +43,9 @@ Describe 'Get-SessionStyle' {
         (Get-SessionStyle 'waiting').Label | Should -Be 'needs you'
     }
 
-    It 'falls back to ended for a status it does not know' {
-        (Get-SessionStyle 'something-new').Label | Should -Be 'ended'
-        (Get-SessionStyle '').Label              | Should -Be 'ended'
+    It 'falls back to idle for a status it does not know' {
+        (Get-SessionStyle 'something-new').Label | Should -Be 'idle'
+        (Get-SessionStyle '').Label              | Should -Be 'idle'
     }
 
     It 'makes a busy lane flow and a blocked one crawl' {

@@ -35,6 +35,20 @@ function ConvertTo-CellText {
     $sb.ToString()
 }
 
+function Get-RainGlyph {
+    # Glyphs draw uniformly: the counts set the mix. Katakana two thirds, a letter
+    # about one glyph in ten. Half-width katakana render one cell wide; the
+    # full-width block takes two and shears the grid.
+    param([bool] $Ascii)
+    if ($Ascii) {
+        return [char[]]'0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz<>/\|+*=-:;?#$%&@'
+    }
+    ([char[]](0xFF66..0xFF9D | ForEach-Object { [char]$_ })) +
+        [char[]]'ZTAESHLC' +
+        [char[]]'0123456789' +
+        [char[]]':."=*+-<>|'
+}
+
 $script:ESC = [char]27
 $script:CLS = "$script:ESC[2J$script:ESC[H"   # clear screen, cursor home
 

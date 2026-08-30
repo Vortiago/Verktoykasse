@@ -9,6 +9,12 @@ $TASK_ROWS = 3    # header rows the wrapped task gets when the lane is wide enou
 # Rebuild only when a status changes: nothing else moves the colours.
 $script:PaletteKey = $null
 
+function Get-LaneFall {
+    # The renderer reads direction from the sign: a style with Rise rains upward.
+    param($Style)
+    if ($Style.Rise) { -$Style.Speed } else { $Style.Speed }
+}
+
 function New-Lane {
     # A click on this lane raises Session. It rides on the lane, not in a second
     # array the caller keeps in step by hand, so nothing can desync.

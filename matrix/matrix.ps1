@@ -92,17 +92,7 @@ try {
     $useAscii = $true   # cannot emit katakana: use the ASCII glyph set
 }
 
-if ($useAscii) {
-    $glyphs = [char[]]'0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz<>/\|+*=-:;?#$%&@'
-} else {
-    # Glyphs draw uniformly: the counts set the mix. Katakana two thirds, a letter
-    # about one glyph in ten. Half-width katakana render one cell wide; the
-    # full-width block takes two and shears the grid.
-    $glyphs = ([char[]](0xFF66..0xFF9D | ForEach-Object { [char]$_ })) +
-              [char[]]'ZTAESHLC' +
-              [char[]]'0123456789' +
-              [char[]]':."=*+-<>|'
-}
+$glyphs = Get-RainGlyph -Ascii:$useAscii
 
 # -ThisWindow and -Click both need the tab map. Windows Terminal keeps every window
 # in one process: a window is identified by its handle, a session by the tab whose
@@ -163,7 +153,7 @@ function Get-SessionLanes {
     if ($Live.Count -eq 0) {
         $where = if ($ThisWindow) { 'none in this terminal window' } else { 'waiting for one to start' }
         $st = Get-SessionStyle 'none'
-        return , @(New-Lane $st.Rgb $st.Speed $st.Density $st.Label $where $null)
+        return , @(New-Lane $st.Rgb (Get-LaneFall $st) $st.Density $st.Label $where $null)
     }
     $out = foreach ($s in $Live) {
         $st     = $s.Style
@@ -174,7 +164,7 @@ function Get-SessionLanes {
         # Name the tab a click would open: a wrong match is visible, not silent.
         $tab = $script:tabState.Map[$s.SessionId]
         if ($tab) { $status = "$status [tab $($tab.Index + 1)]" }
-        New-Lane $st.Rgb $st.Speed $st.Density `
+        New-Lane $st.Rgb (Get-LaneFall $st) $st.Density `
                  (Get-SessionTitle $s) (ConvertTo-CellText $status) $s.Task $s
     }
     , @($out)

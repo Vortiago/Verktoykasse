@@ -52,13 +52,14 @@ branch, which say more.
 A narrow lane drops rows instead of wrapping them into stubs: under 18 columns
 the task goes, under 10 the name goes too.
 
-Colour and fall rate track the status. Tune them per status in `styles.psd1`:
+Colour and fall rate track the status. Tune them per status in `styles.psd1`;
+`.\Preview-Matrix.ps1` shows one lane per state to check the result:
 
 | Registry `status` | Lane | Rate |
 | --- | --- | --- |
 | `busy` | green | fast |
 | `idle` | amber, turn ended and the prompt is showing | slow |
-| `waiting` | red, blocked on an answer; `waitingFor` names it | crawling |
+| `waiting` | red, blocked on an answer; `waitingFor` names it | crawling, upward |
 
 Status comes from `~/.claude/sessions/<pid>.json`, the peer-discovery registry
 every session writes - the same source `ListAgents` reads. It updates the
