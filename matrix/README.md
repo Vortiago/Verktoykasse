@@ -1,5 +1,7 @@
 # How the rain works
 
+![One lane per session, coloured and paced by its status](demo.gif)
+
 `matrix.ps1` runs in the alternate screen buffer: scrollback survives, any key
 exits. The glyphs are half-width katakana. They render one cell wide, so the
 grid stays square.
