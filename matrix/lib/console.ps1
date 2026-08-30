@@ -1,7 +1,7 @@
 # The terminal-output layer: tagged-type compilation, the escape sequences that own
 # the screen, and the filter for every string drawn to it.
 #
-# Kept apart from types.ps1, which holds only the C# sources.
+# Kept apart from types.ps1, which only loads and compiles the C# sources in cs/.
 
 # Keep one cell per character or the header shears. Block control codes (C0, DEL, C1).
 # Allow only Latin-1/Latin Extended-A: the renderer's inline UTF-8 encoder handles it.
