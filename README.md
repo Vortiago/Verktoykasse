@@ -78,7 +78,6 @@ and don't belong here.
   and opening prompt. `-ThisWindow` scopes to the current Windows Terminal
   window; `-Click` raises a session's tab on click.
   `install-terminal-profile.ps1` adds a Windows Terminal profile for it.
-  A plain tool, not a skill. Windows only.
 
 ## Install
 
