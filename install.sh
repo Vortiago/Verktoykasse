@@ -17,6 +17,14 @@ set -euo pipefail
 
 HERE=$(dirname "$(readlink -f "$0")")
 
+# Git Bash defaults to COPYING on `ln -s`, which is silent and defeats the whole
+# dotfiles pattern: the live path stops tracking the repo, and the next run cannot
+# even fix it, because backing the copy up hits a non-empty .pre-verktoykasse.
+# nativestrict makes ln create a real symlink, or fail loudly instead of copying.
+# It needs Developer Mode or an elevated shell; the check below reports that.
+# No effect off Windows, where MSYS is not read.
+export MSYS=winsymlinks:nativestrict
+
 # Where each CLI keeps its skills. A function (not a `declare -A` associative
 # array) so this runs on macOS's stock bash 3.2, which predates `declare -A`.
 target_dir() { # $1 = target name — prints its skills dir, empty if unknown
@@ -34,11 +42,26 @@ link() { # $1 = repo dir, $2 = live path
     [[ $(readlink -f "$live") == "$target" ]] && { echo "ok      $live"; return; }
     rm "$live"
   elif [[ -e $live ]]; then
-    mv "$live" "$live.pre-verktoykasse"
-    echo "backup  $live -> $live.pre-verktoykasse"
+    # Back up whatever is really there, once. A second run must not fail because
+    # the first already took the name: keep the ORIGINAL backup (it is the more
+    # pristine one) and discard the later copy.
+    if [[ -e $live.pre-verktoykasse ]]; then
+      echo "backup  $live.pre-verktoykasse exists, discarding the newer copy"
+      rm -rf "$live"
+    else
+      mv "$live" "$live.pre-verktoykasse"
+      echo "backup  $live -> $live.pre-verktoykasse"
+    fi
   fi
   mkdir -p "$(dirname "$live")"
   ln -s "$target" "$live"
+  # MSYS=winsymlinks:nativestrict should make a failure loud, but a silent copy
+  # is the exact failure this pattern cannot survive, so check rather than trust.
+  [[ -L $live ]] || {
+    echo "error: $live is a copy, not a symlink." >&2
+    echo "       On Windows, enable Developer Mode or run from an elevated shell." >&2
+    return 1
+  }
   echo "linked  $live -> $target"
 }
 

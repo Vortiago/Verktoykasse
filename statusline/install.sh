@@ -25,12 +25,17 @@ import json, os, shutil, sys
 settings, cmd = sys.argv[1], sys.argv[2]
 data = {}
 if os.path.exists(settings):
-    shutil.copy2(settings, settings + ".pre-verktoykasse")
-    with open(settings) as f:
+    backup = settings + ".pre-verktoykasse"
+    if not os.path.exists(backup):
+        shutil.copy2(settings, backup)
+    # encoding= is not optional: the default is the locale codec, which is
+    # cp1252 on Windows. Reading a UTF-8 settings.json through it turns any
+    # non-ASCII character in the file into mojibake on the way back out.
+    with open(settings, encoding="utf-8") as f:
         data = json.load(f)
 data["statusLine"] = {"type": "command", "command": cmd}
 os.makedirs(os.path.dirname(settings), exist_ok=True)
-with open(settings, "w") as f:
+with open(settings, "w", encoding="utf-8") as f:
     json.dump(data, f, indent=2)
     f.write("\n")
 print("linked  statusLine -> ~/.claude/statusline.sh in settings.json")
