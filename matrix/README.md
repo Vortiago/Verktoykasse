@@ -53,7 +53,8 @@ A narrow lane drops rows instead of wrapping them into stubs: under 18 columns
 the task goes, under 10 the name goes too.
 
 Colour and fall rate track the status. Tune them per status in `styles.psd1`;
-`.\Preview-Matrix.ps1` shows one lane per state to check the result:
+`.\Preview-Matrix.ps1` shows one lane per state to check the result
+(`-Shuffle` flips states at random, to watch transitions):
 
 | Registry `status` | Lane | Rate |
 | --- | --- | --- |

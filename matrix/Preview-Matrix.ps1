@@ -8,6 +8,10 @@
 .PARAMETER Seconds
     Stop automatically after N seconds. 0 (default) = run until a key is pressed.
 
+.PARAMETER Shuffle
+    Every few seconds, flip one of the three session lanes to another state, to
+    see how transitions flow.
+
 .EXAMPLE
     .\Preview-Matrix.ps1
 #>
@@ -15,7 +19,8 @@
 [CmdletBinding()]
 param(
     [ValidateRange(5, 240)]   [int] $Fps     = 30,
-    [ValidateRange(0, 86400)] [int] $Seconds = 0
+    [ValidateRange(0, 86400)] [int] $Seconds = 0,
+    [switch] $Shuffle
 )
 
 $ErrorActionPreference = 'Stop'
@@ -28,10 +33,18 @@ foreach ($part in 'console', 'types', 'palette', 'lanes') {
 
 $styles = Import-PowerShellDataFile (Join-Path $PSScriptRoot 'styles.psd1')
 $task   = 'The opening prompt of the session, wrapped over up to three header rows.'
-$lanes  = @(foreach ($state in 'busy', 'idle', 'waiting', 'none') {
-    $st = $styles[$state]
-    New-Lane $st.Rgb (Get-LaneFall $st) $st.Density $state $st.Label $task
-})
+
+function New-PreviewLane {
+    param([string[]] $State)
+    @(foreach ($s in $State) {
+        $st = $styles[$s]
+        New-Lane $st.Rgb (Get-LaneFall $st) $st.Density $s $st.Label $task
+    })
+}
+
+$laneState = @('busy', 'idle', 'waiting', 'none')
+$lanes     = New-PreviewLane $laneState
+$rand      = [System.Random]::new()
 
 # Enable ANSI escape processing (a no-op where it is already on).
 try {
@@ -75,6 +88,7 @@ $prevSec   = 0.0
 $sizeEvery = [Math]::Max(1, [int]($Fps / 4))
 $sizeTick  = 0
 $W = 0; $H = 0
+$shuffleDue = 2.0
 
 try {
     while ($true) {
@@ -99,6 +113,16 @@ try {
             }
         }
         $sizeTick--
+
+        # Like a real status change: same lanes, new colour, pace and direction.
+        if ($Shuffle -and $clock.Elapsed.TotalSeconds -ge $shuffleDue) {
+            $shuffleDue = $clock.Elapsed.TotalSeconds + 2 + 3 * $rand.NextDouble()
+            $i = $rand.Next(0, 3)
+            $pick = @('busy', 'idle', 'waiting') | Where-Object { $_ -ne $laneState[$i] }
+            $laneState[$i] = $pick[$rand.Next(0, $pick.Count)]
+            $lanes = New-PreviewLane $laneState
+            if ($W -gt 0) { [void](Set-RendererLanes -Renderer $renderer -Lane $lanes -Width $W) }
+        }
 
         $nowSec = $clock.Elapsed.TotalSeconds
         $dt = $nowSec - $prevSec
