@@ -8,9 +8,9 @@ BeforeAll {
     $script:GREEN = "$([char]27)[0;38;2;40;255;90m"
     $script:RED   = "$([char]27)[0;38;2;255;60;60m"
 
-    # 'Z' alone, so anything in a frame that is not header text is rain. A new renderer
-    # clears the cached palette key too: Set-RendererLanes only pushes a palette table
-    # when the colours move, and a fresh renderer has none to move from.
+    # 'Z' alone: anything in a frame that is not header text is rain. A new renderer
+    # also clears the cached palette key. Set-RendererLanes pushes a palette table
+    # only when the colours move, and a fresh renderer has none to move from.
     function New-TestRenderer ($w, $h) {
         $script:PaletteKey = $null
         $r = $RendererType::new(20, [char[]]'Z', 4242)
@@ -90,16 +90,16 @@ Describe 'WriteFrame' {
 
 Describe 'A palette that changes under drawn cells' {
     It 'repaints the header in the new colour' {
-        # The bug this covers: a cell keeps its colour INDEX when a status changes, only
-        # what the index resolves to moves. The diff compares packed cells, so the header
-        # glyphs, which are the same text every frame, were never re-emitted, and the
+        # The bug this covers: a cell keeps its colour INDEX when a status changes.
+        # Only what the index resolves to moves. The diff compares packed cells, so
+        # it never re-emitted the header glyphs (the same text every frame). The
         # header kept the colour of whatever status the lane started in.
         $r = New-TestRenderer 40 8
         [void](Set-StillLane $r @(40, 255, 90) 'HEADER' 'working')
         (Get-Frame $r) | Should -Match ([regex]::Escape($GREEN))
 
-        # The SAME header text in a new colour. Changed text would be re-emitted by the
-        # ordinary diff and the repaint would not be tested at all.
+        # The SAME header text in a new colour. The ordinary diff re-emits changed
+        # text, so changed text would not test the repaint at all.
         [void](Set-StillLane $r @(255, 60, 60) 'HEADER' 'working')
         $after = Get-Frame $r
         $after | Should -Match ([regex]::Escape($RED))
@@ -107,8 +107,8 @@ Describe 'A palette that changes under drawn cells' {
     }
 
     It 'leaves the header alone when nothing about it moved' {
-        # The repaint is forced by a new palette table, not by every call, or a still
-        # lane would re-send its whole header every frame.
+        # A new palette table forces the repaint, not every call. Otherwise a still
+        # lane re-sends its whole header every frame.
         $r = New-TestRenderer 40 8
         [void](Set-StillLane $r @(40, 255, 90) 'HEADER' 'working')
         [void](Get-Frame $r)
@@ -119,8 +119,8 @@ Describe 'A palette that changes under drawn cells' {
 
 Describe 'SetLanes' {
     It 'survives the lane geometry flipping under it' {
-        # 5 lanes x 1 header row and 1 lane x 5 rows are the same array length, so the
-        # row lengths from the old layout would otherwise be read against the new one.
+        # 5 lanes x 1 header row and 1 lane x 5 rows are the same array length. The
+        # old layout's row lengths would otherwise be read against the new one.
         $r = New-TestRenderer 60 10
         $five = 1..5 | ForEach-Object { New-Lane @(40, 255, 90) 0 0 $null "s$_" $null }
         [void](Set-RendererLanes -Renderer $r -Lane $five -Width 60)
@@ -133,8 +133,8 @@ Describe 'SetLanes' {
     }
 
     It 'recolours a falling column in place rather than restarting it' {
-        # Same one-lane geometry, new colour. A slow lane would otherwise hold its old
-        # colour until its head had moved the length of the screen.
+        # Same one-lane geometry, new colour. A slow lane would otherwise hold its
+        # old colour until its head had moved the length of the screen.
         $r = New-TestRenderer 40 8
         [void](Set-FallingLane $r @(40, 255, 90))
         1..10 | ForEach-Object { [void](Get-Frame $r 0.1) }

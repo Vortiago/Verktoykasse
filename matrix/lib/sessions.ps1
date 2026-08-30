@@ -1,15 +1,14 @@
 # Live Claude Code sessions and their status. Needs ConvertTo-CellText from console.ps1.
 #
-# Source of truth is ~/.claude/sessions/<pid>.json, the registry Claude Code itself
+# Source of truth: ~/.claude/sessions/<pid>.json, the registry Claude Code itself
 # reads for peer discovery. Fields used here:
 #
 #   status       busy | waiting | idle           the three states we colour by
 #   waitingFor   reason, only set on waiting      "input needed", "sandbox request", ...
 #   procStart    FILETIME of the process start    guards against PID reuse
 #
-# The file also names a peer pipe carrying notify_idle, but a subscriber that is not
-# itself a registered session is rejected, so status is read from the files. See
-# README.md.
+# The file also names a peer pipe carrying notify_idle. That pipe rejects subscribers
+# that are not registered sessions, so read status from the files. See README.md.
 
 $script:ClaudeHome = if ($env:CLAUDE_CONFIG_DIR) { $env:CLAUDE_CONFIG_DIR }
                      else { Join-Path $env:USERPROFILE '.claude' }
@@ -30,16 +29,16 @@ function Get-SessionStyle {
 
 function Test-SessionAlive {
     # PID alive, and started when the file says. A recycled PID fails the second test.
-    # GetProcessById, not Get-Process: the cmdlet enumerates every process and wraps each
-    # one in a PSObject, for a lookup that runs per session per poll.
+    # GetProcessById, not Get-Process: the cmdlet enumerates every process and wraps
+    # each in a PSObject. This lookup runs per session per poll.
     param([int] $ProcessId, [string] $ProcStart)
     try { $p = [System.Diagnostics.Process]::GetProcessById($ProcessId) } catch { return $false }
-    # Dispose: StartTime opens a kernel handle, and this runs per session per poll
+    # Dispose: StartTime opens a kernel handle. This runs per session per poll.
     try {
         if (-not $ProcStart) { return $true }
         # 2 s of slop: the file holds the value Claude read, not our conversion of it.
-        # No rights to read StartTime, or a procStart that does not cast, cannot verify
-        # anything: keep the session rather than kill the poll under EAP=Stop.
+        # No StartTime rights, or a procStart that does not cast, verifies nothing.
+        # Keep the session rather than kill the poll under EAP=Stop.
         try { return [Math]::Abs($p.StartTime.ToFileTimeUtc() - [int64]$ProcStart) -lt 20000000 }
         catch { return $true }
     } finally { $p.Dispose() }
@@ -57,12 +56,12 @@ function Get-ClaudeSession {
     if (-not [System.IO.Directory]::Exists($dir)) { return @() }
 
     # *.json only. The sibling *.key files hold peer credentials and are never read.
-    # ReadAllText, not Get-Content -Raw: the provider and pipeline cost 7x for a file
-    # this small, per session per poll.
+    # ReadAllText, not Get-Content -Raw: the provider and pipeline cost 7x on a file
+    # this small. This runs per session per poll.
     $out = foreach ($f in [System.IO.Directory]::EnumerateFiles($dir, '*.json')) {
-        # One try for the whole record: unreadable JSON and a malformed field (a pid or
-        # timestamp that does not cast) skip it the same way, instead of killing the
-        # whole rain under the script's ErrorActionPreference = Stop.
+        # One try for the whole record. Unreadable JSON and a malformed field (a pid or
+        # timestamp that does not cast) skip it the same way. Without it, the script's
+        # ErrorActionPreference = Stop kills the whole rain.
         try {
             $r = ConvertFrom-Json ([System.IO.File]::ReadAllText($f))
             if (-not $r.pid -or -not $r.sessionId) { continue }
@@ -95,8 +94,8 @@ function Remove-HarnessTag {
 }
 
 # sessionId -> transcript path, built in one walk of ~/.claude/projects. A session that
-# starts while the rain runs is not in the index, so a miss rebuilds it, at most every
-# 10 s: without that throttle a session with no transcript yet rebuilds on every poll.
+# starts mid-run is not indexed, so a miss rebuilds the index, at most every 10 s.
+# The throttle stops a session with no transcript yet from rebuilding on every poll.
 $script:TranscriptIndex = $null
 $script:IndexBuiltAt    = [datetime]::MinValue
 
@@ -105,10 +104,10 @@ function Update-TranscriptIndex {
     $script:TranscriptIndex = @{}
     $script:IndexBuiltAt    = [datetime]::UtcNow
     if (-not [System.IO.Directory]::Exists($root)) { return }
-    # The walk must not kill the poll: an ACL'd subfolder, a junction, or a project
-    # folder deleted mid-walk throws out of the lazy enumeration, and this runs
-    # outside every caller's try. Whatever was indexed before the throw is kept;
-    # the 10 s rebuild throttle picks up the rest.
+    # The walk must not kill the poll. An ACL'd subfolder, a junction, or a project
+    # folder deleted mid-walk throws out of the lazy enumeration, outside every
+    # caller's try. Keep whatever was indexed before the throw; the 10 s rebuild
+    # throttle picks up the rest.
     try {
         foreach ($f in [System.IO.Directory]::EnumerateFiles($root, '*.jsonl', 'AllDirectories')) {
             $id  = [System.IO.Path]::GetFileNameWithoutExtension($f)
@@ -123,8 +122,8 @@ function Update-TranscriptIndex {
 }
 
 function Get-SessionTranscript {
-    # The project folder is the cwd with every character outside [A-Za-z0-9-] replaced,
-    # so the index is keyed on the file name rather than a rebuilt slug.
+    # The project folder is the cwd with every character outside [A-Za-z0-9-] replaced.
+    # So the index is keyed on the file name, not a rebuilt slug.
     param([string] $SessionId)
     if ($null -eq $script:TranscriptIndex) { Update-TranscriptIndex }
     $hit = $script:TranscriptIndex[$SessionId]
@@ -135,8 +134,8 @@ function Get-SessionTranscript {
     $hit
 }
 
-# Branch and opening prompt per session. Neither moves while the rain runs, so the
-# transcript is opened once for both.
+# Branch and opening prompt per session. Neither moves while the rain runs, so open
+# the transcript once for both.
 $script:SessionFact  = @{}
 $script:SessionProbe = @{}   # last empty read per unsettled session, keyed to the file's mtime
 
@@ -145,14 +144,14 @@ function Get-SessionFact {
     .SYNOPSIS
         The branch and the opening prompt of a session, for its header.
     .DESCRIPTION
-        One open of the transcript for both: the head holds the first user turn, and
-        the tail holds the newest record, whose gitBranch is the current one. Read once
-        per session, so a branch changed mid-session leaves the header stale until the
-        rain restarts.
+        One open of the transcript serves both. The head holds the first user turn.
+        The tail holds the newest record, whose gitBranch is the current one. Read
+        once per session: a branch changed mid-session stays stale until the rain
+        restarts.
 
-        A hit is cached at once. A miss is re-read while the transcript may still be
-        growing its first prompt, and settles into the cache once the file has been
-        quiet for 30 s; the comment on the cache condition below has the full rule.
+        A hit is cached at once. A miss is re-read while the first prompt may still
+        be growing, and settles into the cache after 30 s of file quiet. The comment
+        on the cache condition below has the full rule.
     #>
     param([Parameter(Mandatory)] $Session)
     $TailBytes = 8KB          # enough for the newest record, which carries the branch
@@ -164,10 +163,10 @@ function Get-SessionFact {
     $path = Get-SessionTranscript $id
     if ($path) {
         try {
-            # Stat before open: an unsettled transcript is re-visited on every poll, and
-            # an unchanged file cannot answer differently, so the last empty read is
-            # reused without opening it - until the file grows, or goes quiet long
-            # enough for the condition at the bottom to settle it into the cache.
+            # Stat before open. An unsettled transcript is re-visited on every poll,
+            # and an unchanged file cannot answer differently: reuse the last empty
+            # read without opening. Reuse ends when the file grows, or goes quiet
+            # long enough for the condition at the bottom to settle it into the cache.
             $mtime = [System.IO.File]::GetLastWriteTimeUtc($path)
             $probe = $script:SessionProbe[$id]
             if ($probe -and $probe.MTime -eq $mtime) {
@@ -182,8 +181,8 @@ function Get-SessionFact {
             $fs = [System.IO.File]::Open($path, 'Open', 'Read', 'ReadWrite')
             try {
                 $enc  = [System.Text.UTF8Encoding]::new($false)
-                # BOM detection on: the reader consumes one someone put on the
-                # transcript, which would otherwise hide line 1 from the parser.
+                # BOM detection on: the reader consumes a BOM put on the transcript.
+                # A BOM left in place hides line 1 from the parser.
                 $head = [System.IO.StreamReader]::new($fs, $enc, $true, 4096, $true)
                 $headEof = $false
                 for ($i = 0; $i -lt $HeadLines -and -not $fact.Task; $i++) {
@@ -205,14 +204,12 @@ function Get-SessionFact {
                     if ($m.Success) { $fact.Branch = $m.Groups[1].Value }
                 }
             } finally { $fs.Dispose() }
-            # Only a read that got through is cached - and only when it answered. A file
-            # locked for a moment must not blank the header for the rest of the run, same
-            # as a missing transcript. Nor must the gap between a session starting and
-            # its first prompt landing: a head that ended before HeadLines with no prompt
-            # is a transcript still being born, so it is probed next poll - until it
-            # goes quiet. A short transcript nothing has written for 30 s has said all
-            # it will say (a /command opener), and without settling it here it would be
-            # probed on every poll for the rest of the run.
+            # Cache only a read that got through and answered. A briefly locked file,
+            # or a missing transcript, must not blank the header for the rest of the
+            # run. A head that ends before HeadLines with no prompt is a transcript
+            # still being born: probe it next poll, until it goes quiet. A transcript
+            # quiet for 30 s has said all it will say (a /command opener). Settle it
+            # here, or it is probed on every poll for the rest of the run.
             if ($fact.Task -or -not $headEof -or
                 ([datetime]::UtcNow - $mtime).TotalSeconds -ge 30) {
                 $script:SessionFact[$id] = $fact
@@ -226,7 +223,7 @@ function Get-SessionFact {
 }
 
 function Read-TaskLine {
-    # The prompt out of one transcript record, or '' if that record is not one. Meta
+    # The prompt out of one transcript record, or '' when the record is not one. Meta
     # records, slash-command plumbing and the resume caveat are not prompts.
     param([string] $Line)
     if ($Line -notmatch '"type"\s*:\s*"user"') { return '' }
@@ -239,8 +236,8 @@ function Read-TaskLine {
 
     $t = ConvertTo-CellText (((Remove-HarnessTag $t) -replace '\s+', ' ').Trim())
     if ($t.StartsWith('Caveat:') -or $t.StartsWith('/') -or $t.Length -lt 8) { return '' }
-    # Three header rows never show more than ~2 KB, and the tab matcher tokenizes the
-    # head of it; carrying a pasted multi-KB prompt is pure per-poll wrap cost.
+    # Three header rows never show more than ~2 KB, and the tab matcher tokenizes
+    # only the head. Carrying a pasted multi-KB prompt is pure per-poll wrap cost.
     if ($t.Length -gt 2048) { $t = $t.Substring(0, 2048) }
     $t
 }
@@ -250,14 +247,14 @@ function Get-SessionTitle {
     .SYNOPSIS
         The best name available for a session.
     .DESCRIPTION
-        A name the user set with /rename wins. Claude Code omits nameSource for those
-        and writes "derived" (cwd plus a suffix) or "collision" for the ones it made up
-        itself, which say less than the folder and branch do.
+        A name the user set with /rename wins; Claude Code omits nameSource for those.
+        It writes "derived" (cwd plus a suffix) or "collision" for names it made up.
+        Those say less than the folder and branch do.
     #>
     param([Parameter(Mandatory)] $Session)
 
-    # A user-set name is the one string here somebody can put anything into, so it needs
-    # the cell filter more than the derived ones do.
+    # A user-set name is the one string here that can hold anything. It needs the
+    # cell filter more than the derived ones do.
     if ($Session.NameSource -ne 'derived' -and $Session.NameSource -ne 'collision' -and $Session.Name) {
         return ConvertTo-CellText $Session.Name
     }
@@ -268,7 +265,7 @@ function Get-SessionTitle {
         if ($trim -match '[\\/]' -and $trim -notmatch '^[A-Za-z]:$') { $leaf = Split-Path $trim -Leaf }
         elseif ($trim) { $leaf = $trim }
     }
-    # HEAD is what a cwd outside a work tree reports, and it names nothing.
+    # A cwd outside a work tree reports HEAD, which names nothing.
     # U+00B7 via escape, so nothing ever depends on how this file's bytes are decoded.
     $branch = (Get-SessionFact $Session).Branch
     $title = if ($branch -and $branch -ne 'HEAD' -and $branch -ne $leaf) { "$leaf $([char]0x00B7) $branch" } else { $leaf }

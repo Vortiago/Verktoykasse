@@ -1,8 +1,8 @@
-# The compiled helpers: console input filtering, the frame simulator/encoder, and
-# finding Windows Terminal's windows.
+# Compiled helpers: console input filtering, the frame simulator/encoder, and
+# Windows Terminal window lookup.
 #
-# A per-cell render loop in interpreted PowerShell cannot keep up once every column is
-# active, so it lives in C#. All three sources compile in ONE Add-Type call, because each
+# A per-cell render loop in interpreted PowerShell is too slow once every column is
+# active, so it lives in C#. All three sources compile in ONE Add-Type call: each
 # call shells out to csc.exe and costs about a second. Add-TaggedTypes comes from
 # console.ps1.
 
@@ -43,9 +43,8 @@ namespace MatrixVT__TAG__
                 || vk == 0x5B || vk == 0x5C || vk == 0x5D;      // Win, Win, Menu
         }
 
-        // In the alternate screen buffer a terminal translates the mouse wheel into
-        // arrow or page keys, so these arrive as ordinary key presses and must not
-        // count as "any key".
+        // In the alternate screen buffer the mouse wheel arrives as arrow or page
+        // keys. These must not count as "any key".
         static bool IsScrollKey(int vk)
         {
             return vk == 0x21 || vk == 0x22                     // PageUp, PageDown
@@ -59,9 +58,9 @@ namespace MatrixVT__TAG__
         const uint MOUSE_MOVED = 0x0001;
         const uint MOUSE_WHEELED = 0x0004;
 
-        // Mouse reporting has to be asked for, and QuickEdit has to go: with QuickEdit on
-        // the terminal eats the click to start a selection instead of reporting it.
-        // ENABLE_EXTENDED_FLAGS must be set in the same call or QuickEdit is left alone.
+        // Enable mouse reporting and disable QuickEdit: QuickEdit eats the click to
+        // start a selection instead of reporting it. Set ENABLE_EXTENDED_FLAGS in the
+        // same call or QuickEdit is left alone.
         public const uint MOUSE_ON = 0x0010 | 0x0080;      // ENABLE_MOUSE_INPUT | EXTENDED_FLAGS
         public const uint QUICK_EDIT = 0x0040;
 
@@ -77,10 +76,9 @@ namespace MatrixVT__TAG__
             return SetConsoleMode(GetStdHandle(-10), mode);
         }
 
-        // What one input event means. Everything the terminal owns is ignored: Ctrl+wheel
-        // zoom, focus and resize events, bare modifiers, and Ctrl/Alt chords. Ctrl+C
-        // still quits. A click must NOT exit, or the rain would die on the way to the
-        // tab you wanted.
+        // Classify one input event. Ignore terminal-owned input: Ctrl+wheel zoom,
+        // focus and resize events, bare modifiers, Ctrl/Alt chords. Ctrl+C still
+        // quits. A click must NOT exit: the rain must survive the tab switch.
         static int Classify(int type, int keyDown, int vk, uint ctrlKeys,
                             uint buttons, uint flags)
         {
@@ -100,8 +98,8 @@ namespace MatrixVT__TAG__
             return EXIT;
         }
 
-        // EXIT for a genuine "any key" press, CLICK for a left mouse press (x, y are the
-        // cell clicked), NONE otherwise.
+        // Returns EXIT for a genuine "any key" press, CLICK for a left mouse press
+        // (x, y are the clicked cell), NONE otherwise.
         public static int PollInput(out int x, out int y)
         {
             x = -1; y = -1;
@@ -121,8 +119,8 @@ namespace MatrixVT__TAG__
         }
     }
 
-    // INPUT_RECORD, flattened onto its KEY_EVENT arm. It is a fixed-size union, so the
-    // MOUSE_EVENT arm is read back out of the same 20 bytes:
+    // INPUT_RECORD, flattened onto its KEY_EVENT arm. The union is fixed-size, so
+    // the MOUSE_EVENT arm reads back out of the same 20 bytes:
     //
     //   offset  4  COORD dwMousePosition   X low half, Y high half of KeyDown
     //   offset  8  DWORD dwButtonState     RepeatCount low half, VirtualKeyCode high
@@ -155,19 +153,18 @@ namespace MatrixRain__TAG__
 
     // One frame = Advance() (simulate) + Encode() (write the diff as escape codes).
     //
-    // Cell state is one packed int, so the diff is a single compare per cell. Output is
-    // encoded to UTF-8 by hand into a reused byte[] big enough for a whole frame, then
-    // handed to the stream in ONE write.
+    // Cell state is one packed int: the diff is one compare per cell. Output is
+    // hand-encoded UTF-8 into a reused byte[] sized for a whole frame, handed to
+    // the stream in ONE write.
     //
-    // The screen is divided into LANES, one vertical band per Claude session. A lane
-    // owns its palette, fall speed, spawn density and header lines, so a session that is
-    // working rains fast and green while one that wants an answer crawls and is red. A
-    // column with lane -1 is a gutter and never rains.
+    // The screen splits into LANES, one vertical band per Claude session. A lane owns
+    // its palette, fall speed, spawn density and header lines. A working session
+    // rains fast and green; one awaiting an answer crawls and is red. A column with
+    // lane -1 is a gutter and never rains.
     //
-    // Colour index = lane*STRIDE + level, where level 0..lv is the trail ramp, lv+1
-    // the head and lv+2 the stats overlay. STRIDE is lv+3, so palette p starts at
-    // p*STRIDE. Every rate is per second and scaled by dt, so the frame rate changes
-    // only how smooth the fall looks, never how fast it is.
+    // Colour index = lane*STRIDE + level. Level 0..lv is the trail ramp, lv+1 the
+    // head, lv+2 the stats overlay. STRIDE is lv+3, so palette p starts at p*STRIDE.
+    // Rates are per second and scaled by dt: frame rate changes smoothness, never speed.
     public sealed class Renderer
     {
         const byte ESC = 0x1b;
@@ -211,14 +208,13 @@ namespace MatrixRain__TAG__
             rnd = new Random(seed);
         }
 
-        // Flat table of paletteCount*stride escapes. Rebuilt whenever the set of
-        // sessions or their statuses changes.
+        // Flat table of paletteCount*stride escapes. Rebuilt when the session set or
+        // a status changes.
         //
-        // A cell keeps its colour INDEX when a status changes; only what that index
-        // resolves to moves. The frame diff compares packed cells, so an unchanged
-        // glyph would never be re-emitted and would keep the old colour on screen -
-        // visible on the header, which is the same text every frame. Force a repaint
-        // of everything currently drawn.
+        // A status change keeps each cell's colour INDEX; only its resolution moves.
+        // The diff compares packed cells, so an unchanged glyph would keep the old
+        // colour on screen (visible on the header, the same text every frame).
+        // Force a repaint of everything currently drawn.
         public void SetPalettes(string[] fgTable)
         {
             byte[][] t = new byte[fgTable.Length][];
@@ -243,9 +239,9 @@ namespace MatrixRain__TAG__
             for (int x = 0; x < w; x++) { head[x] = double.NaN; colPal[x] = -1; }
             overlayLen = 0;
 
-            // Brightness per trail length, so Advance() needs no division per cell. A
-            // spawn picks MIN_TRAIL + rnd.Next(0, spread), so the table must cover every
-            // length that expression can produce.
+            // Brightness per trail length: Advance() needs no division per cell.
+            // A spawn picks MIN_TRAIL + rnd.Next(0, spread). The table must cover
+            // every length that expression can produce.
             spread = (int)(h * 0.6) + 4;
             int maxTrail = MIN_TRAIL + spread - 1;
             levelFor = new int[maxTrail + 1][];
@@ -260,7 +256,7 @@ namespace MatrixRain__TAG__
             for (int i = 0; i < dec.Length; i++)
                 dec[i] = System.Text.Encoding.ASCII.GetBytes(i.ToString());
 
-            // Worst case is move + colour + glyph per cell; sizing for a whole frame
+            // Worst case: move + colour + glyph per cell. Sizing for a whole frame
             // keeps every frame to a single stream write.
             long want = (long)w * h * 40 + 4096;
             if (want < (1 << 16)) want = 1 << 16;
@@ -270,18 +266,18 @@ namespace MatrixRain__TAG__
         }
 
         // Lane definitions. lane[x] is the lane owning column x, or -1 for a gutter.
-        // Safe to call every poll: a column is only disturbed when its lane or palette
-        // actually changed.
-        // hdr holds hdrLevel.Length lines per lane, in lane order; hdrLevel gives each
-        // row its brightness within the lane's own palette, so the caller decides how
-        // many header rows a lane this wide can carry.
+        // Safe to call every poll: a column is disturbed only when its lane or
+        // palette changed.
+        // hdr holds hdrLevel.Length lines per lane, in lane order. hdrLevel gives
+        // each row its brightness within the lane's own palette. The caller decides
+        // how many header rows a lane this wide can carry.
         public void SetLanes(int[] lane, double[] fall, double[] dens,
                              int[] col0, int[] wid, string[] hdr, int[] hdrLevel)
         {
             int n = wid.Length;
             int rows = hdrLevel == null ? 0 : hdrLevel.Length;
-            // laneCount too: n*rows can hold while the geometry flips (5 lanes x 1 row ->
-            // 1 lane x 5 rows), and lenHdr would then carry lengths from the old layout.
+            // Check laneCount too: n*rows can hold across a geometry flip (5 lanes x
+            // 1 row -> 1 lane x 5 rows), leaving lenHdr with old-layout lengths.
             if (lenHdr == null || lenHdr.Length != n * rows || laneCount != n)
             {
                 lenHdr = new int[n * rows];
@@ -304,9 +300,9 @@ namespace MatrixRain__TAG__
                 int want = L < 0 ? -1 : L * stride;
 
                 // A column that changed lane restarts; an unmoved column keeps falling.
-                // Recolouring an unmoved column is SetPalettes' job: colPal is a pure
-                // function of the lane index, so a changed palette base always means
-                // `moved` - the old repack-in-place branch here was unreachable.
+                // SetPalettes recolours unmoved columns. colPal is a pure function of
+                // the lane index, so a changed palette base always means `moved`: the
+                // old repack-in-place branch here was unreachable.
                 if (moved)
                 {
                     head[x] = double.NaN;
@@ -387,10 +383,10 @@ namespace MatrixRain__TAG__
             if (labelsDirty)
             {
                 labelsDirty = false;
-                // Clear what WAS painted too, not just the new height: a header that
-                // shrank (task rows dropped, or fewer rows per lane) otherwise leaves
-                // its old rows stamped in cells the new layout never repaints -
-                // gutter columns, and lanes whose slow rain takes seconds to pass.
+                // Clear what WAS painted too, not just the new height. A shrunk header
+                // (task rows dropped, or fewer rows per lane) otherwise leaves old rows
+                // in cells the new layout never repaints: gutter columns, and lanes
+                // whose slow rain takes seconds to pass.
                 int wipe = Math.Min(h, Math.Max(per, hdrRowsPainted));
                 for (int j = 0; j < w * wipe; j++) cur[j] = BLANK;
                 for (int j = 0; j < lenHdr.Length; j++) lenHdr[j] = 0;
@@ -427,8 +423,8 @@ namespace MatrixRain__TAG__
 
         void Encode(Stream s, bool flush)
         {
-            // Only what is drawn: leaving blanks matched keeps this to the glyphs on
-            // screen instead of a full-screen rewrite.
+            // Repaint only what is drawn. Leaving blanks matched keeps this to the
+            // glyphs on screen, not a full-screen rewrite.
             if (paletteDirty)
             {
                 paletteDirty = false;
@@ -477,9 +473,9 @@ namespace MatrixRain__TAG__
                         if (idx >= fgb.Length) idx = fgb.Length - 1;
                         if (idx != curIdx) { Emit(fgb[idx]); curIdx = idx; }
 
-                        // inline UTF-8. Every glyph source is BMP: the katakana range, the
-                        // ASCII pool, and the header filter. A stray surrogate would
-                        // encode invalidly, so it becomes '?'.
+                        // Inline UTF-8. Every glyph source is BMP: the katakana range,
+                        // the ASCII pool, and the header filter. A stray surrogate
+                        // would encode invalidly, so it becomes '?'.
                         int c = st & 0xFFFF;
                         if (c < 0x80) buf[pos++] = (byte)c;
                         else if (c >= 0xD800 && c <= 0xDFFF) buf[pos++] = (byte)'?';
@@ -539,25 +535,24 @@ namespace MatrixWin__TAG__
             return cn.ToString() == "CASCADIA_HOSTING_WINDOW_CLASS";
         }
 
-        // The window in front right now, if it is a terminal. Whoever launched the rain
-        // typed into that window, so it is a fair guess when the tab rename is refused.
+        // The current foreground window, if it is a terminal. The rain launcher typed
+        // in that window, so it is a fair guess when the tab rename is refused.
         public static long Foreground()
         {
             IntPtr h = GetAncestor(GetForegroundWindow(), 2);   // GA_ROOT
             return (h != IntPtr.Zero && IsTerminal(h)) ? h.ToInt64() : 0;
         }
 
-        // Raise a window. Selecting a tab flips it only inside its own window; a
-        // session in ANOTHER Windows Terminal window would switch invisibly while the
-        // rain kept focus. The foreground process is allowed to hand focus over, and
-        // at click time that is us.
+        // Raise a window. Tab selection flips only inside its own window; a session
+        // in ANOTHER Windows Terminal window would switch invisibly while the rain
+        // kept focus. The foreground process may hand focus over; at click time that is us.
         public static bool Activate(long hwnd)
         {
             return SetForegroundWindow(new IntPtr(hwnd));
         }
 
-        // Every Windows Terminal window, visible ones only: a hidden one holds no tab
-        // anybody is looking at.
+        // Every visible Windows Terminal window. A hidden one holds no tab anybody
+        // is looking at.
         public static long[] Terminals()
         {
             var hits = new List<long>();

@@ -1,6 +1,6 @@
 BeforeAll {
-    # sessions.ps1 reads CLAUDE_CONFIG_DIR once, at load, so the fake home has to be in
-    # place before it is dot-sourced.
+    # sessions.ps1 reads CLAUDE_CONFIG_DIR once, at load. Put the fake home in place
+    # before dot-sourcing it.
     $script:realHome = $env:CLAUDE_CONFIG_DIR
     $script:fakeHome = Join-Path ([System.IO.Path]::GetTempPath()) "matrix-tests-$PID"
     $env:CLAUDE_CONFIG_DIR = $fakeHome
@@ -166,9 +166,9 @@ Describe 'Get-ClaudeSession' {
     }
 
     It 'never opens the sibling key files, which hold peer credentials' {
-        # A VALID live record in the .key file: if the enumeration ever widened past
-        # *.json this would parse and surface, so its absence is what proves the claim.
-        # (A garbage fixture proved nothing - unparseable files are skipped anyway.)
+        # A VALID live record in the .key file: an enumeration widened past *.json
+        # would parse and surface it, so its absence proves the claim.
+        # (A garbage fixture proved nothing: unparseable files are skipped anyway.)
         (New-Record 'sid-from-key-file' 'busy' | ConvertTo-Json -Compress) |
             Set-Content -LiteralPath (Join-Path $fakeHome 'sessions\1234.abcd.key')
         Write-Registry 'a' (New-Record 'sid-a' 'busy')
@@ -220,7 +220,7 @@ Describe 'Get-SessionFact' {
     }
 
     It 'does not cache a read that failed' {
-        # The session is appending to this file as we read it. A moment's sharing
+        # The session appends to this file as we read it. A moment's sharing
         # violation must not blank the header for the rest of the run, exactly as a
         # missing transcript does not.
         $id = 'sid-locked'
@@ -241,15 +241,15 @@ Describe 'Get-SessionFact' {
     }
 
     It 'has nothing for a session with no transcript yet, and does not cache that' {
-        # Caching the miss would blank the header of a session started mid-run for the
-        # rest of the run.
+        # Do not cache the miss. That blanks the header of a session started mid-run
+        # for the rest of the run.
         $s = [pscustomobject]@{ SessionId = 'sid-none' }
         (Get-SessionFact $s).Task | Should -Be ''
         $script:SessionFact.ContainsKey('sid-none') | Should -BeFalse
     }
 
     It 'does not latch an empty prompt while the transcript is still short' {
-        # The registry lists a session the moment it starts, and its transcript exists
+        # The registry lists a session the moment it starts. Its transcript exists
         # for a beat before the first user turn lands. Caching that gap as "no prompt"
         # blanked the header for the whole run.
         $id = 'sid-young'
@@ -279,7 +279,7 @@ Describe 'Get-SessionTitle' {
     }
 
     It 'replaces a name Claude made up with the folder' {
-        # A derived name is the cwd plus a suffix, which says less than the folder does.
+        # A derived name is the cwd plus a suffix. It says less than the folder does.
         foreach ($source in 'derived', 'collision') {
             Get-SessionTitle ([pscustomobject]@{
                 NameSource = $source; Name = 'matrix-9a'; Cwd = 'D:\repos\matrix'; SessionId = 'x' }) |

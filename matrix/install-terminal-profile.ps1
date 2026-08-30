@@ -3,16 +3,16 @@
     Adds a Windows Terminal profile that opens the rain.
 
 .DESCRIPTION
-    Writes one profile into Windows Terminal's settings.json. Windows Terminal reloads
-    settings.json as it is saved, so the profile appears in the dropdown at once with no
-    restart.
+    Writes one profile into Windows Terminal's settings.json. Windows Terminal
+    reloads settings.json on save: the profile appears in the dropdown at once,
+    no restart.
 
-    The profile is keyed by a GUID derived from -Name, so running this again updates the
-    same profile instead of adding another. -Remove takes it out.
+    A GUID derived from -Name keys the profile: a re-run updates the same profile
+    instead of adding another. -Remove takes it out.
 
-    settings.json is backed up next to itself first. It is rewritten from parsed JSON,
-    so hand-written comments and formatting in it do not survive; the backup does. That
-    backup is written once and never overwritten, so it stays the original.
+    settings.json is backed up next to itself first. The file is rewritten from
+    parsed JSON: hand-written comments and formatting do not survive; the backup
+    does. The backup is written once, never overwritten, so it stays the original.
 
 .PARAMETER Name
     Profile name, as it appears in the dropdown. Default "Matrix".
@@ -21,9 +21,9 @@
     Arguments passed to matrix.ps1. Default is the session view with the stats line.
 
 .PARAMETER Retro
-    Turn the CRT effect on. Off unless asked for: it is a matter of taste, and Windows
-    Terminal's own profile settings can toggle it afterwards. A re-run keeps whatever
-    was set there.
+    Turn the CRT effect on. Off by default: it is a matter of taste. Windows
+    Terminal's own profile settings can toggle it afterwards; a re-run keeps
+    whatever was set there.
 
 .PARAMETER Remove
     Delete the profile instead of adding it.
@@ -47,9 +47,9 @@
     .\install-terminal-profile.ps1 -Remove
 
 .NOTES
-    -ThisWindow scopes the lanes to the terminal window the rain starts in, so open this
-    profile as a TAB in the window whose sessions you want to watch. Opened as its own
-    window it will correctly report that there are no sessions in it.
+    -ThisWindow scopes the lanes to the window the rain starts in. Open this
+    profile as a TAB in the window whose sessions you want to watch. Opened as
+    its own window, it correctly reports that it holds no sessions.
 #>
 #requires -Version 7
 [CmdletBinding(SupportsShouldProcess)]
@@ -77,12 +77,12 @@ function Find-TerminalSettings {
 }
 
 function Get-ProfileGuid {
-    # Same name, same GUID, so re-running updates the profile rather than adding one.
+    # Same name, same GUID: a re-run updates the profile rather than adding one.
     param([string] $Key)
     $sha = [System.Security.Cryptography.SHA256]::Create()
     try { $bytes = $sha.ComputeHash([System.Text.Encoding]::UTF8.GetBytes("matrix-rain:$Key")) }
     finally { $sha.Dispose() }
-    # cast, or the slice is object[] and [guid] takes the string overload
+    # Cast: the slice is object[], and [guid] would take the string overload.
     '{' + [guid]::new([byte[]]$bytes[0..15]).ToString() + '}'
 }
 
@@ -92,14 +92,14 @@ if (-not [System.IO.File]::Exists($SettingsPath)) { throw "Not found: $SettingsP
 $scriptPath = Join-Path $PSScriptRoot 'matrix.ps1'
 if (-not [System.IO.File]::Exists($scriptPath)) { throw "matrix.ps1 not found at: $scriptPath" }
 
-# Resolved now, so the profile does not depend on PATH later.
+# Resolve now: the profile must not depend on PATH later.
 $shell = Get-Command pwsh.exe -ErrorAction SilentlyContinue
 if (-not $shell) { throw 'pwsh.exe not found. The rain needs PowerShell 7+.' }
 
 $guid = Get-ProfileGuid $Name
 $raw  = [System.IO.File]::ReadAllText($SettingsPath)
 # pwsh's ConvertFrom-Json accepts the JSONC Windows Terminal writes: comments and
-# trailing commas parse; only the rewrite below drops them (the backup keeps them).
+# trailing commas parse. Only the rewrite below drops them; the backup keeps them.
 $settings = $raw | ConvertFrom-Json -ErrorAction Stop
 
 # profiles is either a bare array or { defaults, list }
@@ -125,15 +125,15 @@ if (-not $Remove) {
         icon             = [char]::ConvertFromUtf32(0x1F7E9)       # green square
         hidden           = $false
     }
-    # Everything this script does not own is carried over from the old entry, so a
-    # re-run keeps what the user set in Windows Terminal's own profile UI - colour
-    # scheme, font, opacity, the CRT effect, all of it - instead of wiping it.
+    # Carry over every property this script does not own. A re-run then keeps what
+    # the user set in Windows Terminal's own profile UI: colour scheme, font,
+    # opacity, the CRT effect.
     if ($old) {
         foreach ($p in $old.PSObject.Properties) {
             if (-not $entry.Contains($p.Name)) { $entry[$p.Name] = $p.Value }
         }
     }
-    # -Retro forces the effect on; otherwise whatever the carry-over brought stands.
+    # -Retro forces the effect on; otherwise the carried-over value stands.
     if ($Retro) { $entry['experimental.retroTerminalEffect'] = $true }
     $retro = [bool]$entry['experimental.retroTerminalEffect']
 }
@@ -141,7 +141,7 @@ if (-not $Remove) {
 $action = if ($Remove) { "remove profile '$Name'" }
           elseif ($existed) { "update profile '$Name'" }
           else { "add profile '$Name'" }
-# An existing profile is replaced in place, so a re-run does not shuffle the dropdown.
+# Replace an existing profile in place: a re-run does not shuffle the dropdown.
 $newList = if ($Remove) { $keep }
            elseif ($existed) { @($list | ForEach-Object { if ($_.guid -eq $guid) { [pscustomobject]$entry } else { $_ } }) }
            else { $keep + [pscustomobject]$entry }
@@ -152,18 +152,18 @@ $backup  = "$SettingsPath.matrix-bak"
 $hadBak  = [System.IO.File]::Exists($backup)
 $applied = $PSCmdlet.ShouldProcess($SettingsPath, $action)
 if ($applied) {
-    # First run only. Run two and overwriting would replace the hand-written original
-    # with the copy this script already rewrote, which is the thing the backup is for.
+    # First run only. Overwriting on run two would replace the hand-written
+    # original with the copy this script already rewrote.
     if (-not $hadBak) { [System.IO.File]::WriteAllText($backup, $raw) }
-    # Depth well past the deepest thing Windows Terminal nests, or it silently truncates.
+    # Depth well past Windows Terminal's deepest nesting: too shallow silently truncates.
     [System.IO.File]::WriteAllText($SettingsPath, ($settings | ConvertTo-Json -Depth 32))
 }
 
 Write-Host ("{0} {1}" -f $(if ($applied) { 'Done:' } else { 'Would' }), $action) -ForegroundColor $(if ($applied) { 'Green' } else { 'Yellow' })
 Write-Host "  settings : $SettingsPath"
 if ($applied) {
-    # Say which run it holds. It is the settings before the FIRST install, not before
-    # this one, so restoring it undoes every hand edit since, not just this run.
+    # Say which run the backup holds: the settings before the FIRST install, not
+    # this one. Restoring it undoes every hand edit since, not just this run.
     $when = if ($hadBak) { ' (from the first install, not this run)' } else { '' }
     Write-Host "  backup   : $backup$when"
 }

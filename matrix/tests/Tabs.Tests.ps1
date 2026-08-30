@@ -38,16 +38,16 @@ Describe 'Resolve-SessionTab' {
     }
 
     It 'never matches a tab with no Claude glyph' {
-        # This is why a session whose tab Claude has not titled yet is a miss, and why
-        # the caller has to re-try that miss instead of latching it.
+        # A session whose tab Claude has not titled yet is therefore a miss. The
+        # caller has to re-try that miss instead of latching it.
         (Resolve-SessionTab -Session @($busySes) -Tab @($plain)).Count | Should -Be 0
     }
 
     It 'passes over the tab the rain itself runs in' {
-        # It needs no excluding: the rain writes no tab title, so the tab carries no
-        # Claude glyph and is not a candidate. Excluding it by index was worse than
-        # useless, because closing a tab shifts every index to its right and the stored
-        # one then named a real session's tab.
+        # It needs no excluding: the rain writes no tab title, so its tab carries no
+        # Claude glyph and is not a candidate. Do not exclude by index: closing a tab
+        # shifts every index to its right, and the stored one then named a real
+        # session's tab.
         $rainTab = New-TestTab 100 0 'Matrix' 'none'
         (Resolve-SessionTab -Session @($busySes) -Tab @($rainTab)).Count | Should -Be 0
     }
@@ -68,8 +68,8 @@ Describe 'Resolve-SessionTab' {
     }
 
     It 'does not let window z-order pick between two equal-scoring tabs' {
-        # The tab list arrives in window z-order, which changes whenever a window is
-        # raised. Both tabs are idle, at index 2, sharing no word with the session, so
+        # The tab list arrives in window z-order, and raising a window changes that.
+        # Both tabs are idle, at index 2, and share no word with the session, so
         # only the tie-break separates them.
         $c = New-TestSession 'C' 'idle' 'nothing in common'
         $seen = @{}
@@ -100,9 +100,9 @@ Describe 'Merge-SessionTab' {
     }
 
     It 'keeps the last tab of a session this pass could not match' {
-        # A tab is retitled every turn and its glyph lags the registry, so a rebuild can
-        # fail to re-match a session it matched a moment ago. Dropping it here is what
-        # made a lane vanish the moment its session was prompted.
+        # A tab is retitled every turn, and its glyph lags the registry. A rebuild can
+        # fail to re-match a session it matched a moment ago. Dropping it here made a
+        # lane vanish the moment its session was prompted.
         $map = Merge-SessionTab -Session @($a, $b) -Fresh @{ B = $t2 } -Previous @{ A = $t1; B = $t2 }
         $map['A'].Index | Should -Be 1
         $map['B'].Index | Should -Be 2
@@ -130,17 +130,17 @@ Describe 'Merge-SessionTab' {
 
 Describe 'Resolve-SessionTab, one tab and one session' {
     It 'does not latch a lone tab that shares nothing with the session' {
-        # The lone glyph tab can be a leftover from an exited claude in another window,
-        # and a match here would disarm the caller's re-try, so a wrong latch lasts the
-        # whole run. A miss keeps the re-try armed until the real tab is titled.
+        # The lone glyph tab can be a leftover from an exited claude in another window.
+        # A match here disarms the caller's re-try, so a wrong latch lasts the whole
+        # run. A miss keeps the re-try armed until the real tab is titled.
         $map = Resolve-SessionTab -Session @((New-TestSession 'sid' 'busy' 'nothing in common')) `
                                   -Tab @((New-TestTab 1 0 'unrelated title' 'idle'))
         $map.Count | Should -Be 0
     }
 
     It 'still matches through a lagging glyph when the words agree' {
-        # The ordinary acquisition case: the registry flips to busy before the tab glyph
-        # follows, but the title already carries the session's own words.
+        # The ordinary acquisition case: the registry flips to busy before the tab
+        # glyph follows, but the title already carries the session's own words.
         $map = Resolve-SessionTab -Session @((New-TestSession 'sid' 'busy' 'refactor the parser')) `
                                   -Tab @((New-TestTab 1 0 'parser refactor' 'idle'))
         $map['sid'].Index | Should -Be 0

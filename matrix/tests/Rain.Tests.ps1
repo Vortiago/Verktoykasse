@@ -1,8 +1,8 @@
-# The script end to end. Everything else here tests a lib in isolation; these run the
-# rain itself, because the faults they cover only exist once the parts are wired up.
+# The script end to end. Everything else here tests a lib in isolation. These run the
+# rain itself: the faults they cover exist only once the parts are wired up.
 BeforeAll {
     $script:rain = Join-Path $PSScriptRoot '..\matrix.ps1'
-    # pwsh installed as a dotnet global tool runs under the dotnet muxer, so the process
+    # pwsh installed as a dotnet global tool runs under the dotnet muxer. The process
     # path alone cannot relaunch it: the muxer needs pwsh.dll as its first argument.
     $script:pwshExe  = [Environment]::ProcessPath
     $script:pwshArgs = @()
@@ -14,9 +14,9 @@ BeforeAll {
     $script:emptyHome = Join-Path ([System.IO.Path]::GetTempPath()) "matrix-rain-tests-$PID"
     New-Item -ItemType Directory -Path (Join-Path $emptyHome 'sessions') -Force | Out-Null
 
-    # A Claude home holding one session that is genuinely alive: this process, which
-    # outlives every child the tests start. Its transcript carries a word nothing else
-    # in a frame could produce.
+    # A Claude home with one genuinely live session: this process, which outlives
+    # every child the tests start. Its transcript carries a word nothing else in a
+    # frame could produce.
     $script:liveHome = Join-Path ([System.IO.Path]::GetTempPath()) "matrix-rain-live-$PID"
     $script:liveTask = 'zeppelin over the harbour'
     New-Item -ItemType Directory -Path (Join-Path $liveHome 'sessions') -Force | Out-Null
@@ -35,8 +35,8 @@ BeforeAll {
     function Invoke-Rain ($claudeHome, [string[]] $argv) {
         $out = Join-Path ([System.IO.Path]::GetTempPath()) "matrix-rain-$PID.out"
         $err = Join-Path ([System.IO.Path]::GetTempPath()) "matrix-rain-$PID.err"
-        # Restored, not nulled: a developer running the suite with a real
-        # CLAUDE_CONFIG_DIR must not have it deleted from their process.
+        # Restore, do not null: a developer running the suite with a real
+        # CLAUDE_CONFIG_DIR must not lose it from their process.
         $prevHome = $env:CLAUDE_CONFIG_DIR
         $env:CLAUDE_CONFIG_DIR = $claudeHome
         try {
@@ -54,8 +54,8 @@ BeforeAll {
         }
     }
 
-    # Header text survives the frame diff as one run, so it is greppable once the colour
-    # changes are out of the way.
+    # Header text survives the frame diff as one run. Strip the colour changes and
+    # it is greppable.
     function Remove-Sgr ([string] $Text) { $Text -replace "$([char]27)\[[0-9;?]*[A-Za-z]", '' }
 }
 
@@ -63,12 +63,12 @@ AfterAll {
     Remove-Item -LiteralPath $emptyHome, $liveHome -Recurse -Force -ErrorAction SilentlyContinue
 }
 
-# Windows only: the rain's input loop P/Invokes kernel32, so the script itself cannot
+# Windows only: the rain's input loop P/Invokes kernel32. The script itself cannot
 # run elsewhere. The lib suites cover everything else cross-platform.
 Describe 'matrix.ps1 -Sessions' -Skip:(-not $IsWindows) {
     It 'says so when there are no sessions, rather than dying on the empty list' {
-        # A Mandatory collection parameter rejects an empty array before the body runs,
-        # so the lane function's own "no sessions" branch was unreachable and the rain
+        # A Mandatory collection parameter rejects an empty array before the body runs.
+        # The lane function's own "no sessions" branch was unreachable, and the rain
         # quit with "Cannot bind argument to parameter 'Live'". This is the FIRST thing
         # anyone sees, and only ever on a machine with nothing running.
         $r = Invoke-Rain $emptyHome @('-Sessions', '-Seconds', '2', '-Fps', '10')
@@ -84,8 +84,8 @@ Describe 'matrix.ps1 -Sessions' -Skip:(-not $IsWindows) {
     }
 
     It 'puts the task in the header whether or not tabs are wanted' {
-        # The lane reads .Task off the session, so the staple that puts it there must not
-        # be conditional on -Click or -ThisWindow, which are what ask for the tab map.
+        # The lane reads .Task off the session. The staple that puts it there must not
+        # depend on -Click or -ThisWindow, the flags that ask for the tab map.
         $r = Invoke-Rain $liveHome @('-Sessions', '-Seconds', '2', '-Fps', '10')
         (Remove-Sgr $r.Stdout) | Should -Match 'zeppelin'
     }

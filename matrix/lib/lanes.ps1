@@ -1,18 +1,18 @@
 # Lanes: one vertical band each, with its own palette, fall speed, density and header.
 # Modes other than -Sessions use exactly one lane spanning the whole width.
 #
-# This file owns the two numbers that describe a lane's colours and header, because the
-# renderer's index contract is written against them. See README.md.
+# This file owns the two numbers for a lane's colours and header. The renderer's
+# index contract is written against them. See README.md.
 
 $LV        = 20   # trail levels per palette; palette.ps1 and the renderer share this
 $TASK_ROWS = 3    # header rows the wrapped task gets when the lane is wide enough
 
-# Rebuilt only when a status changes, which is the only thing that moves the colours.
+# Rebuild only when a status changes: nothing else moves the colours.
 $script:PaletteKey = $null
 
 function New-Lane {
-    # Session is what a click on this lane raises. It rides on the lane rather than in a
-    # second array the caller keeps in step by hand, because nothing can then desync.
+    # A click on this lane raises Session. It rides on the lane, not in a second
+    # array the caller keeps in step by hand, so nothing can desync.
     param([int[]] $Rgb, [double] $Fall, [double] $Dens,
           [string] $Title, [string] $Status, [string] $Task, [object] $Session)
     [pscustomobject]@{ Rgb = $Rgb; Fall = $Fall; Dens = $Dens
@@ -20,8 +20,8 @@ function New-Lane {
 }
 
 function Split-Wrap {
-    # Greedy word wrap. The last line ends in a horizontal ellipsis when text is left
-    # over, so a truncated task never reads as a finished sentence.
+    # Greedy word wrap. When text is left over, the last line ends in a horizontal
+    # ellipsis. A truncated task must not read as a finished sentence.
     param([string] $Text, [int] $Width, [int] $MaxLines)
     if (-not $Text -or $Width -lt 4 -or $MaxLines -lt 1) { return @() }
 
@@ -49,11 +49,11 @@ function Split-Wrap {
     if ($cut -and $out.Count -gt 0) {
         $last = $out[$out.Count - 1]
         if ($last.Length -ge $Width) { $last = $last.Substring(0, $Width - 1) }
-        # U+2026 horizontal ellipsis via escape so file encoding never mangles it
+        # U+2026 horizontal ellipsis via escape: file encoding never mangles it
         $out[$out.Count - 1] = "$last$([char]0x2026)"
     }
-    # no comma-wrap: the caller collects with @(), which would nest a wrapped array into
-    # one element and stringify it back into a single space-joined line
+    # No comma-wrap: the caller collects with @(). That would nest a wrapped array
+    # into one element and stringify it into a single space-joined line.
     $out
 }
 
@@ -65,7 +65,7 @@ function Set-RendererLanes {
     param([Parameter(Mandatory)] $Renderer, [Parameter(Mandatory)] [object[]] $Lane, [int] $Width)
 
     $n = $Lane.Count
-    # one blank column between lanes, once each lane still gets a usable width
+    # one blank column between lanes, only while each lane keeps a usable width
     $gutter = if ($n -gt 1 -and $Width -ge $n * 6) { 1 } else { 0 }
     $avail  = $Width - $gutter * ($n - 1)
     $base   = [Math]::Max(1, [int][Math]::Floor($avail / $n))
@@ -87,8 +87,8 @@ function Set-RendererLanes {
         $rgb[$l] = $Lane[$l].Rgb
     }
 
-    # What a lane this wide can carry, widest first: a narrow lane drops the task, then
-    # the title, rather than wrapping either into unreadable stubs. Title is brightest,
+    # Decide what the narrowest lane can carry. A narrow lane drops the task, then
+    # the title, rather than wrap either into unreadable stubs. Title is brightest,
     # status the pure palette colour, task dimmer.
     $narrow = [int]::MaxValue
     $hasHdr = $false
@@ -97,8 +97,8 @@ function Set-RendererLanes {
         if ($Lane[$l].Title -or $Lane[$l].Status) { $hasHdr = $true }
     }
 
-    # One row spec per header line, widest lane first: which lane property it shows, how
-    # bright, and for a Task row which wrapped line of the task it is.
+    # One row spec per header line, widest lane first: the lane property it shows,
+    # its brightness, and for a Task row which wrapped task line it is.
     $rows = @()
     if ($hasHdr) {
         if ($narrow -ge 10) { $rows += @{ Field = 'Title';  Level = $LV + 1 } }
@@ -108,8 +108,8 @@ function Set-RendererLanes {
         }
     }
 
-    # Not [int[]]@($rows.Level): on an empty $rows that yields one element, not none,
-    # and the renderer then reads a header row that was never written.
+    # Not [int[]]@($rows.Level): on an empty $rows that yields one element, not none.
+    # The renderer then reads a header row that was never written.
     $per   = $rows.Count
     $level = [int[]]::new($per)
     for ($r = 0; $r -lt $per; $r++) { $level[$r] = $rows[$r].Level }
@@ -125,8 +125,8 @@ function Set-RendererLanes {
     }
 
 
-    # Rebuilding 23 SGR strings per lane is most of this function's cost, and the colours
-    # only move when a status does.
+    # Rebuilding 23 SGR strings per lane is most of this function's cost. The colours
+    # move only when a status does.
     $key = ($rgb | ForEach-Object { $_ -join ',' }) -join '|'   # cheap: n is the lane count
     if ($key -ne $script:PaletteKey) {
         $script:PaletteKey = $key
@@ -137,7 +137,7 @@ function Set-RendererLanes {
     for ($l = 0; $l -lt $n; $l++) { $fall[$l] = $Lane[$l].Fall; $dens[$l] = $Lane[$l].Dens }
     $Renderer.SetLanes($colLane, $fall, $dens, $col0, $wid, $hdr, $level)
 
-    # Returned rather than parked in a shared variable: the caller routes clicks with it.
+    # Return it, do not park it in a shared variable: the caller routes clicks with it.
     , @($col0, $wid)
 }
 
@@ -159,7 +159,7 @@ function Get-LaneAtColumn {
 function Format-Age {
     param([int64] $EpochMs)
     if ($EpochMs -le 0) { return '' }
-    # Floor, not a bare [int] cast: the cast rounds half to even, which showed 90 s
+    # Floor, not a bare [int] cast: the cast rounds half to even. That showed 90 s
     # as "2m" and 3590 s as the out-of-unit "60m". An age never rounds up.
     $s = [int][Math]::Floor(([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() - $EpochMs) / 1000)
     if ($s -lt 0)    { return '' }

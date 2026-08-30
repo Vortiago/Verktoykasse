@@ -3,8 +3,8 @@ BeforeAll {
     . (Join-Path $PSScriptRoot '..\lib\palette.ps1')
     . (Join-Path $PSScriptRoot '..\lib\lanes.ps1')
 
-    # Stands in for the compiled renderer: Set-RendererLanes is layout, and the layout is
-    # what it hands over.
+    # Stands in for the compiled renderer. Set-RendererLanes is layout, and this
+    # captures the layout it hands over.
     function New-FakeRenderer {
         $o = [pscustomobject]@{ Palettes = $null; Lanes = $null }
         $o | Add-Member ScriptMethod SetPalettes { param($t) $this.Palettes = $t }
@@ -24,8 +24,8 @@ Describe 'Split-Wrap' {
     }
 
     It 'returns one line per element, never a single joined string' {
-        # A comma-wrapped return nested the array into one element here once, and the
-        # header drew it as one space-joined line.
+        # A comma-wrapped return once nested the array into one element here. The
+        # header then drew it as one space-joined line.
         $out = @(Split-Wrap -Text 'one two three four' -Width 9 -MaxLines 4)
         $out.Count | Should -Be 3
         $out[0] | Should -BeOfType [string]
@@ -98,8 +98,8 @@ Describe 'New-Lane' {
 
 Describe 'Set-RendererLanes' {
     BeforeEach {
-        # The palette table is only rebuilt when the colours move, so the cached key has
-        # to go or a later test sees no SetPalettes call.
+        # The palette table rebuilds only when the colours move. Clear the cached key,
+        # or a later test sees no SetPalettes call.
         $script:PaletteKey = $null
         $script:r = New-FakeRenderer
     }
@@ -122,8 +122,8 @@ Describe 'Set-RendererLanes' {
 
     It 'splits the width and leaves a gutter between lanes' {
         $lanes = 1..2 | ForEach-Object { New-Lane @(0, 255, 0) 1 0.2 "t$_" 's' $null }
-        # Two steps, as matrix.ps1 does it: assigning straight from the call does not
-        # unroll the pair, it puts the whole thing in the first variable.
+        # Two steps, as matrix.ps1 does it. Assigning straight from the call does not
+        # unroll the pair; it puts the whole thing in the first variable.
         $bounds = Set-RendererLanes -Renderer $r -Lane $lanes -Width 40
         $col0, $wid = $bounds
         $wid[0] + $wid[1] | Should -Be 39      # one column of gutter
@@ -165,7 +165,7 @@ Describe 'Set-RendererLanes' {
     }
 
     It 'writes no header rows at all when no lane has a header' {
-        # Not [int[]]@($rows.Level): on an empty $rows that yields ONE element, and the
+        # Not [int[]]@($rows.Level): on an empty $rows that yields ONE element. The
         # renderer then reads a header row nobody wrote. -Ascii crashed on it.
         $lane = New-Lane @(0, 255, 0) 1 0.2 $null $null $null
         [void](Set-RendererLanes -Renderer $r -Lane @($lane) -Width 40)
@@ -193,8 +193,8 @@ Describe 'Set-RendererLanes' {
 }
 
 Describe 'Get-LaneAtColumn' {
-    # Extracted from the frame loop, where the click routing was three hops of indexing
-    # that nothing could reach. Bounds come straight from Set-RendererLanes.
+    # Extracted from the frame loop: there the click routing was three hops of
+    # indexing nothing could reach. Bounds come straight from Set-RendererLanes.
     BeforeAll {
         $script:PaletteKey = $null
         $script:bounds = Set-RendererLanes -Renderer (New-FakeRenderer) -Width 40 `

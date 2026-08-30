@@ -1,10 +1,10 @@
-# The tab map over time, which is where the lanes went wrong: a session the matcher
+# The tab map over time: this is where the lanes went wrong. A session the matcher
 # missed once stayed missed, and a prompted session lost the tab it already had.
 BeforeAll {
     . (Join-Path $PSScriptRoot '..\lib\tabs.ps1')
     . (Join-Path $PSScriptRoot 'Fixtures.ps1')
 
-    # Pid too: the map's signature is built from it. New-TabState comes from tabs.ps1,
+    # Pid too: the map's signature builds from it. New-TabState comes from tabs.ps1,
     # so the tests cannot drift from the shape matrix.ps1 actually initialises.
     function New-TestSession ($id, $pid_, $status, $task) {
         [pscustomobject]@{ SessionId = $id; Pid = $pid_; Status = $status; Task = $task
@@ -53,9 +53,9 @@ Describe 'Update-SessionTabMap' {
 
     Context 'a session that starts while the rain runs' {
         It 'picks it up on its own, once its tab carries a glyph' {
-            # The reported bug: a new tab has no Claude glyph for a moment, so the match
-            # misses. Latching that miss hid the session until its status changed, and a
-            # session nobody has prompted never changes status.
+            # The reported bug: a new tab has no Claude glyph for a moment, so the
+            # match misses. Latching that miss hid the session until a status change,
+            # and a session nobody has prompted never changes status.
             $reader = { $script:reads++; $script:settledTabs }
             Update-SessionTabMap -Session @($alpha, $beta) -State $state -ReadTab $reader -Now 0
 
@@ -92,9 +92,9 @@ Describe 'Update-SessionTabMap' {
 
     Context 'a session that is prompted' {
         It 'keeps its lane while the tab glyph catches up' {
-            # The registry flips to busy the moment you press enter; the tab glyph and
-            # title follow later. The rebuild in that gap used to match nothing and the
-            # lane vanished.
+            # The registry flips to busy the moment you press enter. The tab glyph and
+            # title follow later. The rebuild in that gap used to match nothing, and
+            # the lane vanished.
             Update-SessionTabMap -Session @($alpha, $beta) -State $state -ReadTab { $script:settledTabs } -Now 0
             $state.Map['sid-a'].Index | Should -Be 1
 
@@ -135,8 +135,8 @@ Describe 'Update-SessionTabMap' {
 
     Context 'a session that can never be matched' {
         BeforeEach {
-            # "Show status in terminal tab" off: no tab carries a glyph, so nothing can
-            # ever match and the re-try would otherwise stall the rain for the whole run.
+            # "Show status in terminal tab" off: no tab carries a glyph, so nothing
+            # can ever match. The re-try would otherwise stall the rain all run.
             $script:blind = @(
                 (New-TestTab 900 0 'Matrix' 'none'),
                 (New-TestTab 900 1 'PowerShell' 'none')
@@ -177,9 +177,9 @@ Describe 'Update-SessionTabMap' {
         }
 
         It 'keeps backing off while a session only changes status' {
-            # Sig carries status, so resetting the backoff on Sig restarted it every turn
-            # anyone took. A permanent miss then never decayed, and the ~100 ms read this
-            # backoff exists to ration went on running every 2 s for the whole session.
+            # Sig carries status. Resetting the backoff on Sig restarted it every turn
+            # anyone took. A permanent miss then never decayed. This backoff rations
+            # the ~100 ms read, which ran every 2 s for the whole session.
             $reader = { $script:reads++; $script:blind }
             $now = 0
             $waits = foreach ($i in 1..4) {
@@ -194,7 +194,7 @@ Describe 'Update-SessionTabMap' {
         It 'keeps re-trying while a session is living on a carried tab' {
             # The carry keeps the lane on screen, but the tab it names came from an
             # earlier pass: its window and index can both be stale. Counting it as a
-            # match disarmed the re-try, so nothing ever re-checked it.
+            # match disarmed the re-try, and nothing ever re-checked it.
             Update-SessionTabMap -Session @($alpha) -State $state -ReadTab { $script:settledTabs } -Now 0
             $state.RetryAt | Should -Be 0
 
@@ -205,8 +205,8 @@ Describe 'Update-SessionTabMap' {
         }
 
         It 'backs off when the desktop cannot be read at all' {
-            # Zero windows is UI Automation failing, and the early return left RetryAt in
-            # the past, so a desktop that never answers was re-read on every single poll.
+            # Zero windows means UI Automation failed. The early return left RetryAt
+            # in the past, so every single poll re-read a desktop that never answers.
             $reader = { $script:reads++; @() }
             $now = 0
             $waits = foreach ($i in 1..4) {
@@ -217,17 +217,17 @@ Describe 'Update-SessionTabMap' {
             $waits | Should -Be @(2000, 4000, 8000, 16000)
 
             # A poll BETWEEN re-tries must not read. The failed attempt has to latch
-            # Sig, or this gate stays open and the ~100 ms read the backoff exists to
-            # ration runs on every poll for the whole outage.
+            # Sig. Otherwise this gate stays open. The backoff exists to ration the
+            # ~100 ms read, and it then runs on every poll for the whole outage.
             Update-SessionTabMap -Session @($alpha) -State $state -ReadTab $reader -Now ($now - 1)
             $reads | Should -Be 4
         }
     }
 
     It 'does not lose a session when the tabs are renumbered' {
-        # Tab 0 is the rain. Close the tab to the left of a session and every index after
-        # it shifts down; a rain that had memorised "the tab at index 0 is mine" would
-        # then be holding a real session's tab and would hide it for the rest of the run.
+        # Tab 0 is the rain. Closing a tab left of a session shifts every later index
+        # down. A rain that memorised "the tab at index 0 is mine" would then hold a
+        # real session's tab and hide it for the rest of the run.
         Update-SessionTabMap -Session @($alpha, $beta) -State $state -ReadTab { $script:settledTabs } -Now 0
         $shifted = @(
             (New-TestTab 900 0 'alpha work here' 'idle'),

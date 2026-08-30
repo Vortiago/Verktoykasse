@@ -1,19 +1,19 @@
 <#
 .SYNOPSIS
-    Matrix-style falling code rain for the PowerShell console, optionally a live view of
-    every open Claude Code session.
+    Matrix-style code rain for the PowerShell console. Optionally shows a live view
+    of every open Claude Code session.
 
 .DESCRIPTION
-    Runs in the alternate screen buffer, so scrollback survives, and exits on any key.
+    Runs in the alternate screen buffer: scrollback survives. Any key exits.
 
-    With -Sessions the screen splits into one vertical lane per open Claude Code
-    session, coloured and paced by that session's status, under a header naming the
+    -Sessions splits the screen into one vertical lane per open Claude Code session.
+    Each lane is coloured and paced by that session's status. The header names the
     session, its status and its opening prompt.
 
-    How any of it works is in README.md.
+    See README.md for how it works.
 
 .PARAMETER Palette
-    Green (default), Amber, Cyan, Magenta or Mono. Ignored by -Sessions, which colours
+    Green (default), Amber, Cyan, Magenta or Mono. -Sessions ignores it and colours
     each lane by status.
 
 .PARAMETER Ascii
@@ -29,16 +29,16 @@
     Also show background and daemon sessions, not just interactive ones.
 
 .PARAMETER ThisWindow
-    Only sessions running in the same Windows Terminal window as this rain.
+    Show only sessions in the same Windows Terminal window as this rain.
 
 .PARAMETER Click
-    Left-click a lane to switch to that session's Windows Terminal tab. The lane
-    header names the tab it would open, because the tab is matched on its title and
-    the match can be wrong. Needs "Show status in terminal tab" on in Claude Code.
+    Left-click a lane to switch to that session's Windows Terminal tab. Tabs match
+    on title, so the match can be wrong: the lane header names the tab it would
+    open. Needs "Show status in terminal tab" on in Claude Code.
 
 .PARAMETER Fps
-    Target frames per second (5-240). Default 30. Affects smoothness only - the rain
-    falls at the same rate at any frame rate.
+    Target frames per second (5-240). Default 30. Smoothness only: the rain falls
+    at the same rate at any frame rate.
 
 .PARAMETER Speed
     Fall-rate multiplier (0.1-5.0). Default 1.0. Scales the per-status rates too.
@@ -65,15 +65,15 @@
     .\matrix.ps1 -Palette Amber -Density 0.6 -Stats
 
 .NOTES
-    Press any key (or Ctrl+C) to exit. Mouse activity and terminal shortcuts are
-    ignored, so clicks, Ctrl+wheel zoom, scrolling, Alt+Enter and Ctrl+Shift+C do not
-    stop it. Arrow and page keys are treated as scrolling, not as "any key".
+    Press any key (or Ctrl+C) to exit. Mouse activity and terminal shortcuts do not
+    stop it: clicks, Ctrl+wheel zoom, scrolling, Alt+Enter and Ctrl+Shift+C are
+    ignored. Arrow and page keys count as scrolling, not as "any key".
 #>
 #requires -Version 7
 [CmdletBinding(DefaultParameterSetName = 'Rain')]
 param(
-    # In every set, as the help promises: -Sessions ignores it (lanes are coloured by
-    # status). Confined to the Rain set it made `-Sessions -Palette X` a binding error.
+    # In every set: -Sessions ignores it (lanes are coloured by status). Confined
+    # to the Rain set, `-Sessions -Palette X` was a binding error.
     [ValidateSet('Green', 'Amber', 'Cyan', 'Magenta', 'Mono')]
                                                          [string]   $Palette = 'Green',
 
@@ -104,12 +104,11 @@ foreach ($part in 'console', 'types', 'palette', 'lanes', 'sessions', 'tabs') {
     . $file
 }
 
-# Read before anything slow runs: -ThisWindow and -Click take the terminal that was in
-# front, and that is only reliably ours while the user is still looking at what they
-# just typed into.
+# Read before anything slow runs. -ThisWindow and -Click take the foreground
+# terminal. It is only reliably ours right after the user typed the command.
 $hostHwnd = if ($ThisWindow -or $Click) { Get-OwnTerminalWindow } else { 0 }
 
-# make sure ANSI escape sequences are interpreted (a no-op where they already are)
+# Enable ANSI escape processing (a no-op where it is already on).
 try {
     $mode = [uint32]0
     $handle = $VT::GetStdHandle(-11)
@@ -118,7 +117,7 @@ try {
     }
 } catch { }
 
-# --- UTF-8 output, or a console on a legacy codepage turns the katakana into "?" ----
+# --- UTF-8 output: a legacy codepage turns the katakana into "?" -------------------
 $prevEncoding = $null
 try {
     $prevEncoding = [Console]::OutputEncoding
@@ -126,23 +125,23 @@ try {
         [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
     }
 } catch {
-    $Ascii = $true   # can't emit katakana, so use the ASCII glyph set instead
+    $Ascii = $true   # cannot emit katakana: use the ASCII glyph set
 }
 
 if ($Ascii) {
     $glyphs = [char[]]'0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz<>/\|+*=-:;?#$%&@'
 } else {
-    # Drawn uniformly, so the counts are the mix: katakana two thirds, a letter about
-    # one glyph in ten. Half-width katakana render one cell wide; the full-width block
-    # takes two and shears the grid.
+    # Glyphs draw uniformly: the counts set the mix. Katakana two thirds, a letter
+    # about one glyph in ten. Half-width katakana render one cell wide; the
+    # full-width block takes two and shears the grid.
     $glyphs = ([char[]](0xFF66..0xFF9D | ForEach-Object { [char]$_ })) +
               [char[]]'ZTAESHLC' +
               [char[]]'0123456789' +
               [char[]]':."=*+-<>|'
 }
 
-# Both -ThisWindow and -Click hang off the tab map: Windows Terminal keeps every window
-# in one process, so a window is identified by its handle and a session by the tab whose
+# -ThisWindow and -Click both need the tab map. Windows Terminal keeps every window
+# in one process: a window is identified by its handle, a session by the tab whose
 # title matches it. Resolved once - this rain cannot move window.
 $needTabs = [bool]($ThisWindow -or $Click)
 if ($needTabs) {
@@ -150,8 +149,8 @@ if ($needTabs) {
     if (-not $hostHwnd) { $why = 'this is not a Windows Terminal window, or it was not in front at startup' }
     elseif (-not (Initialize-Uia)) { $why = 'UI Automation is unavailable' }
     if ($why) {
-        # -ThisWindow asked for a smaller set. Quietly showing every session instead
-        # looks like the filter is broken, so say so and stop.
+        # -ThisWindow asked for a smaller set. Quietly showing every session looks
+        # like a broken filter: say so and stop.
         if ($ThisWindow) {
             throw ("matrix: -ThisWindow needs to know which terminal window this is, and $why. " +
                    'Start it from the window you want scoped and leave that window in ' +
@@ -162,22 +161,22 @@ if ($needTabs) {
     }
 }
 
-# Owned here, kept current by Update-SessionTabMap. Map is sessionId -> tab, and the
-# tab carries the handle of the window holding it.
+# Owned here; Update-SessionTabMap keeps it current. Map is sessionId -> tab.
+# Each tab carries the handle of its window.
 $tabState = New-TabState
 $tabClock = [System.Diagnostics.Stopwatch]::StartNew()
 
-# -Density and -Speed are absolute in the other modes and multipliers here, so the
-# per-status rates are scaled relative to the defaults rather than replaced.
+# -Density and -Speed are absolute elsewhere but multipliers here. Per-status
+# rates scale relative to the defaults; they are not replaced.
 $densScale = $Density / 0.25
 
 function Get-LiveSession {
-    # The only place that reads the registry: the priming pass and the poll must agree,
-    # or the first frame differs from every frame after it.
+    # The only registry read. The priming pass and the poll must agree, or the
+    # first frame differs from every frame after it.
     $live = @(Get-ClaudeSession -IncludeBackground:$IncludeBackground)
 
-    # The task, read once and carried on the session. The tab matcher scores against it
-    # and the lane header prints it, so the shape must not depend on which flags are set.
+    # Read the task once; carry it on the session. The tab matcher scores against it
+    # and the lane header prints it: the shape must not depend on which flags are set.
     foreach ($s in $live) {
         $s | Add-Member -NotePropertyName Task -NotePropertyValue (Get-SessionFact $s).Task -Force
     }
@@ -186,21 +185,20 @@ function Get-LiveSession {
         Update-SessionTabMap -Session $live -State $script:tabState `
                              -Now $script:tabClock.ElapsedMilliseconds -ReadTab { Get-AllTerminalTab }
 
-        # A session with no matched tab cannot be placed in a window, so -ThisWindow
-        # drops it rather than guessing that it is ours.
+        # A session with no matched tab has no known window. -ThisWindow drops it
+        # rather than guess that it is ours.
         if ($ThisWindow) {
             $live = @($live | Where-Object { $script:tabState.Map[$_.SessionId].Hwnd -eq $hostHwnd })
         }
     }
 
-    # no comma-wrap: the caller collects with @(), which would nest the whole array into
-    # one element
+    # No comma-wrap: the caller's @() would nest the whole array into one element.
     $live
 }
 
 function Get-SessionLanes {
-    # AllowEmptyCollection: no sessions is the normal first case, and a Mandatory
-    # collection parameter rejects an empty array before the body ever runs.
+    # AllowEmptyCollection: no sessions is the normal first case. A Mandatory
+    # collection parameter rejects an empty array before the body runs.
     param([Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Live)
     if ($Live.Count -eq 0) {
         $where = if ($ThisWindow) { 'none in this terminal window' } else { 'waiting for one to start' }
@@ -213,7 +211,7 @@ function Get-SessionLanes {
         $status = $st.Label
         if ($s.WaitingFor) { $status = "$status : $($s.WaitingFor)" }
         if ($age)          { $status = "$status $age" }
-        # name the tab a click would open, so a wrong match is visible not silent
+        # Name the tab a click would open: a wrong match is visible, not silent.
         $tab = $script:tabState.Map[$s.SessionId]
         if ($tab) { $status = "$status [tab $($tab.Index + 1)]" }
         New-Lane $st.Rgb ($st.Speed * $Speed) ($st.Density * $densScale) `
@@ -225,9 +223,9 @@ function Get-SessionLanes {
 # --- Renderer and console setup -----------------------------------------------------
 $renderer = $RendererType::new($LV, $glyphs, [System.Random]::new().Next())
 
-# Console.Out is a StreamWriter with a 256-byte buffer and AutoFlush on, which splits
-# one frame into ~120 console syscalls. Write the raw handle instead and let the
-# renderer encode UTF-8 itself, one write per frame.
+# Console.Out is a StreamWriter: 256-byte buffer, AutoFlush on, ~120 console
+# syscalls per frame. Write the raw handle instead. The renderer encodes UTF-8
+# itself, one write per frame.
 $rawOut    = [Console]::OpenStandardOutput()
 $needFlush = [Console]::IsOutputRedirected      # a file needs flushing, a console does not
 
@@ -238,27 +236,27 @@ function Write-Raw {
     $rawOut.Flush()
 }
 
-# The stdin mode word has one owner: this snapshot, taken before ANYTHING rewrites it
-# (the -Click mouse/QuickEdit bits here, TreatControlCAsInput's ENABLE_PROCESSED_INPUT
-# below), and restored last in the finally, so no later mutation can escape it.
+# The stdin mode word has one owner: this snapshot. Take it before anything rewrites
+# it (the -Click mouse/QuickEdit bits here, TreatControlCAsInput's
+# ENABLE_PROCESSED_INPUT below). Restore it last in the finally: no mutation escapes.
 $prevStdin = $null
 try { $prevStdin = $VT::GetStdinMode() } catch { }
 if ($Click -and $null -ne $prevStdin) {
-    # Clicks only arrive once mouse reporting is on and QuickEdit is off. QuickEdit
-    # goes back on at exit, or the window is left unable to select text.
+    # Clicks need mouse reporting on and QuickEdit off. Restore QuickEdit at exit,
+    # or the window cannot select text.
     try { [void]$VT::SetStdinMode((($prevStdin -bor $VT::MOUSE_ON) -band (-bnot $VT::QUICK_EDIT))) } catch { }
 }
 
-# Before the slow priming pass below: a Ctrl+C in that gap must arrive as a queued key
-# that the first PollInput turns into a clean exit through the finally, not a hard kill
-# that skips every restore there (and leaves the console encoding switched).
+# Set before the slow priming pass below. A Ctrl+C in that gap must queue as a key:
+# the first PollInput then exits cleanly through the finally. A hard kill skips
+# every restore there and leaves the console encoding switched.
 try { [Console]::TreatControlCAsInput = $true } catch { }
 
-# The first poll is the expensive one: it walks the transcript folder once and reads the
-# head and tail of each session's own. That would show as a frozen first frame, so it is
-# paid out here, before the screen is handed over. The loop still polls on its first
-# iteration: the transcript index and the per-session facts are cached by then, so that
-# poll is a few small JSON reads, and it is what makes the opening frame current.
+# The first poll is the expensive one: it walks the transcript folder once and reads
+# each session's head and tail. Pay it here, before the screen is handed over, not as
+# a frozen first frame. The loop still polls on its first iteration: the transcript
+# index and per-session facts are cached by then, so that poll is a few small JSON
+# reads, and it makes the opening frame current.
 if ($Sessions) {
     Write-Host 'Reading Claude sessions...' -ForegroundColor DarkGray
     foreach ($s in (Get-LiveSession)) { [void](Get-SessionTitle $s) }
@@ -268,8 +266,8 @@ try { [Console]::CursorVisible = $false } catch { }
 
 Write-Raw $ENTER_SCREEN
 
-# Sleep() rounds to the system timer tick (~15.6 ms), which turns a 33 ms frame budget
-# into 47 ms and a 30 fps target into 25 fps. Ask for 1 ms resolution.
+# Sleep() rounds to the ~15.6 ms system timer tick: a 33 ms frame budget becomes
+# 47 ms and a 30 fps target becomes 25 fps. Ask for 1 ms resolution.
 $timerRaised = $false
 try { $timerRaised = ($VT::timeBeginPeriod(1) -eq 0) } catch { }
 
@@ -309,25 +307,25 @@ try {
         $nowMs = $clock.Elapsed.TotalMilliseconds
         $relay = $false
 
-        # Re-read the registry a few times a second. SetLanes only disturbs a column whose
-        # lane or colour actually changed, so relaying every poll is cheap and keeps the
-        # age in each header current.
+        # Re-read the registry a few times a second. SetLanes only disturbs a column
+        # whose lane or colour changed: relaying every poll is cheap and keeps each
+        # header's age current.
         if ($Sessions -and $nowMs -ge $pollDue) {
             $pollDue = $nowMs + $pollMs
             $lanes = Get-SessionLanes @(Get-LiveSession)
             $relay = $true
         }
 
-        # (Re)initialise on the first frame and whenever the window is resized. Each size
-        # read is a console syscall, so check a few times a second, not every frame. The
-        # read fails when stdout is redirected: fall back to 80x25.
+        # (Re)initialise on the first frame and on resize. Each size read is a console
+        # syscall: check a few times a second, not every frame. The read fails when
+        # stdout is redirected: fall back to 80x25.
         if ($sizeTick -le 0) {
             $sizeTick = $sizeEvery
             try   { $nw = [Console]::WindowWidth; $nh = [Console]::WindowHeight }
             catch { $nw = 80; $nh = 25 }
-            # Too small to rain in: draw nothing, keep looking every 100 ms, and force a
-            # resize on the way back. Committing the size here instead would leave the
-            # renderer on the old geometry while every later check saw no change.
+            # Too small to rain in: draw nothing, recheck every 100 ms, and force a
+            # resize on the way back. Committing the size here would leave the
+            # renderer on old geometry while every later check saw no change.
             if ($nw -lt 2 -or $nh -lt 2) {
                 $W = -1; $sizeTick = 0
                 [System.Threading.Thread]::Sleep(100)
@@ -340,14 +338,14 @@ try {
                 if (-not $lanes) {
                     $lanes = @(New-Lane (Get-NamedPalette $Palette) $Speed $Density $null $null $null)
                 }
-                $relay = $true          # colLane is sized to the width, so it must be redone
+                $relay = $true          # colLane is sized to the width: redo it
             }
         }
         $sizeTick--
 
         if ($relay -and $lanes) { $laneBounds = Set-RendererLanes -Renderer $renderer -Lane $lanes -Width $W }
 
-        # advance by real elapsed time, clamped so a stall cannot teleport the rain
+        # Advance by real elapsed time. Clamp it: a stall must not teleport the rain.
         $nowSec = $clock.Elapsed.TotalSeconds
         $dt = $nowSec - $prevSec
         $prevSec = $nowSec
@@ -363,7 +361,7 @@ try {
             $frames = 0; $buildMs = 0.0; $statSw.Restart()
         }
 
-        # pace against a running deadline so jitter doesn't accumulate into drift
+        # Pace against a running deadline: jitter does not accumulate into drift.
         $now  = $clock.Elapsed.TotalMilliseconds
         $wait = $nextDue - $now
         if ($wait -ge 1) { [System.Threading.Thread]::Sleep([int]$wait) }

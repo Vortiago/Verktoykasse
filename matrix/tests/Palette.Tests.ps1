@@ -49,7 +49,7 @@ Describe 'Get-ColourRamp' {
     }
 
     It 'does not rebuild a ramp it has already built' {
-        # 23 SGR strings per palette is most of the cost of a lane rebuild, and this runs
+        # 23 SGR strings per palette is most of a lane rebuild's cost. This runs
         # every time a session changes status.
         $first = Get-ColourRamp @(1, 2, 3) $LV
         Mock Get-Sgr { throw 'rebuilt a cached ramp' }
@@ -59,8 +59,8 @@ Describe 'Get-ColourRamp' {
     }
 
     It 'keys the cache on the level count as well as the colour' {
-        # Same colour, different level count: a cache keyed on colour alone would hand
-        # back a ramp of the wrong length and the renderer would index past its end.
+        # Same colour, different level count. A cache keyed on colour alone hands
+        # back a wrong-length ramp, and the renderer indexes past its end.
         Get-ColourRamp @(4, 5, 6) $LV       | Should -HaveCount ($LV + 3)
         Get-ColourRamp @(4, 5, 6) ($LV - 1) | Should -HaveCount ($LV + 2)
     }
@@ -79,8 +79,8 @@ Describe 'New-PaletteTable' {
     }
 
     It 'returns the table as one array, not as its elements' {
-        # A comma-wrapped return: without it the caller collects a table of strings and
-        # the renderer is handed the first escape instead of the table.
+        # A comma-wrapped return. Without it the caller collects a table of strings,
+        # and the renderer gets the first escape instead of the table.
         $t = New-PaletteTable -Rgb @(, @(40, 255, 90)) -Levels $LV
         , $t | Should -BeOfType [string[]]
     }

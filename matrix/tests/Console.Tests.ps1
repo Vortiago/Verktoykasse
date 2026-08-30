@@ -5,8 +5,8 @@ BeforeAll {
 
 Describe 'ConvertTo-CellText' {
     It 'keeps one cell per character' {
-        # The header shears if a character draws wider than one cell, so a filtered
-        # character is replaced, never dropped.
+        # A character wider than one cell shears the header. Replace a filtered
+        # character, never drop it.
         $in = "a`tb" + [char]0xFF66 + 'c'
         (ConvertTo-CellText $in).Length | Should -Be $in.Length
     }
@@ -17,8 +17,8 @@ Describe 'ConvertTo-CellText' {
     }
 
     It 'keeps Latin-1 and Latin Extended-A, which the encoder handles' {
-        # $([char]...) subexpressions so file encoding never corrupts the test data.
-        # (${[char]...} is a braced VARIABLE lookup: it expands to nothing, and this
+        # $([char]...) subexpressions: file encoding never corrupts the test data.
+        # (${[char]...} is a braced VARIABLE lookup. It expands to nothing, and this
         # test then asserted on pure ASCII while claiming to cover Latin-1.)
         $expected = "Verkt$([char]0x00F8)ykasse $([char]0x00C6)rlig $([char]0x0101) $([char]0x00B7)"
         ConvertTo-CellText $expected | Should -Be $expected
@@ -44,7 +44,7 @@ Describe 'ConvertTo-CellText' {
 
 Describe 'The screen escapes' {
     It 'turns back on everything it turned off' {
-        # Whatever ENTER disables, LEAVE must re-enable, or the terminal is left without
+        # LEAVE must re-enable whatever ENTER disables. Otherwise the terminal loses
         # its cursor, its scrollback, or its wheel.
         foreach ($mode in 1049, 1007, 25) {
             ($ENTER_SCREEN + $LEAVE_SCREEN | Select-String -Pattern "\?$mode" -AllMatches).Matches |
@@ -54,8 +54,8 @@ Describe 'The screen escapes' {
 
     It 'leaves the alternate buffer last, after clearing and resetting' {
         $LEAVE_SCREEN | Should -Match "\?1049l"
-        # Ordinal: the default string search is culture-sensitive, and it does not find
-        # an escape sequence where it plainly is.
+        # Ordinal: the default string search is culture-sensitive. It can miss an
+        # escape sequence that is plainly there.
         $LEAVE_SCREEN.StartsWith("$E[0m", [StringComparison]::Ordinal) | Should -BeTrue
     }
 }
