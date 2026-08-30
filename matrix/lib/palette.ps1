@@ -4,19 +4,6 @@
 # (0 darkest), LV+1 the head, LV+2 the stats overlay. STRIDE is LV+3. Palette p
 # occupies indices p*STRIDE .. p*STRIDE+LV+2.
 
-$script:NamedPalette = @{
-    Green   = @( 40, 255,  90)
-    Amber   = @(255, 176,  32)
-    Cyan    = @( 40, 220, 255)
-    Magenta = @(255,  64, 200)
-    Mono    = @(215, 215, 215)
-}
-
-function Get-NamedPalette {
-    param([string] $Name)
-    $script:NamedPalette[$Name]
-}
-
 function Get-Sgr {
     # Channels inline, no range, no pipeline: this runs 23 times per palette, inside
     # the poll, every time a session changes status.

@@ -5,17 +5,6 @@ BeforeAll {
     $script:LV = 20
 }
 
-Describe 'Get-NamedPalette' {
-    It 'knows the five named palettes' {
-        Get-NamedPalette 'Green' | Should -Be @(40, 255, 90)
-        Get-NamedPalette 'Mono'  | Should -Be @(215, 215, 215)
-    }
-
-    It 'has nothing for a name it does not know' {
-        Get-NamedPalette 'Puce' | Should -BeNullOrEmpty
-    }
-}
-
 Describe 'Get-Sgr' {
     It 'lands on the endpoints it was given' {
         Get-Sgr @(0, 0, 0) @(10, 20, 30) 0.0 0 | Should -Be "$E[0;38;2;0;0;0m"

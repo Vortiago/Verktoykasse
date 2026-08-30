@@ -147,10 +147,9 @@ Describe 'Get-ClaudeSession' {
         @(Get-ClaudeSession) | Should -HaveCount 0
     }
 
-    It 'shows background sessions only when asked' {
+    It 'shows only interactive sessions' {
         Write-Registry 'a' (New-Record 'sid-a' 'busy' @{ kind = 'background' })
         @(Get-ClaudeSession) | Should -HaveCount 0
-        @(Get-ClaudeSession -IncludeBackground) | Should -HaveCount 1
     }
 
     It 'skips a record it cannot read instead of failing the poll' {

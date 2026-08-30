@@ -65,20 +65,20 @@ AfterAll {
 
 # Windows only: the rain's input loop P/Invokes kernel32. The script itself cannot
 # run elsewhere. The lib suites cover everything else cross-platform.
-Describe 'matrix.ps1 -Sessions' -Skip:(-not $IsWindows) {
+Describe 'matrix.ps1' -Skip:(-not $IsWindows) {
     It 'says so when there are no sessions, rather than dying on the empty list' {
         # A Mandatory collection parameter rejects an empty array before the body runs.
         # The lane function's own "no sessions" branch was unreachable, and the rain
         # quit with "Cannot bind argument to parameter 'Live'". This is the FIRST thing
         # anyone sees, and only ever on a machine with nothing running.
-        $r = Invoke-Rain $emptyHome @('-Sessions', '-Seconds', '2', '-Fps', '10')
+        $r = Invoke-Rain $emptyHome @('-Seconds', '2', '-Fps', '10')
         $r.Stderr   | Should -Not -Match 'Cannot bind argument'
         $r.ExitCode | Should -Be 0
         $r.Stdout   | Should -Match 'no claude sessions'
     }
 
     It 'draws a live session, status and all' {
-        $r = Invoke-Rain $liveHome @('-Sessions', '-Seconds', '2', '-Fps', '10')
+        $r = Invoke-Rain $liveHome @('-Seconds', '2', '-Fps', '10')
         $r.ExitCode | Should -Be 0
         (Remove-Sgr $r.Stdout) | Should -Match 'working'
     }
@@ -86,19 +86,8 @@ Describe 'matrix.ps1 -Sessions' -Skip:(-not $IsWindows) {
     It 'puts the task in the header whether or not tabs are wanted' {
         # The lane reads .Task off the session. The staple that puts it there must not
         # depend on -Click or -ThisWindow, the flags that ask for the tab map.
-        $r = Invoke-Rain $liveHome @('-Sessions', '-Seconds', '2', '-Fps', '10')
+        $r = Invoke-Rain $liveHome @('-Seconds', '2', '-Fps', '10')
         (Remove-Sgr $r.Stdout) | Should -Match 'zeppelin'
     }
 }
 
-Describe 'matrix.ps1' -Skip:(-not $IsWindows) {
-    It 'rains, in every mode that does not need a desktop' {
-        foreach ($argv in @('-Seconds', '1', '-Fps', '10'),
-                          @('-Ascii', '-Seconds', '1', '-Fps', '10'),
-                          @('-Palette', 'Amber', '-Stats', '-Seconds', '1', '-Fps', '10')) {
-            $r = Invoke-Rain $emptyHome $argv
-            $r.ExitCode | Should -Be 0 -Because "of $($argv -join ' ')"
-            $r.Stderr   | Should -BeNullOrEmpty
-        }
-    }
-}

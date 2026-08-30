@@ -55,7 +55,7 @@
 [CmdletBinding(SupportsShouldProcess)]
 param(
     [string] $Name      = 'Matrix',
-    [string] $Arguments = '-Fps 60 -Stats -Sessions -ThisWindow -Click',
+    [string] $Arguments = '-Fps 60 -Stats -ThisWindow -Click',
     [switch] $Retro,
     [switch] $Remove,
     [string] $SettingsPath

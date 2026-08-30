@@ -1,32 +1,16 @@
 <#
 .SYNOPSIS
-    Matrix-style code rain for the PowerShell console. Optionally shows a live view
-    of every open Claude Code session.
+    A live Matrix-rain view of every open Claude Code session.
 
 .DESCRIPTION
     Runs in the alternate screen buffer: scrollback survives. Any key exits.
 
-    -Sessions splits the screen into one vertical lane per open Claude Code session.
-    Each lane is coloured and paced by that session's status. The header names the
+    The screen splits into one vertical lane per open Claude Code session. Each
+    lane is coloured and paced by that session's status. The header names the
     session, its status and its opening prompt.
 
+    Per-status colour, speed and density are in styles.psd1.
     See README.md for how it works.
-
-.PARAMETER Palette
-    Green (default), Amber, Cyan, Magenta or Mono. -Sessions ignores it and colours
-    each lane by status.
-
-.PARAMETER Ascii
-    Use ASCII glyphs instead of half-width katakana.
-
-.PARAMETER Sessions
-    Rain the open Claude Code sessions, one lane each, coloured and paced by status.
-
-.PARAMETER PollSeconds
-    How often -Sessions re-reads the session registry. Default 1.
-
-.PARAMETER IncludeBackground
-    Also show background and daemon sessions, not just interactive ones.
 
 .PARAMETER ThisWindow
     Show only sessions in the same Windows Terminal window as this rain.
@@ -36,15 +20,12 @@
     on title, so the match can be wrong: the lane header names the tab it would
     open. Needs "Show status in terminal tab" on in Claude Code.
 
+.PARAMETER PollSeconds
+    How often the session registry is re-read. Default 1.
+
 .PARAMETER Fps
     Target frames per second (5-240). Default 30. Smoothness only: the rain falls
     at the same rate at any frame rate.
-
-.PARAMETER Speed
-    Fall-rate multiplier (0.1-5.0). Default 1.0. Scales the per-status rates too.
-
-.PARAMETER Density
-    How busy the rain is (0.02-1.0). Default 0.25. Scales the per-status rates too.
 
 .PARAMETER Seconds
     Stop automatically after N seconds. 0 (default) = run until a key is pressed.
@@ -56,13 +37,7 @@
     .\matrix.ps1
 
 .EXAMPLE
-    .\matrix.ps1 -Sessions
-
-.EXAMPLE
-    .\matrix.ps1 -Sessions -ThisWindow -Click    # this window's sessions, click to switch
-
-.EXAMPLE
-    .\matrix.ps1 -Palette Amber -Density 0.6 -Stats
+    .\matrix.ps1 -ThisWindow -Click    # this window's sessions, click to switch
 
 .NOTES
     Press any key (or Ctrl+C) to exit. Mouse activity and terminal shortcuts do not
@@ -70,26 +45,14 @@
     ignored. Arrow and page keys count as scrolling, not as "any key".
 #>
 #requires -Version 7
-[CmdletBinding(DefaultParameterSetName = 'Rain')]
+[CmdletBinding()]
 param(
-    # In every set: -Sessions ignores it (lanes are coloured by status). Confined
-    # to the Rain set, `-Sessions -Palette X` was a binding error.
-    [ValidateSet('Green', 'Amber', 'Cyan', 'Magenta', 'Mono')]
-                                                         [string]   $Palette = 'Green',
-
-    [Parameter(Mandatory, ParameterSetName = 'Sessions')] [switch]  $Sessions,
-    [Parameter(ParameterSetName = 'Sessions')]
-    [ValidateRange(0.2, 30)]                             [double]   $PollSeconds = 1.0,
-    [Parameter(ParameterSetName = 'Sessions')]           [switch]   $IncludeBackground,
-    [Parameter(ParameterSetName = 'Sessions')]           [switch]   $ThisWindow,
-    [Parameter(ParameterSetName = 'Sessions')]           [switch]   $Click,
-
-                               [switch] $Ascii,
-    [ValidateRange(5, 240)]    [int]    $Fps     = 30,
-    [ValidateRange(0.02, 1.0)] [double] $Density = 0.25,
-    [ValidateRange(0.1, 5.0)]  [double] $Speed   = 1.0,
-    [ValidateRange(0, 86400)]  [int]    $Seconds = 0,
-                               [switch] $Stats
+    [switch] $ThisWindow,
+    [switch] $Click,
+    [ValidateRange(0.2, 30)]  [double] $PollSeconds = 1.0,
+    [ValidateRange(5, 240)]   [int]    $Fps         = 30,
+    [ValidateRange(0, 86400)] [int]    $Seconds     = 0,
+    [switch] $Stats
 )
 
 $ErrorActionPreference = 'Stop'
@@ -124,11 +87,12 @@ try {
     if ($prevEncoding.CodePage -ne 65001) {
         [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
     }
+    $useAscii = $false
 } catch {
-    $Ascii = $true   # cannot emit katakana: use the ASCII glyph set
+    $useAscii = $true   # cannot emit katakana: use the ASCII glyph set
 }
 
-if ($Ascii) {
+if ($useAscii) {
     $glyphs = [char[]]'0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz<>/\|+*=-:;?#$%&@'
 } else {
     # Glyphs draw uniformly: the counts set the mix. Katakana two thirds, a letter
@@ -166,14 +130,10 @@ if ($needTabs) {
 $tabState = New-TabState
 $tabClock = [System.Diagnostics.Stopwatch]::StartNew()
 
-# -Density and -Speed are absolute elsewhere but multipliers here. Per-status
-# rates scale relative to the defaults; they are not replaced.
-$densScale = $Density / 0.25
-
 function Get-LiveSession {
     # The only registry read. The priming pass and the poll must agree, or the
     # first frame differs from every frame after it.
-    $live = @(Get-ClaudeSession -IncludeBackground:$IncludeBackground)
+    $live = @(Get-ClaudeSession)
 
     # Read the task once; carry it on the session. The tab matcher scores against it
     # and the lane header prints it: the shape must not depend on which flags are set.
@@ -202,8 +162,8 @@ function Get-SessionLanes {
     param([Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Live)
     if ($Live.Count -eq 0) {
         $where = if ($ThisWindow) { 'none in this terminal window' } else { 'waiting for one to start' }
-        return , @(New-Lane (Get-SessionStyle 'gone').Rgb (0.3 * $Speed) (0.12 * $densScale) `
-                            'no claude sessions' $where $null)
+        $st = Get-SessionStyle 'none'
+        return , @(New-Lane $st.Rgb $st.Speed $st.Density $st.Label $where $null)
     }
     $out = foreach ($s in $Live) {
         $st     = $s.Style
@@ -214,7 +174,7 @@ function Get-SessionLanes {
         # Name the tab a click would open: a wrong match is visible, not silent.
         $tab = $script:tabState.Map[$s.SessionId]
         if ($tab) { $status = "$status [tab $($tab.Index + 1)]" }
-        New-Lane $st.Rgb ($st.Speed * $Speed) ($st.Density * $densScale) `
+        New-Lane $st.Rgb $st.Speed $st.Density `
                  (Get-SessionTitle $s) (ConvertTo-CellText $status) $s.Task $s
     }
     , @($out)
@@ -257,10 +217,8 @@ try { [Console]::TreatControlCAsInput = $true } catch { }
 # a frozen first frame. The loop still polls on its first iteration: the transcript
 # index and per-session facts are cached by then, so that poll is a few small JSON
 # reads, and it makes the opening frame current.
-if ($Sessions) {
-    Write-Host 'Reading Claude sessions...' -ForegroundColor DarkGray
-    foreach ($s in (Get-LiveSession)) { [void](Get-SessionTitle $s) }
-}
+Write-Host 'Reading Claude sessions...' -ForegroundColor DarkGray
+foreach ($s in (Get-LiveSession)) { [void](Get-SessionTitle $s) }
 
 try { [Console]::CursorVisible = $false } catch { }
 
@@ -310,7 +268,7 @@ try {
         # Re-read the registry a few times a second. SetLanes only disturbs a column
         # whose lane or colour changed: relaying every poll is cheap and keeps each
         # header's age current.
-        if ($Sessions -and $nowMs -ge $pollDue) {
+        if ($nowMs -ge $pollDue) {
             $pollDue = $nowMs + $pollMs
             $lanes = Get-SessionLanes @(Get-LiveSession)
             $relay = $true
@@ -335,9 +293,6 @@ try {
                 $W = $nw; $H = $nh
                 $renderer.Resize($W, $H)
                 Write-Raw $CLS
-                if (-not $lanes) {
-                    $lanes = @(New-Lane (Get-NamedPalette $Palette) $Speed $Density $null $null $null)
-                }
                 $relay = $true          # colLane is sized to the width: redo it
             }
         }

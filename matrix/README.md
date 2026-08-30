@@ -12,7 +12,7 @@ the test suite (Pester 5 or later).
 `install-terminal-profile.ps1` adds one profile that opens the session view:
 
 ```
--Fps 60 -Stats -Sessions -ThisWindow -Click
+-Fps 60 -Stats -ThisWindow -Click
 ```
 
 Windows Terminal reloads `settings.json` on save, so the profile appears in the
@@ -33,7 +33,7 @@ to the window the rain starts in, and a fresh window holds no Claude sessions.
 
 ## Session status
 
-`-Sessions` splits the screen into one vertical lane per open session. Every
+The screen splits into one vertical lane per open session. Every
 lane rains the same katakana. Colour, fall rate, and a fixed header tell them
 apart:
 
@@ -52,7 +52,7 @@ branch, which say more.
 A narrow lane drops rows instead of wrapping them into stubs: under 18 columns
 the task goes, under 10 the name goes too.
 
-Colour and fall rate track the status:
+Colour and fall rate track the status. Tune them per status in `styles.psd1`:
 
 | Registry `status` | Lane | Rate |
 | --- | --- | --- |
@@ -76,7 +76,7 @@ stops a recycled PID from resurrecting a dead session.
 ## This window only, and clicking a lane
 
 ```powershell
-.\matrix.ps1 -Sessions -ThisWindow -Click
+.\matrix.ps1 -ThisWindow -Click
 ```
 
 `-ThisWindow` keeps only the sessions in the same Windows Terminal window as

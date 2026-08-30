@@ -13,13 +13,8 @@
 $script:ClaudeHome = if ($env:CLAUDE_CONFIG_DIR) { $env:CLAUDE_CONFIG_DIR }
                      else { Join-Path $env:USERPROFILE '.claude' }
 
-# status -> how the lane looks. Green flows, red crawls.
-$script:SessionStyle = [ordered]@{
-    busy    = @{ Label = 'working';   Rgb = @( 40, 255,  90); Speed = 1.70; Density = 0.55 }
-    idle    = @{ Label = 'idle';      Rgb = @(255, 176,  32); Speed = 0.45; Density = 0.20 }
-    waiting = @{ Label = 'needs you'; Rgb = @(255,  60,  60); Speed = 0.22; Density = 0.14 }
-    gone    = @{ Label = 'ended';     Rgb = @(120, 120, 130); Speed = 0.15; Density = 0.06 }
-}
+# status -> how the lane looks. Green flows, red crawls. Tune it in styles.psd1.
+$script:SessionStyle = Import-PowerShellDataFile (Join-Path $PSScriptRoot '..' 'styles.psd1')
 
 function Get-SessionStyle {
     param([string] $Status)
@@ -50,7 +45,7 @@ function Get-ClaudeSession {
         Every live interactive Claude Code session, with its current status.
     #>
     [CmdletBinding()]
-    param([switch] $IncludeBackground)
+    param()
 
     $dir = Join-Path $script:ClaudeHome 'sessions'
     if (-not [System.IO.Directory]::Exists($dir)) { return @() }
@@ -65,7 +60,7 @@ function Get-ClaudeSession {
         try {
             $r = ConvertFrom-Json ([System.IO.File]::ReadAllText($f))
             if (-not $r.pid -or -not $r.sessionId) { continue }
-            if (-not $IncludeBackground -and $r.kind -ne 'interactive') { continue }
+            if ($r.kind -ne 'interactive') { continue }
             if (-not (Test-SessionAlive -ProcessId $r.pid -ProcStart $r.procStart)) { continue }
 
             $status = if ($r.status) { [string]$r.status } else { 'idle' }

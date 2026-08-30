@@ -1,5 +1,4 @@
 # Lanes: one vertical band each, with its own palette, fall speed, density and header.
-# Modes other than -Sessions use exactly one lane spanning the whole width.
 #
 # This file owns the two numbers for a lane's colours and header. The renderer's
 # index contract is written against them. See README.md.
