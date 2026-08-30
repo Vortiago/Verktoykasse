@@ -73,12 +73,18 @@ and don't belong here.
   for large PRDs. User-invocable as `/verify-prd-implemented`.
 
 - **[oclaude](oclaude/README.md)** — run Claude Code against local Ollama models.
-  Ollama >= 0.32 serves the Anthropic Messages API natively; oclaude points
+  Ollama 0.32 serves the Anthropic Messages API natively, so oclaude points
   `ANTHROPIC_BASE_URL` at localhost, sets `ANTHROPIC_AUTH_TOKEN=ollama`, and
-  configures 20+ `CLAUDE_CODE_*` knobs so Claude Code works well with local
-  models. Tiered model map (OPUS / SONNET / HAIKU / FABLE), derived tags
-  that pin context windows, daemon lifecycle management, and a built-in
-  advisor subagent. PowerShell only (Windows).
+  sets the 20-odd `CLAUDE_CODE_*` knobs a local model needs (context cap,
+  auto-compact window, byte-idle timeout, tool concurrency) — set inside the
+  launching function and restored after, so the shell is left unchanged.
+  A tiered model map (OPUS runs the session, SONNET is the permission
+  classifier, HAIKU takes background traffic, FABLE is cloud), derived Ollama
+  tags that pin `num_ctx` so several models stay resident, daemon lifecycle
+  with a wrong-daemon-on-the-port check, and a per-launch advisor subagent.
+  The **only non-skill here**: a PowerShell launcher you run to *start* a
+  session, so `install.sh` skips it — install with `oclaude/install.ps1`,
+  which dot-sources it into your `$PROFILE`. Windows only.
 
 ## Install
 
@@ -94,3 +100,11 @@ A skill may ship its own `<skill>/install.sh` for extra wiring — e.g.
 `worktrees` also symlinks its hook into `~/.claude/hooks/`, links the helper
 scripts into your repos root (it prompts for the path; override with
 `REPOS_ROOT=…`), and registers the `WorktreeCreate` hook in `settings.json`.
+
+`oclaude` is skipped by this script. It is a terminal launcher rather than a
+skill Claude loads, so it belongs in your shell profile, not in
+`~/.claude/skills/`:
+
+```powershell
+pwsh -ExecutionPolicy Bypass -File .\oclaude\install.ps1
+```

@@ -1,12 +1,18 @@
-# oclaude — Claude Code on local Ollama models
+# oclaude, Claude Code on local Ollama models
 
-Run Claude Code against models running locally in Ollama. Requires **Ollama >= 0.32** (which serves the Anthropic Messages API natively) and **PowerShell** (Windows).
+Run Claude Code against models served locally by Ollama.
+
+Requirements:
+
+- **Ollama 0.32 or later**, which serves the Anthropic Messages API natively.
+- **PowerShell** on Windows.
+- The **`claude` CLI** on `PATH`. oclaude configures the environment and then calls it.
 
 ## Quick start
 
 ```powershell
-# 1. Install — wires oclaude into your PowerShell profile
-powershell -ExecutionPolicy Bypass -File .\install.ps1
+# 1. Install, which wires oclaude into your PowerShell profile
+pwsh -ExecutionPolicy Bypass -File .\install.ps1
 
 # 2. Open a new PowerShell session, then pull the models
 oclaude-pull
@@ -15,54 +21,131 @@ oclaude-pull
 oclaude
 ```
 
+Run the installer with the same PowerShell you use day to day. Windows
+PowerShell 5.1 (`powershell.exe`) and PowerShell 7 (`pwsh.exe`) keep separate
+profiles, so an install from one leaves the other without `oclaude`. The
+installer prints the profile it wrote to.
+
+The installer copies nothing. Your profile points at `oclaude.ps1` where it sits
+in this repo, so `git pull` updates the launcher with no reinstall.
+
 ## How it works
 
-Ollama >= 0.32 exposes `/v1/messages`, the same endpoint Claude Code uses with the Anthropic API. oclaude points `ANTHROPIC_BASE_URL` at `http://localhost:11434`, sets `ANTHROPIC_AUTH_TOKEN=ollama`, and configures 20+ `CLAUDE_CODE_*` environment variables so Claude Code works well with local models.
+Ollama 0.32 exposes `/v1/messages`, the same endpoint Claude Code uses against
+the Anthropic API. oclaude points `ANTHROPIC_BASE_URL` at `http://localhost:11434`,
+sets `ANTHROPIC_AUTH_TOKEN=ollama`, and sets more than 20 `CLAUDE_CODE_*`
+variables that make the CLI behave against a local model.
+
+oclaude sets those variables inside the launching function and restores them
+afterwards, so the shell you started from is unchanged. Nothing is exported to
+your profile, and a normal `claude` in the same shell still reaches the
+Anthropic API.
 
 ## The tier system
 
-Claude Code selects models by tier (OPUS, SONNET, HAIKU, FABLE). oclaude maps each tier to an Ollama model tag, so you get different models for different roles:
+Claude Code selects a model by tier (OPUS, SONNET, HAIKU, FABLE). oclaude maps
+each tier to an Ollama tag, which gives each role its own model:
 
-| Tier | Role | Example |
-|------|------|---------|
-| **OPUS** | Main session model — runs plan and execution | `qwen3.6:35b-a3b-q8_0` |
-| **SONNET** | Permission classifier — gates tool calls without asking | `lfm2.5:8b-a1b-q8_0` |
-| **HAIKU** | Background traffic — keeps the big model's runner free | `lfm2.5:8b-a1b-q8_0` |
-| **FABLE** | Cloud tier (optional) | `nemotron-3-ultra:550b:cloud` |
+| Tier | Role | Ships as | Base model |
+|------|------|----------|------------|
+| **OPUS** | Main session model, runs plan and execution | `cc-chat-35b-q8` | `qwen3.6:35b-a3b-mtp-q8_0` |
+| **SONNET** | Permission classifier, gates tool calls without asking | `cc-fast-8b` | `lfm2.5:8b-a1b-q8_0` |
+| **HAIKU** | Background traffic, keeps the big model's runner free | `cc-fast-8b` | `lfm2.5:8b-a1b-q8_0` |
+| **FABLE** | Cloud tier, and the advisor subagent's model | `nemotron-3-ultra:cloud` | resolves server-side |
+
+These are the defaults, chosen for one particular machine. Treat them as a
+worked example, not a recommendation: swap in whatever your hardware runs.
+
+`SONNET` is not a chat tier. Claude Code asks it to classify whether a tool call
+may run without a prompt, so the model sitting there decides how much the
+session interrupts you.
 
 ### Derived tags
 
-Each tier points at a **base model** (e.g. `qwen3.6:35b-a3b-q8_0`). oclaude builds **derived tags** (e.g. `cc-chat-35b-q8`) that pin `num_ctx` and sampling parameters on top of the base model. A derived tag is a lightweight manifest — it references the base model's existing blobs, so it costs no extra disk.
+A tier points at a **derived tag** (`cc-chat-35b-q8`), not at a base model.
+A derived tag is a one-line manifest that pins `num_ctx` and the sampling
+parameters on top of a base model. It references the base model's existing
+blobs, so it costs a manifest rather than a copy of the weights.
 
-Run `oclaude-build-models` after editing the model map to rebuild derived tags. Run `oclaude-pull` to pull any missing base models first.
+The pin is the point: without a per-tag `num_ctx`, every model loads at the
+daemon-wide `OLLAMA_CONTEXT_LENGTH`, and at a large value only one model fits
+in memory at a time.
+
+Run `oclaude-pull` to pull the base models, which rebuilds the derived tags
+afterwards. Run `oclaude-build-models` alone after editing only the pins.
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
-| `oclaude [args]` | Launch Claude Code (default `--model opus`). Args pass straight through: `-p`, `-c`, `--model`, ... |
-| `oclaude-status` | Daemon state, per-tier model status, cloud access check, loaded models |
-| `oclaude-pull` | Pull base models, then rebuild derived tags |
-| `oclaude-build-models` | Recreate derived tags (`num_ctx` + sampling params) |
-| `oclaude-restart-daemon` | Restart Ollama with User-scope `OLLAMA_*` env vars applied |
-| `oclaude-help` | This help text; run `claude --help` for the CLI's own flags |
+| `oclaude [args]` | Launch Claude Code, defaulting to `--model opus`. Arguments pass straight through, so `-p`, `-c` and `--model` all work |
+| `oclaude-status` | Daemon state, per-tier model state, a live cloud access check, and the loaded models |
+| `oclaude-pull` | Pull the base models, then rebuild the derived tags |
+| `oclaude-build-models` | Recreate the derived tags, which pin `num_ctx` and the sampling parameters |
+| `oclaude-restart-daemon` | Restart Ollama with the User-scope `OLLAMA_*` variables applied |
+| `oclaude-help` | The same summary, in the shell. Run `claude --help` for the CLI's own flags |
+
+An unrecognised argument is passed to `claude` untouched, so `oclaude --help`
+is the one exception: it prints oclaude's help rather than the CLI's.
 
 ## Config
 
-Edit the model map in [`lib/config.ps1`](lib/config.ps1). The file is structured as:
+Everything tunable lives in [`lib/config.ps1`](lib/config.ps1), in four parts.
 
-1. **Model map** — tier names → Ollama model tags. Edit the `From` values in `$derived` to change which model each tier uses.
-2. **Derived tags** — base model + pinned `num_ctx` + sampling params. Rebuild with `oclaude-build-models`.
-3. **Names** — human-readable labels shown in Claude Code's model picker.
-4. **Tunables** — `KeepAlive`, `MaxLoadedModels`, `ContextLength`, `MaxContextTokens`, `AutoCompactWindow`, `StreamIdleMs`, `ToolConcurrency`, `TimeoutMs`.
+1. **`$models`** maps a tier to the tag it runs. Point a tier at a different
+   derived tag here.
+2. **`$derived`** defines each derived tag: its `From` base model, its `NumCtx`
+   pin, and its sampling `Params`. Change the model a tier runs by editing the
+   `From` value, then run `oclaude-pull`.
+3. **`$names`** holds the labels Claude Code shows in its model picker.
+4. **The returned object** holds the rest: the endpoint, the advisor, and the
+   daemon and Claude Code tunables.
 
-The Claude Code env knobs (`MaxContextTokens`, `AutoCompactWindow`, `StreamIdleMs`, `ToolConcurrency`, `TimeoutMs`, etc.) are the most important tuning parameters. They control context limits, auto-compaction, idle timeouts, and tool concurrency — all critical for local model stability.
+Run `oclaude-build-models` after editing `$derived`. An open shell keeps the
+functions it loaded at startup, so oclaude warns when a file has changed on
+disk since the shell loaded it.
+
+### The tunables that matter most
+
+`MaxContextTokens` must stay at or below the smallest `num_ctx` among the
+tiers. Claude Code holds one global value, so a larger number lets it overfill
+the smallest tier, and Ollama then truncates with no error.
+
+`AutoCompactWindow` is where Claude Code compacts. Keep it below `num_ctx` so
+the runner never context-shifts and drops the oldest tokens silently.
+
+`StreamIdleMs` covers a queued request, which emits no bytes while it waits.
+The built-in idle timeout is three minutes, which a slow local prefill exceeds.
+
+`ToolConcurrency` is 2 because Ollama serves one request per model at a time.
+A higher value only queues the calls and risks the idle timeout.
+
+`lib/config.ps1` carries the reasoning for each value as comments. Read them
+before changing one.
+
+## The advisor subagent
+
+Each launch injects an `advisor` subagent through the `--agents` flag, so it
+exists only inside an oclaude session. Nothing is written to `~/.claude/agents`
+or to a repository.
+
+It runs on the `FABLE` tier, which is the cloud model, so advice comes from a
+model other than the one that asked. Override the tier for one shell with
+`$env:OCLAUDE_ADVISOR`. Use an alias (`fable`, `opus`, `sonnet` or `haiku`),
+never a raw Ollama tag: an unresolvable subagent model falls back to the
+caller's own model without an error, which makes the advisor the very model
+that asked for advice.
+
+Pass your own `--agents` to replace the injected set.
 
 ## Troubleshooting
 
 ### Wrong daemon answered on port 11434
 
-If `oclaude-status` shows missing derived tags, a stale Ollama from another user profile may have grabbed the port. Run:
+If `oclaude-status` reports missing derived tags, a stale Ollama from another
+user profile may hold the port. A health check proves only that something
+answers on 11434, not that it is your daemon. The derived tags are the decisive
+test, because a daemon with a different model store cannot fake them.
 
 ```powershell
 netstat -ano | Select-String ":11434.*LISTENING"
@@ -73,7 +156,7 @@ oclaude-restart-daemon
 
 ### Model not pulled
 
-oclaude warns at launch if a tier's model is missing. Pull with:
+oclaude warns at launch when a tier's model is absent. Pull it:
 
 ```powershell
 oclaude-pull
@@ -81,7 +164,8 @@ oclaude-pull
 
 ### Stale shell
 
-If you edit the oclaude files while a PowerShell session has them loaded, the shell runs stale code. oclaude detects this and warns:
+A shell keeps the functions it loaded at startup, so editing an oclaude file
+leaves that shell running the old code. oclaude detects this and warns:
 
 ```
 stale: this shell loaded oclaude at 14:30, but config.ps1 changed at 14:35.
@@ -90,16 +174,29 @@ stale: this shell loaded oclaude at 14:30, but config.ps1 changed at 14:35.
 
 ### Cloud model access denied
 
-Cloud tiers (FABLE) resolve server-side — Ollama doesn't need them pulled. If you get a 403, the model requires a subscription or plan access. Remove it from the model map or swap in a local alternative.
+A cloud tier resolves server-side, so Ollama never pulls it. A 403 means the
+model needs a subscription or plan access. `oclaude-status` reports the real
+error, because it sends a one-token request rather than guessing. Remove the
+model from the map or put a local one in its place.
 
-### Daemon won't start
+### The daemon will not start
 
-Check that Ollama is installed and the tray app (if present) isn't conflicting:
+`oclaude-restart-daemon` stops the daemon and its `llama-server` children, then
+starts it again with the User-scope `OLLAMA_*` variables applied. The children
+matter: stopping only the parent orphans them, and they keep holding memory.
 
 ```powershell
 oclaude-restart-daemon
 ```
 
+The daemon reads its settings from whatever launched it. A shell opened before
+you changed a User-scope `OLLAMA_*` variable still carries the old value, which
+is what this command exists to fix. When the Ollama tray application is
+installed, it starts the daemon and forces its own `OLLAMA_CONTEXT_LENGTH`.
+The per-tag `num_ctx` pins are what work around that.
+
 ## Platform
 
-PowerShell only (Windows). Ollama itself is cross-platform, but the wrapper uses PowerShell cmdlets (`Invoke-RestMethod`, `Start-Process`, `Get-Process`, etc.) for daemon management.
+Windows and PowerShell only. Ollama is cross-platform, but this wrapper manages
+the daemon with PowerShell cmdlets such as `Invoke-RestMethod`, `Start-Process`
+and `Get-Process`.
