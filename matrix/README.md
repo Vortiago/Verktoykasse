@@ -4,8 +4,8 @@
 exits on any key. The glyphs are half-width katakana, which render one cell wide
 so the grid stays square.
 
-[SKILL.md](SKILL.md) is how to run it and what each flag does. This file is what
-sits behind them.
+`Get-Help .\matrix.ps1 -Full` lists every flag. `Invoke-Pester ./tests` runs the
+Pester suite (Pester 5 or later). This file is what sits behind them.
 
 ## The Windows Terminal profile
 

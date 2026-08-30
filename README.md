@@ -72,7 +72,7 @@ and don't belong here.
   per-story matrix + a close / do-not-close verdict. Scales to a fan-out workflow
   for large PRDs. User-invocable as `/verify-prd-implemented`.
 
-- **[matrix](matrix/SKILL.md)** shows every open Claude Code session as Matrix
+- **[matrix](matrix/README.md)** shows every open Claude Code session as Matrix
   rain in a PowerShell console: one vertical lane per session, coloured and paced
   by its status (green working, amber idle, red blocked on an answer), under a
   header naming the session, how long it has held that status, and its opening
