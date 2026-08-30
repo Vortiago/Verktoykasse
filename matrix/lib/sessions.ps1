@@ -11,7 +11,8 @@
 # that are not registered sessions, so read status from the files. See README.md.
 
 $script:ClaudeHome = if ($env:CLAUDE_CONFIG_DIR) { $env:CLAUDE_CONFIG_DIR }
-                     else { Join-Path $env:USERPROFILE '.claude' }
+                     elseif ($env:USERPROFILE)   { Join-Path $env:USERPROFILE '.claude' }
+                     else                       { Join-Path $HOME '.claude' }
 
 # status -> how the lane looks. Green flows, red crawls. Tune it in styles.psd1.
 $script:SessionStyle = Import-PowerShellDataFile (Join-Path $PSScriptRoot '..' 'styles.psd1')
@@ -32,6 +33,15 @@ function Test-SessionAlive {
     # Dispose: StartTime opens a kernel handle. This runs per session per poll.
     try {
         if (-not $ProcStart) { return $true }
+        # Claude writes a FILETIME on Windows and /proc clock ticks (field 22 of
+        # /proc/N/stat) on Linux. Read the same one back, or every session is dead.
+        if (-not $IsWindows) {
+            try {
+                $stat = [System.IO.File]::ReadAllText("/proc/$ProcessId/stat")
+                $rest = $stat.Substring($stat.LastIndexOf(')') + 2) -split ' '
+                return ([long]$rest[19] -eq [long]$ProcStart)
+            } catch { return $true }   # unreadable start verifies nothing: keep it
+        }
         # 2 s of slop: the file holds the value Claude read, not our conversion of it.
         # No StartTime rights, or a procStart that does not cast, verifies nothing.
         # Keep the session rather than kill the poll under EAP=Stop.

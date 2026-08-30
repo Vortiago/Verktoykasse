@@ -1,5 +1,5 @@
 BeforeAll {
-    . (Join-Path $PSScriptRoot '..\lib\console.ps1')
+    . (Join-Path $PSScriptRoot '../lib/console.ps1')
     $script:E = [char]27
 }
 

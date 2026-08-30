@@ -13,12 +13,14 @@
     See README.md for how it works.
 
 .PARAMETER ThisWindow
-    Show only sessions in the same Windows Terminal window as this rain.
+    Show only sessions in the same terminal window as this rain (Windows Terminal
+    or Konsole).
 
 .PARAMETER Click
-    Left-click a lane to switch to that session's Windows Terminal tab. Tabs match
-    on title, so the match can be wrong: the lane header names the tab it would
-    open. Needs "Show status in terminal tab" on in Claude Code.
+    Left-click a lane to switch to that session's terminal tab. On Windows, tabs
+    match on title, so the match can be wrong: the lane header names the tab it
+    would open, and it needs "Show status in terminal tab" on in Claude Code. On
+    Konsole the match is exact - a tab is that session's process ancestor.
 
 .PARAMETER PollSeconds
     How often the session registry is re-read. Default 1.
@@ -67,6 +69,13 @@ foreach ($part in 'console', 'types', 'palette', 'lanes', 'sessions', 'tabs') {
     . $file
 }
 
+# Konsole on Linux: the same five tab functions tabs.ps1 defines for Windows
+# Terminal, answered over D-Bus instead. Sourced after tabs.ps1, so these
+# definitions win.
+if (-not $IsWindows) {
+    . (Join-Path (Join-Path $PSScriptRoot 'lib') 'konsole.ps1')
+}
+
 # Read before anything slow runs. -ThisWindow and -Click take the foreground
 # terminal. It is only reliably ours right after the user typed the command.
 $hostHwnd = if ($ThisWindow -or $Click) { Get-OwnTerminalWindow } else { 0 }
@@ -96,12 +105,16 @@ $glyphs = Get-RainGlyph -Ascii:$useAscii
 
 # -ThisWindow and -Click both need the tab map. Windows Terminal keeps every window
 # in one process: a window is identified by its handle, a session by the tab whose
-# title matches it. Resolved once - this rain cannot move window.
+# title matches it. Konsole is the same, one process for every window, but the
+# session-to-tab match there is a pid walk, not a title match.
 $needTabs = [bool]($ThisWindow -or $Click)
 if ($needTabs) {
     $why = ''
-    if (-not $hostHwnd) { $why = 'this is not a Windows Terminal window, or it was not in front at startup' }
-    elseif (-not (Initialize-Uia)) { $why = 'UI Automation is unavailable' }
+    if (-not $hostHwnd) {
+        $why = if ($IsWindows) { 'this is not a Windows Terminal window, or it was not in front at startup' }
+               else            { 'this shell is not running in a Konsole tab' }
+    }
+    elseif ($IsWindows -and -not (Initialize-Uia)) { $why = 'UI Automation is unavailable' }
     if ($why) {
         # -ThisWindow asked for a smaller set. Quietly showing every session looks
         # like a broken filter: say so and stop.

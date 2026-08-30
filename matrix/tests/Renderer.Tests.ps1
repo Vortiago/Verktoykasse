@@ -1,8 +1,8 @@
 BeforeAll {
-    . (Join-Path $PSScriptRoot '..\lib\console.ps1')
-    . (Join-Path $PSScriptRoot '..\lib\types.ps1')
-    . (Join-Path $PSScriptRoot '..\lib\palette.ps1')
-    . (Join-Path $PSScriptRoot '..\lib\lanes.ps1')
+    . (Join-Path $PSScriptRoot '../lib/console.ps1')
+    . (Join-Path $PSScriptRoot '../lib/types.ps1')
+    . (Join-Path $PSScriptRoot '../lib/palette.ps1')
+    . (Join-Path $PSScriptRoot '../lib/lanes.ps1')
     $script:RendererType = $RendererType
     $script:E     = [char]27
     $script:GREEN = "$([char]27)[0;38;2;40;255;90m"

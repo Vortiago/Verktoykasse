@@ -1,7 +1,7 @@
 # The tab map over time: this is where the lanes went wrong. A session the matcher
 # missed once stayed missed, and a prompted session lost the tab it already had.
 BeforeAll {
-    . (Join-Path $PSScriptRoot '..\lib\tabs.ps1')
+    . (Join-Path $PSScriptRoot '../lib/tabs.ps1')
     . (Join-Path $PSScriptRoot 'Fixtures.ps1')
 
     # Pid too: the map's signature builds from it. New-TabState comes from tabs.ps1,

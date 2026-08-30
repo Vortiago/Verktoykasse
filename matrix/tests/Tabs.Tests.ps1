@@ -1,5 +1,5 @@
 BeforeAll {
-    . (Join-Path $PSScriptRoot '..\lib\tabs.ps1')
+    . (Join-Path $PSScriptRoot '../lib/tabs.ps1')
     . (Join-Path $PSScriptRoot 'Fixtures.ps1')
 
     # No Pid and an empty Name, so scoring here rests on the task alone.

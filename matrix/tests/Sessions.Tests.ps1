@@ -5,18 +5,27 @@ BeforeAll {
     $script:fakeHome = Join-Path ([System.IO.Path]::GetTempPath()) "matrix-tests-$PID"
     $env:CLAUDE_CONFIG_DIR = $fakeHome
     New-Item -ItemType Directory -Path (Join-Path $fakeHome 'sessions') -Force | Out-Null
-    New-Item -ItemType Directory -Path (Join-Path $fakeHome 'projects\D--repos-matrix') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $fakeHome 'projects/D--repos-matrix') -Force | Out-Null
 
-    . (Join-Path $PSScriptRoot '..\lib\console.ps1')
-    . (Join-Path $PSScriptRoot '..\lib\sessions.ps1')
+    . (Join-Path $PSScriptRoot '../lib/console.ps1')
+    . (Join-Path $PSScriptRoot '../lib/sessions.ps1')
 
     # This process is the only PID guaranteed alive, with a start time we can read.
-    $script:livePid   = $PID
-    $script:liveStart = [System.Diagnostics.Process]::GetCurrentProcess().StartTime.ToFileTimeUtc()
+    # Claude writes the start as a FILETIME on Windows and as /proc clock ticks on
+    # Linux, so the fake record carries whichever one the registry holds here.
+    $script:livePid = $PID
+    $script:liveStart = if ($IsWindows) {
+        [System.Diagnostics.Process]::GetCurrentProcess().StartTime.ToFileTimeUtc()
+    } else {
+        # Field 22 of /proc/N/stat, counted from after the comm field: the text
+        # after the last ')' starts at field 3, and 22 - 3 = 19.
+        $stat = Get-Content -LiteralPath "/proc/$PID/stat" -Raw
+        [long]($stat.Substring($stat.LastIndexOf(')') + 2) -split ' ')[19]
+    }
     $script:deadPid   = 999999
 
     function Write-Registry ($name, $record) {
-        $path = Join-Path $fakeHome "sessions\$name.json"
+        $path = Join-Path $fakeHome "sessions/$name.json"
         ($record | ConvertTo-Json -Compress) | Set-Content -LiteralPath $path -Encoding utf8
     }
     function New-Record ($id, $status, $overrides) {
@@ -147,13 +156,20 @@ Describe 'Get-ClaudeSession' {
         @(Get-ClaudeSession) | Should -HaveCount 0
     }
 
+    It 'accepts the start time Claude writes on this platform' {
+        # The registry holds a FILETIME on Windows and /proc clock ticks on Linux.
+        # A check that reads one as the other finds every session dead.
+        Write-Registry 'a' (New-Record 'sid-a' 'busy')
+        @(Get-ClaudeSession) | Should -HaveCount 1
+    }
+
     It 'shows only interactive sessions' {
         Write-Registry 'a' (New-Record 'sid-a' 'busy' @{ kind = 'background' })
         @(Get-ClaudeSession) | Should -HaveCount 0
     }
 
     It 'skips a record it cannot read instead of failing the poll' {
-        'not json at all' | Set-Content -LiteralPath (Join-Path $fakeHome 'sessions\broken.json')
+        'not json at all' | Set-Content -LiteralPath (Join-Path $fakeHome 'sessions/broken.json')
         Write-Registry 'a' (New-Record 'sid-a' 'busy')
         @(Get-ClaudeSession) | Should -HaveCount 1
     }
@@ -169,7 +185,7 @@ Describe 'Get-ClaudeSession' {
         # would parse and surface it, so its absence proves the claim.
         # (A garbage fixture proved nothing: unparseable files are skipped anyway.)
         (New-Record 'sid-from-key-file' 'busy' | ConvertTo-Json -Compress) |
-            Set-Content -LiteralPath (Join-Path $fakeHome 'sessions\1234.abcd.key')
+            Set-Content -LiteralPath (Join-Path $fakeHome 'sessions/1234.abcd.key')
         Write-Registry 'a' (New-Record 'sid-a' 'busy')
         $live = @(Get-ClaudeSession)
         $live | Should -HaveCount 1
@@ -211,7 +227,7 @@ Describe 'Get-SessionFact' {
             (@{ type = 'assistant'; gitBranch = 'old-branch' } | ConvertTo-Json -Compress -Depth 5),
             (@{ type = 'assistant'; gitBranch = 'matrix' } | ConvertTo-Json -Compress -Depth 5)
         )
-        $lines | Set-Content -LiteralPath (Join-Path $fakeHome "projects\D--repos-matrix\$id.jsonl") -Encoding utf8
+        $lines | Set-Content -LiteralPath (Join-Path $fakeHome "projects/D--repos-matrix/$id.jsonl") -Encoding utf8
 
         $fact = Get-SessionFact ([pscustomobject]@{ SessionId = $id })
         $fact.Task   | Should -Be 'the opening prompt of this session'
@@ -223,7 +239,7 @@ Describe 'Get-SessionFact' {
         # violation must not blank the header for the rest of the run, exactly as a
         # missing transcript does not.
         $id = 'sid-locked'
-        $path = Join-Path $fakeHome "projects\D--repos-matrix\$id.jsonl"
+        $path = Join-Path $fakeHome "projects/D--repos-matrix/$id.jsonl"
         (@{ type = 'user'; message = @{ content = 'the opening prompt of this session' } } |
             ConvertTo-Json -Compress -Depth 5) | Set-Content -LiteralPath $path -Encoding utf8
         $script:TranscriptIndex = $null
@@ -252,7 +268,7 @@ Describe 'Get-SessionFact' {
         # for a beat before the first user turn lands. Caching that gap as "no prompt"
         # blanked the header for the whole run.
         $id = 'sid-young'
-        $path = Join-Path $fakeHome "projects\D--repos-matrix\$id.jsonl"
+        $path = Join-Path $fakeHome "projects/D--repos-matrix/$id.jsonl"
         (@{ type = 'assistant'; gitBranch = 'matrix' } | ConvertTo-Json -Compress -Depth 5) |
             Set-Content -LiteralPath $path -Encoding utf8
         (Get-SessionFact ([pscustomobject]@{ SessionId = $id })).Task | Should -Be ''
@@ -289,7 +305,7 @@ Describe 'Get-SessionTitle' {
     It 'adds the branch when it says something the folder does not' {
         $id = 'sid-title'
         (@{ type = 'assistant'; gitBranch = 'feature-x' } | ConvertTo-Json -Compress -Depth 5) |
-            Set-Content -LiteralPath (Join-Path $fakeHome "projects\D--repos-matrix\$id.jsonl") -Encoding utf8
+            Set-Content -LiteralPath (Join-Path $fakeHome "projects/D--repos-matrix/$id.jsonl") -Encoding utf8
         # [char] escape, so the expectation never depends on this file's encoding.
         Get-SessionTitle ([pscustomobject]@{
             NameSource = 'derived'; Name = 'x'; Cwd = 'D:\repos\matrix'; SessionId = $id }) |
@@ -300,7 +316,7 @@ Describe 'Get-SessionTitle' {
         # HEAD is what a cwd outside a work tree reports.
         $id = 'sid-head'
         (@{ type = 'assistant'; gitBranch = 'HEAD' } | ConvertTo-Json -Compress -Depth 5) |
-            Set-Content -LiteralPath (Join-Path $fakeHome "projects\D--repos-matrix\$id.jsonl") -Encoding utf8
+            Set-Content -LiteralPath (Join-Path $fakeHome "projects/D--repos-matrix/$id.jsonl") -Encoding utf8
         Get-SessionTitle ([pscustomobject]@{
             NameSource = 'derived'; Name = 'x'; Cwd = 'D:\repos\matrix'; SessionId = $id }) |
             Should -Be 'matrix'

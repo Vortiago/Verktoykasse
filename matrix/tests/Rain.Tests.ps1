@@ -1,7 +1,7 @@
 # The script end to end. Everything else here tests a lib in isolation. These run the
 # rain itself: the faults they cover exist only once the parts are wired up.
 BeforeAll {
-    $script:rain = Join-Path $PSScriptRoot '..\matrix.ps1'
+    $script:rain = Join-Path $PSScriptRoot '../matrix.ps1'
     # pwsh installed as a dotnet global tool runs under the dotnet muxer. The process
     # path alone cannot relaunch it: the muxer needs pwsh.dll as its first argument.
     $script:pwshExe  = [Environment]::ProcessPath
@@ -20,17 +20,25 @@ BeforeAll {
     $script:liveHome = Join-Path ([System.IO.Path]::GetTempPath()) "matrix-rain-live-$PID"
     $script:liveTask = 'zeppelin over the harbour'
     New-Item -ItemType Directory -Path (Join-Path $liveHome 'sessions') -Force | Out-Null
-    New-Item -ItemType Directory -Path (Join-Path $liveHome 'projects\P') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $liveHome 'projects/P') -Force | Out-Null
+    # The registry start time is a FILETIME on Windows and /proc clock ticks on
+    # Linux (field 22 of /proc/N/stat, counted from after the comm field).
+    $start = if ($IsWindows) {
+        [System.Diagnostics.Process]::GetCurrentProcess().StartTime.ToFileTimeUtc()
+    } else {
+        $stat = Get-Content -LiteralPath "/proc/$PID/stat" -Raw
+        [long]($stat.Substring($stat.LastIndexOf(')') + 2) -split ' ')[19]
+    }
     @{  pid       = $PID
-        procStart = "$([System.Diagnostics.Process]::GetCurrentProcess().StartTime.ToFileTimeUtc())"
+        procStart = "$start"
         sessionId = 'sid-live'; kind = 'interactive'; name = 'sid-live'
         cwd       = 'D:\repos\matrix'; status = 'busy'
         startedAt = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
         statusUpdatedAt = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
     } | ConvertTo-Json -Compress |
-        Set-Content -LiteralPath (Join-Path $liveHome "sessions\$PID.json") -Encoding utf8
+        Set-Content -LiteralPath (Join-Path $liveHome "sessions/$PID.json") -Encoding utf8
     (@{ type = 'user'; message = @{ content = $liveTask } } | ConvertTo-Json -Compress -Depth 5) |
-        Set-Content -LiteralPath (Join-Path $liveHome 'projects\P\sid-live.jsonl') -Encoding utf8
+        Set-Content -LiteralPath (Join-Path $liveHome 'projects/P/sid-live.jsonl') -Encoding utf8
 
     function Invoke-Rain ($claudeHome, [string[]] $argv) {
         $out = Join-Path ([System.IO.Path]::GetTempPath()) "matrix-rain-$PID.out"
@@ -63,9 +71,10 @@ AfterAll {
     Remove-Item -LiteralPath $emptyHome, $liveHome -Recurse -Force -ErrorAction SilentlyContinue
 }
 
-# Windows only: the rain's input loop P/Invokes kernel32. The script itself cannot
-# run elsewhere. The lib suites cover everything else cross-platform.
-Describe 'matrix.ps1' -Skip:(-not $IsWindows) {
+# The rain itself, end to end. It runs the same on every platform now: Windows
+# reads the console API, Linux reads termios and SGR mouse, and neither fact is
+# visible from the process boundary.
+Describe 'matrix.ps1' {
     It 'says so when there are no sessions, rather than dying on the empty list' {
         # A Mandatory collection parameter rejects an empty array before the body runs.
         # The lane function's own "no sessions" branch was unreachable, and the rain
