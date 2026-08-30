@@ -17,13 +17,35 @@ set -euo pipefail
 
 HERE=$(dirname "$(readlink -f "$0")")
 
-# Git Bash defaults to COPYING on `ln -s`, which is silent and defeats the whole
-# dotfiles pattern: the live path stops tracking the repo, and the next run cannot
-# even fix it, because backing the copy up hits a non-empty .pre-verktoykasse.
-# nativestrict makes ln create a real symlink, or fail loudly instead of copying.
-# It needs Developer Mode or an elevated shell; the check below reports that.
-# No effect off Windows, where MSYS is not read.
+# Git Bash defaults to COPYING on `ln -s`, silently. nativestrict makes ln either
+# create a real symlink or fail, so link() can tell the two apart and say which it
+# did. No effect off Windows, where MSYS is not read.
 export MSYS=winsymlinks:nativestrict
+
+# A copied skill does not track the repo: edit the repo and the live copy is stale
+# until the next install. That is worth a warning, but not worth refusing to
+# install, so link() falls back to copying and says so. This flag drives the
+# summary at the end.
+COPIED_ANY=0
+
+# Records that a live path is OUR copy, and of what. Without it a re-run cannot
+# tell its own copy from a file that was already there, so it would "back up" the
+# copy it wrote last time, once per run, forever.
+#
+# A directory carries the marker inside it; a file cannot, so it gets a hidden
+# sidecar next to it. Two spellings, one question, hence one pair of helpers.
+# Keyed on the SOURCE, not on the live path: when refreshing, the live path has
+# already been removed, so asking whether IT is a directory would answer for a
+# path that no longer exists.
+copy_marker() { # $1 = live path, $2 = source — prints where the marker lives
+  local live=$1 target=$2
+  if [[ -d $target ]]; then echo "$live/.verktoykasse-copy"
+  else echo "$(dirname "$live")/.$(basename "$live").verktoykasse-copy"; fi
+}
+is_our_copy() { # $1 = live path, $2 = expected source — true if we wrote it
+  local marker; marker=$(copy_marker "$1" "$2")
+  [[ -f $marker ]] && [[ $(cat "$marker") == "$2" ]]
+}
 
 # Where each CLI keeps its skills. A function (not a `declare -A` associative
 # array) so this runs on macOS's stock bash 3.2, which predates `declare -A`.
@@ -38,13 +60,25 @@ TARGET=claude
 
 link() { # $1 = repo dir, $2 = live path
   local target=$1 live=$2
+  local marker ours=0
+  marker=$(copy_marker "$live" "$target")
+  is_our_copy "$live" "$target" && ours=1
+  # A directory's marker lives inside it and goes when the copy goes. A file's
+  # sidecar sits alongside, so it would outlive the copy and later misreport a
+  # symlink as ours. Drop it now; the copy path below re-writes it if it copies.
+  [[ $marker == "$live/"* ]] || rm -f "$marker"
+
   if [[ -L $live ]]; then
     [[ $(readlink -f "$live") == "$target" ]] && { echo "ok      $live"; return; }
     rm "$live"
+  elif [[ $ours -eq 1 ]]; then
+    # Our own copy from a previous run. Refresh it in place: backing it up would
+    # be filing a stale copy of the repo against the repo it came from.
+    rm -rf "$live"
   elif [[ -e $live ]]; then
-    # Back up whatever is really there, once. A second run must not fail because
-    # the first already took the name: keep the ORIGINAL backup (it is the more
-    # pristine one) and discard the later copy.
+    # Something we did not put there. Back it up, once: a second run must not fail
+    # because the first already took the name, so keep the ORIGINAL backup (the
+    # more pristine one) and discard the later arrival.
     if [[ -e $live.pre-verktoykasse ]]; then
       echo "backup  $live.pre-verktoykasse exists, discarding the newer copy"
       rm -rf "$live"
@@ -54,15 +88,19 @@ link() { # $1 = repo dir, $2 = live path
     fi
   fi
   mkdir -p "$(dirname "$live")"
-  ln -s "$target" "$live"
-  # MSYS=winsymlinks:nativestrict should make a failure loud, but a silent copy
-  # is the exact failure this pattern cannot survive, so check rather than trust.
-  [[ -L $live ]] || {
-    echo "error: $live is a copy, not a symlink." >&2
-    echo "       On Windows, enable Developer Mode or run from an elevated shell." >&2
-    return 1
-  }
-  echo "linked  $live -> $target"
+
+  # nativestrict means ln fails rather than copying, so a failure here is the
+  # no-Developer-Mode case, not a broken path. Copy instead of giving up: a stale
+  # copy the user is told about beats no install at all.
+  if ln -s "$target" "$live" 2>/dev/null && [[ -L $live ]]; then
+    echo "linked  $live -> $target"
+    return
+  fi
+  rm -rf "$live"
+  cp -r "$target" "$live"
+  printf '%s\n' "$target" > "$(copy_marker "$live" "$target")"
+  COPIED_ANY=1
+  echo "copied  $live <- $target  (not a symlink)"
 }
 
 install_skill() { # $1 = skill name — installed for the current $TARGET
@@ -106,3 +144,17 @@ echo "target: $TARGET -> $(target_dir "$TARGET")"
 for s in "${skills[@]}"; do
   install_skill "$s"
 done
+
+# Last thing printed, because it is the one thing that changes how the install
+# behaves from here on: a copy does not follow the repo.
+if [[ $COPIED_ANY -eq 1 ]]; then
+  cat >&2 <<'EOF'
+
+warn: Developer Mode is not enabled, so skills were COPIED in, not symlinked.
+      They work, but they no longer track this repo: edit a skill here and the
+      installed copy stays on the old version until you re-run ./install.sh.
+      To get symlinks, turn on Settings > System > For developers > Developer
+      Mode (or run this from an elevated shell), then re-run ./install.sh. It
+      replaces each copy with a link.
+EOF
+fi
