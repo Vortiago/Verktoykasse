@@ -38,7 +38,7 @@ function New-PreviewLane {
     param([string[]] $State)
     @(foreach ($s in $State) {
         $st = $styles[$s]
-        New-Lane $st.Rgb (Get-LaneFall $st) $st.Density $s $st.Label $task
+        New-Lane $st.Rgb $st.Speed $st.Density $s $st.Label $task
     })
 }
 

@@ -153,7 +153,7 @@ function Get-SessionLanes {
     if ($Live.Count -eq 0) {
         $where = if ($ThisWindow) { 'none in this terminal window' } else { 'waiting for one to start' }
         $st = Get-SessionStyle 'none'
-        return , @(New-Lane $st.Rgb (Get-LaneFall $st) $st.Density $st.Label $where $null)
+        return , @(New-Lane $st.Rgb $st.Speed $st.Density $st.Label $where $null)
     }
     $out = foreach ($s in $Live) {
         $st     = $s.Style
@@ -164,7 +164,7 @@ function Get-SessionLanes {
         # Name the tab a click would open: a wrong match is visible, not silent.
         $tab = $script:tabState.Map[$s.SessionId]
         if ($tab) { $status = "$status [tab $($tab.Index + 1)]" }
-        New-Lane $st.Rgb (Get-LaneFall $st) $st.Density `
+        New-Lane $st.Rgb $st.Speed $st.Density `
                  (Get-SessionTitle $s) (ConvertTo-CellText $status) $s.Task $s
     }
     , @($out)

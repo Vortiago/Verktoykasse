@@ -33,20 +33,6 @@ BeforeAll {
     }
 }
 
-Describe 'rising rain' {
-    It 'enters from the bottom when the fall speed is negative' {
-        $r = New-TestRenderer 20 12
-        Set-RendererLanes -Renderer $r -Lane @((New-Lane @(255, 60, 60) -1 1.0 $null $null $null)) -Width 20
-        $rows = @()
-        for ($i = 0; $i -lt 100 -and $rows.Count -eq 0; $i++) {
-            $rows = @([regex]::Matches((Get-Frame $r 0.1), "$([char]27)\[(\d+);\d+H") |
-                      ForEach-Object { [int]$_.Groups[1].Value })
-        }
-        $rows.Count | Should -BeGreaterThan 0
-        ($rows | Measure-Object -Minimum).Minimum | Should -BeGreaterThan 6
-    }
-}
-
 Describe 'WriteFrame' {
     It 'writes nothing before it has been told what to draw' {
         # Resize alone leaves it without palettes or lanes.

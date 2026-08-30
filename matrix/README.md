@@ -60,7 +60,7 @@ Colour and fall rate track the status. Tune them per status in `styles.psd1`;
 | --- | --- | --- |
 | `busy` | green | fast |
 | `idle` | amber, turn ended and the prompt is showing | slow |
-| `waiting` | red, blocked on an answer; `waitingFor` names it | crawling, upward |
+| `waiting` | red, blocked on an answer; `waitingFor` names it | crawling |
 
 Status comes from `~/.claude/sessions/<pid>.json`, the peer-discovery registry
 every session writes - the same source `ListAgents` reads. It updates the
