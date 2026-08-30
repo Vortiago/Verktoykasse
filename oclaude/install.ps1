@@ -40,17 +40,20 @@ if (-not (Test-Path $profileDir)) {
 
 $existing = if (Test-Path $PROFILE) { Get-Content $PROFILE -Raw } else { '' }
 
-# An oclaude.ps1 dot-source from some OTHER checkout still defines the same function
-# names, and the later one silently wins. Name it instead of quietly adding a second.
-$stale = @(
+# Read the profile's oclaude dot-sources once, then answer both questions from that
+# one list. Asking the text twice let the two answers disagree: a bare substring
+# search also matches the path inside a comment, so a commented-out line counted as
+# installed while the stale check, which needs a real dot-source line, ignored it.
+$sourced = @(
     [regex]::Matches($existing, '(?m)^\s*\.\s+"?([^"\r\n]*oclaude\.ps1)"?\s*$') |
-        ForEach-Object { $_.Groups[1].Value } |
-        Where-Object { $_ -ne $entry }
+        ForEach-Object { $_.Groups[1].Value }
 )
 
-# Match the entry path itself, so a profile that already dot-sources THIS checkout is
-# left alone while a second checkout still installs. Escaped: the path holds backslashes.
-if ($existing -match [regex]::Escape($entry)) {
+# A dot-source from some OTHER checkout still defines the same function names, and
+# the later one silently wins. Name it instead of quietly adding a second.
+$stale = @($sourced | Where-Object { $_ -ne $entry })
+
+if ($sourced -contains $entry) {
     Write-Host "ok      oclaude already in $PROFILE" -ForegroundColor Green
 } else {
     Add-Content $PROFILE ''

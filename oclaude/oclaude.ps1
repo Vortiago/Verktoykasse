@@ -23,7 +23,10 @@ foreach ($part in $oclaudeParts) {
 }
 
 # An open shell keeps the functions it loaded at startup. Record which files loaded and
-# when, so entry points can warn instead of running stale code.
+# when, so entry points can warn instead of running stale code. The timestamps must be
+# read HERE rather than lazily on first use: taken later they would describe the file as
+# it is by then, not as this shell loaded it, and an edit made before the first call
+# would read as current. Measured at ~0.8 ms for the six files, which the profile pays.
 $global:OClaudeFiles  = @(@($PSCommandPath) + $oclaudeParts | Where-Object { $_ })
 $global:OClaudeLoaded = ($global:OClaudeFiles |
     ForEach-Object { (Get-Item $_).LastWriteTimeUtc } | Measure-Object -Maximum).Maximum

@@ -47,9 +47,12 @@ install_skill() { # $1 = skill name — installed for the current $TARGET
   # from its SKILL.md `name:` frontmatter and may differ — e.g. the `statusline/`
   # dir is invoked as `/expand-statusline`.
   local name=$1
-  # oclaude is a standalone PowerShell launcher, not a Claude Code skill.
-  [[ $name == oclaude ]] && { echo "skip    $name (standalone launcher, not a skill)"; return; }
   [[ -d "$HERE/$name" ]] || { echo "error: no skill '$name' in $HERE" >&2; return 1; }
+  # SKILL.md is what makes a directory a skill, so its absence is what makes one not.
+  # Keyed on the file rather than on a list of names: `docs/` (ADRs) and `oclaude/`
+  # (a PowerShell launcher the user runs) are both not skills, and neither is
+  # whatever lands here next.
+  [[ -f "$HERE/$name/SKILL.md" ]] || { echo "skip    $name (no SKILL.md, not a skill)"; return; }
   if [[ $TARGET == claude && -f "$HERE/$name/install.sh" ]]; then
     # Claude-specific hooks / extra setup — only for the claude target.
     # shellcheck source=/dev/null

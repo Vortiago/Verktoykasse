@@ -27,31 +27,34 @@ function Start-OllamaServer {
 
     $cfg = Get-OClaudeConfig
     Write-Host 'ollama: daemon down, starting...' -ForegroundColor DarkYellow
-    # the child inherits these, so they configure the daemon we are about to spawn
-    $prev = @{ KA   = $env:OLLAMA_KEEP_ALIVE
-               NP   = $env:OLLAMA_NUM_PARALLEL
-               CTX  = $env:OLLAMA_CONTEXT_LENGTH
-               MAX  = $env:OLLAMA_MAX_LOADED_MODELS
-               KV   = $env:OLLAMA_KV_CACHE_TYPE
-               HOST = $env:OLLAMA_HOST }
-    try {
-        $env:OLLAMA_KEEP_ALIVE        = $cfg.KeepAlive
-        $env:OLLAMA_CONTEXT_LENGTH    = $cfg.ContextLength
-        $env:OLLAMA_MAX_LOADED_MODELS = $cfg.MaxLoadedModels
-        $env:OLLAMA_KV_CACHE_TYPE     = $cfg.KvCacheType
-        $env:OLLAMA_NUM_PARALLEL      = $cfg.NumParallel
+
+    # The child inherits these, so they configure the daemon we are about to spawn.
+    # One entry per variable, the same shape session.ps1 uses: a name listed once
+    # cannot fall out of step with its own save or restore.
+    $spawnEnv = [ordered]@{
+        OLLAMA_KEEP_ALIVE        = $cfg.KeepAlive
+        OLLAMA_CONTEXT_LENGTH    = $cfg.ContextLength
+        OLLAMA_MAX_LOADED_MODELS = $cfg.MaxLoadedModels
+        OLLAMA_KV_CACHE_TYPE     = $cfg.KvCacheType
+        OLLAMA_NUM_PARALLEL      = $cfg.NumParallel
         # A shell predating the User-scope change carries no OLLAMA_HOST, and a daemon
         # started without it binds loopback, breaking every container with no error.
-        $hostVal = [Environment]::GetEnvironmentVariable('OLLAMA_HOST', 'User')
-        if ($hostVal) { $env:OLLAMA_HOST = $hostVal }
+        OLLAMA_HOST              = [Environment]::GetEnvironmentVariable('OLLAMA_HOST', 'User')
+    }
+
+    $saved = @{}
+    foreach ($v in $spawnEnv.Keys) { $saved[$v] = [Environment]::GetEnvironmentVariable($v) }
+    try {
+        foreach ($v in $spawnEnv.Keys) {
+            # A null stays null: OLLAMA_HOST is unset when User scope holds nothing.
+            if ($null -ne $spawnEnv[$v]) { Set-Item "Env:$v" $spawnEnv[$v] }
+        }
         Start-Process -FilePath 'ollama' -ArgumentList 'serve' -WindowStyle Hidden | Out-Null
     } finally {
-        $env:OLLAMA_KEEP_ALIVE        = $prev.KA
-        $env:OLLAMA_CONTEXT_LENGTH    = $prev.CTX
-        $env:OLLAMA_MAX_LOADED_MODELS = $prev.MAX
-        $env:OLLAMA_KV_CACHE_TYPE     = $prev.KV
-        $env:OLLAMA_NUM_PARALLEL      = $prev.NP
-        $env:OLLAMA_HOST              = $prev.HOST
+        foreach ($v in $spawnEnv.Keys) {
+            if ($null -eq $saved[$v]) { Remove-Item "Env:$v" -ErrorAction SilentlyContinue }
+            else { Set-Item "Env:$v" $saved[$v] }
+        }
     }
 
     if (Wait-OllamaServer -Endpoint $Endpoint -TimeoutSec $TimeoutSec) {
@@ -72,14 +75,17 @@ function Test-OllamaIdentity {
 
     try {
         $ver = (Invoke-RestMethod -Uri "$($Cfg.Endpoint)/api/version" -TimeoutSec 10 -NoProxy).version
-        $tags = @((Invoke-RestMethod -Uri "$($Cfg.Endpoint)/api/tags" -TimeoutSec 15 -NoProxy).models.name)
     } catch {
         Write-Host "  identity: cannot query the daemon -- $($_.Exception.Message)" -ForegroundColor Red
         return $false
     }
 
-    $bare    = $tags | ForEach-Object { ($_ -replace ':latest$', '') }
-    $missing = @($Cfg.Derived.Keys | Where-Object { $bare -notcontains $_ })
+    # Get-OllamaModel already reports each name in both its tagged and its bare form,
+    # which is exactly the question here: the derived tags are spelled bare in the map.
+    # The version call above has proved the daemon answers, so an empty list now is a
+    # real verdict rather than a transport failure.
+    $have    = Get-OllamaModel -Endpoint $Cfg.Endpoint
+    $missing = @($Cfg.Derived.Keys | Where-Object { $have -notcontains $_ })
 
     Write-Host ("  {0,-26} {1}" -f 'server version', $ver) -ForegroundColor Gray
     if (-not $missing) {

@@ -82,8 +82,8 @@ and don't belong here.
   classifier, HAIKU takes background traffic, FABLE is cloud), derived Ollama
   tags that pin `num_ctx` so several models stay resident, daemon lifecycle
   with a wrong-daemon-on-the-port check, and a per-launch advisor subagent.
-  The **only non-skill here**: a PowerShell launcher you run to *start* a
-  session, so `install.sh` skips it — install with `oclaude/install.ps1`,
+  Not a skill but a launcher you run to *start* a session, so it ships no
+  `SKILL.md` and `install.sh` skips it — install with `oclaude/install.ps1`,
   which dot-sources it into your `$PROFILE`. Windows only.
 
 ## Install
@@ -101,9 +101,9 @@ A skill may ship its own `<skill>/install.sh` for extra wiring — e.g.
 scripts into your repos root (it prompts for the path; override with
 `REPOS_ROOT=…`), and registers the `WorktreeCreate` hook in `settings.json`.
 
-`oclaude` is skipped by this script. It is a terminal launcher rather than a
-skill Claude loads, so it belongs in your shell profile, not in
-`~/.claude/skills/`:
+A directory without a `SKILL.md` is not a skill and is skipped — `docs/` (the
+ADRs) and `oclaude/` both are. `oclaude` is a terminal launcher, so it belongs
+in your shell profile rather than in `~/.claude/skills/`:
 
 ```powershell
 pwsh -ExecutionPolicy Bypass -File .\oclaude\install.ps1

@@ -42,7 +42,14 @@ function oclaude-build-models {
     # model's existing blobs, so a tag costs a manifest, not a copy. The stale check
     # matters most here -- this is what you run right after editing $derived.
     [void](Test-OClaudeStale)
-    $cfg = Get-OClaudeConfig
+    Build-OClaudeDerivedTag -Cfg (Get-OClaudeConfig)
+}
+
+function Build-OClaudeDerivedTag {
+    # The body of oclaude-build-models, minus the entry-point work. oclaude-pull ends
+    # by building the tags too, and calling the entry point would re-run the stale
+    # check and rebuild the config it already holds.
+    param([Parameter(Mandatory)]$cfg)
     if (-not (Start-OllamaServer -Endpoint $cfg.Endpoint)) { return }
 
     foreach ($tag in $cfg.Derived.Keys) {
@@ -111,5 +118,5 @@ function oclaude-pull {
     if ($failed) {
         Write-Error ("ollama pull failed for: {0}. Derived tags built from them will fail too." -f ($failed -join ', '))
     }
-    oclaude-build-models
+    Build-OClaudeDerivedTag -Cfg $cfg
 }
