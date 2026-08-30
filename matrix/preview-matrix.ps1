@@ -13,7 +13,7 @@
     see how transitions flow.
 
 .EXAMPLE
-    .\Preview-Matrix.ps1
+    .\preview-matrix.ps1
 #>
 #requires -Version 7
 [CmdletBinding()]
@@ -114,7 +114,7 @@ try {
         }
         $sizeTick--
 
-        # Like a real status change: same lanes, new colour, pace and direction.
+        # Like a real status change: same lanes, new colour and pace.
         if ($Shuffle -and $clock.Elapsed.TotalSeconds -ge $shuffleDue) {
             $shuffleDue = $clock.Elapsed.TotalSeconds + 2 + 3 * $rand.NextDouble()
             $i = $rand.Next(0, 3)
