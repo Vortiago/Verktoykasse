@@ -28,6 +28,24 @@ export MSYS=winsymlinks:nativestrict
 # summary at the end.
 COPIED_ANY=0
 
+# Windows only, and only reached when `ln -s` was refused: a junction is a
+# reparse point that tracks its target the way a symlink does, but it is created
+# through FSCTL_SET_REPARSE_POINT rather than CreateSymbolicLinkW, so it needs no
+# privilege and no Developer Mode. Directories only, and the target must be local
+# and absolute — both true of every path this installer links.
+#
+# NOT the same as MSYS=winsymlinks:junction, which writes an emulated stand-in
+# that Windows reads as an ordinary file. This shells out so Windows makes a real
+# one, which `test -L` and `readlink -f` then treat exactly like a symlink.
+try_junction() { # $1 = target dir, $2 = live path — 0 if a junction now exists
+  local target=$1 live=$2
+  command -v cygpath >/dev/null 2>&1 || return 1
+  [[ -d $target ]] || return 1        # a junction cannot point at a file
+  # //J, not /J: MSYS rewrites a lone leading slash into a path.
+  cmd //c mklink //J "$(cygpath -w "$live")" "$(cygpath -w "$target")" >/dev/null 2>&1 || return 1
+  [[ -L $live ]]
+}
+
 # Records that a live path is OUR copy, and of what. Without it a re-run cannot
 # tell its own copy from a file that was already there, so it would "back up" the
 # copy it wrote last time, once per run, forever.
@@ -89,11 +107,19 @@ link() { # $1 = repo dir, $2 = live path
   fi
   mkdir -p "$(dirname "$live")"
 
-  # nativestrict means ln fails rather than copying, so a failure here is the
-  # no-Developer-Mode case, not a broken path. Copy instead of giving up: a stale
-  # copy the user is told about beats no install at all.
+  # Three rungs, best first. nativestrict means ln fails rather than copying, so a
+  # failure here is the no-Developer-Mode case rather than a broken path.
   if ln -s "$target" "$live" 2>/dev/null && [[ -L $live ]]; then
     echo "linked  $live -> $target"
+    return
+  fi
+  rm -rf "$live"
+
+  # Second rung: a junction still tracks the repo, so an edit here stays live.
+  # Only Windows has them, and only for a directory; try_junction returns 1
+  # everywhere else, which falls through to the copy.
+  if try_junction "$target" "$live"; then
+    echo "linked  $live -> $target  (junction)"
     return
   fi
   rm -rf "$live"
@@ -150,11 +176,13 @@ done
 if [[ $COPIED_ANY -eq 1 ]]; then
   cat >&2 <<'EOF'
 
-warn: Developer Mode is not enabled, so skills were COPIED in, not symlinked.
-      They work, but they no longer track this repo: edit a skill here and the
-      installed copy stays on the old version until you re-run ./install.sh.
-      To get symlinks, turn on Settings > System > For developers > Developer
-      Mode (or run this from an elevated shell), then re-run ./install.sh. It
-      replaces each copy with a link.
+warn: some paths above were COPIED in rather than linked. A copy does not track
+      this repo: edit the source here and the installed copy stays on the old
+      version until you re-run ./install.sh.
+      On Windows this means a symlink was refused. Skill directories fall back
+      to a junction, which does track the repo, so what remains copied is the
+      individual files. To link everything, turn on
+      Settings > System > For developers > Developer Mode (or run this from an
+      elevated shell) and re-run ./install.sh. It replaces each copy with a link.
 EOF
 fi
