@@ -1,0 +1,533 @@
+namespace MatrixDBus__TAG__
+{
+    using System;
+    using System.Collections.Generic;
+    using System.Net.Sockets;
+    using System.Runtime.InteropServices;
+    using System.Text;
+
+    // The D-Bus session bus, spoken directly over its Unix socket: no client
+    // library, no helper binary. Matrix only ever needs it to drive Konsole -
+    // list its tabs, read a tab's process id, switch the window to a tab - and
+    // that is all this file exists for.
+    //
+    // The protocol (freedesktop.org, version 1): a message is a fixed header, an
+    // array of (code, variant) fields, and a body. Every value carries an
+    // alignment; structs and variants align to 8. One endianness flag covers the
+    // whole message, and this side always writes little endian.
+
+    public class DBusException : Exception
+    {
+        public DBusException(string message) : base(message) { }
+    }
+
+    // A 'v' value: the signature of what it holds, and the thing itself.
+    public sealed class Variant
+    {
+        public readonly string Sig;
+        public readonly object Value;
+        public Variant(string sig, object value) { Sig = sig; Value = value; }
+    }
+
+    public static class Wire
+    {
+        // --- sizes and alignments ------------------------------------------------
+
+        // The length of the complete type starting at sig[from]: one letter, an
+        // array prefix plus its element, or a bracketed struct.
+        static int TypeLen(string sig, int from)
+        {
+            char c = sig[from];
+            if (c == 'a') return 1 + TypeLen(sig, from + 1);
+            if (c == '(')
+            {
+                int depth = 1, i = from + 1;
+                while (i < sig.Length && depth > 0)
+                {
+                    if (sig[i] == '(') depth++;
+                    else if (sig[i] == ')') depth--;
+                    i++;
+                }
+                return i - from;
+            }
+            return 1;
+        }
+
+        public static int AlignmentOf(char c)
+        {
+            switch (c)
+            {
+                case 'y': case 'g': return 1;
+                case 'n': case 'q': return 2;
+                case 'b': case 'i': case 'u': case 'h': case 's': case 'o': case 'a': return 4;
+                default: return 8;    // 'x', 'd', 't', 'v', '('
+            }
+        }
+
+        // --- writing ---------------------------------------------------------------
+
+        sealed class Buf
+        {
+            public readonly List<byte> b = new List<byte>();
+            public int Count { get { return b.Count; } }
+            public void Pad(int a) { while (b.Count % a != 0) b.Add(0); }
+            public void Byte(byte v) { b.Add(v); }
+            public void I16(int v) { Pad(2); b.Add((byte)v); b.Add((byte)(v >> 8)); }
+            public void I32(int v) { Pad(4); b.Add((byte)v); b.Add((byte)(v >> 8)); b.Add((byte)(v >> 16)); b.Add((byte)(v >> 24)); }
+            public void U32(uint v) { I32(unchecked((int)v)); }
+            public void I64(long v) { Pad(8); for (int i = 0; i < 8; i++) b.Add((byte)(v >> (8 * i))); }
+            public void Str(string s) { byte[] u = Encoding.UTF8.GetBytes(s); I32(u.Length); foreach (byte c in u) b.Add(c); b.Add(0); }
+            public void Sig(string s) { byte[] u = Encoding.ASCII.GetBytes(s); Byte((byte)u.Length); foreach (byte c in u) b.Add(c); b.Add(0); }
+            public void AddRange(Buf o) { b.AddRange(o.b); }
+            public byte[] ToArray() { return b.ToArray(); }
+        }
+
+        public static byte[] EncodeBody(string sig, object[] args)
+        {
+            Buf b = new Buf();
+            WriteSig(b, sig, args, 0);
+            return b.ToArray();
+        }
+
+        // Writes one complete signature, taking values from args[i] onward. Returns
+        // the index of the first arg it did not use.
+        static int WriteSig(Buf b, string sig, object[] args, int i)
+        {
+            for (int s = 0; s < sig.Length; s += TypeLen(sig, s))
+            {
+                object v = (args != null && i < args.Length) ? args[i] : null;
+                switch (sig[s])
+                {
+                    case 'y': b.Byte((byte)v); i++; break;
+                    case 'b': b.I32((bool)v ? 1 : 0); i++; break;
+                    case 'n': case 'q': b.I16((int)v); i++; break;
+                    case 'i': case 'h': case 'u': b.I32(Convert.ToInt32(v)); i++; break;
+                    case 'x': case 't': case 'd': b.I64(Convert.ToInt64(v)); i++; break;
+                    case 's': case 'o': b.Str((string)v); i++; break;
+                    case 'g': b.Sig((string)v); i++; break;
+                    case 'v':
+                        Variant va = (Variant)v;
+                        b.Pad(8);                       // a variant is a struct
+                        b.Sig(va.Sig);
+                        WriteSig(b, va.Sig, new object[] { va.Value }, 0);
+                        i++;
+                        break;
+                    case 'a':
+                        string elemSig = sig.Substring(s + 1, TypeLen(sig, s + 1));
+                        i = WriteArray(b, elemSig, v, i);
+                        break;
+                    default:
+                        throw new DBusException("matrix: cannot write D-Bus type '" + sig[s] + "'");
+                }
+            }
+            return i;
+        }
+
+        // The array length counts the element data, so the elements go into a
+        // scratch buffer first. They are built from offset 0, which shares every
+        // alignment class with the real element start, so the bytes append as-is.
+        static int WriteArray(Buf b, string elemSig, object arrayVal, int i)
+        {
+            List<object> items = new List<object>();
+            if (arrayVal is System.Collections.IEnumerable seq && !(arrayVal is string))
+                foreach (object e in seq) items.Add(e);
+            else
+                items.Add(arrayVal);
+
+            Buf els = new Buf();
+            foreach (object e in items)
+                WriteSig(els, elemSig, e is object[] many ? many : new object[] { e }, 0);
+
+            b.Pad(4);                                   // the u32 length
+            b.U32((uint)els.Count);
+            b.Pad(AlignmentOf(elemSig[0]));             // and the first element
+            b.AddRange(els);
+            return i + 1;                               // the array was one argument
+        }
+
+        // One header field: struct(byte code, variant value).
+        static void Field(Buf b, byte code, string sig, object value)
+        {
+            b.Pad(8);
+            b.Byte(code);
+            b.Sig(sig);
+            WriteSig(b, sig, new object[] { value }, 0);
+        }
+
+        public static byte[] EncodeCall(uint serial, string dest, string path, string iface,
+                                        string member, string inSig, object[] args)
+        {
+            byte[] body = (string.IsNullOrEmpty(inSig) || args == null)
+                ? new byte[0] : EncodeBody(inSig, args);
+
+            Buf fields = new Buf();
+            Field(fields, 1, "o", path);
+            Field(fields, 6, "s", dest);
+            Field(fields, 2, "s", iface);
+            Field(fields, 3, "s", member);
+            if (!string.IsNullOrEmpty(inSig)) Field(fields, 8, "g", inSig);
+
+            return Pack(1, serial, fields, body);
+        }
+
+        // A METHOD_RETURN packing. Production only ever calls, never replies; the
+        // tests' fake bus sends these.
+        public static byte[] EncodeReply(uint serial, uint replySerial, string outSig, object[] args)
+        {
+            byte[] body = (string.IsNullOrEmpty(outSig) || args == null)
+                ? new byte[0] : EncodeBody(outSig, args);
+
+            Buf fields = new Buf();
+            Field(fields, 5, "u", replySerial);
+            if (!string.IsNullOrEmpty(outSig)) Field(fields, 8, "g", outSig);
+
+            return Pack(2, serial, fields, body);
+        }
+
+        static byte[] Pack(byte type, uint serial, Buf fields, byte[] body)
+        {
+            Buf m = new Buf();
+            m.Byte((byte)'l');                          // little endian
+            m.Byte(type);
+            m.Byte(0);                                   // flags
+            m.Byte(1);                                  // protocol version
+            m.U32((uint)body.Length);
+            m.U32(serial);
+            m.U32((uint)fields.Count);                   // header array length
+            m.AddRange(fields);                         // fields already end 8-aligned
+            m.Pad(8);                                   // the body starts 8-aligned
+            foreach (byte c in body) m.b.Add(c);
+            return m.ToArray();
+        }
+
+        // --- reading ---------------------------------------------------------------
+
+        sealed class Cur
+        {
+            readonly byte[] a;
+            public int p;
+            readonly int end;
+            public Cur(byte[] a, int start, int len) { this.a = a; p = start; end = start + len; }
+            void Check(int n) { if (p + n > end) throw new DBusException("matrix: truncated D-Bus value"); }
+            public int Pad(int al) { int skip = (al - (p % al)) % al; Check(skip); p += skip; return skip; }
+            // Padding that may run past the end: a header array's fields stop
+            // wherever they stop, and the 8-alignment of the NEXT one is not ours to
+            // insist on.
+            public void PadLenient(int al) { int skip = (al - (p % al)) % al; p = Math.Min(p + skip, end); }
+            public byte Byte() { Check(1); return a[p++]; }
+            public int I16() { Pad(2); Check(2); int v = a[p] | a[p + 1] << 8; p += 2; return v; }
+            public int I32() { Pad(4); Check(4); int v = a[p] | a[p + 1] << 8 | a[p + 2] << 16 | a[p + 3] << 24; p += 4; return v; }
+            public uint U32() { return unchecked((uint)I32()); }
+            public long I64() { Pad(8); Check(8); long v = 0; for (int i = 7; i >= 0; i--) v = (v << 8) | a[p + i]; p += 8; return v; }
+            public string Str() { int n = I32(); Check(n + 1); string s = Encoding.UTF8.GetString(a, p, n); p += n + 1; return s; }
+            public string SigStr() { int n = Byte(); Check(n + 1); string s = Encoding.ASCII.GetString(a, p, n); p += n + 1; return s; }
+        }
+
+        public static object[] DecodeValues(byte[] body, string sig)
+        {
+            return ReadSig(new Cur(body, 0, body.Length), sig ?? "");
+        }
+
+        static object[] ReadSig(Cur c, string sig)
+        {
+            List<object> outv = new List<object>();
+            for (int s = 0; s < sig.Length; s += TypeLen(sig, s))
+            {
+                switch (sig[s])
+                {
+                    case 'y': outv.Add(c.Byte()); break;
+                    case 'b': outv.Add(c.I32() != 0); break;
+                    case 'n': outv.Add((short)c.I16()); break;
+                    case 'q': outv.Add((ushort)c.I16()); break;
+                    case 'i': case 'h': outv.Add(c.I32()); break;
+                    case 'u': outv.Add(c.U32()); break;
+                    case 'x': case 't': outv.Add(c.I64()); break;
+                    case 'd': outv.Add(BitConverter.Int64BitsToDouble(c.I64())); break;
+                    case 's': case 'o': outv.Add(c.Str()); break;
+                    case 'g': outv.Add(c.SigStr()); break;
+                    case 'v':
+                        c.Pad(8);
+                        string vsig = c.SigStr();
+                        object[] inner = ReadSig(c, vsig);
+                        outv.Add(new Variant(vsig, inner.Length == 1 ? inner[0] : inner));
+                        break;
+                    case 'a':
+                        string elemSig = sig.Substring(s + 1, TypeLen(sig, s + 1));
+                        outv.Add(ReadArray(c, elemSig));
+                        break;
+                    default:
+                        throw new DBusException("matrix: cannot read D-Bus type '" + sig[s] + "'");
+                }
+            }
+            return outv.ToArray();
+        }
+
+        static object ReadArray(Cur c, string elemSig)
+        {
+            c.Pad(4);
+            int len = c.I32();
+            int dataEnd = c.p + len;
+            c.Pad(AlignmentOf(elemSig[0]));
+            List<object> items = new List<object>();
+            while (c.p < dataEnd) items.AddRange(ReadSig(c, elemSig));
+            if (c.p != dataEnd) throw new DBusException("matrix: D-Bus array length does not cover its elements");
+            // Single-type arrays come back as arrays of that type, the way the
+            // callers (and PowerShell) expect to enumerate them.
+            if (TypeLen(elemSig, 0) == elemSig.Length)
+            {
+                if (elemSig == "s" || elemSig == "o" || elemSig == "g")
+                {
+                    string[] a = new string[items.Count];
+                    for (int i = 0; i < items.Count; i++) a[i] = (string)items[i];
+                    return a;
+                }
+                if (elemSig == "y")
+                {
+                    byte[] a = new byte[items.Count];
+                    for (int i = 0; i < items.Count; i++) a[i] = (byte)items[i];
+                    return a;
+                }
+                if (elemSig == "i" || elemSig == "h")
+                {
+                    int[] a = new int[items.Count];
+                    for (int i = 0; i < items.Count; i++) a[i] = (int)items[i];
+                    return a;
+                }
+            }
+            return items.ToArray();
+        }
+
+        // Header fields this side cares about: 4 the error name, 5 the serial being
+        // replied to, 8 the body signature.
+        public static void DecodeMessage(byte[] m, out byte type, out uint replySerial,
+                                         out string errorName, out string sig, out byte[] body)
+        {
+            if (m == null || m.Length < 16) throw new DBusException("matrix: D-Bus message too short");
+            if (m[0] != (byte)'l') throw new DBusException("matrix: D-Bus message is not little endian");
+            type = m[1];
+            int bodyLen = m[4] | m[5] << 8 | m[6] << 16 | m[7] << 24;
+            int arrLen = m[12] | m[13] << 8 | m[14] << 16 | m[15] << 24;
+            replySerial = 0; errorName = ""; sig = ""; body = new byte[0];
+
+            int bodyStart = (16 + arrLen + 7) & ~7;
+            if (bodyStart + bodyLen > m.Length) throw new DBusException("matrix: D-Bus message truncated");
+            body = new byte[bodyLen];
+            Array.Copy(m, bodyStart, body, 0, bodyLen);
+
+            Cur c = new Cur(m, 16, 16 + arrLen);
+            while (c.p < 16 + arrLen)
+            {
+                c.PadLenient(8);
+                if (c.p >= 16 + arrLen) break;
+                int code = c.Byte();
+                string vsig = c.SigStr();
+                object[] v = ReadSig(c, vsig);
+                if (v.Length > 0)
+                {
+                    if (code == 4) errorName = (string)v[0];
+                    else if (code == 5) replySerial = unchecked((uint)Convert.ToInt64(v[0]));
+                    else if (code == 8) sig = (string)v[0];
+                }
+            }
+        }
+
+        // The string value of one header field, for the tests' fake bus to read
+        // what a client sent it. Returns null when the field is not there.
+        public static string HeaderString(byte[] m, byte code)
+        {
+            if (m == null || m.Length < 16) return null;
+            int arrLen = m[12] | m[13] << 8 | m[14] << 16 | m[15] << 24;
+            Cur c = new Cur(m, 16, Math.Min(16 + arrLen, m.Length));
+            while (c.p < 16 + arrLen)
+            {
+                c.PadLenient(8);
+                if (c.p >= 16 + arrLen) break;
+                byte f = c.Byte();
+                object[] v = ReadSig(c, c.SigStr());
+                if (f == code && v.Length > 0) return Convert.ToString(v[0]);
+            }
+            return null;
+        }
+    }
+
+    // One connection to the session bus. It authenticates EXTERNAL (the socket
+    // already proves who we are), then trades one method call for one reply,
+    // skipping the signals the bus sends in between.
+    public sealed class Bus : IDisposable
+    {
+        Socket sock;
+        uint serial;
+
+        public static Bus Session()
+        {
+            string addr = Environment.GetEnvironmentVariable("DBUS_SESSION_BUS_ADDRESS");
+            if (string.IsNullOrWhiteSpace(addr))
+                addr = "unix:path=/run/user/" + getuid() + "/bus";    // the systemd user bus
+            DBusException last = null;
+            foreach (string one in addr.Split(';'))
+            {
+                if (string.IsNullOrWhiteSpace(one)) continue;
+                try { return new Bus(one); }
+                catch (DBusException e) { last = e; }
+            }
+            throw last ?? new DBusException("matrix: no usable session bus address");
+        }
+
+        // Over a socket the caller already connected - the tests point this at a
+        // fake bus on a loopback socket. The handshake is the same one.
+        public Bus(Socket connected)
+        {
+            sock = connected;
+            sock.ReceiveTimeout = sock.SendTimeout = 10000;
+            Hello();
+        }
+
+        Bus(string addr)
+        {
+            if (!addr.StartsWith("unix:", StringComparison.Ordinal))
+                throw new DBusException("matrix: unsupported bus address: " + addr);
+            string path = null, abstractName = null;
+            foreach (string kv in addr.Substring(5).Split(','))
+            {
+                int eq = kv.IndexOf('=');
+                if (eq < 0) continue;
+                if (kv.Substring(0, eq) == "path") path = kv.Substring(eq + 1);
+                else if (kv.Substring(0, eq) == "abstract") abstractName = kv.Substring(eq + 1);
+            }
+            if (path == null && abstractName == null)
+                throw new DBusException("matrix: bus address names no socket: " + addr);
+            try
+            {
+                sock = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
+                sock.ReceiveTimeout = sock.SendTimeout = 10000;
+                sock.Connect(path != null ? new UnixDomainSocketEndPoint(path)
+                                          : new UnixDomainSocketEndPoint("\0" + abstractName));
+            }
+            catch (Exception e)
+            {
+                throw new DBusException("matrix: cannot reach the session bus: " + e.Message);
+            }
+            Hello();
+        }
+
+        // The handshake the bus wants before it will carry anything: a NUL byte,
+        // then EXTERNAL with the uid hex-encoded, then BEGIN - and then the
+        // org.freedesktop.DBus.Hello method call, on the wire, as the first
+        // message. The bus does not route for a connection that has not said
+        // Hello: it answers such a client's first call by closing the socket,
+        // a failure that sits on the far side of the wire and looks like nothing
+        // else. The reply carries the unique name it assigned us, which we have
+        // no use for - but the exchange has to complete before the first real
+        // call goes out.
+        void Hello()
+        {
+            Send(new byte[] { 0 });
+            string uidHex = BitConverter.ToString(Encoding.ASCII.GetBytes(getuid().ToString()))
+                                         .Replace("-", "");
+            Send(Encoding.ASCII.GetBytes("AUTH EXTERNAL " + uidHex + "\r\n"));
+            string line = ReadLine();
+            if (!line.StartsWith("OK", StringComparison.Ordinal))
+                throw new DBusException("matrix: session bus refused EXTERNAL auth: " + line);
+            Send(Encoding.ASCII.GetBytes("BEGIN\r\n"));
+
+            uint ser = ++serial;
+            Send(Wire.EncodeCall(ser, "org.freedesktop.DBus", "/org/freedesktop/DBus",
+                                 "org.freedesktop.DBus", "Hello", "", null));
+            for (; ; )
+            {
+                byte[] m = ReadMessage();
+                byte type; uint reply; string err, sig; byte[] body;
+                Wire.DecodeMessage(m, out type, out reply, out err, out sig, out body);
+                if ((type == 2 || type == 3) && reply == ser)
+                {
+                    if (type == 3)
+                        throw new DBusException("matrix: session bus rejected Hello: " + err);
+                    return;
+                }
+            }
+        }
+
+        string ReadLine()
+        {
+            List<byte> b = new List<byte>();
+            byte[] one = new byte[1];
+            for (; ; )
+            {
+                int n = sock.Receive(one, 1, SocketFlags.None);
+                if (n <= 0) throw new DBusException("matrix: session bus closed during auth");
+                if (one[0] == (byte)'\n') return Encoding.UTF8.GetString(b.ToArray()).TrimEnd('\r');
+                b.Add(one[0]);
+            }
+        }
+
+        public object[] Call(string dest, string path, string iface, string member,
+                             string inSig, object[] args, string outSig)
+        {
+            uint ser = ++serial;
+            Send(Wire.EncodeCall(ser, dest, path, iface, member, inSig, args));
+            for (; ; )
+            {
+                byte[] m = ReadMessage();
+                byte type; uint reply; string err, sig; byte[] body;
+                Wire.DecodeMessage(m, out type, out reply, out err, out sig, out body);
+                if ((type != 2 && type != 3) || reply != ser) continue;
+                if (type == 3)
+                    throw new DBusException(err + ": " +
+                        (sig == "s" ? (string)Wire.DecodeValues(body, "s")[0] : "the call failed"));
+                return Wire.DecodeValues(body, string.IsNullOrEmpty(sig) ? (outSig ?? "") : sig);
+            }
+        }
+
+        byte[] ReadMessage()
+        {
+            byte[] head = ReadExact(16);
+            int bodyLen = head[4] | head[5] << 8 | head[6] << 16 | head[7] << 24;
+            int arrLen = head[12] | head[13] << 8 | head[14] << 16 | head[15] << 24;
+            int bodyStart = (16 + arrLen + 7) & ~7;
+            byte[] m = new byte[bodyStart + bodyLen];
+            Array.Copy(head, m, 16);
+            if (m.Length > 16) ReadExactInto(m, 16);
+            return m;
+        }
+
+        byte[] ReadExact(int n)
+        {
+            byte[] b = new byte[n];
+            ReadExactInto(b, 0);
+            return b;
+        }
+
+        void ReadExactInto(byte[] b, int offset)
+        {
+            int end = b.Length;
+            for (int got = offset; got < end; )
+            {
+                int k = sock.Receive(b, got, end - got, SocketFlags.None);
+                if (k <= 0) throw new DBusException("matrix: session bus closed");
+                got += k;
+            }
+        }
+
+        void Send(byte[] b)
+        {
+            for (int off = 0; off < b.Length; )
+            {
+                int k = sock.Send(b, off, b.Length - off, SocketFlags.None);
+                if (k <= 0) throw new DBusException("matrix: session bus closed");
+                off += k;
+            }
+        }
+
+        [DllImport("libc")]
+        private static extern uint getuid();
+
+        public void Dispose()
+        {
+            if (sock != null)
+            {
+                try { sock.Close(); } catch { }
+                sock = null;
+            }
+        }
+    }
+}
