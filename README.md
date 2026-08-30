@@ -72,6 +72,13 @@ and don't belong here.
   per-story matrix + a close / do-not-close verdict. Scales to a fan-out workflow
   for large PRDs. User-invocable as `/verify-prd-implemented`.
 
+- **[matrix](matrix/README.md)** - every open Claude Code session as Matrix
+  rain in a PowerShell console. One lane per session, coloured by status (green
+  working, amber idle, red waiting), under a header with the name, status age,
+  and opening prompt. `-ThisWindow` scopes to the current Windows Terminal
+  window; `-Click` raises a session's tab on click.
+  `install-terminal-profile.ps1` adds a Windows Terminal profile for it.
+
 ## Install
 
 ```sh
