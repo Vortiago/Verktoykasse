@@ -40,7 +40,7 @@ BeforeAll {
     (@{ type = 'user'; message = @{ content = $liveTask } } | ConvertTo-Json -Compress -Depth 5) |
         Set-Content -LiteralPath (Join-Path $liveHome 'projects/P/sid-live.jsonl') -Encoding utf8
 
-    function Invoke-Rain ($claudeHome, [string[]] $argv) {
+    function Invoke-Rain ($claudeHome, [string[]] $argv, $script = $rain) {
         $out = Join-Path ([System.IO.Path]::GetTempPath()) "matrix-rain-$PID.out"
         $err = Join-Path ([System.IO.Path]::GetTempPath()) "matrix-rain-$PID.err"
         # Restore, do not null: a developer running the suite with a real
@@ -50,7 +50,7 @@ BeforeAll {
         try {
             $p = Start-Process -FilePath $pwshExe -PassThru -Wait -NoNewWindow `
                     -RedirectStandardOutput $out -RedirectStandardError $err `
-                    -ArgumentList ($pwshArgs + @('-NoProfile', '-File', $rain) + $argv)
+                    -ArgumentList ($pwshArgs + @('-NoProfile', '-File', $script) + $argv)
             [pscustomobject]@{
                 ExitCode = $p.ExitCode
                 Stdout   = (Get-Content -LiteralPath $out -Raw -ErrorAction SilentlyContinue)
@@ -97,6 +97,27 @@ Describe 'matrix.ps1' {
         # depend on -Click or -ThisWindow, the flags that ask for the tab map.
         $r = Invoke-Rain $liveHome @('-Seconds', '2', '-Fps', '10')
         (Remove-Sgr $r.Stdout) | Should -Match 'zeppelin'
+    }
+}
+
+Describe 'preview-matrix.ps1' {
+    # The preview renders the same lanes from the style file, with no session
+    # reads behind them: it is where the render alone can be timed.
+    BeforeAll {
+        $script:preview = Join-Path $PSScriptRoot '../preview-matrix.ps1'
+    }
+
+    It 'shows the render stats when asked, and not otherwise' {
+        # -Stats puts fps, build time and bytes on the bottom line, the same
+        # numbers matrix.ps1 shows, so the render can be judged without the
+        # session polling in the way.
+        $r = Invoke-Rain $emptyHome @('-Seconds', '3', '-Fps', '20', '-Stats') $preview
+        $r.ExitCode | Should -Be 0
+        (Remove-Sgr $r.Stdout) | Should -Match 'ms/frame'
+        (Remove-Sgr $r.Stdout) | Should -Match 'fps'
+
+        $plain = Invoke-Rain $emptyHome @('-Seconds', '3', '-Fps', '20') $preview
+        (Remove-Sgr $plain.Stdout) | Should -Not -Match 'ms/frame'
     }
 }
 
