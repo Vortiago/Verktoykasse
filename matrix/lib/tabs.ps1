@@ -269,29 +269,24 @@ function Update-SessionTabMap {
     $settled = $set -eq $State.Set          # same sessions, so any wait already served counts
 
     $tabs = @(& $ReadTab)
-    # No windows at all is UI Automation failing, not an answer: keep the last good map
-    # and come back later. Backed off like a miss, or a desktop that never answers is
-    # re-read on every poll for the rest of the run. Sig is latched here too: leaving it
-    # behind held the gate above open, and the ~100 ms read this backoff exists to
-    # ration then ran on every poll for the whole outage (fullscreen terminal, locked
-    # desktop). RetryAt is what drives the next look.
-    if ($tabs.Count -eq 0) {
-        $State.Sig     = $sig
-        $State.Set     = $set
-        $State.RetryWait = Get-NextWait $State.RetryWait $settled $RetryMs $MaxRetryMs
-        $State.RetryAt   = $Now + $State.RetryWait
-        return
-    }
-
-    $fresh     = Resolve-SessionTab -Session $Session -Tab $tabs
+    # Latched whatever the read said: leaving Sig behind on a failed read held the gate
+    # above open, and the ~100 ms read this backoff exists to ration then ran on every
+    # poll for the whole outage (fullscreen terminal, locked desktop).
     $State.Sig = $sig
     $State.Set = $set
-    $State.Map = Merge-SessionTab -Session $Session -Fresh $fresh -Previous $State.Map
-    # Counted against the FRESH match, not the merged map. A carried tab is the last good
-    # guess, not a confirmation: its window and index are from an earlier pass, so a
-    # session living on one must keep re-trying until a fresh pass agrees.
-    $miss = @($Session | Where-Object { -not $fresh.ContainsKey($_.SessionId) }).Count
-    if (-not $miss) { $State.RetryAt = 0; $State.RetryWait = 0; return }
+
+    # No windows at all is UI Automation failing, not an answer: keep the last good map,
+    # count it as a miss, and let RetryAt drive the next look.
+    $miss = $true
+    if ($tabs.Count -gt 0) {
+        $fresh     = Resolve-SessionTab -Session $Session -Tab $tabs
+        $State.Map = Merge-SessionTab -Session $Session -Fresh $fresh -Previous $State.Map
+        # Counted against the FRESH match, not the merged map. A carried tab is the last
+        # good guess, not a confirmation: its window and index are from an earlier pass,
+        # so a session living on one must keep re-trying until a fresh pass agrees.
+        $miss = @($Session | Where-Object { -not $fresh.ContainsKey($_.SessionId) }).Count
+        if (-not $miss) { $State.RetryAt = 0; $State.RetryWait = 0; return }
+    }
 
     $State.RetryWait = Get-NextWait $State.RetryWait $settled $RetryMs $MaxRetryMs
     $State.RetryAt   = $Now + $State.RetryWait

@@ -238,16 +238,15 @@ function Write-Raw {
     $rawOut.Flush()
 }
 
-# Clicks only arrive once mouse reporting is on and QuickEdit is off. QuickEdit goes
-# back on at exit, or the window is left unable to select text. Captured BEFORE
-# TreatControlCAsInput below rewrites the same console mode word, so the finally's
-# SetStdinMode($prevStdin) restores the true original, ENABLE_PROCESSED_INPUT included.
+# The stdin mode word has one owner: this snapshot, taken before ANYTHING rewrites it
+# (the -Click mouse/QuickEdit bits here, TreatControlCAsInput's ENABLE_PROCESSED_INPUT
+# below), and restored last in the finally, so no later mutation can escape it.
 $prevStdin = $null
-if ($Click) {
-    try {
-        $prevStdin = $VT::GetStdinMode()
-        [void]$VT::SetStdinMode((($prevStdin -bor $VT::MOUSE_ON) -band (-bnot $VT::QUICK_EDIT)))
-    } catch { $prevStdin = $null }
+try { $prevStdin = $VT::GetStdinMode() } catch { }
+if ($Click -and $null -ne $prevStdin) {
+    # Clicks only arrive once mouse reporting is on and QuickEdit is off. QuickEdit
+    # goes back on at exit, or the window is left unable to select text.
+    try { [void]$VT::SetStdinMode((($prevStdin -bor $VT::MOUSE_ON) -band (-bnot $VT::QUICK_EDIT))) } catch { }
 }
 
 # Before the slow priming pass below: a Ctrl+C in that gap must arrive as a queued key

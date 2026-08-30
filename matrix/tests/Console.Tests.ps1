@@ -91,7 +91,7 @@ namespace PesterProbe__TAG__
         $b::Answer() | Should -Be 43
     }
 
-    It 'names the cached assembly for the edition and runtime, so no two evict or poison each other' {
+    It 'names the cached assembly for the runtime, so no two evict or poison each other' {
         [void](Add-TaggedTypes $src 'PesterProbe{0}.Probe')
         $rt = "net$([System.Environment]::Version.Major)"
         Get-ChildItem ([System.IO.Path]::GetTempPath()) -Filter "matrix-PesterProbe-*-$rt.dll" |

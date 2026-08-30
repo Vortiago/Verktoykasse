@@ -37,11 +37,11 @@ function Test-SessionAlive {
     # Dispose: StartTime opens a kernel handle, and this runs per session per poll
     try {
         if (-not $ProcStart) { return $true }
-        try { $ft = $p.StartTime.ToFileTimeUtc() } catch { return $true }   # no rights to read it
         # 2 s of slop: the file holds the value Claude read, not our conversion of it.
-        # An unreadable procStart cannot verify anything: keep the session, same as
-        # having no rights - the cast must not kill the poll under EAP=Stop.
-        try { return [Math]::Abs($ft - [int64]$ProcStart) -lt 20000000 } catch { return $true }
+        # No rights to read StartTime, or a procStart that does not cast, cannot verify
+        # anything: keep the session rather than kill the poll under EAP=Stop.
+        try { return [Math]::Abs($p.StartTime.ToFileTimeUtc() - [int64]$ProcStart) -lt 20000000 }
+        catch { return $true }
     } finally { $p.Dispose() }
 }
 
@@ -60,13 +60,13 @@ function Get-ClaudeSession {
     # ReadAllText, not Get-Content -Raw: the provider and pipeline cost 7x for a file
     # this small, per session per poll.
     $out = foreach ($f in [System.IO.Directory]::EnumerateFiles($dir, '*.json')) {
-        try { $r = ConvertFrom-Json ([System.IO.File]::ReadAllText($f)) } catch { continue }
-        if (-not $r.pid -or -not $r.sessionId) { continue }
-        if (-not $IncludeBackground -and $r.kind -ne 'interactive') { continue }
-        # The try covers the casts too: one malformed field (a pid or timestamp that
-        # does not cast) skips the record exactly as unreadable JSON does, instead of
-        # killing the whole rain under the script's ErrorActionPreference = Stop.
+        # One try for the whole record: unreadable JSON and a malformed field (a pid or
+        # timestamp that does not cast) skip it the same way, instead of killing the
+        # whole rain under the script's ErrorActionPreference = Stop.
         try {
+            $r = ConvertFrom-Json ([System.IO.File]::ReadAllText($f))
+            if (-not $r.pid -or -not $r.sessionId) { continue }
+            if (-not $IncludeBackground -and $r.kind -ne 'interactive') { continue }
             if (-not (Test-SessionAlive -ProcessId $r.pid -ProcStart $r.procStart)) { continue }
 
             $status = if ($r.status) { [string]$r.status } else { 'idle' }
@@ -137,7 +137,8 @@ function Get-SessionTranscript {
 
 # Branch and opening prompt per session. Neither moves while the rain runs, so the
 # transcript is opened once for both.
-$script:SessionFact = @{}
+$script:SessionFact  = @{}
+$script:SessionProbe = @{}   # last empty read per unsettled session, keyed to the file's mtime
 
 function Get-SessionFact {
     <#
@@ -149,8 +150,9 @@ function Get-SessionFact {
         per session, so a branch changed mid-session leaves the header stale until the
         rain restarts.
 
-        Only a hit is cached. A session that starts while the rain runs has no
-        transcript yet, and caching that miss would blank its header for the whole run.
+        A hit is cached at once. A miss is re-read while the transcript may still be
+        growing its first prompt, and settles into the cache once the file has been
+        quiet for 30 s; the comment on the cache condition below has the full rule.
     #>
     param([Parameter(Mandatory)] $Session)
     $TailBytes = 8KB          # enough for the newest record, which carries the branch
@@ -162,20 +164,31 @@ function Get-SessionFact {
     $path = Get-SessionTranscript $id
     if ($path) {
         try {
+            # Stat before open: an unsettled transcript is re-visited on every poll, and
+            # an unchanged file cannot answer differently, so the last empty read is
+            # reused without opening it - until the file grows, or goes quiet long
+            # enough for the condition at the bottom to settle it into the cache.
+            $mtime = [System.IO.File]::GetLastWriteTimeUtc($path)
+            $probe = $script:SessionProbe[$id]
+            if ($probe -and $probe.MTime -eq $mtime) {
+                if (([datetime]::UtcNow - $mtime).TotalSeconds -ge 30) {
+                    $script:SessionFact[$id] = $probe.Fact
+                    $script:SessionProbe.Remove($id)
+                }
+                return $probe.Fact
+            }
+
             # FileShare ReadWrite: the session is appending to this file right now
             $fs = [System.IO.File]::Open($path, 'Open', 'Read', 'ReadWrite')
             try {
                 $enc  = [System.Text.UTF8Encoding]::new($false)
-                $head = [System.IO.StreamReader]::new($fs, $enc, $false, 4096, $true)
+                # BOM detection on: the reader consumes one someone put on the
+                # transcript, which would otherwise hide line 1 from the parser.
+                $head = [System.IO.StreamReader]::new($fs, $enc, $true, 4096, $true)
                 $headEof = $false
                 for ($i = 0; $i -lt $HeadLines -and -not $fact.Task; $i++) {
                     $line = $head.ReadLine()
                     if ($null -eq $line) { $headEof = $true; break }
-                    # the reader is told not to detect encodings, so a BOM someone put
-                    # on the transcript would otherwise hide line 1 from the parser
-                    if ($i -eq 0 -and $line.Length -gt 0 -and $line[0] -eq [char]0xFEFF) {
-                        $line = $line.Substring(1)
-                    }
                     $fact.Task = Read-TaskLine $line
                 }
                 $head.Dispose()
@@ -196,13 +209,16 @@ function Get-SessionFact {
             # locked for a moment must not blank the header for the rest of the run, same
             # as a missing transcript. Nor must the gap between a session starting and
             # its first prompt landing: a head that ended before HeadLines with no prompt
-            # is a transcript still being born, so it is re-read next poll - until it
+            # is a transcript still being born, so it is probed next poll - until it
             # goes quiet. A short transcript nothing has written for 30 s has said all
             # it will say (a /command opener), and without settling it here it would be
-            # re-opened on every poll for the rest of the run.
+            # probed on every poll for the rest of the run.
             if ($fact.Task -or -not $headEof -or
-                ([datetime]::UtcNow - [System.IO.File]::GetLastWriteTimeUtc($path)).TotalSeconds -ge 30) {
+                ([datetime]::UtcNow - $mtime).TotalSeconds -ge 30) {
                 $script:SessionFact[$id] = $fact
+                $script:SessionProbe.Remove($id)
+            } else {
+                $script:SessionProbe[$id] = @{ MTime = $mtime; Fact = $fact }
             }
         } catch { }
     }
