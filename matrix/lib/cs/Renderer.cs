@@ -24,6 +24,14 @@ namespace MatrixRain__TAG__
         const int BLANK = 0;                     // level -1, glyph ' '
         const int MIN_TRAIL = 4;
 
+        // Synchronized output (DECSET 2026): BSU opens the frame, ESU closes it.
+        // The terminal holds the frame off the screen until ESU and paints it
+        // once, instead of repainting at every write that lands mid-frame - on
+        // Konsole those intermediate bulk repaints are most of what a full
+        // frame costs. Terminals without the mode ignore the pair.
+        static readonly byte[] BSU = new byte[] { ESC, (byte)'[', (byte)'?', (byte)'2', (byte)'0', (byte)'2', (byte)'6', (byte)'h' };
+        static readonly byte[] ESU = new byte[] { ESC, (byte)'[', (byte)'?', (byte)'2', (byte)'0', (byte)'2', (byte)'6', (byte)'l' };
+
         readonly int lv, stride;
         readonly char[] glyphs;
         readonly Random rnd;
@@ -298,6 +306,7 @@ namespace MatrixRain__TAG__
             }
 
             pos = 0;
+            Emit(BSU);                           // everything after this is one frame
             int written = 0, writes = 0, runs = 0, cells = 0;
             long writeTicks = 0;
             int curIdx = -99, curY = -1, curX = -1;
@@ -374,11 +383,16 @@ namespace MatrixRain__TAG__
                 }
             }
 
-            if (pos > 0 || (flush && writes > 0))
+            // A frame that drew nothing stays nothing: drop the bare open-then-close
+            // pair rather than tell the terminal to paint emptiness. pos above the
+            // BSU alone means cells were emitted; writes above zero means the frame
+            // was so large it flushed mid-way, and the ESU still has to go out.
+            if (pos > BSU.Length || writes > 0)
             {
+                Emit(ESU);
                 long t0 = Mark();
-                if (pos > 0) { s.Write(buf, 0, pos); writes++; written += pos; }
-                if (flush && writes > 0) s.Flush();
+                s.Write(buf, 0, pos); writes++; written += pos;
+                if (flush) s.Flush();
                 writeTicks += Since(t0);
             }
             LastBytes = written;
