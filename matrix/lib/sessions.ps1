@@ -5,14 +5,18 @@
 #
 #   status       busy | waiting | idle           the three states we colour by
 #   waitingFor   reason, only set on waiting      "input needed", "sandbox request", ...
-#   procStart    FILETIME of the process start    guards against PID reuse
+#   procStart    the process start, platform-shaped  guards against PID reuse
+#                (a FILETIME on Windows, /proc clock ticks on Linux)
 #
 # The file also names a peer pipe carrying notify_idle. That pipe rejects subscribers
 # that are not registered sessions, so read status from the files. See README.md.
 
+# The home to read, not the variable that happens to be set: a Linux shell can
+# inherit USERPROFILE (WSLENV passes it through), and picking it there points the
+# whole poll at a path that does not exist.
 $script:ClaudeHome = if ($env:CLAUDE_CONFIG_DIR) { $env:CLAUDE_CONFIG_DIR }
-                     elseif ($env:USERPROFILE)   { Join-Path $env:USERPROFILE '.claude' }
-                     else                       { Join-Path $HOME '.claude' }
+                     elseif ($IsWindows)         { Join-Path $env:USERPROFILE '.claude' }
+                     else                        { Join-Path $HOME '.claude' }
 
 # status -> how the lane looks. Green flows, red crawls. Tune it in styles.psd1.
 $script:SessionStyle = Import-PowerShellDataFile (Join-Path $PSScriptRoot '..' 'styles.psd1')
@@ -44,7 +48,12 @@ function Test-SessionAlive {
         try { $start = Get-ProcessStartTicks -ProcessId $ProcessId }
         catch { return $false }
         if (-not $ProcStart) { return $true }
-        return ($start -eq [long]$ProcStart)
+        # A procStart that does not parse verifies nothing, the same answer the
+        # Windows branch gives: keep the session. A bare cast would throw, and the
+        # caller's per-record catch would drop a live lane over an unreadable field.
+        [long] $want = 0
+        if (-not [long]::TryParse($ProcStart, [ref] $want)) { return $true }
+        return ($start -eq $want)
     }
     # GetProcessById, not Get-Process: the cmdlet enumerates every process and wraps
     # each in a PSObject. This lookup runs per session per poll.

@@ -107,6 +107,27 @@ Describe 'Wire: body decoding' {
         @($out[0]) | Should -Be @('one', 'two')
     }
 
+    It 'round-trips an array whose elements align to eight' {
+        # The u32 length counts the element data, NOT the padding between it and
+        # the first element. A reader that measures the end from before that
+        # padding stops four bytes short of every int64, struct or variant array
+        # and calls the encoder's own bytes malformed.
+        # Hand-packed: length 16, four bytes of padding, then the two int64s.
+        $bytes = $Wire::EncodeBody('at', (, [int64[]]@(1, 2)))
+        Get-Hex $bytes | Should -Be ('10-00-00-00-00-00-00-00-' +
+            '01-00-00-00-00-00-00-00-02-00-00-00-00-00-00-00')
+        $out = $Wire::DecodeValues($bytes, 'at')
+        @($out[0]) | Should -Be @([int64]1, [int64]2)
+    }
+
+    It 'round-trips an empty array of eight-aligned elements' {
+        # Zero elements still carry the padding, so the shortest 'at' body is the
+        # length and four zero bytes. The end must land on the length, not before it.
+        $bytes = $Wire::EncodeBody('at', (, [int64[]]@()))
+        Get-Hex $bytes | Should -Be '00-00-00-00-00-00-00-00'
+        @($Wire::DecodeValues($bytes, 'at')[0]) | Should -HaveCount 0
+    }
+
     It 'round-trips a variant, signature and value apart' {
         $out = $Wire::DecodeValues(($Wire::EncodeBody('v', @($Variant::new('i', 5)))), 'v')
         $out[0].Sig   | Should -Be 'i'

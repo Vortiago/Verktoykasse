@@ -9,7 +9,8 @@ function New-TestTab ($hwnd, $index, $text, $glyph) {
 }
 
 # A session record shaped the way the lane and tab code reads it. Konsole's pid
-# matching fills Pid in; the Windows title scoring leaves it at 0.
+# matching needs Pid, and so does the tab map's session signature; the Windows
+# title scoring does not, and leaves it at 0.
 # The parameter is $processId, not $pid: the automatic $PID is read-only and a
 # parameter that shadows it never binds.
 function New-TestSession ($id, $status = 'idle', $task = '', $processId = 0) {

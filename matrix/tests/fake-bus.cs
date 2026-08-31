@@ -12,7 +12,6 @@ namespace MatrixDBus__TAG__
     using System.Collections.Generic;
     using System.Net;
     using System.Net.Sockets;
-    using System.Runtime.InteropServices;
     using System.Text;
     using System.Threading;
 
@@ -23,14 +22,12 @@ namespace MatrixDBus__TAG__
         // machine whose uid is not 1000 fails the test.
         static string ExpectedAuth()
         {
-            string uid = getuid().ToString();
+            string uid = Posix.Uid().ToString();
             byte[] ascii = Encoding.ASCII.GetBytes(uid);
             string hex = BitConverter.ToString(ascii).Replace("-", "");
             return "AUTH EXTERNAL " + hex;
         }
 
-        [DllImport("libc")]
-        private static extern uint getuid();
         public string FirstPath = "";
         public string FirstIface = "";
         public string FirstMember = "";

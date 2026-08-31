@@ -4,20 +4,17 @@ BeforeAll {
     . (Join-Path $PSScriptRoot '../lib/tabs.ps1')
     . (Join-Path $PSScriptRoot 'Fixtures.ps1')
 
-    # Pid too: the map's signature builds from it. New-TabState comes from tabs.ps1,
-    # so the tests cannot drift from the shape matrix.ps1 actually initialises.
-    function New-TestSession ($id, $pid_, $status, $task) {
-        [pscustomobject]@{ SessionId = $id; Pid = $pid_; Status = $status; Task = $task
-                           Name = $task; Cwd = '' }
-    }
+    # New-TestSession comes from Fixtures.ps1, and carries a Pid: the map's
+    # signature builds from it. New-TabState comes from tabs.ps1, so the tests
+    # cannot drift from the shape matrix.ps1 actually initialises.
 }
 
 Describe 'Update-SessionTabMap' {
     BeforeEach {
         $script:reads = 0
         # Two settled sessions, each with a titled tab, plus the tab the rain runs in.
-        $script:alpha = New-TestSession 'sid-a' 101 'idle' 'alpha work here'
-        $script:beta  = New-TestSession 'sid-b' 102 'idle' 'beta work here'
+        $script:alpha = New-TestSession 'sid-a' 'idle' 'alpha work here' 101
+        $script:beta  = New-TestSession 'sid-b' 'idle' 'beta work here' 102
         $script:settledTabs = @(
             (New-TestTab 900 0 'Matrix' 'none'),
             (New-TestTab 900 1 'alpha work here' 'idle'),
@@ -60,7 +57,7 @@ Describe 'Update-SessionTabMap' {
             Update-SessionTabMap -Session @($alpha, $beta) -State $state -ReadTab $reader -Now 0
 
             # The third session appears. Claude has opened the tab but not titled it.
-            $gamma = New-TestSession 'sid-c' 103 'idle' 'gamma work here'
+            $gamma = New-TestSession 'sid-c' 'idle' 'gamma work here' 103
             $untitled = $settledTabs + @(New-TestTab 900 3 'PowerShell' 'none')
             $reader = { $script:reads++; $untitled }
             Update-SessionTabMap -Session @($alpha, $beta, $gamma) -State $state -ReadTab $reader -Now 1000
@@ -83,7 +80,7 @@ Describe 'Update-SessionTabMap' {
         It 'is found even when its tab says only what Claude puts there before a turn' {
             # A fresh tab reads "Claude Code": the right glyph, and no word in common
             # with the session. The glyph alone has to be enough.
-            $gamma = New-TestSession 'sid-c' 103 'idle' 'gamma work here'
+            $gamma = New-TestSession 'sid-c' 'idle' 'gamma work here' 103
             $tabs = $settledTabs + @(New-TestTab 900 3 'Claude Code' 'idle')
             Update-SessionTabMap -Session @($alpha, $beta, $gamma) -State $state -ReadTab { $tabs } -Now 0
             $state.Map['sid-c'].Index | Should -Be 3

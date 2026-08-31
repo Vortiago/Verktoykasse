@@ -83,6 +83,13 @@ function Write-Raw {
     $rawOut.Flush()
 }
 
+# The stdin mode word has one owner: this snapshot. PollInput puts the terminal
+# into raw mode to read a keypress without waiting for a line, and only a write
+# back through SetStdinMode undoes it. Without this, the preview hands the shell
+# back with no echo and no line editing.
+$prevStdin = $null
+try { $prevStdin = $VT::GetStdinMode() } catch { }
+
 try { [Console]::TreatControlCAsInput = $true } catch { }
 try { [Console]::CursorVisible = $false } catch { }
 Write-Raw $ENTER_SCREEN
@@ -150,5 +157,8 @@ try {
     Write-Raw $LEAVE_SCREEN
     try { [Console]::CursorVisible = $true } catch { }
     try { [Console]::TreatControlCAsInput = $false } catch { }
+    # After the [Console] setters, as in matrix.ps1: each of those applies .NET's
+    # own cached termios, so the stdin restore has to be the last write to win.
+    if ($null -ne $prevStdin) { try { [void]$VT::SetStdinMode($prevStdin) } catch { } }
     if ($prevEncoding) { try { [Console]::OutputEncoding = $prevEncoding } catch { } }
 }

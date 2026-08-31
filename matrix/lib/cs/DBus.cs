@@ -266,8 +266,12 @@ namespace MatrixDBus__TAG__
         {
             c.Pad(4);
             int len = c.I32();
-            int dataEnd = c.p + len;
+            // The length counts the element data only: the padding between it and
+            // the first element is not part of it. Measure the end from where the
+            // elements actually start, or every 8-aligned element type (x, t, d,
+            // a struct, a variant) reads four bytes short of its own encoding.
             c.Pad(AlignmentOf(elemSig[0]));
+            int dataEnd = c.p + len;
             List<object> items = new List<object>();
             while (c.p < dataEnd) items.AddRange(ReadSig(c, elemSig));
             if (c.p != dataEnd) throw new DBusException("matrix: D-Bus array length does not cover its elements");
@@ -307,7 +311,7 @@ namespace MatrixDBus__TAG__
             body = new byte[bodyLen];
             Array.Copy(m, bodyStart, body, 0, bodyLen);
 
-            Cur c = new Cur(m, 16, 16 + arrLen);
+            Cur c = new Cur(m, 16, arrLen);
             while (c.p < 16 + arrLen)
             {
                 c.PadLenient(8);
@@ -330,11 +334,14 @@ namespace MatrixDBus__TAG__
         {
             if (m == null || m.Length < 16) return null;
             int arrLen = (int)ReadU32(m, 12);
-            Cur c = new Cur(m, 16, Math.Min(16 + arrLen, m.Length));
-            while (c.p < 16 + arrLen)
+            // The guard and the cursor stop in the same place: a header array
+            // that claims more than the buffer holds ends where the buffer does.
+            int fieldsEnd = Math.Max(16, Math.Min(16 + arrLen, m.Length));
+            Cur c = new Cur(m, 16, fieldsEnd - 16);
+            while (c.p < fieldsEnd)
             {
                 c.PadLenient(8);
-                if (c.p >= 16 + arrLen) break;
+                if (c.p >= fieldsEnd) break;
                 byte f = c.Byte();
                 object[] v = ReadSig(c, c.SigStr());
                 if (f == code && v.Length > 0) return Convert.ToString(v[0]);
@@ -346,6 +353,24 @@ namespace MatrixDBus__TAG__
     // One connection to the session bus. It authenticates EXTERNAL (the socket
     // already proves who we are), then trades one method call for one reply,
     // skipping the signals the bus sends in between.
+    // getuid, and the answer a platform without libc gives instead of throwing.
+    // Windows has no libc to bind: the D-Bus suite compiles this file there and
+    // drives the handshake against a fake bus over loopback, so a P/Invoke that
+    // cannot resolve would take the whole Windows gate down. The fake bus reads
+    // the uid through here too, so both sides agree on whatever it answers.
+    public static class Posix
+    {
+        [DllImport("libc")]
+        private static extern uint getuid();
+
+        public static uint Uid()
+        {
+            try { return getuid(); }
+            catch (DllNotFoundException) { return 0; }
+            catch (EntryPointNotFoundException) { return 0; }
+        }
+    }
+
     public sealed class Bus : IDisposable
     {
         Socket sock;
@@ -355,13 +380,17 @@ namespace MatrixDBus__TAG__
         {
             string addr = Environment.GetEnvironmentVariable("DBUS_SESSION_BUS_ADDRESS");
             if (string.IsNullOrWhiteSpace(addr))
-                addr = "unix:path=/run/user/" + getuid() + "/bus";    // the systemd user bus
+                addr = "unix:path=/run/user/" + Posix.Uid() + "/bus";    // the systemd user bus
             DBusException last = null;
             foreach (string one in addr.Split(';'))
             {
                 if (string.IsNullOrWhiteSpace(one)) continue;
                 try { return new Bus(one); }
                 catch (DBusException e) { last = e; }
+                // A socket timeout or a peer that hangs up mid-handshake is a
+                // reason to try the next address, not to abandon the list: the
+                // address variable can name several, and only one need answer.
+                catch (Exception e) { last = new DBusException("matrix: session bus handshake failed: " + e.Message); }
             }
             throw last ?? new DBusException("matrix: no usable session bus address");
         }
@@ -400,7 +429,11 @@ namespace MatrixDBus__TAG__
             {
                 throw new DBusException("matrix: cannot reach the session bus: " + e.Message);
             }
-            Hello();
+            // This ctor owns the socket it dialled: a handshake that throws must
+            // not leave it open, or a Session() walking several addresses leaks
+            // one file descriptor per address that did not answer.
+            try { Hello(); }
+            catch { Dispose(); throw; }
         }
 
         // The handshake the bus wants before it will carry anything: a NUL byte,
@@ -415,7 +448,7 @@ namespace MatrixDBus__TAG__
         void Hello()
         {
             Send(new byte[] { 0 });
-            string uidHex = BitConverter.ToString(Encoding.ASCII.GetBytes(getuid().ToString()))
+            string uidHex = BitConverter.ToString(Encoding.ASCII.GetBytes(Posix.Uid().ToString()))
                                          .Replace("-", "");
             Send(Encoding.ASCII.GetBytes("AUTH EXTERNAL " + uidHex + "\r\n"));
             string line = ReadLine();
@@ -510,9 +543,6 @@ namespace MatrixDBus__TAG__
                 off += k;
             }
         }
-
-        [DllImport("libc")]
-        private static extern uint getuid();
 
         public void Dispose()
         {

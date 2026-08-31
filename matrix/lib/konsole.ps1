@@ -30,6 +30,14 @@ function Get-KonsoleBus {
     $script:KonsoleBus
 }
 
+function Reset-KonsoleBus {
+    # Hang up, so the next call dials again.
+    if ($null -ne $script:KonsoleBus) {
+        try { $script:KonsoleBus.Dispose() } catch { }
+        $script:KonsoleBus = $null
+    }
+}
+
 function Invoke-Konsole {
     param(
         [Parameter(Mandatory)] [string] $Path,
@@ -39,8 +47,18 @@ function Invoke-Konsole {
         [object[]] $InArgs = @(),
         [string] $OutSig = ''
     )
-    (Get-KonsoleBus).Call($script:KonsoleService, $Path, $Iface, $Member,
-                          $InSig, $InArgs, $OutSig)
+    $bus = Get-KonsoleBus
+    try {
+        $bus.Call($script:KonsoleService, $Path, $Iface, $Member,
+                  $InSig, $InArgs, $OutSig)
+    } catch {
+        # The connection is cached for the life of the run, and a failed call
+        # leaves it mid-message: the next read starts inside a reply nobody
+        # finished. Konsole exiting, or one read timing out, would otherwise
+        # blank the lanes for good, because every retry reuses the dead socket.
+        Reset-KonsoleBus
+        throw
+    }
 }
 
 function Get-OwnTerminalWindow {
@@ -100,6 +118,15 @@ function Select-TerminalTab {
     } catch {
         return $false
     }
+}
+
+function Get-TabKey {
+    # A tab's identity. Konsole hands out a session id that outlives the tab's
+    # position, so unlike Windows Terminal this key IS an identity across passes:
+    # closing a tab renumbers the ones to its right, and an index-keyed carry in
+    # Merge-SessionTab would then name a different tab than the one it stored.
+    param($Tab)
+    "$($Tab.Hwnd):$($Tab.Element)"
 }
 
 function Resolve-SessionTab {

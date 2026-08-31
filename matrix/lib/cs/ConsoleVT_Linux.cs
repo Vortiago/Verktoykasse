@@ -78,6 +78,7 @@ namespace MatrixVT__TAG__
         private static Termios savedTermios;
         private static bool rawOn, savedOk, mouseWritten;
         private static byte[] pending = new byte[0];    // a sequence split across reads
+        private const int MAX_PENDING = 1024;           // longer than that is not a sequence
         // The frame loop runs up to 240 times a second: everything it touches
         // per frame is allocated once, here.
         private static readonly byte[] readBuf = new byte[64];
@@ -192,21 +193,34 @@ namespace MatrixVT__TAG__
                 pending = noBytes;
             }
 
+            // A read that filled the buffer means the terminal had more queued than
+            // fit, so an ESC on the very end is the head of a sequence split across
+            // reads, not the key itself. A click burst is nine bytes of press and
+            // nine of release: enough of them queued behind a slow frame and the
+            // split lands there, and a lone trailing ESC would exit the rain on a
+            // click. Hold it back for the next read instead.
+            int limit = (n == readBuf.Length && all[len - 1] == 0x1b) ? len - 1 : len;
+
             int off = 0;
-            while (off < len)
+            while (off < limit)
             {
                 int used, cx, cy;
-                int what = ClassifyAt(all, off, len - off, out cx, out cy, out used);
-                if (used == 0)
-                {
-                    // A sequence the terminal has not finished sending. Keep it for
-                    // the next read; nothing before it can matter more than it does.
-                    pending = new byte[len - off];
-                    Array.Copy(all, off, pending, 0, pending.Length);
-                    return NONE;
-                }
+                int what = ClassifyAt(all, off, limit - off, out cx, out cy, out used);
+                // used == 0 is a sequence the terminal has not finished sending.
+                if (used == 0) break;
                 off += used;
                 if (what != NONE) { x = cx; y = cy; return what; }
+            }
+            if (off < len)
+            {
+                // Keep the tail for the next read; nothing before it can matter
+                // more than it does. Anything longer than the longest escape
+                // sequence a terminal sends is not one: drop it rather than let a
+                // stream that never terminates grow the stash without bound.
+                int keep = len - off;
+                if (keep > MAX_PENDING) return NONE;      // pending is already empty
+                pending = new byte[keep];
+                Array.Copy(all, off, pending, 0, keep);
             }
             return NONE;
         }

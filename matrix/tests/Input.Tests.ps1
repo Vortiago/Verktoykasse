@@ -151,7 +151,8 @@ Describe 'ConsoleVT (Linux): mode surface' {
     }
 }
 
-Describe 'ConsoleVT (Linux): raw mode against a real terminal' {
+Describe 'ConsoleVT (Linux): raw mode against a real terminal' `
+        -Skip:($IsWindows -or [Console]::IsInputRedirected) {
     # The freeze class the rain hit live, twice: something else rewrites stdin
     # termios after we went raw - .NET's [Console] property setters apply their
     # own cached state, VMIN and all, and a blocking VMIN turns the frame loop
@@ -160,7 +161,11 @@ Describe 'ConsoleVT (Linux): raw mode against a real terminal' {
     BeforeAll {
         # A termios reader of our own, to see what is really set: the lflag's
         # ICANON|ECHO bits and VMIN, as "flags|VMIN".
-        Add-Type -TypeDefinition @'
+        # Through Add-TaggedTypes, like every other compiled type in the suite: a
+        # plain Add-Type binds the name for the session, so a second Invoke-Pester
+        # in the same shell fails the whole block on "the type already exists".
+        $script:Tty = @(Add-TaggedTypes @'
+namespace MatrixTty__TAG__ {
 using System;
 using System.Runtime.InteropServices;
 public static class TtyProbe {
@@ -179,16 +184,16 @@ public static class TtyProbe {
         return (t.c_lflag & 0xA) + "|" + t.c_cc[6];
     }
 }
-'@
+}
+'@ 'MatrixTty{0}.TtyProbe')[0]
     }
 
-    It 'takes raw back after a Console property setter walked over it' `
-       -Skip:($IsWindows -or [Console]::IsInputRedirected) {
+    It 'takes raw back after a Console property setter walked over it' {
         try {
             [void]$VT::SetStdinMode(0x0090)          # MOUSE_ON: raw, and the mouse reported
             [Console]::TreatControlCAsInput = $true  # the write that once undid it
             [void]$VT::SetStdinMode(0x0090)          # EnterRaw re-verifies and re-engages
-            [TtyProbe]::Look() | Should -Be '0|0' -Because 'cooked flags are off and the read returns at once'
+            $Tty::Look() | Should -Be '0|0' -Because 'cooked flags are off and the read returns at once'
         } finally {
             # matrix.ps1's order: the [Console] setters go first, because each
             # one applies .NET's own cached termios - the stdin restore must be
@@ -197,6 +202,6 @@ public static class TtyProbe {
             [void]$VT::SetStdinMode(0)               # give the terminal back
         }
         # The restore puts line editing and echo back, whatever VMIN it lands on.
-        ([TtyProbe]::Look() -notmatch '^0\|') | Should -BeTrue
+        ($Tty::Look() -notmatch '^0\|') | Should -BeTrue
     }
 }
