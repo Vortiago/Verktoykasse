@@ -43,11 +43,27 @@ jobs:
         run: find . -name '*.sh' -not -path '*/node_modules/*' -print0 | xargs -0 -I{} bash -n {}
 
   pester:
-    # matrix/ is PowerShell and its e2e tests drive Windows console APIs, so this
-    # is the one job not on ubuntu. Same command a session runs locally.
-    runs-on: windows-latest
+    # matrix/ is PowerShell with two platform halves: the Windows console API and
+    # UIA over Windows Terminal, or termios and a raw D-Bus client for Konsole.
+    # Each half only runs on its own platform, so each is gated on its own runner
+    # — a Windows-only job green-lights Linux code that was never executed.
+    # Same command a session runs locally.
+    strategy:
+      # Both answers, every time: one platform failing must not cancel the run
+      # that would have said whether the other one is broken too.
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      - name: install Pester
+        # The Windows image ships Pester 5; the Ubuntu image ships PowerShell
+        # without it. Pinned to the version the Windows image carries, so the two
+        # runners are not testing against different Pesters.
+        if: runner.os == 'Linux'
+        shell: pwsh
+        run: Install-Module Pester -RequiredVersion 5.6.1 -Force -Scope CurrentUser -SkipPublisherCheck
       - name: gate — matrix
         working-directory: matrix
         shell: pwsh
