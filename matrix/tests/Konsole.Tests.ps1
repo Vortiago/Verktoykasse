@@ -3,10 +3,7 @@
 # involved - the D-Bus call is a scriptblock seam, and the pid walk is injected.
 BeforeAll {
     . (Join-Path $PSScriptRoot '../lib/konsole.ps1')
-
-    function New-TestSession ($id, $pid_) {
-        [pscustomobject]@{ SessionId = $id; Pid = $pid_; Status = 'idle'; Task = ''; Name = ''; Cwd = '' }
-    }
+    . (Join-Path $PSScriptRoot 'Fixtures.ps1')
 }
 
 Describe 'Get-OwnTerminalWindow' {
@@ -54,7 +51,7 @@ Describe 'Resolve-SessionTab' {
     }
 
     It 'matches a session running directly under the tab shell' {
-        $map = Resolve-SessionTab -Session @((New-TestSession 'A' 100)) -Tab $tabs -Ancestors $walk
+        $map = Resolve-SessionTab -Session @((New-TestSession -Id 'A' -ProcessId 100)) -Tab $tabs -Ancestors $walk
         $map['A'].Element | Should -Be 11
     }
 
@@ -62,17 +59,17 @@ Describe 'Resolve-SessionTab' {
         # claude is often not the tab shell's direct child: bash -> ollama -> claude.
         # Walking down from the tab would never find it; walking up from the session
         # does.
-        $map = Resolve-SessionTab -Session @((New-TestSession 'B' 101)) -Tab $tabs -Ancestors $walk
+        $map = Resolve-SessionTab -Session @((New-TestSession -Id 'B' -ProcessId 101)) -Tab $tabs -Ancestors $walk
         $map['B'].Element | Should -Be 12
     }
 
     It 'leaves a session outside every tab unmatched' {
-        $map = Resolve-SessionTab -Session @((New-TestSession 'C' 999)) -Tab $tabs -Ancestors $walk
+        $map = Resolve-SessionTab -Session @((New-TestSession -Id 'C' -ProcessId 999)) -Tab $tabs -Ancestors $walk
         $map.Count | Should -Be 0
     }
 
     It 'matches each session to its own tab when two trees look alike' {
-        $map = Resolve-SessionTab -Session @((New-TestSession 'A' 100), (New-TestSession 'B' 101)) `
+        $map = Resolve-SessionTab -Session @((New-TestSession -Id 'A' -ProcessId 100), (New-TestSession -Id 'B' -ProcessId 101)) `
                                   -Tab $tabs -Ancestors $walk
         $map['A'].Element | Should -Be 11
         $map['B'].Element | Should -Be 12
@@ -80,14 +77,14 @@ Describe 'Resolve-SessionTab' {
 
     It 'never matches on the title, which Konsole does not decorate' {
         # A session whose tab says nothing about it still matches on pid alone.
-        $map = Resolve-SessionTab -Session @((New-TestSession 'A' 100)) `
+        $map = Resolve-SessionTab -Session @((New-TestSession -Id 'A' -ProcessId 100)) `
                                   -Tab @($tabs[2]) -Ancestors $walk
         $map.Count | Should -Be 0
     }
 
     It 'survives having nothing to work with' {
         (Resolve-SessionTab -Session @() -Tab $tabs -Ancestors $walk).Count | Should -Be 0
-        (Resolve-SessionTab -Session @((New-TestSession 'A' 100)) -Tab @() -Ancestors $walk).Count |
+        (Resolve-SessionTab -Session @((New-TestSession -Id 'A' -ProcessId 100)) -Tab @() -Ancestors $walk).Count |
             Should -Be 0
     }
 }

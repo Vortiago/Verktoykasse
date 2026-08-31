@@ -8,13 +8,13 @@
 # types.ps1 does not select DBus.cs at all.
 BeforeAll {
     . (Join-Path $PSScriptRoot '../lib/console.ps1')
+    . (Join-Path $PSScriptRoot 'Fixtures.ps1')
 
-    $src = [System.IO.File]::ReadAllText((Join-Path $PSScriptRoot '../lib/cs/DBus.cs'))
     # fake-bus.cs reopens the same tagged namespace, so it compiles as one unit
     # with the client it judges.
-    $src += "`n" + [System.IO.File]::ReadAllText((Join-Path $PSScriptRoot 'fake-bus.cs'))
-    $wire, $variant, $fake, $bus = Add-TaggedTypes $src 'MatrixDBus{0}.Wire', 'MatrixDBus{0}.Variant',
-                                                       'MatrixDBus{0}.FakeBus', 'MatrixDBus{0}.Bus'
+    $wire, $variant, $fake, $bus = @(Import-TestCsType `
+        @((Join-Path $PSScriptRoot '../lib/cs/DBus.cs'), (Join-Path $PSScriptRoot 'fake-bus.cs')) `
+        @('MatrixDBus{0}.Wire', 'MatrixDBus{0}.Variant', 'MatrixDBus{0}.FakeBus', 'MatrixDBus{0}.Bus'))
     $script:Wire    = $wire
     $script:Variant = $variant
     $script:Fake    = $fake

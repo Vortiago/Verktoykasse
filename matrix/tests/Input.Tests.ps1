@@ -4,9 +4,10 @@
 # Windows CI covers the parser too, even though matrix never runs it there.
 BeforeAll {
     . (Join-Path $PSScriptRoot '../lib/console.ps1')
+    . (Join-Path $PSScriptRoot 'Fixtures.ps1')
 
-    $src = [System.IO.File]::ReadAllText((Join-Path $PSScriptRoot '../lib/cs/ConsoleVT_Linux.cs'))
-    $script:VT = (Add-TaggedTypes $src 'MatrixVT{0}.ConsoleVT')[0]
+    $script:VT = @(Import-TestCsType @((Join-Path $PSScriptRoot '../lib/cs/ConsoleVT_Linux.cs')) `
+                                        @('MatrixVT{0}.ConsoleVT'))[0]
 
     # Defined in BeforeAll, like every helper in the other suites: file-level
     # functions are not visible inside It blocks under Pester 5.
@@ -147,5 +148,55 @@ Describe 'ConsoleVT (Linux): mode surface' {
     It 'round-trips the timer calls as success' {
         $VT::timeBeginPeriod(1) | Should -Be 0
         $VT::timeEndPeriod(1)   | Should -Be 0
+    }
+}
+
+Describe 'ConsoleVT (Linux): raw mode against a real terminal' {
+    # The freeze class the rain hit live, twice: something else rewrites stdin
+    # termios after we went raw - .NET's [Console] property setters apply their
+    # own cached state, VMIN and all, and a blocking VMIN turns the frame loop
+    # into a slideshow that only moves on keypresses. Only a real terminal can
+    # show it, so this runs live, and only where stdin is one.
+    BeforeAll {
+        # A termios reader of our own, to see what is really set: the lflag's
+        # ICANON|ECHO bits and VMIN, as "flags|VMIN".
+        Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+public static class TtyProbe {
+    [StructLayout(LayoutKind.Sequential)]
+    public struct Termios {
+        public uint c_iflag, c_oflag, c_cflag, c_lflag;
+        public byte c_line;
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 32)] public byte[] c_cc;
+        public uint c_ispeed, c_ospeed;
+    }
+    [DllImport("libc")]
+    private static extern int tcgetattr(int fd, ref Termios t);
+    public static string Look() {
+        Termios t = new Termios(); t.c_cc = new byte[32];
+        if (tcgetattr(0, ref t) != 0) return "gone";
+        return (t.c_lflag & 0xA) + "|" + t.c_cc[6];
+    }
+}
+'@
+    }
+
+    It 'takes raw back after a Console property setter walked over it' `
+       -Skip:($IsWindows -or [Console]::IsInputRedirected) {
+        try {
+            [void]$VT::SetStdinMode(0x0090)          # MOUSE_ON: raw, and the mouse reported
+            [Console]::TreatControlCAsInput = $true  # the write that once undid it
+            [void]$VT::SetStdinMode(0x0090)          # EnterRaw re-verifies and re-engages
+            [TtyProbe]::Look() | Should -Be '0|0' -Because 'cooked flags are off and the read returns at once'
+        } finally {
+            # matrix.ps1's order: the [Console] setters go first, because each
+            # one applies .NET's own cached termios - the stdin restore must be
+            # the last write to win.
+            try { [Console]::TreatControlCAsInput = $false } catch { }
+            [void]$VT::SetStdinMode(0)               # give the terminal back
+        }
+        # The restore puts line editing and echo back, whatever VMIN it lands on.
+        ([TtyProbe]::Look() -notmatch '^0\|') | Should -BeTrue
     }
 }

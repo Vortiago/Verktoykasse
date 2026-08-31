@@ -1,11 +1,8 @@
 BeforeAll {
     . (Join-Path $PSScriptRoot '../lib/tabs.ps1')
     . (Join-Path $PSScriptRoot 'Fixtures.ps1')
-
-    # No Pid and an empty Name, so scoring here rests on the task alone.
-    function New-TestSession ($id, $status, $task) {
-        [pscustomobject]@{ SessionId = $id; Status = $status; Task = $task; Name = ''; Cwd = '' }
-    }
+    # New-TestSession comes from Fixtures.ps1: no Pid and an empty Name here,
+    # so scoring rests on the task alone.
 }
 
 Describe 'Get-MatchToken' {

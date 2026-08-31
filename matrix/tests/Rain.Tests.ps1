@@ -2,6 +2,10 @@
 # rain itself: the faults they cover exist only once the parts are wired up.
 BeforeAll {
     $script:rain = Join-Path $PSScriptRoot '../matrix.ps1'
+    # For Get-ProcessStartTicks: the fake registry's live record must carry the
+    # same procStart this platform's Claude writes.
+    . (Join-Path $PSScriptRoot '../lib/console.ps1')
+    . (Join-Path $PSScriptRoot '../lib/sessions.ps1')
     # pwsh installed as a dotnet global tool runs under the dotnet muxer. The process
     # path alone cannot relaunch it: the muxer needs pwsh.dll as its first argument.
     $script:pwshExe  = [Environment]::ProcessPath
@@ -22,12 +26,12 @@ BeforeAll {
     New-Item -ItemType Directory -Path (Join-Path $liveHome 'sessions') -Force | Out-Null
     New-Item -ItemType Directory -Path (Join-Path $liveHome 'projects/P') -Force | Out-Null
     # The registry start time is a FILETIME on Windows and /proc clock ticks on
-    # Linux (field 22 of /proc/N/stat, counted from after the comm field).
+    # Linux; Get-ProcessStartTicks (sessions.ps1, sourced above) reads the one
+    # this platform's Claude writes.
     $start = if ($IsWindows) {
         [System.Diagnostics.Process]::GetCurrentProcess().StartTime.ToFileTimeUtc()
     } else {
-        $stat = Get-Content -LiteralPath "/proc/$PID/stat" -Raw
-        [long]($stat.Substring($stat.LastIndexOf(')') + 2) -split ' ')[19]
+        Get-ProcessStartTicks -ProcessId $PID
     }
     @{  pid       = $PID
         procStart = "$start"
