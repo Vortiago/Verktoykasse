@@ -43,33 +43,78 @@ Anthropic API.
 
 ## The tier system
 
-Claude Code selects a model by tier (OPUS, SONNET, HAIKU, FABLE). oclaude maps
-each tier to an Ollama tag, which gives each role its own model:
+Claude Code asks for a model by tier. oclaude answers each tier with a different
+Ollama model, so every role runs on something suited to it.
 
-| Tier | Role | Ships as | Base model |
-|------|------|----------|------------|
-| **OPUS** | Main session model, runs plan and execution | `cc-chat-35b-q8` | `qwen3.6:35b-a3b-mtp-q8_0` |
-| **SONNET** | Permission classifier, gates tool calls without asking | `cc-fast-8b` | `lfm2.5:8b-a1b-q8_0` |
-| **HAIKU** | Background traffic, keeps the big model's runner free | `cc-fast-8b` | `lfm2.5:8b-a1b-q8_0` |
-| **FABLE** | Cloud tier, and the advisor subagent's model | `nemotron-3-ultra:cloud` | resolves server-side |
+```mermaid
+flowchart LR
+    subgraph Asks["What Claude Code asks for"]
+        MAIN["Main session, plan and execution"]
+        PERM["Permission classifier, decides which tool calls run unprompted"]
+        BG["Background traffic"]
+        ADV["advisor subagent, injected per launch"]
+    end
 
-These are the defaults, chosen for one particular machine. Treat them as a
-worked example, not a recommendation: swap in whatever your hardware runs.
+    subgraph Tier["Tier"]
+        OPUS["OPUS"]
+        SONNET["SONNET"]
+        HAIKU["HAIKU"]
+        FABLE["FABLE"]
+    end
 
-`SONNET` is not a chat tier. Claude Code asks it to classify whether a tool call
-may run without a prompt, so the model sitting there decides how much the
-session interrupts you.
+    subgraph Tags["Derived tag, a manifest that pins num_ctx and sampling"]
+        CHAT["cc-chat-35b-q8, num_ctx 262144"]
+        FAST["cc-fast-8b, num_ctx 128000"]
+    end
 
-### Derived tags
+    subgraph Base["Base model, pulled and resident"]
+        QWEN["qwen3.6:35b-a3b-mtp-q8_0"]
+        LFM["lfm2.5:8b-a1b-q8_0"]
+    end
 
-A tier points at a **derived tag** (`cc-chat-35b-q8`), not at a base model.
-A derived tag is a one-line manifest that pins `num_ctx` and the sampling
-parameters on top of a base model. It references the base model's existing
-blobs, so it costs a manifest rather than a copy of the weights.
+    CLOUD["nemotron-3-ultra:cloud, resolves server-side, nothing pulled"]
 
-The pin is the point: without a per-tag `num_ctx`, every model loads at the
-daemon-wide `OLLAMA_CONTEXT_LENGTH`, and at a large value only one model fits
-in memory at a time.
+    MAIN --> OPUS
+    PERM --> SONNET
+    BG --> HAIKU
+    ADV --> FABLE
+
+    OPUS --> CHAT
+    SONNET --> FAST
+    HAIKU --> FAST
+
+    CHAT --> QWEN
+    FAST --> LFM
+
+    FABLE --> CLOUD
+```
+
+The models above are the defaults, chosen for one particular machine. Treat them
+as a worked example, not a recommendation: swap in whatever your hardware runs.
+
+Three things in that chain are easy to get wrong.
+
+`SONNET` is not a smaller chat tier. Claude Code asks it to classify whether a
+tool call may run without a prompt, so the model sitting there decides how much
+the session interrupts you.
+
+`SONNET` and `HAIKU` share one tag here. Nothing requires that, but the
+classifier and the background traffic both want the same thing, which is to be
+fast and to stay off the main model's runner.
+
+`FABLE` skips the derived-tag layer, because a cloud tag has no local model to
+pin. It is also where the advisor subagent runs, so advice comes from a model
+other than the one that asked for it.
+
+### Why the derived tag is in the middle
+
+A derived tag references the base model's existing blobs, so it costs a manifest
+rather than a copy of the weights.
+
+The pin is the point. Without a per-tag `num_ctx`, every model loads at the
+daemon-wide `OLLAMA_CONTEXT_LENGTH`, and at a value large enough for the biggest
+model only that one fits in memory. Pinning per tag is what lets the session
+model, the classifier and anything else stay resident together.
 
 Run `oclaude-pull` to pull the base models, which rebuilds the derived tags
 afterwards. Run `oclaude-build-models` alone after editing only the pins.
@@ -99,11 +144,32 @@ Everything tunable lives in [`lib/config.ps1`](lib/config.ps1), in four parts.
    `From` value, then run `oclaude-pull`.
 3. **`$names`** holds the labels Claude Code shows in its model picker.
 4. **The returned object** holds the rest: the endpoint, the advisor, and the
-   daemon and Claude Code tunables.
+   Claude Code tunables.
 
 Run `oclaude-build-models` after editing `$derived`. An open shell keeps the
 functions it loaded at startup, so oclaude warns when a file has changed on
 disk since the shell loaded it.
+
+### Daemon settings are not in config.ps1
+
+They live in the User-scope `OLLAMA_*` environment variables, because the daemon
+reads its settings from whatever launched it, and that is not always oclaude. If
+the Ollama tray application is installed it starts the daemon first and ignores
+anything oclaude would have passed. User scope is the one place every starter
+reads, so it is the only place a setting reliably takes.
+
+Set them once, then run `oclaude-restart-daemon`, which re-reads User scope and
+prints what it applied. `OLLAMA_KEEP_ALIVE`, `OLLAMA_MAX_LOADED_MODELS`,
+`OLLAMA_CONTEXT_LENGTH` and `OLLAMA_KV_CACHE_TYPE` are the ones worth setting.
+
+```powershell
+[Environment]::SetEnvironmentVariable('OLLAMA_KEEP_ALIVE', '4h', 'User')
+oclaude-restart-daemon
+```
+
+`OLLAMA_CONTEXT_LENGTH` is why the per-tag `num_ctx` pins exist: it is one
+window for every model, so sizing it for the largest leaves room for only that
+one.
 
 ### The tunables that matter most
 
