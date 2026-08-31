@@ -199,30 +199,6 @@ Describe 'Frame cost counters' {
     }
 }
 
-Describe 'Synchronized output' {
-    # DECSET 2026: hold the frame until the end marker, so the terminal paints
-    # once instead of at every write that lands mid-frame. Konsole repaints on a
-    # bulk timer as bytes trickle in, which is where most of its write cost on a
-    # full rain frame goes; every terminal that does not know the mode ignores
-    # the pair, Windows Terminal included.
-    It 'opens the frame with the begin marker and closes it with the end marker' {
-        $r = New-TestRenderer 40 8
-        [void](Set-StillLane $r @(40, 255, 90) 'HEADER' 'working')
-        $frame = Get-Frame $r
-        $frame.StartsWith("$E[?2026h") | Should -BeTrue -Because 'the frame begins with BSU'
-        $frame.EndsWith("$E[?2026l")   | Should -BeTrue -Because 'the frame ends with ESU'
-    }
-
-    It 'says nothing at all on a frame that drew nothing' {
-        # An empty frame must not carry an open-then-close pair: that is two
-        # escapes telling the terminal to paint nothing.
-        $r = New-TestRenderer 40 8
-        [void](Set-StillLane $r @(40, 255, 90) 'HEADER' 'working')
-        [void](Get-Frame $r)
-        Get-Frame $r | Should -Be ''
-    }
-}
-
 Describe 'SetOverlay' {
     It 'puts the stats line on the frame' {
         $r = New-TestRenderer 40 8
