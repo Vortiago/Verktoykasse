@@ -39,6 +39,11 @@ namespace MatrixDBus__TAG__
         // is rejected, so measuring it precisely only reaches the same throw.
         static int TypeLen(string sig, int from)
         {
+            // 'a' is an array OF something. A signature that stops there is
+            // malformed, and it can be: Bus.Call decodes a reply with the
+            // signature the reply carried, not the one it asked for.
+            if (from >= sig.Length)
+                throw new DBusException("matrix: D-Bus signature ends mid-type: " + sig);
             return sig[from] == 'a' ? 1 + TypeLen(sig, from + 1) : 1;
         }
 
@@ -307,6 +312,21 @@ namespace MatrixDBus__TAG__
         // the tests' fake bus all have to frame a message the same way.
         public static int BodyStart(int arrLen) { return (16 + arrLen + 7) & ~7; }
 
+        // The spec's ceiling on one message. Both lengths in a header come off
+        // the wire, and a call that timed out mid-reply leaves the stream
+        // desynced - Invoke-Konsole says so, and Reset-KonsoleBus exists for it -
+        // so the next read takes body bytes for a header. Unchecked, a u32 above
+        // int.MaxValue casts negative and the arithmetic below lands wherever it
+        // lands; a merely enormous one has Bus.ReadMessage allocate it before
+        // anything has judged it. Both are the same answer: this is not a message.
+        public const uint MAX_MESSAGE = 0x08000000;   // 128 MiB
+
+        public static void CheckLengths(uint bodyLen, uint arrLen)
+        {
+            if (bodyLen > MAX_MESSAGE || arrLen > MAX_MESSAGE)
+                throw new DBusException("matrix: D-Bus message declares an impossible length");
+        }
+
         // One pass over the header field array, handing each field's code and value
         // to the caller. The grammar - a lenient 8-alignment, a byte code, a
         // signature, a value - is spelled here and read by both DecodeMessage and
@@ -331,6 +351,7 @@ namespace MatrixDBus__TAG__
             if (m == null || m.Length < 16) throw new DBusException("matrix: D-Bus message too short");
             if (m[0] != (byte)'l') throw new DBusException("matrix: D-Bus message is not little endian");
             type = m[1];
+            CheckLengths(ReadU32(m, 4), ReadU32(m, 12));
             int bodyLen = (int)ReadU32(m, 4);
             int arrLen = (int)ReadU32(m, 12);
             replySerial = 0; errorName = ""; sig = ""; body = new byte[0];
@@ -518,6 +539,8 @@ namespace MatrixDBus__TAG__
         byte[] ReadMessage()
         {
             byte[] head = ReadExact(16);
+            // Judged before the allocation, not after it.
+            Wire.CheckLengths(Wire.ReadU32(head, 4), Wire.ReadU32(head, 12));
             int bodyLen = (int)Wire.ReadU32(head, 4);
             int arrLen = (int)Wire.ReadU32(head, 12);
             byte[] m = new byte[Wire.BodyStart(arrLen) + bodyLen];

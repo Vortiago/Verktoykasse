@@ -235,6 +235,64 @@ Describe 'Wire: message decoding' {
     }
 }
 
+Describe 'Wire: malformed input' {
+    # Both lengths in a message header, and the signature the values are read
+    # with, come off the wire. A call that times out mid-reply leaves the stream
+    # desynced - Invoke-Konsole's own comment says so, and Reset-KonsoleBus
+    # exists for it - so the next read takes body bytes for a header. The codec
+    # answers all of it with DBusException, which the caller is written around;
+    # an IndexOutOfRange or an OverflowException from the runtime is the codec
+    # failing to hold its own contract.
+    It 'answers a signature that ends mid-type with its own error' {
+        # 'a' is an array OF something, and there is nothing after it.
+        { $Wire::DecodeValues([byte[]]@(), 'a') } |
+            Should -Throw -ExpectedMessage '*matrix:*'
+    }
+
+    It 'answers a body length that cannot be real with its own error' {
+        # 0xFFFFFFF0 body bytes. Cast to int that is -16, which slips past the
+        # truncation check and reaches new byte[-16].
+        $m = [byte[]]@(
+            0x6C, 2, 1, 1,
+            0xF0, 0xFF, 0xFF, 0xFF,     # body length
+            99, 0, 0, 0,                # serial
+            0, 0, 0, 0                  # header array length
+        )
+        $type = 0; $reply = [uint32]0; $sig = ''; $body = $null; $err = ''
+        { $Wire::DecodeMessage($m, [ref]$type, [ref]$reply, [ref]$err, [ref]$sig, [ref]$body) } |
+            Should -Throw -ExpectedMessage '*matrix:*'
+    }
+
+    It 'answers a header array length that cannot be real with its own error' {
+        # 0x7FFFFFF8 header-field bytes: the body-start arithmetic overflows int
+        # and lands negative, and the copy is handed a negative source index.
+        $m = [byte[]]@(
+            0x6C, 2, 1, 1,
+            0, 0, 0, 0,                 # body length
+            99, 0, 0, 0,                # serial
+            0xF8, 0xFF, 0xFF, 0x7F      # header array length
+        )
+        $type = 0; $reply = [uint32]0; $sig = ''; $body = $null; $err = ''
+        { $Wire::DecodeMessage($m, [ref]$type, [ref]$reply, [ref]$err, [ref]$sig, [ref]$body) } |
+            Should -Throw -ExpectedMessage '*matrix:*'
+    }
+
+    It 'still reads a message that sits exactly on the size ceiling' {
+        # The guard rejects what cannot be real, not what is merely large: a
+        # length at the spec's 128 MiB limit is still a length, and this message
+        # must fail as truncated - the existing answer - rather than as impossible.
+        $m = [byte[]]@(
+            0x6C, 2, 1, 1,
+            0x00, 0x00, 0x00, 0x08,     # body length: exactly 0x08000000
+            99, 0, 0, 0,
+            0, 0, 0, 0
+        )
+        $type = 0; $reply = [uint32]0; $sig = ''; $body = $null; $err = ''
+        { $Wire::DecodeMessage($m, [ref]$type, [ref]$reply, [ref]$err, [ref]$sig, [ref]$body) } |
+            Should -Throw -ExpectedMessage '*truncated*'
+    }
+}
+
 Describe 'Bus: the session bus handshake' {
     # Judged against a fake bus on a loopback socket, not against this machine's
     # real one: the suite runs on CI runners with no D-Bus at all. The fake is

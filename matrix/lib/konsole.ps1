@@ -100,6 +100,17 @@ function Get-AllTerminalTab {
 function Select-TerminalTab {
     # Konsole switches the window's current session; there is no Activate on the
     # session itself.
+    #
+    # It does not raise the window either, and that is not an omission here: the
+    # whole of org.kde.konsole.Window is ViewManager's Q_SCRIPTABLE list -
+    # sessionCount, sessionList, currentSession, setCurrentSession, newSession,
+    # defaultProfile, profileList, next/prevSession, moveSession*, the split and
+    # view calls - and nothing in it raises or activates. activationRequest is a
+    # signal, not a callable method. So a click on a session living in another
+    # Konsole window switches that window's tab where nobody can see it, unlike
+    # tabs.ps1, which has WinFinder::Activate for exactly this case. Fixing it
+    # means going outside Konsole (KWindowSystem, or an XDG activation token),
+    # and on Wayland a compositor is entitled to refuse the raise anyway.
     param(
         [Parameter(Mandatory)] $Tab,
         [scriptblock] $Call = ${function:Invoke-Konsole}
