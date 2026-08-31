@@ -363,10 +363,9 @@ Describe 'ConvertTo-ProcStartTicks' {
 
 Describe 'Test-SessionAlive on an unreadable stat line' -Skip:($IsWindows) {
     It 'keeps the session, the same answer an unreadable procStart gets' {
-        # The rule this file already states for a procStart that will not parse:
-        # a field that verifies nothing is not evidence the process is gone. The
-        # reading side has to answer the same way, or a live lane vanishes for
-        # the rest of the run over a stat line nobody could read.
+        # The rule sessions.ps1 already states for a procStart that will not
+        # parse. The reading side has to answer the same way, or a live lane
+        # vanishes for the rest of the run over an unreadable stat line.
         Mock Get-ProcessStartTicks { $null }
         Test-SessionAlive -ProcessId $PID -ProcStart '12345' | Should -BeTrue
     }

@@ -82,17 +82,21 @@ if ($Host.Name -like '*ISE*') {
     throw 'Run this in Windows Terminal, PowerShell or conhost - the ISE has no real console.'
 }
 
-foreach ($part in 'console', 'types', 'palette', 'lanes', 'sessions', 'tabs') {
-    $file = Join-Path (Join-Path $PSScriptRoot 'lib') "$part.ps1"
+# terminal/ splits in two: tabmap.ps1 is the map itself and knows no platform,
+# and exactly one backend under it answers the six terminal functions the map
+# calls - Windows Terminal over UI Automation, or Konsole over D-Bus.
+$lib  = Join-Path $PSScriptRoot 'lib'
+$term = Join-Path $lib 'terminal'
+$load = @(
+    foreach ($part in 'console', 'stats', 'types', 'palette', 'lanes', 'sessions') {
+        Join-Path $lib "$part.ps1"
+    }
+    Join-Path $term 'tabmap.ps1'
+    Join-Path $term $(if ($IsWindows) { 'windows-terminal.ps1' } else { 'konsole.ps1' })
+)
+foreach ($file in $load) {
     if (-not (Test-Path -LiteralPath $file)) { throw "matrix: cannot load $file" }
     . $file
-}
-
-# Konsole on Linux: the same five tab functions tabs.ps1 defines for Windows
-# Terminal, answered over D-Bus instead. Sourced after tabs.ps1, so these
-# definitions win.
-if (-not $IsWindows) {
-    . (Join-Path (Join-Path $PSScriptRoot 'lib') 'konsole.ps1')
 }
 
 # Read before anything slow runs. -ThisWindow and -Click take the foreground
@@ -291,8 +295,8 @@ try {
             # shows up as a stutter and nowhere else.
             $pollAt = if ($frameStats.Show) { $clock.Elapsed.TotalMilliseconds } else { 0 }
             $lanes = Get-SessionLanes @(Get-LiveSession)
-            # Reported on its own, and taken back out of this frame's build: the
-            # poll ran inside the stretch the frame clock is timing.
+            # Reported on its own, and taken back out of build: it ran inside the
+            # stretch the frame clock is timing.
             if ($frameStats.Show) {
                 $frameStats.PollMs      = $clock.Elapsed.TotalMilliseconds - $pollAt
                 $frameStats.PollFrameMs = $frameStats.PollMs

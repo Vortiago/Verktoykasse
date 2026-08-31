@@ -36,7 +36,7 @@ $ErrorActionPreference = 'Stop'
 # cached one does not, and that is the difference this number makes visible.
 $bootClock = [System.Diagnostics.Stopwatch]::StartNew()
 
-foreach ($part in 'console', 'types', 'palette', 'lanes') {
+foreach ($part in 'console', 'stats', 'types', 'palette', 'lanes') {
     $file = Join-Path (Join-Path $PSScriptRoot 'lib') "$part.ps1"
     if (-not (Test-Path -LiteralPath $file)) { throw "matrix: cannot load $file" }
     . $file

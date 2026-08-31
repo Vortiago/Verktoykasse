@@ -1,8 +1,8 @@
-# The Konsole stand-ins for the Windows Terminal pieces of tabs.ps1: which window
+# The Konsole answers to windows-terminal.ps1's six questions: which window
 # this shell lives in, which tabs exist, and how a session finds its tab. No bus is
 # involved - the D-Bus call is a scriptblock seam, and the pid walk is injected.
 BeforeAll {
-    . (Join-Path $PSScriptRoot '../lib/konsole.ps1')
+    . (Join-Path $PSScriptRoot '../lib/terminal/konsole.ps1')
     . (Join-Path $PSScriptRoot 'Fixtures.ps1')
 }
 
@@ -35,7 +35,7 @@ Describe 'Get-OwnTerminalWindow' {
 }
 
 Describe 'Test-TabSupport' {
-    # The Konsole answer to the same question tabs.ps1 answers for Windows
+    # The Konsole answer to the same question windows-terminal.ps1 answers for
     # Terminal, and the reason matrix.ps1 no longer asks which platform it is on.
     It 'names the missing tab when Konsole did not export a window' {
         Test-TabSupport -Hwnd 0 | Should -Be 'this shell is not running in a Konsole tab'

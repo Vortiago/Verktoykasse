@@ -1,5 +1,5 @@
 BeforeAll {
-    . (Join-Path $PSScriptRoot '../lib/tabs.ps1')
+    . (Join-Path $PSScriptRoot '../lib/terminal/windows-terminal.ps1')
     . (Join-Path $PSScriptRoot 'Fixtures.ps1')
     # New-TestSession comes from Fixtures.ps1: no Pid and an empty Name here,
     # so scoring rests on the task alone.
@@ -90,48 +90,6 @@ Describe 'Resolve-SessionTab' {
     It 'survives having nothing to work with' {
         (Resolve-SessionTab -Session @() -Tab @($busy1)).Count | Should -Be 0
         (Resolve-SessionTab -Session @($busySes) -Tab @()).Count | Should -Be 0
-    }
-}
-
-Describe 'Merge-SessionTab' {
-    BeforeAll {
-        $script:t1 = New-TestTab 100 1 'alpha' 'busy'
-        $script:t2 = New-TestTab 100 2 'beta'  'idle'
-        $script:a  = New-TestSession 'A' 'busy' 'alpha'
-        $script:b  = New-TestSession 'B' 'idle' 'beta'
-    }
-
-    It 'takes the fresh match over the previous one' {
-        $map = Merge-SessionTab -Session @($a) -Fresh @{ A = $t2 } -Previous @{ A = $t1 }
-        $map['A'].Index | Should -Be 2
-    }
-
-    It 'keeps the last tab of a session this pass could not match' {
-        # A tab is retitled every turn, and its glyph lags the registry. A rebuild can
-        # fail to re-match a session it matched a moment ago. Dropping it here made a
-        # lane vanish the moment its session was prompted.
-        $map = Merge-SessionTab -Session @($a, $b) -Fresh @{ B = $t2 } -Previous @{ A = $t1; B = $t2 }
-        $map['A'].Index | Should -Be 1
-        $map['B'].Index | Should -Be 2
-    }
-
-    It 'does not carry a tab this pass gave to someone else' {
-        $map = Merge-SessionTab -Session @($a, $b) -Fresh @{ B = $t1 } -Previous @{ A = $t1 }
-        $map.ContainsKey('A') | Should -BeFalse
-        $map['B'].Index | Should -Be 1
-    }
-
-    It 'lets only one session inherit a tab' {
-        $map = Merge-SessionTab -Session @($a, $b) -Fresh @{} -Previous @{ A = $t1; B = $t1 }
-        $map.Count | Should -Be 1
-    }
-
-    It 'leaves a session with no evidence unmatched, which is what makes the caller re-try' {
-        (Merge-SessionTab -Session @($a) -Fresh @{} -Previous @{}).Count | Should -Be 0
-    }
-
-    It 'returns nothing for no sessions, whatever it was given' {
-        (Merge-SessionTab -Session @() -Fresh @{} -Previous @{ A = $t1 }).Count | Should -Be 0
     }
 }
 

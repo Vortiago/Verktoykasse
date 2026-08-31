@@ -45,8 +45,8 @@ jobs:
   pester:
     # matrix/ is PowerShell with two platform halves: the Windows console API and
     # UIA over Windows Terminal, or termios and a raw D-Bus client for Konsole.
-    # Each half only runs on its own platform, so each is gated on its own runner
-    # — a Windows-only job green-lights Linux code that was never executed.
+    # Each half only runs on its own platform, so each needs its own runner. A
+    # Windows-only job green-lights Linux code that was never executed.
     # Same command a session runs locally.
     strategy:
       # Both answers, every time: one platform failing must not cancel the run

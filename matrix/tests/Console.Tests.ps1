@@ -1,5 +1,6 @@
 BeforeAll {
     . (Join-Path $PSScriptRoot '../lib/console.ps1')
+    . (Join-Path $PSScriptRoot '../lib/stats.ps1')
     $script:E = [char]27
 }
 
@@ -101,9 +102,8 @@ namespace PesterProbe__TAG__
 
 Describe 'Frame stats' {
     # The overlay exists to say WHERE a slow frame went, so the split is what is
-    # asserted here. The clocks are stand-ins: a real Stopwatch cannot be moved to
-    # the one-second mark, and Update-FrameStats only ever asks them for elapsed
-    # time and a restart.
+    # asserted. The clocks are stand-ins: a real Stopwatch cannot be moved to the
+    # one-second mark, and Update-FrameStats only asks them for elapsed time.
     BeforeAll {
         function New-FakeClock ($ms) {
             [pscustomobject]@{ ElapsedMilliseconds = $ms
@@ -156,8 +156,8 @@ Describe 'Frame stats' {
     }
 
     It 'leaves the poll out where nothing polls' {
-        # The preview renders from the style file: it has no session read, and a
-        # "poll 0.0" there would read as a measurement rather than an absence.
+        # The preview has no session read, and "poll 0.0" would read as a
+        # measurement rather than an absence.
         Get-StatsLine 4.0 1.0 | Should -Not -Match 'poll'
     }
 
@@ -168,9 +168,8 @@ Describe 'Frame stats' {
     }
 
     It 'does not also charge the poll to build, which ran inside the same frame' {
-        # The poll happens inside the stretch the frame clock is timing, so a
-        # frame of 10 ms holding an 8 ms poll and a 1 ms write left 1 ms of our
-        # own work. Counting the poll twice makes the renderer look like the
+        # A 10 ms frame holding an 8 ms poll and a 1 ms write left 1 ms of our
+        # own work. Counted twice, the poll makes the renderer look like the
         # problem on exactly the frames where it is not.
         $stats = New-FrameStats -Show $true -TargetFps 30
         $stats.PollMs = 8.0; $stats.PollFrameMs = 8.0
@@ -178,8 +177,7 @@ Describe 'Frame stats' {
     }
 
     It 'charges the poll to the one frame that waited for it' {
-        # PollFrameMs is cleared as it is consumed: the next frame is not still
-        # paying for a poll that ran before it.
+        # Cleared as it is consumed: the next frame does not still pay for it.
         $stats = New-FrameStats -Show $true -TargetFps 30
         $stats.PollFrameMs = 8.0
         $stats.Frame  = New-FakeClock 10.0
@@ -195,8 +193,7 @@ Describe 'Frame stats' {
     }
 
     It 'formats invariantly, whatever the machine decides a decimal point is' {
-        # These numbers get pasted into issues, and a decimal comma in a field this
-        # dense reads as a thousands separator.
+        # A decimal comma in a field this dense reads as a thousands separator.
         $prev = [System.Threading.Thread]::CurrentThread.CurrentCulture
         try {
             [System.Threading.Thread]::CurrentThread.CurrentCulture = [cultureinfo]'nb-NO'

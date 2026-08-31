@@ -4,8 +4,8 @@
 # not read back out of the encoder - an encoder that agrees with itself proves
 # nothing.
 #
-# This file compiles DBus.cs standalone, so it also covers Windows CI, where
-# types.ps1 does not select DBus.cs at all.
+# The three cs/DBus*.cs files compile standalone here, so this covers Windows CI
+# too, where types.ps1 does not select them at all.
 BeforeAll {
     . (Join-Path $PSScriptRoot '../lib/console.ps1')
     . (Join-Path $PSScriptRoot 'Fixtures.ps1')
@@ -13,7 +13,10 @@ BeforeAll {
     # fake-bus.cs reopens the same tagged namespace, so it compiles as one unit
     # with the client it judges.
     $wire, $variant, $fake, $bus = @(Import-TestCsType `
-        @((Join-Path $PSScriptRoot '../lib/cs/DBus.cs'), (Join-Path $PSScriptRoot 'fake-bus.cs')) `
+        @((Join-Path $PSScriptRoot '../lib/cs/DBus.cs'),
+          (Join-Path $PSScriptRoot '../lib/cs/DBusEncode.cs'),
+          (Join-Path $PSScriptRoot '../lib/cs/DBusDecode.cs'),
+          (Join-Path $PSScriptRoot 'fake-bus.cs')) `
         @('MatrixDBus{0}.Wire', 'MatrixDBus{0}.Variant', 'MatrixDBus{0}.FakeBus', 'MatrixDBus{0}.Bus'))
     $script:Wire    = $wire
     $script:Variant = $variant
@@ -250,10 +253,9 @@ Describe 'Wire: malformed input' {
     }
 
     It 'answers a string length that cannot be real with its own error' {
-        # A string's length is a u32 on the wire and an int in the reader, so a
-        # desynced stream can present it as negative or as more than the buffer
-        # holds. Both once reached Encoding.GetString and threw the runtime's
-        # ArgumentOutOfRangeException, which no caller here is written around.
+        # The length is a u32 on the wire and an int in the reader, so a desynced
+        # stream can present it as negative or larger than the buffer. Both once
+        # reached Encoding.GetString and threw .NET's own argument error.
         { $Wire::DecodeValues([byte[]]@(0xFF, 0xFF, 0xFF, 0xFF), 's') } |
             Should -Throw -ExpectedMessage '*matrix:*'
         { $Wire::DecodeValues([byte[]]@(0xFF, 0xFF, 0xFF, 0x7F), 's') } |

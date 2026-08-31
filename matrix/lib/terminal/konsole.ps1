@@ -1,17 +1,12 @@
-# Konsole on Linux, standing in for the Windows Terminal pieces of tabs.ps1.
-# matrix.ps1 dot-sources tabs.ps1 first and this file second, so the same names
-# here replace the Windows ones. Everything tabs.ps1 owns that is already
-# platform-neutral - the tab map state, the retry backoff, the merge - is reused
-# untouched.
+# Konsole on Linux: the backend tabmap.ps1 calls when the rain is not on Windows.
+# It answers the same six names windows-terminal.ps1 does, so the map above it
+# never asks which platform it is on. matrix.ps1 loads one of the two, not both.
 #
-# The D-Bus call each function makes is a scriptblock seam (-Call), which is how
-# the tests drive these without a bus. The real one talks to the Konsole process
-# that launched this shell: konsole is not a well-known bus name, so the unique
-# name it exports through the environment is the one to call.
-#
-# That seam defaults to Invoke-Konsole itself, so the call's defaults are written
-# once. A seam that re-spelled them drifted from them once, sent an empty
-# interface field, and the bus answers an invalid message by hanging up.
+# Every call goes through the -Call seam, which is how the tests drive these
+# without a bus. It defaults to Invoke-Konsole so the call's defaults are written
+# once: a seam that re-spelled them drifted, sent an empty interface field, and
+# the bus hangs up on an invalid message. konsole is not a well-known bus name,
+# so the unique one it exports through the environment is what gets dialled.
 
 $script:KonsoleService = $env:KONSOLE_DBUS_SERVICE
 $script:KonsoleBus = $null
@@ -47,10 +42,9 @@ function Invoke-Konsole {
         $bus.Call($script:KonsoleService, $Path, $Iface, $Member,
                   $InSig, $InArgs, $OutSig)
     } catch {
-        # The connection is cached for the life of the run, and a failed call
-        # leaves it mid-message: the next read starts inside a reply nobody
-        # finished. Konsole exiting, or one read timing out, would otherwise
-        # blank the lanes for good, because every retry reuses the dead socket.
+        # Cached for the life of the run, and a failed call leaves it mid-message:
+        # the next read starts inside a reply nobody finished. Without this, one
+        # timed-out read blanks the lanes for good on the same dead socket.
         Reset-KonsoleBus
         throw
     }
@@ -70,10 +64,9 @@ function Get-AllTerminalTab {
     param([scriptblock] $Call = ${function:Invoke-Konsole})
 
     try {
-        # The bus values arrive unwrapped: Invoke-Konsole's output comes through
-        # the pipeline, so a lone string arrives as a bare string - and @() around
-        # a string enumerates its CHARACTERS, which is how one reply's first
-        # character once stood in for the whole XML. Cast instead of index.
+        # Invoke-Konsole's output comes through the pipeline, so a lone string
+        # arrives bare - and @() around a string enumerates its CHARACTERS, which
+        # is how one reply's first character once stood in for the whole XML.
         $xml = [string](& $Call -Path '/Windows' -Iface 'org.freedesktop.DBus.Introspectable' `
                                 -Member 'Introspect' -OutSig 's')
         $tabs = foreach ($m in [regex]::Matches($xml, '<node\s+name="(\d+)"')) {
@@ -99,18 +92,13 @@ function Get-AllTerminalTab {
 
 function Select-TerminalTab {
     # Konsole switches the window's current session; there is no Activate on the
-    # session itself.
-    #
-    # It does not raise the window either, and that is not an omission here: the
-    # whole of org.kde.konsole.Window is ViewManager's Q_SCRIPTABLE list -
-    # sessionCount, sessionList, currentSession, setCurrentSession, newSession,
-    # defaultProfile, profileList, next/prevSession, moveSession*, the split and
-    # view calls - and nothing in it raises or activates. activationRequest is a
-    # signal, not a callable method. So a click on a session living in another
-    # Konsole window switches that window's tab where nobody can see it, unlike
-    # tabs.ps1, which has WinFinder::Activate for exactly this case. Fixing it
-    # means going outside Konsole (KWindowSystem, or an XDG activation token),
-    # and on Wayland a compositor is entitled to refuse the raise anyway.
+    # session itself, and no raise either. org.kde.konsole.Window is ViewManager's
+    # whole Q_SCRIPTABLE list and nothing in it raises or activates
+    # (activationRequest is a signal, not a method). So a click on a session in
+    # another Konsole window switches that window's tab where nobody can see it,
+    # unlike windows-terminal.ps1, which has WinFinder::Activate. Fixing it means
+    # leaving Konsole for KWindowSystem or an XDG activation token, and Wayland
+    # lets the compositor refuse the raise anyway.
     param(
         [Parameter(Mandatory)] $Tab,
         [scriptblock] $Call = ${function:Invoke-Konsole}
@@ -125,11 +113,10 @@ function Select-TerminalTab {
 }
 
 function Test-TabSupport {
-    # Konsole's two preconditions, answered before the rain starts: the tab that
-    # launched this shell, and a bus to ask about it. Dialling here is what turns a
-    # missing bus into a message - Get-AllTerminalTab answers a failed call with an
-    # empty list, which -ThisWindow would otherwise render as a window holding no
-    # sessions at all, for the life of the run.
+    # Konsole's two preconditions, before the rain starts: the tab that launched
+    # this shell, and a bus to ask about it. Dialling here turns a missing bus into
+    # a message - Get-AllTerminalTab answers a failed call with an empty list,
+    # which -ThisWindow would render as a window holding no sessions at all.
     param([long] $Hwnd)
     if (-not $Hwnd) { return 'this shell is not running in a Konsole tab' }
     try { [void](Get-KonsoleBus) } catch { return ($_.Exception.Message -replace '^matrix: ', '') }
@@ -146,14 +133,11 @@ function Get-TabKey {
 }
 
 function Resolve-SessionTab {
-    # Konsole tab titles do not carry Claude's glyph - the default tab format is
-    # "dir : shell", so the Windows title scoring has nothing to score. The tab's
-    # process id is exact instead: walk a session's ancestors, and the tab whose
-    # process id is among them is the tab it runs in.
-    #
-    # The walk goes UP from the claude pid, not down from the tab: claude is
-    # often not the tab shell's direct child (bash -> ollama -> claude), so
-    # descending from the tab would never find it.
+    # Konsole tab titles do not carry Claude's glyph - the default format is
+    # "dir : shell" - so the Windows title scoring has nothing to score. The tab's
+    # process id is exact instead: the tab whose pid is among a session's ancestors
+    # is the tab it runs in. The walk goes UP from the claude pid, because claude
+    # is often not the tab shell's direct child (bash -> ollama -> claude).
     param(
         [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Session,
         [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Tab,

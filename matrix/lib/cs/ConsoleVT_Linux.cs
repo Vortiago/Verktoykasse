@@ -118,10 +118,9 @@ namespace MatrixVT__TAG__
                 }
                 else
                 {
-                    // Leaving the mode always restores cooked input, so the restore
-                    // path in matrix.ps1 works even when mouse reporting never ran.
-                    // The mouse-off bytes only go out if the mouse-on ones did: a
-                    // run without -Click never switched reporting on.
+                    // Leaving always restores cooked input, so matrix.ps1's restore
+                    // path works even when mouse reporting never ran. The mouse-off
+                    // bytes only go out if the mouse-on ones did.
                     if (mouseWritten) { WriteOut(MouseOffSeq); mouseWritten = false; }
                     LeaveRaw();
                 }
@@ -142,11 +141,10 @@ namespace MatrixVT__TAG__
                 savedOk = true;                            // raw write below would cook the save
             }
 
-            // Do not trust that raw is still in effect from last time. Others with
-            // an interest in stdin rewrite it behind our back: .NET's [Console]
-            // property setters apply their own cached termios, and what they put
-            // back is VMIN=1 - a read that waits for a byte. A frame loop that
-            // polls between frames then only moves when something is typed.
+            // Do not trust that raw is still in effect. .NET's [Console] property
+            // setters apply their own cached termios behind our back, and what they
+            // put back is VMIN=1 - a read that waits for a byte. A frame loop that
+            // polls between frames would then only move when something is typed.
             if (rawOn && (t.c_lflag & (ICANON | ECHO | ISIG)) == 0 && t.c_cc[VMIN] == 0)
                 return;                                  // still raw: leave it be
 
@@ -176,13 +174,10 @@ namespace MatrixVT__TAG__
 
             int n = read(0, readBuf, readBuf.Length);
             if (n < 0) n = 0;                             // EAGAIN and friends: nothing new
-            // Nothing new is not nothing to do. The stash holds either the bytes
-            // behind an event already reported - the second of two clicks in one
-            // frame sits there - or an ESC held back because the read filled the
-            // buffer and the sequence looked split. Returning here on an idle
-            // read strands both until some later byte arrives, and none may: the
-            // second click never lands, and an ESC that was the key after all
-            // never exits the rain.
+            // The stash holds either the bytes behind an event already reported -
+            // the second of two clicks in one frame - or an ESC held back below.
+            // Returning here on an idle read stranded both until some later byte
+            // arrived, and none need ever arrive.
             if (n == 0 && pending.Length == 0) return NONE;
 
             byte[] all;
@@ -207,14 +202,12 @@ namespace MatrixVT__TAG__
                 pending = noBytes;
             }
 
-            // A read that filled the buffer means the terminal had more queued than
-            // fit, so an ESC on the very end is the head of a sequence split across
-            // reads, not the key itself. A click burst is nine bytes of press and
-            // nine of release: enough of them queued behind a slow frame and the
-            // split lands there, and a lone trailing ESC would exit the rain on a
-            // click. Hold it back for the next read instead. An idle read is the
-            // other half of that bargain: nothing followed, so a held ESC was the
-            // key, and n of 0 puts it back inside the limit to be read as one.
+            // A read that filled the buffer means more was queued than fit, so a
+            // trailing ESC is the head of a split sequence, not the key: a click
+            // burst is nine bytes of press and nine of release, and a lone ESC at
+            // the split would exit the rain on a click. Hold it back. An idle read
+            // settles it the other way - nothing followed, so the ESC was the key,
+            // and n of 0 leaves it inside the limit.
             int limit = (n == readBuf.Length && all[len - 1] == 0x1b) ? len - 1 : len;
 
             int off = 0;
@@ -225,32 +218,27 @@ namespace MatrixVT__TAG__
                 // used == 0 is a sequence the terminal has not finished sending.
                 if (used == 0) break;
                 off += used;
-                // Stash before answering, not only on the way out with nothing to
-                // report. A click burst is nine bytes of press and nine of release:
-                // returning the press and dropping what followed resumes the next
-                // read INSIDE the release, whose leftover parameter bytes (";3M")
-                // are printable - and a printable byte is an exit. Clicking twice
-                // in one frame would end the rain.
+                // Stash before answering, not only on the way out. Returning the
+                // press and dropping what followed resumes the next read INSIDE the
+                // release, whose leftover parameter bytes (";3M") are printable -
+                // and a printable byte is an exit.
                 if (what != NONE) { x = cx; y = cy; Stash(all, off, len); return what; }
             }
             Stash(all, off, len);
             return NONE;
         }
 
-        // Keep the tail for the next read; nothing before it can matter more than it
-        // does. The bytes are copied out because `all` may be readBuf itself, which
-        // the next frame overwrites. Anything longer than the longest escape sequence
-        // a terminal sends is not one: drop it rather than let a stream that never
-        // terminates grow the stash without bound. `pending` is empty on every path
-        // that reaches here, so dropping is simply not filling it.
+        // Keep the tail for the next read. The bytes are copied because `all` may
+        // be readBuf, which the next frame overwrites. Anything longer than the
+        // longest escape sequence a terminal sends is not one: drop it rather than
+        // let a stream that never terminates grow the stash without bound.
         private static void Stash(byte[] all, int off, int len)
         {
             int keep = len - off;
             if (keep <= 0 || keep > MAX_PENDING) return;
-            // An idle read that classified nothing hands back the array it was
-            // given, whole. Copying it would allocate once a frame for as long
-            // as an unterminated sequence sits there. readBuf is the exception
-            // the copy below exists for: the next read overwrites it.
+            // An idle read hands back the array it was given, whole: copying it
+            // would allocate once a frame for as long as an unterminated sequence
+            // sits there. readBuf is the exception - the next read overwrites it.
             if (off == 0 && all.Length == len && !ReferenceEquals(all, readBuf)) { pending = all; return; }
             pending = new byte[keep];
             Array.Copy(all, off, pending, 0, keep);

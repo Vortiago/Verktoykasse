@@ -11,12 +11,16 @@
 # termios/escape input and a raw D-Bus client for Konsole, which has no client
 # library worth pulling in. Each platform names only the types it has, and binds
 # only the variables it uses.
+#
+# A _Windows or _Linux suffix in cs/ means the platform picks one of them; a file
+# without a suffix is shared by both. A third platform adds its own pair and one
+# more branch here.
 
 if ($IsWindows) {
-    $csFiles   = 'ConsoleVT.cs', 'Renderer.cs', 'Windows.cs'
+    $csFiles   = 'ConsoleVT_Windows.cs', 'Renderer.cs', 'Windows.cs'
     $typeNames = 'MatrixVT{0}.ConsoleVT', 'MatrixRain{0}.Renderer', 'MatrixWin{0}.Windows'
 } else {
-    $csFiles   = 'ConsoleVT_Linux.cs', 'Renderer.cs', 'DBus.cs'
+    $csFiles   = 'ConsoleVT_Linux.cs', 'Renderer.cs', 'DBus.cs', 'DBusEncode.cs', 'DBusDecode.cs'
     $typeNames = 'MatrixVT{0}.ConsoleVT', 'MatrixRain{0}.Renderer', 'MatrixDBus{0}.Bus'
 }
 

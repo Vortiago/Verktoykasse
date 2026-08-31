@@ -34,10 +34,9 @@ function ConvertTo-ProcStartTicks {
     # from after the LAST ')' - the text after it starts at field 3, and
     # 22 - 3 = 19.
     #
-    # Nothing, not zero, for a line this cannot read. Zero is a real tick value
-    # - a process started at boot - so returning it would be a claim, and the
-    # one caller compares the answer against the registry and drops the session
-    # when it differs. A line nobody could parse is not evidence of anything.
+    # Nothing, not zero, for a line this cannot read: zero is a real tick value
+    # (a process started at boot), and the one caller compares the answer against
+    # the registry and drops the session when it differs.
     param([string] $Stat)
     $fields = ($Stat.Substring($Stat.LastIndexOf(')') + 2)) -split ' '
     if ($fields.Count -le 19) { return $null }
