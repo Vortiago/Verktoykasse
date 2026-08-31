@@ -20,6 +20,16 @@ Describe 'Get-MatchToken' {
     }
 }
 
+Describe 'Test-TabSupport' {
+    # matrix.ps1 asks the backend whether a tab map can be built at all, and prints
+    # or throws with what comes back. Only the no-window answer is asserted here:
+    # the other arm is Initialize-Uia, and nothing else in this suite depends on
+    # UI Automation being installed on the runner.
+    It 'names the missing window when the rain did not start in a terminal' {
+        Test-TabSupport -Hwnd 0 | Should -BeLike '*not a Windows Terminal window*'
+    }
+}
+
 Describe 'Resolve-SessionTab' {
     BeforeAll {
         $script:busy1  = New-TestTab 100 1 'alpha' 'busy'

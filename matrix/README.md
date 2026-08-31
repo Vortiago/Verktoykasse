@@ -83,9 +83,9 @@ stops a recycled PID from resurrecting a dead session.
 .\matrix.ps1 -ThisWindow -Click
 ```
 
-`-ThisWindow` keeps only the sessions in the same Windows Terminal window as
-the rain. `-Click` makes a left click on a lane switch to that session's tab.
-Both rest on the same tab map:
+`-ThisWindow` keeps only the sessions in the same terminal window as the rain.
+`-Click` makes a left click on a lane switch to that session's tab. Both rest on
+the same tab map. On Windows the backend is Windows Terminal over UI Automation:
 
 | Step | How |
 | --- | --- |
@@ -96,9 +96,11 @@ Both rest on the same tab map:
 | Switch the tab | every WT tab exposes `SelectionItemPattern`, so `Select()` raises it |
 | Pick a session's tab | a guess, see below |
 
-**Do not use the process tree.** Windows Terminal hosts every window in one
-process, so `claude.exe <- pwsh.exe <- WindowsTerminal.exe` resolves to the
-same PID for every session on the machine.
+**Do not use the process tree on Windows Terminal.** It hosts every window in
+one process, so `claude.exe <- pwsh.exe <- WindowsTerminal.exe` resolves to the
+same PID for every session on the machine. Konsole is one process for every
+window too, but it will name a tab's shell PID over D-Bus, which is what makes
+the process tree the exact answer there and a dead end here.
 
 Nothing identifies our own window exactly either. ConPTY leaves
 `GetConsoleWindow` null, and UI Automation sees only the terminal's chrome, no

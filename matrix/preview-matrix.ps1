@@ -106,7 +106,7 @@ $frameStats      = New-FrameStats -Show ([bool]$Stats)
 
 try {
     while ($true) {
-        Update-FrameStats $frameStats -Begin
+        if ($frameStats.Show) { $frameStats.Frame.Restart() }
 
         $cx = 0; $cy = 0
         if ($VT::PollInput([ref]$cx, [ref]$cy) -eq $VT::EXIT) { break }
@@ -145,7 +145,9 @@ try {
         $prevSec = $nowSec
         if ($dt -le 0) { $dt = 1.0 / $Fps } elseif ($dt -gt 0.25) { $dt = 0.25 }
         $renderer.WriteFrame($rawOut, $needFlush, $dt)
-        Update-FrameStats $frameStats -Renderer $renderer -Width $W -Height $H
+        if ($frameStats.Show) {
+            Update-FrameStats $frameStats -Renderer $renderer -Width $W -Height $H
+        }
 
         $now  = $clock.Elapsed.TotalMilliseconds
         $wait = $nextDue - $now
@@ -155,10 +157,6 @@ try {
     }
 } finally {
     Write-Raw $LEAVE_SCREEN
-    try { [Console]::CursorVisible = $true } catch { }
-    try { [Console]::TreatControlCAsInput = $false } catch { }
-    # After the [Console] setters, as in matrix.ps1: each of those applies .NET's
-    # own cached termios, so the stdin restore has to be the last write to win.
-    if ($null -ne $prevStdin) { try { [void]$VT::SetStdinMode($prevStdin) } catch { } }
+    Restore-ConsoleState -VT $VT -StdinMode $prevStdin
     if ($prevEncoding) { try { [Console]::OutputEncoding = $prevEncoding } catch { } }
 }

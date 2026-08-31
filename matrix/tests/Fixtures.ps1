@@ -18,6 +18,16 @@ function New-TestSession ($id, $status = 'idle', $task = '', $processId = 0) {
                        Name = ''; Cwd = ''; Pid = $processId }
 }
 
+# What Claude writes as "procStart" for a live process on this platform: a
+# FILETIME on Windows, /proc clock ticks on Linux. The fake registries a test
+# writes have to carry the same shape sessions.ps1 reads back, so both come from
+# here. The caller dot-sources ../lib/sessions.ps1 for Get-ProcessStartTicks, the
+# way Import-TestCsType below relies on console.ps1.
+function Get-TestProcStart ([int] $ProcessId = $PID) {
+    if ($IsWindows) { [System.Diagnostics.Process]::GetProcessById($ProcessId).StartTime.ToFileTimeUtc() }
+    else            { Get-ProcessStartTicks -ProcessId $ProcessId }
+}
+
 # Compiles .cs sources standalone for a test, through the same tagged-type
 # machinery lib/console.ps1 uses, so Windows CI covers the Linux C# too. The
 # types come back flat: collect with @() at the call site, because a bare

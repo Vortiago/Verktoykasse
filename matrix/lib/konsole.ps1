@@ -8,18 +8,13 @@
 # the tests drive these without a bus. The real one talks to the Konsole process
 # that launched this shell: konsole is not a well-known bus name, so the unique
 # name it exports through the environment is the one to call.
+#
+# That seam defaults to Invoke-Konsole itself, so the call's defaults are written
+# once. A seam that re-spelled them drifted from them once, sent an empty
+# interface field, and the bus answers an invalid message by hanging up.
 
 $script:KonsoleService = $env:KONSOLE_DBUS_SERVICE
 $script:KonsoleBus = $null
-
-# The one default -Call seam, built once and shared by the tab functions: they
-# differ in which arguments they pass, not in how a call reaches the bus. A
-# seam that drifted from Invoke-Konsole's defaults once sent an empty interface
-# field, and the bus answers an invalid message by hanging up.
-$script:KonsoleCall = { param($Path, $Iface = 'org.kde.konsole.Session', $Member,
-                              $OutSig = '', $InSig = '', $InArgs = @())
-                        Invoke-Konsole -Path $Path -Iface $Iface -Member $Member `
-                                       -InSig $InSig -InArgs $InArgs -OutSig $OutSig }
 
 function Get-KonsoleBus {
     if ($null -ne $script:KonsoleBus) { return $script:KonsoleBus }
@@ -72,8 +67,7 @@ function Get-AllTerminalTab {
     # Every tab of every Konsole window in the process that launched this shell.
     # Like Windows Terminal, konsole keeps all its windows in one process, so one
     # bus name covers them all.
-    param([scriptblock] $Call)
-    if (-not $Call) { $Call = $script:KonsoleCall }
+    param([scriptblock] $Call = ${function:Invoke-Konsole})
 
     try {
         # The bus values arrive unwrapped: Invoke-Konsole's output comes through
@@ -108,9 +102,8 @@ function Select-TerminalTab {
     # session itself.
     param(
         [Parameter(Mandatory)] $Tab,
-        [scriptblock] $Call
+        [scriptblock] $Call = ${function:Invoke-Konsole}
     )
-    if (-not $Call) { $Call = $script:KonsoleCall }
     try {
         [void](& $Call -Path "/Windows/$($Tab.Hwnd)" -Iface 'org.kde.konsole.Window' `
                        -Member 'setCurrentSession' -InSig 'i' -InArgs @([int]$Tab.Element))
@@ -118,6 +111,18 @@ function Select-TerminalTab {
     } catch {
         return $false
     }
+}
+
+function Test-TabSupport {
+    # Konsole's two preconditions, answered before the rain starts: the tab that
+    # launched this shell, and a bus to ask about it. Dialling here is what turns a
+    # missing bus into a message - Get-AllTerminalTab answers a failed call with an
+    # empty list, which -ThisWindow would otherwise render as a window holding no
+    # sessions at all, for the life of the run.
+    param([long] $Hwnd)
+    if (-not $Hwnd) { return 'this shell is not running in a Konsole tab' }
+    try { [void](Get-KonsoleBus) } catch { return ($_.Exception.Message -replace '^matrix: ', '') }
+    ''
 }
 
 function Get-TabKey {
@@ -141,11 +146,9 @@ function Resolve-SessionTab {
     param(
         [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Session,
         [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Tab,
-        [scriptblock] $Ancestors        # test seam: pid -> ancestor pid list
+        # test seam: pid -> ancestor pid list
+        [scriptblock] $Ancestors = ${function:Get-ProcessAncestorId}
     )
-    if (-not $Ancestors) {
-        $Ancestors = { param([int] $ProcessId) Get-ProcessAncestorId -ProcessId $ProcessId }
-    }
 
     $tabPids = @{}
     foreach ($t in $Tab) { $tabPids[[int]$t.Pid] = $t }

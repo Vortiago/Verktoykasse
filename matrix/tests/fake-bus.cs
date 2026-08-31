@@ -126,7 +126,7 @@ namespace MatrixDBus__TAG__
             if (!Fill(s, head, 0)) return null;
             int bodyLen = (int)Wire.ReadU32(head, 4);
             int arrLen = (int)Wire.ReadU32(head, 12);
-            byte[] m = new byte[((16 + arrLen + 7) & ~7) + bodyLen];
+            byte[] m = new byte[Wire.BodyStart(arrLen) + bodyLen];
             Array.Copy(head, m, 16);
             return Fill(s, m, 16) ? m : null;
         }

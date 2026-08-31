@@ -109,12 +109,7 @@ $glyphs = Get-RainGlyph -Ascii:$useAscii
 # session-to-tab match there is a pid walk, not a title match.
 $needTabs = [bool]($ThisWindow -or $Click)
 if ($needTabs) {
-    $why = ''
-    if (-not $hostHwnd) {
-        $why = if ($IsWindows) { 'this is not a Windows Terminal window, or it was not in front at startup' }
-               else            { 'this shell is not running in a Konsole tab' }
-    }
-    elseif ($IsWindows -and -not (Initialize-Uia)) { $why = 'UI Automation is unavailable' }
+    $why = Test-TabSupport -Hwnd $hostHwnd
     if ($why) {
         # -ThisWindow asked for a smaller set. Quietly showing every session looks
         # like a broken filter: say so and stop.
@@ -247,7 +242,7 @@ $laneBounds = $null         # col0[] and wid[], for routing a click back to a la
 
 try {
     while ($true) {
-        Update-FrameStats $frameStats -Begin
+        if ($frameStats.Show) { $frameStats.Frame.Restart() }
 
         $cx = 0; $cy = 0
         $what = $VT::PollInput([ref]$cx, [ref]$cy)
@@ -306,7 +301,9 @@ try {
         $prevSec = $nowSec
         if ($dt -le 0) { $dt = 1.0 / $Fps } elseif ($dt -gt 0.25) { $dt = 0.25 }
         $renderer.WriteFrame($rawOut, $needFlush, $dt)
-        Update-FrameStats $frameStats -Renderer $renderer -Width $W -Height $H
+        if ($frameStats.Show) {
+            Update-FrameStats $frameStats -Renderer $renderer -Width $W -Height $H
+        }
 
         # Pace against a running deadline: jitter does not accumulate into drift.
         $now  = $clock.Elapsed.TotalMilliseconds
@@ -317,9 +314,7 @@ try {
     }
 } finally {
     Write-Raw $LEAVE_SCREEN
-    try { [Console]::CursorVisible = $true } catch { }
-    try { [Console]::TreatControlCAsInput = $false } catch { }
-    if ($null -ne $prevStdin) { try { [void]$VT::SetStdinMode($prevStdin) } catch { } }
+    Restore-ConsoleState -VT $VT -StdinMode $prevStdin
     if ($timerRaised) { try { [void]$VT::timeEndPeriod(1) } catch { } }
     if ($prevEncoding) { try { [Console]::OutputEncoding = $prevEncoding } catch { } }
 }

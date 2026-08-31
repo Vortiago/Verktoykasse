@@ -6,14 +6,19 @@
 # call shells out to the compiler and costs about a second. Add-TaggedTypes
 # comes from console.ps1.
 #
-# The platform brings its own ConsoleVT and its own window lookup; the renderer
+# The platform brings its own ConsoleVT and its own terminal lookup; the renderer
 # is shared. Windows: the console API and UIA over Windows Terminal. Linux:
 # termios/escape input and a raw D-Bus client for Konsole, which has no client
-# library worth pulling in. Windows_Stub.cs stands in for the Windows lookup on
-# Linux, where nothing calls it.
+# library worth pulling in. Each platform names only the types it has, and binds
+# only the variables it uses.
 
-$csFiles = if ($IsWindows) { 'ConsoleVT.cs', 'Renderer.cs', 'Windows.cs' }
-           else            { 'ConsoleVT_Linux.cs', 'Renderer.cs', 'DBus.cs', 'Windows_Stub.cs' }
+if ($IsWindows) {
+    $csFiles   = 'ConsoleVT.cs', 'Renderer.cs', 'Windows.cs'
+    $typeNames = 'MatrixVT{0}.ConsoleVT', 'MatrixRain{0}.Renderer', 'MatrixWin{0}.Windows'
+} else {
+    $csFiles   = 'ConsoleVT_Linux.cs', 'Renderer.cs', 'DBus.cs'
+    $typeNames = 'MatrixVT{0}.ConsoleVT', 'MatrixRain{0}.Renderer', 'MatrixDBus{0}.Bus'
+}
 
 $typesSource = foreach ($f in $csFiles) {
     $p = Join-Path (Join-Path $PSScriptRoot 'cs') $f
@@ -21,8 +26,6 @@ $typesSource = foreach ($f in $csFiles) {
     [System.IO.File]::ReadAllText($p)
 }
 
-$typeNames = 'MatrixVT{0}.ConsoleVT', 'MatrixRain{0}.Renderer', 'MatrixWin{0}.Windows'
-if (-not $IsWindows) { $typeNames += 'MatrixDBus{0}.Bus' }
-
-# $DBusType stays $null on Windows, where nothing calls it.
-$VT, $RendererType, $WinFinder, $DBusType = Add-TaggedTypes ($typesSource -join "`n") $typeNames
+$types = Add-TaggedTypes ($typesSource -join "`n") $typeNames
+if ($IsWindows) { $VT, $RendererType, $WinFinder = $types }
+else            { $VT, $RendererType, $DBusType  = $types }

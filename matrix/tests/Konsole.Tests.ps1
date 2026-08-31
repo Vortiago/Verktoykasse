@@ -27,6 +27,23 @@ Describe 'Get-OwnTerminalWindow' {
     }
 }
 
+Describe 'Test-TabSupport' {
+    # The Konsole answer to the same question tabs.ps1 answers for Windows
+    # Terminal, and the reason matrix.ps1 no longer asks which platform it is on.
+    It 'names the missing tab when Konsole did not export a window' {
+        Test-TabSupport -Hwnd 0 | Should -Be 'this shell is not running in a Konsole tab'
+    }
+
+    It 'names the missing bus when there is a window but nothing to ask' {
+        # KONSOLE_DBUS_SERVICE is what Get-KonsoleBus dials, and it is unset
+        # anywhere that is not a Konsole tab - including this runner. Dialling
+        # here rather than at the first rebuild is the point: a failed call inside
+        # Get-AllTerminalTab returns an empty list, which -ThisWindow would render
+        # as a window holding no sessions rather than as a reason.
+        Test-TabSupport -Hwnd 1 | Should -Not -BeNullOrEmpty
+    }
+}
+
 Describe 'Resolve-SessionTab' {
     # Konsole tab titles do not carry Claude's glyph - the default tab format is
     # "dir : shell", so the Windows title scoring has nothing to score. The tab's

@@ -119,10 +119,24 @@ function Add-TaggedTypes {
     foreach ($name in $TypeNames) { ($name -f $tag) -as [type] }
 }
 
+# Handing stdin back, in the one order that works. CursorVisible and
+# TreatControlCAsInput each apply .NET's own cached console state, so a stdin
+# mode restored before them is overwritten by the setter after it: the mode has
+# to go last of the three. Both frame loops call this from their finally, and
+# both restore the output encoding after - that one does not touch stdin.
+function Restore-ConsoleState {
+    param($VT, $StdinMode)
+    try { [Console]::CursorVisible = $true } catch { }
+    try { [Console]::TreatControlCAsInput = $false } catch { }
+    if ($null -ne $StdinMode) { try { [void]$VT::SetStdinMode($StdinMode) } catch { } }
+}
+
 # The -Stats scaffolding both frame loops share: one frame's build time, and a
-# one-second window that turns it into the overlay line. Call with -Begin at the
-# top of the loop to restart the per-frame clock, and again after the frame is
-# written. Nothing runs when -Show is off.
+# one-second window that turns it into the overlay line. The loops restart
+# .Frame themselves at the top of a frame and call Update-FrameStats once the
+# frame is written, both behind `if ($stats.Show)`: a call that only reaches a
+# guard is still two parameter bindings, up to 240 times a second, for a
+# switch that is off by default.
 function New-FrameStats {
     param([bool] $Show)
     @{ Show      = [bool]$Show
@@ -133,9 +147,12 @@ function New-FrameStats {
 }
 
 function Update-FrameStats {
-    param($Stats, [switch] $Begin, $Renderer, $Width = 0, $Height = 0)
-    if ($Begin) { if ($Stats.Show) { $Stats.Frame.Restart() }; return }
-    if (-not $Stats.Show) { return }
+    param(
+        [Parameter(Mandatory)] $Stats,
+        [Parameter(Mandatory)] $Renderer,
+        [Parameter(Mandatory)] [int] $Width,
+        [Parameter(Mandatory)] [int] $Height
+    )
     $Stats.Frames++
     $Stats.BuildMs += $Stats.Frame.Elapsed.TotalMilliseconds
     if ($Stats.Window.ElapsedMilliseconds -ge 1000) {

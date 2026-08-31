@@ -32,6 +32,23 @@ function Initialize-Uia {
     $script:UiaReady
 }
 
+function Test-TabSupport {
+    <#
+    .SYNOPSIS
+        '' when a tab map can be built here, or the reason it cannot.
+    .DESCRIPTION
+        The backend's own readiness, answered by name like the rest of this file.
+        matrix.ps1 asks once and prints or throws; it never asks which platform it
+        is on, and a third terminal is a lib file rather than another branch there.
+    #>
+    param([long] $Hwnd)
+    if (-not $Hwnd) {
+        return 'this is not a Windows Terminal window, or it was not in front at startup'
+    }
+    if (-not (Initialize-Uia)) { return 'UI Automation is unavailable' }
+    ''
+}
+
 function Get-TerminalWindow {
     # Handles of the visible Windows Terminal windows, in z-order.
     @($WinFinder::Terminals())

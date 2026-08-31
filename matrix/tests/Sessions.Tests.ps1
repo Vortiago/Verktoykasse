@@ -9,17 +9,11 @@ BeforeAll {
 
     . (Join-Path $PSScriptRoot '../lib/console.ps1')
     . (Join-Path $PSScriptRoot '../lib/sessions.ps1')
+    . (Join-Path $PSScriptRoot 'Fixtures.ps1')
 
     # This process is the only PID guaranteed alive, with a start time we can read.
-    # Claude writes the start as a FILETIME on Windows and as /proc clock ticks
-    # on Linux; Get-ProcessStartTicks reads the Linux one the way sessions.ps1
-    # does, so the fake registry carries what a real one would.
-    $script:livePid = $PID
-    $script:liveStart = if ($IsWindows) {
-        [System.Diagnostics.Process]::GetCurrentProcess().StartTime.ToFileTimeUtc()
-    } else {
-        Get-ProcessStartTicks -ProcessId $PID
-    }
+    $script:livePid   = $PID
+    $script:liveStart = Get-TestProcStart
     $script:deadPid   = 999999
 
     function Write-Registry ($name, $record) {

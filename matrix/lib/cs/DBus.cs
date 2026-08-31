@@ -33,24 +33,13 @@ namespace MatrixDBus__TAG__
     {
         // --- sizes and alignments ------------------------------------------------
 
-        // The length of the complete type starting at sig[from]: one letter, an
-        // array prefix plus its element, or a bracketed struct.
+        // The length of the complete type starting at sig[from]: one letter, or an
+        // array prefix plus its element. A struct signature needs no slice of its
+        // own: WriteSig and ReadSig reject '(' where every other unsupported type
+        // is rejected, so measuring it precisely only reaches the same throw.
         static int TypeLen(string sig, int from)
         {
-            char c = sig[from];
-            if (c == 'a') return 1 + TypeLen(sig, from + 1);
-            if (c == '(')
-            {
-                int depth = 1, i = from + 1;
-                while (i < sig.Length && depth > 0)
-                {
-                    if (sig[i] == '(') depth++;
-                    else if (sig[i] == ')') depth--;
-                    i++;
-                }
-                return i - from;
-            }
-            return 1;
+            return sig[from] == 'a' ? 1 + TypeLen(sig, from + 1) : 1;
         }
 
         public static int AlignmentOf(char c)
@@ -60,7 +49,7 @@ namespace MatrixDBus__TAG__
                 case 'y': case 'g': return 1;
                 case 'n': case 'q': return 2;
                 case 'b': case 'i': case 'u': case 'h': case 's': case 'o': case 'a': return 4;
-                default: return 8;    // 'x', 'd', 't', 'v', '('
+                default: return 8;    // 'x', 'd', 't', 'v'
             }
         }
 
@@ -68,7 +57,7 @@ namespace MatrixDBus__TAG__
 
         sealed class Buf
         {
-            public readonly List<byte> b = new List<byte>();
+            public readonly List<byte> b = new List<byte>(256);
             public int Count { get { return b.Count; } }
             public void Pad(int a) { while (b.Count % a != 0) b.Add(0); }
             public void Byte(byte v) { b.Add(v); }
@@ -76,8 +65,8 @@ namespace MatrixDBus__TAG__
             public void I32(int v) { Pad(4); b.Add((byte)v); b.Add((byte)(v >> 8)); b.Add((byte)(v >> 16)); b.Add((byte)(v >> 24)); }
             public void U32(uint v) { I32(unchecked((int)v)); }
             public void I64(long v) { Pad(8); for (int i = 0; i < 8; i++) b.Add((byte)(v >> (8 * i))); }
-            public void Str(string s) { byte[] u = Encoding.UTF8.GetBytes(s); I32(u.Length); foreach (byte c in u) b.Add(c); b.Add(0); }
-            public void Sig(string s) { byte[] u = Encoding.ASCII.GetBytes(s); Byte((byte)u.Length); foreach (byte c in u) b.Add(c); b.Add(0); }
+            public void Str(string s) { byte[] u = Encoding.UTF8.GetBytes(s); I32(u.Length); b.AddRange(u); b.Add(0); }
+            public void Sig(string s) { byte[] u = Encoding.ASCII.GetBytes(s); Byte((byte)u.Length); b.AddRange(u); b.Add(0); }
             public void AddRange(Buf o) { b.AddRange(o.b); }
             public byte[] ToArray() { return b.ToArray(); }
         }
@@ -296,6 +285,30 @@ namespace MatrixDBus__TAG__
             return unchecked((uint)(m[off] | m[off + 1] << 8 | m[off + 2] << 16 | m[off + 3] << 24));
         }
 
+        // Where the body starts, given the header field array's length: the fixed
+        // header is 16 bytes, the array follows it, and the body is 8-aligned after
+        // that. Spelled once, because the message decoder, the socket reader and
+        // the tests' fake bus all have to frame a message the same way.
+        public static int BodyStart(int arrLen) { return (16 + arrLen + 7) & ~7; }
+
+        // One pass over the header field array, handing each field's code and value
+        // to the caller. The grammar - a lenient 8-alignment, a byte code, a
+        // signature, a value - is spelled here and read by both DecodeMessage and
+        // HeaderString. A header array claiming more than the buffer holds ends
+        // where the buffer does: the cursor and the loop guard stop together.
+        static void WalkFields(byte[] m, int arrLen, Action<byte, object[]> onField)
+        {
+            int fieldsEnd = Math.Max(16, Math.Min(16 + arrLen, m.Length));
+            Cur c = new Cur(m, 16, fieldsEnd - 16);
+            while (c.p < fieldsEnd)
+            {
+                c.PadLenient(8);
+                if (c.p >= fieldsEnd) break;
+                byte code = c.Byte();
+                onField(code, ReadSig(c, c.SigStr()));
+            }
+        }
+
         public static void DecodeMessage(byte[] m, out byte type, out uint replySerial,
                                          out string errorName, out string sig, out byte[] body)
         {
@@ -306,26 +319,22 @@ namespace MatrixDBus__TAG__
             int arrLen = (int)ReadU32(m, 12);
             replySerial = 0; errorName = ""; sig = ""; body = new byte[0];
 
-            int bodyStart = (16 + arrLen + 7) & ~7;
+            int bodyStart = BodyStart(arrLen);
             if (bodyStart + bodyLen > m.Length) throw new DBusException("matrix: D-Bus message truncated");
             body = new byte[bodyLen];
             Array.Copy(m, bodyStart, body, 0, bodyLen);
 
-            Cur c = new Cur(m, 16, arrLen);
-            while (c.p < 16 + arrLen)
+            // The truncation check above already proved the field array fits, so
+            // WalkFields' clamp cannot bite here. out parameters cannot be captured.
+            uint rs = 0; string en = "", sg = "";
+            WalkFields(m, arrLen, delegate(byte code, object[] v)
             {
-                c.PadLenient(8);
-                if (c.p >= 16 + arrLen) break;
-                int code = c.Byte();
-                string vsig = c.SigStr();
-                object[] v = ReadSig(c, vsig);
-                if (v.Length > 0)
-                {
-                    if (code == 4) errorName = (string)v[0];
-                    else if (code == 5) replySerial = unchecked((uint)Convert.ToInt64(v[0]));
-                    else if (code == 8) sig = (string)v[0];
-                }
-            }
+                if (v.Length == 0) return;
+                if (code == 4) en = (string)v[0];
+                else if (code == 5) rs = unchecked((uint)Convert.ToInt64(v[0]));
+                else if (code == 8) sg = (string)v[0];
+            });
+            replySerial = rs; errorName = en; sig = sg;
         }
 
         // The string value of one header field, for the tests' fake bus to read
@@ -333,20 +342,12 @@ namespace MatrixDBus__TAG__
         public static string HeaderString(byte[] m, byte code)
         {
             if (m == null || m.Length < 16) return null;
-            int arrLen = (int)ReadU32(m, 12);
-            // The guard and the cursor stop in the same place: a header array
-            // that claims more than the buffer holds ends where the buffer does.
-            int fieldsEnd = Math.Max(16, Math.Min(16 + arrLen, m.Length));
-            Cur c = new Cur(m, 16, fieldsEnd - 16);
-            while (c.p < fieldsEnd)
+            string found = null;
+            WalkFields(m, (int)ReadU32(m, 12), delegate(byte f, object[] v)
             {
-                c.PadLenient(8);
-                if (c.p >= fieldsEnd) break;
-                byte f = c.Byte();
-                object[] v = ReadSig(c, c.SigStr());
-                if (f == code && v.Length > 0) return Convert.ToString(v[0]);
-            }
-            return null;
+                if (found == null && f == code && v.Length > 0) found = Convert.ToString(v[0]);
+            });
+            return found;
         }
     }
 
@@ -456,21 +457,12 @@ namespace MatrixDBus__TAG__
                 throw new DBusException("matrix: session bus refused EXTERNAL auth: " + line);
             Send(Encoding.ASCII.GetBytes("BEGIN\r\n"));
 
-            uint ser = ++serial;
-            Send(Wire.EncodeCall(ser, "org.freedesktop.DBus", "/org/freedesktop/DBus",
-                                 "org.freedesktop.DBus", "Hello", "", null));
-            for (; ; )
-            {
-                byte[] m = ReadMessage();
-                byte type; uint reply; string err, sig; byte[] body;
-                Wire.DecodeMessage(m, out type, out reply, out err, out sig, out body);
-                if ((type == 2 || type == 3) && reply == ser)
-                {
-                    if (type == 3)
-                        throw new DBusException("matrix: session bus rejected Hello: " + err);
-                    return;
-                }
-            }
+            // Hello is an ordinary method call once BEGIN has gone out, so it goes
+            // through the one message pump: the same serial, the same skipping of
+            // the signals the bus interleaves, the same error reply turned into a
+            // throw. The reply carries our unique name, which we have no use for.
+            Call("org.freedesktop.DBus", "/org/freedesktop/DBus",
+                 "org.freedesktop.DBus", "Hello", "", null, "s");
         }
 
         string ReadLine()
@@ -509,8 +501,7 @@ namespace MatrixDBus__TAG__
             byte[] head = ReadExact(16);
             int bodyLen = (int)Wire.ReadU32(head, 4);
             int arrLen = (int)Wire.ReadU32(head, 12);
-            int bodyStart = (16 + arrLen + 7) & ~7;
-            byte[] m = new byte[bodyStart + bodyLen];
+            byte[] m = new byte[Wire.BodyStart(arrLen) + bodyLen];
             Array.Copy(head, m, 16);
             if (m.Length > 16) ReadExactInto(m, 16);
             return m;
