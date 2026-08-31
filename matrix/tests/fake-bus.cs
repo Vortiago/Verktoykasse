@@ -12,11 +12,25 @@ namespace MatrixDBus__TAG__
     using System.Collections.Generic;
     using System.Net;
     using System.Net.Sockets;
+    using System.Runtime.InteropServices;
     using System.Text;
     using System.Threading;
 
     public sealed class FakeBus : IDisposable
     {
+        // The client hex-encodes its own uid for EXTERNAL auth; the expected
+        // line must be built the same way, not guessed as a literal, or every
+        // machine whose uid is not 1000 fails the test.
+        static string ExpectedAuth()
+        {
+            string uid = getuid().ToString();
+            byte[] ascii = Encoding.ASCII.GetBytes(uid);
+            string hex = BitConverter.ToString(ascii).Replace("-", "");
+            return "AUTH EXTERNAL " + hex;
+        }
+
+        [DllImport("libc")]
+        private static extern uint getuid();
         public string FirstPath = "";
         public string FirstIface = "";
         public string FirstMember = "";
@@ -55,7 +69,7 @@ namespace MatrixDBus__TAG__
                 peer = listener.AcceptSocket();
                 if (ReadByte() != 0) { Fail("the connection did not begin with a NUL byte"); return; }
                 string auth = ReadLine();
-                if (auth != "AUTH EXTERNAL 31303030")
+                if (auth != ExpectedAuth())
                 { Fail("no AUTH EXTERNAL with the hex uid was sent: " + auth); return; }
                 Send(Encoding.ASCII.GetBytes("OK 0123456789abcdef0123456789abcdef\r\n"));
                 if (ReadLine() != "BEGIN") { Fail("no BEGIN after the auth OK"); return; }
@@ -87,10 +101,7 @@ namespace MatrixDBus__TAG__
             }
         }
 
-        static uint SerialOf(byte[] m)
-        {
-            return unchecked((uint)(m[8] | m[9] << 8 | m[10] << 16 | m[11] << 24));
-        }
+        static uint SerialOf(byte[] m) { return Wire.ReadU32(m, 8); }
 
         byte ReadByte()
         {
@@ -115,15 +126,13 @@ namespace MatrixDBus__TAG__
         static byte[] ReadMessage(Socket s)
         {
             byte[] head = new byte[16];
-            if (!Fill(s, head)) return null;
-            int bodyLen = head[4] | head[5] << 8 | head[6] << 16 | head[7] << 24;
-            int arrLen = head[12] | head[13] << 8 | head[14] << 16 | head[15] << 24;
+            if (!Fill(s, head, 0)) return null;
+            int bodyLen = (int)Wire.ReadU32(head, 4);
+            int arrLen = (int)Wire.ReadU32(head, 12);
             byte[] m = new byte[((16 + arrLen + 7) & ~7) + bodyLen];
             Array.Copy(head, m, 16);
             return Fill(s, m, 16) ? m : null;
         }
-
-        static bool Fill(Socket s, byte[] b) { return Fill(s, b, 0); }
 
         static bool Fill(Socket s, byte[] b, int from)
         {

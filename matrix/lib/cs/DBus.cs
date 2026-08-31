@@ -271,42 +271,35 @@ namespace MatrixDBus__TAG__
             List<object> items = new List<object>();
             while (c.p < dataEnd) items.AddRange(ReadSig(c, elemSig));
             if (c.p != dataEnd) throw new DBusException("matrix: D-Bus array length does not cover its elements");
-            // Single-type arrays come back as arrays of that type, the way the
-            // callers (and PowerShell) expect to enumerate them.
-            if (TypeLen(elemSig, 0) == elemSig.Length)
+            // The one array the Konsole calls read back is a list of names: give
+            // it the type the callers (and PowerShell) expect to enumerate.
+            if (elemSig == "s" || elemSig == "o" || elemSig == "g")
             {
-                if (elemSig == "s" || elemSig == "o" || elemSig == "g")
-                {
-                    string[] a = new string[items.Count];
-                    for (int i = 0; i < items.Count; i++) a[i] = (string)items[i];
-                    return a;
-                }
-                if (elemSig == "y")
-                {
-                    byte[] a = new byte[items.Count];
-                    for (int i = 0; i < items.Count; i++) a[i] = (byte)items[i];
-                    return a;
-                }
-                if (elemSig == "i" || elemSig == "h")
-                {
-                    int[] a = new int[items.Count];
-                    for (int i = 0; i < items.Count; i++) a[i] = (int)items[i];
-                    return a;
-                }
+                string[] a = new string[items.Count];
+                for (int i = 0; i < items.Count; i++) a[i] = (string)items[i];
+                return a;
             }
             return items.ToArray();
         }
 
         // Header fields this side cares about: 4 the error name, 5 the serial being
         // replied to, 8 the body signature.
+        // One little-endian u32 out of raw message bytes: the fixed header's
+        // body length, array length and serial. Every reader of message bytes
+        // goes through here, so the endianness is spelled once.
+        public static uint ReadU32(byte[] m, int off)
+        {
+            return unchecked((uint)(m[off] | m[off + 1] << 8 | m[off + 2] << 16 | m[off + 3] << 24));
+        }
+
         public static void DecodeMessage(byte[] m, out byte type, out uint replySerial,
                                          out string errorName, out string sig, out byte[] body)
         {
             if (m == null || m.Length < 16) throw new DBusException("matrix: D-Bus message too short");
             if (m[0] != (byte)'l') throw new DBusException("matrix: D-Bus message is not little endian");
             type = m[1];
-            int bodyLen = m[4] | m[5] << 8 | m[6] << 16 | m[7] << 24;
-            int arrLen = m[12] | m[13] << 8 | m[14] << 16 | m[15] << 24;
+            int bodyLen = (int)ReadU32(m, 4);
+            int arrLen = (int)ReadU32(m, 12);
             replySerial = 0; errorName = ""; sig = ""; body = new byte[0];
 
             int bodyStart = (16 + arrLen + 7) & ~7;
@@ -336,7 +329,7 @@ namespace MatrixDBus__TAG__
         public static string HeaderString(byte[] m, byte code)
         {
             if (m == null || m.Length < 16) return null;
-            int arrLen = m[12] | m[13] << 8 | m[14] << 16 | m[15] << 24;
+            int arrLen = (int)ReadU32(m, 12);
             Cur c = new Cur(m, 16, Math.Min(16 + arrLen, m.Length));
             while (c.p < 16 + arrLen)
             {
@@ -481,8 +474,8 @@ namespace MatrixDBus__TAG__
         byte[] ReadMessage()
         {
             byte[] head = ReadExact(16);
-            int bodyLen = head[4] | head[5] << 8 | head[6] << 16 | head[7] << 24;
-            int arrLen = head[12] | head[13] << 8 | head[14] << 16 | head[15] << 24;
+            int bodyLen = (int)Wire.ReadU32(head, 4);
+            int arrLen = (int)Wire.ReadU32(head, 12);
             int bodyStart = (16 + arrLen + 7) & ~7;
             byte[] m = new byte[bodyStart + bodyLen];
             Array.Copy(head, m, 16);
