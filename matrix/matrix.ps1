@@ -33,7 +33,21 @@
     Stop automatically after N seconds. 0 (default) = run until a key is pressed.
 
 .PARAMETER Stats
-    Show frames/sec, frame build time and bytes per frame on the bottom line.
+    Put a performance line on the bottom row, split by step so a slow rain says
+    which step is slow:
+
+        80x25 28/30fps late 3%  build 5.22 write 0.12 ms poll 12.0 ms  7.1KB 296runs  start 0.4s
+
+    build   our own work: simulate the fall, stamp the labels, encode the diff
+    write   blocked in the terminal. Build near zero with a large write means the
+            terminal cannot drain what it is handed, not that the rain is slow
+    poll    the last session read, the registry scan and the tab map with it
+    late    frames that missed their deadline, whatever the reason
+    runs    colour changes handed to the terminal. A terminal lays text out per
+            attribute run, so this predicts its cost better than KB does
+    start   startup, up to the first frame. A first run pays a C# compile
+
+    Fields are dropped from the right on a narrow terminal, never half-printed.
 
 .EXAMPLE
     .\matrix.ps1
@@ -58,6 +72,11 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+
+# Started before anything is loaded or compiled, and read once at the first
+# frame: -Stats reports it as "start". A first run pays a C# compile that a
+# cached one does not, and that is the difference this number makes visible.
+$bootClock = [System.Diagnostics.Stopwatch]::StartNew()
 
 if ($Host.Name -like '*ISE*') {
     throw 'Run this in Windows Terminal, PowerShell or conhost - the ISE has no real console.'
@@ -228,7 +247,9 @@ $timerRaised = $false
 try { $timerRaised = ($VT::timeBeginPeriod(1) -eq 0) } catch { }
 
 $clock   = [System.Diagnostics.Stopwatch]::StartNew()
-$frameStats   = New-FrameStats -Show ([bool]$Stats)
+$frameStats   = New-FrameStats -Show ([bool]$Stats) -TargetFps $Fps -StartMs $bootClock.Elapsed.TotalMilliseconds
+$renderer.Measure = $frameStats.Show
+$frameStats.PollMs = 0.0        # this loop does poll: report it even before the first
 $frameMs = 1000.0 / $Fps
 $pollMs  = $PollSeconds * 1000.0
 $nextDue = $frameMs
@@ -265,7 +286,12 @@ try {
         # header's age current.
         if ($nowMs -ge $pollDue) {
             $pollDue = $nowMs + $pollMs
+            # The registry scan, and Update-SessionTabMap behind it. It does not run
+            # every frame, but the loop waits for it when it does, so a slow one
+            # shows up as a stutter and nowhere else.
+            $pollAt = if ($frameStats.Show) { $clock.Elapsed.TotalMilliseconds } else { 0 }
             $lanes = Get-SessionLanes @(Get-LiveSession)
+            if ($frameStats.Show) { $frameStats.PollMs = $clock.Elapsed.TotalMilliseconds - $pollAt }
             $relay = $true
         }
 
@@ -313,6 +339,9 @@ try {
         # Pace against a running deadline: jitter does not accumulate into drift.
         $now  = $clock.Elapsed.TotalMilliseconds
         $wait = $nextDue - $now
+        # No time left to wait means the frame overran its slot. Counted, not
+        # corrected: it is the symptom the build/write split explains.
+        if ($wait -lt 0 -and $frameStats.Show) { $frameStats.Late++ }
         if ($wait -ge 1) { [System.Threading.Thread]::Sleep([int]$wait) }
         $nextDue += $frameMs
         if ($nextDue -lt $now) { $nextDue = $now + $frameMs }   # fell behind, resync

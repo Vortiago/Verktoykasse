@@ -112,11 +112,16 @@ Describe 'preview-matrix.ps1' {
         # session polling in the way.
         $r = Invoke-Rain $emptyHome @('-Seconds', '3', '-Fps', '20', '-Stats') $preview
         $r.ExitCode | Should -Be 0
-        (Remove-Sgr $r.Stdout) | Should -Match 'ms/frame'
+        # The split is the point of the line: our build time and the time blocked
+        # in the terminal are the two answers, and one number could not tell them
+        # apart.
+        (Remove-Sgr $r.Stdout) | Should -Match 'build'
+        (Remove-Sgr $r.Stdout) | Should -Match 'write'
+        (Remove-Sgr $r.Stdout) | Should -Match 'runs'
         (Remove-Sgr $r.Stdout) | Should -Match 'fps'
 
         $plain = Invoke-Rain $emptyHome @('-Seconds', '3', '-Fps', '20') $preview
-        (Remove-Sgr $plain.Stdout) | Should -Not -Match 'ms/frame'
+        (Remove-Sgr $plain.Stdout) | Should -Not -Match 'build'
     }
 }
 

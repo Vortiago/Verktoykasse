@@ -1,6 +1,7 @@
 namespace MatrixRain__TAG__
 {
     using System;
+    using System.Diagnostics;
     using System.IO;
 
     // One frame = Advance() (simulate) + Encode() (write the diff as escape codes).
@@ -51,6 +52,20 @@ namespace MatrixRain__TAG__
 
         public int LastBytes { get; private set; }
         public int LastWrites { get; private set; }
+
+        // What the last frame cost, and what it asked the terminal to do. -Stats
+        // is the only reader, so Measure gates the one part that is not free: two
+        // timestamps around each write. Everything else is a counter increment on
+        // a path that was already branching.
+        public bool Measure;
+        public long LastWriteTicks { get; private set; }   // blocked in Stream.Write
+        public int LastRuns { get; private set; }          // colour changes emitted
+        public int LastCells { get; private set; }         // cells repainted
+
+        // A terminal lays text out per attribute run, so runs - not bytes - are
+        // what a repaint costs it. The two diverge sharply: a trail is a gradient,
+        // so it is close to one run per cell, and that is the number that explains
+        // a terminal keeping up on one machine and not another.
 
         public Renderer(int levels, char[] glyphPool, int seed)
         {
@@ -284,7 +299,8 @@ namespace MatrixRain__TAG__
             }
 
             pos = 0;
-            int written = 0, writes = 0;
+            int written = 0, writes = 0, runs = 0, cells = 0;
+            long writeTicks = 0;
             int curIdx = -99, curY = -1, curX = -1;
 
             for (int y = 0; y < h; y++)
@@ -323,7 +339,8 @@ namespace MatrixRain__TAG__
                     else
                     {
                         if (idx >= fgb.Length) idx = fgb.Length - 1;
-                        if (idx != curIdx) { Emit(fgb[idx]); curIdx = idx; }
+                        if (idx != curIdx) { Emit(fgb[idx]); curIdx = idx; runs++; }
+                        cells++;
 
                         // Inline UTF-8. Every glyph source is BMP: the katakana range,
                         // the ASCII pool, and the header filter. A stray surrogate
@@ -348,14 +365,28 @@ namespace MatrixRain__TAG__
                     curX = (x + 1 >= w) ? -1 : x + 1;
                     prev[i] = st;
 
-                    if (pos >= flushAt) { s.Write(buf, 0, pos); writes++; written += pos; pos = 0; }
+                    if (pos >= flushAt)
+                    {
+                        long t0 = Measure ? Stopwatch.GetTimestamp() : 0L;
+                        s.Write(buf, 0, pos);
+                        if (Measure) writeTicks += Stopwatch.GetTimestamp() - t0;
+                        writes++; written += pos; pos = 0;
+                    }
                 }
             }
 
-            if (pos > 0) { s.Write(buf, 0, pos); writes++; written += pos; }
-            if (flush && writes > 0) s.Flush();
+            if (pos > 0 || (flush && writes > 0))
+            {
+                long t0 = Measure ? Stopwatch.GetTimestamp() : 0L;
+                if (pos > 0) { s.Write(buf, 0, pos); writes++; written += pos; }
+                if (flush && writes > 0) s.Flush();
+                if (Measure) writeTicks += Stopwatch.GetTimestamp() - t0;
+            }
             LastBytes = written;
             LastWrites = writes;
+            LastRuns = runs;
+            LastCells = cells;
+            LastWriteTicks = writeTicks;
         }
     }
 }

@@ -13,9 +13,9 @@
     see how transitions flow.
 
 .PARAMETER Stats
-    Show frames/sec, frame build time and bytes per frame on the bottom line.
-    The same numbers matrix.ps1 shows, but with nothing behind them but the
-    render: no session reads, no tab map.
+    The same performance line matrix.ps1 shows, described there - with nothing
+    behind it but the render: no session reads and no tab map, so there is no
+    poll field and the build time is the renderer alone.
 
 .EXAMPLE
     .\preview-matrix.ps1
@@ -30,6 +30,11 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+
+# Started before anything is loaded or compiled, and read once at the first
+# frame: -Stats reports it as "start". A first run pays a C# compile that a
+# cached one does not, and that is the difference this number makes visible.
+$bootClock = [System.Diagnostics.Stopwatch]::StartNew()
 
 foreach ($part in 'console', 'types', 'palette', 'lanes') {
     $file = Join-Path (Join-Path $PSScriptRoot 'lib') "$part.ps1"
@@ -102,7 +107,8 @@ $sizeEvery = [Math]::Max(1, [int]($Fps / 4))
 $sizeTick  = 0
 $W = 0; $H = 0
 $shuffleDue = 2.0
-$frameStats      = New-FrameStats -Show ([bool]$Stats)
+$frameStats      = New-FrameStats -Show ([bool]$Stats) -TargetFps $Fps -StartMs $bootClock.Elapsed.TotalMilliseconds
+$renderer.Measure = $frameStats.Show
 
 try {
     while ($true) {
@@ -161,6 +167,9 @@ try {
 
         $now  = $clock.Elapsed.TotalMilliseconds
         $wait = $nextDue - $now
+        # No time left to wait means the frame overran its slot. Counted, not
+        # corrected: it is the symptom the build/write split explains.
+        if ($wait -lt 0 -and $frameStats.Show) { $frameStats.Late++ }
         if ($wait -ge 1) { [System.Threading.Thread]::Sleep([int]$wait) }
         $nextDue += $frameMs
         if ($nextDue -lt $now) { $nextDue = $now + $frameMs }

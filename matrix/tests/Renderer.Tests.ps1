@@ -161,6 +161,44 @@ Describe 'Resize' {
     }
 }
 
+Describe 'Frame cost counters' {
+    # What -Stats reports about the terminal's side of the work. Runs are colour
+    # changes: a terminal lays text out per attribute run, so a frame's cost to it
+    # tracks these far better than it tracks bytes.
+    It 'counts the cells it repainted and the colour changes it emitted' {
+        $r = New-TestRenderer 40 8
+        [void](Set-StillLane $r @(40, 255, 90) 'HEADER' 'working')
+        [void](Get-Frame $r)
+        $r.LastCells | Should -BeGreaterThan 0
+        $r.LastRuns  | Should -BeGreaterThan 0
+        $r.LastRuns  | Should -BeLessOrEqual $r.LastCells   # never more than one per cell
+    }
+
+    It 'repaints nothing on a frame where nothing moved' {
+        # The diff is the whole reason the rain is cheap: a still frame must cost
+        # the terminal nothing at all.
+        $r = New-TestRenderer 40 8
+        [void](Set-StillLane $r @(40, 255, 90) 'HEADER' 'working')
+        [void](Get-Frame $r)
+        [void](Get-Frame $r)
+        $r.LastCells | Should -Be 0
+        $r.LastRuns  | Should -Be 0
+        $r.LastBytes | Should -Be 0
+    }
+
+    It 'leaves the write clock at zero unless it was asked to measure' {
+        # Two timestamps a frame is not free, and -Stats is off by default.
+        $r = New-TestRenderer 40 8
+        [void](Set-StillLane $r @(40, 255, 90) 'HEADER' 'working')
+        [void](Get-Frame $r)
+        $r.LastWriteTicks | Should -Be 0
+        $r.Measure = $true
+        [void](Set-StillLane $r @(255, 60, 60) 'OTHER' 'idle')
+        [void](Get-Frame $r)
+        $r.LastWriteTicks | Should -BeGreaterOrEqual 0
+    }
+}
+
 Describe 'SetOverlay' {
     It 'puts the stats line on the frame' {
         $r = New-TestRenderer 40 8

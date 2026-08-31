@@ -131,19 +131,40 @@ function Restore-ConsoleState {
     if ($null -ne $StdinMode) { try { [void]$VT::SetStdinMode($StdinMode) } catch { } }
 }
 
-# The -Stats scaffolding both frame loops share: one frame's build time, and a
-# one-second window that turns it into the overlay line. The loops restart
-# .Frame themselves at the top of a frame and call Update-FrameStats once the
-# frame is written, both behind `if ($stats.Show)`: a call that only reaches a
-# guard is still two parameter bindings, up to 240 times a second, for a
-# switch that is off by default.
+# The -Stats scaffolding both frame loops share. It answers one question: when
+# the rain is not keeping up, which step is holding it? So the frame's time is
+# split rather than totalled.
+#
+#   build   our own work: simulate the fall, stamp the labels, encode the diff
+#   write   blocked in the terminal's stream. Build near zero and write large
+#           means the terminal cannot drain what it is handed, not that the
+#           renderer is slow - the two are answered on different machines.
+#   poll    the last session read: the registry scan, and the tab map with it.
+#           It runs on -PollSeconds, not per frame, but the loop waits for it.
+#   late    frames that missed their deadline. The one number that says the
+#           target fps is not being met, whatever the reason.
+#   runs    colour changes handed to the terminal. A terminal lays text out per
+#           attribute run, so this predicts its cost far better than KB does.
+#   cells   cells repainted, out of the grid. Shows how much of the screen the
+#           diff actually saved.
+#   start   startup, once: from the first line of the script to the first frame.
+#
+# The loops restart .Frame themselves at the top of a frame and call
+# Update-FrameStats once the frame is written, both behind `if ($stats.Show)`: a
+# call that only reaches a guard is still two parameter bindings, up to 240
+# times a second, for a switch that is off by default.
 function New-FrameStats {
-    param([bool] $Show)
+    param([bool] $Show, [int] $TargetFps = 0, [double] $StartMs = 0.0)
     @{ Show      = [bool]$Show
+       Target    = $TargetFps
+       StartMs   = $StartMs
        Frame     = [System.Diagnostics.Stopwatch]::StartNew()
        Window    = [System.Diagnostics.Stopwatch]::StartNew()
        Frames    = 0
-       BuildMs   = 0.0 }
+       BuildMs   = 0.0
+       WriteMs   = 0.0
+       Late      = 0
+       PollMs    = -1.0 }        # -1: nothing polls here (the preview)
 }
 
 function Update-FrameStats {
@@ -154,14 +175,44 @@ function Update-FrameStats {
         [Parameter(Mandatory)] [int] $Height
     )
     $Stats.Frames++
-    $Stats.BuildMs += $Stats.Frame.Elapsed.TotalMilliseconds
-    if ($Stats.Window.ElapsedMilliseconds -ge 1000) {
-        $fpsNow = $Stats.Frames * 1000.0 / $Stats.Window.ElapsedMilliseconds
-        $Renderer.SetOverlay((' {0}x{1}  {2:N1} fps  {3:N2} ms/frame  {4:N1} KB/frame  {5} write(s) ' -f
-            $Width, $Height, $fpsNow, ($Stats.BuildMs / [Math]::Max(1, $Stats.Frames)),
-            ($Renderer.LastBytes / 1024.0), $Renderer.LastWrites))
-        $Stats.Frames = 0
-        $Stats.BuildMs = 0.0
-        $Stats.Window.Restart()
+    # The renderer times its own writes; the rest of the frame is ours.
+    $writeMs = $Renderer.LastWriteTicks * 1000.0 / [System.Diagnostics.Stopwatch]::Frequency
+    $Stats.WriteMs += $writeMs
+    $Stats.BuildMs += [Math]::Max(0.0, $Stats.Frame.Elapsed.TotalMilliseconds - $writeMs)
+
+    if ($Stats.Window.ElapsedMilliseconds -lt 1000) { return }
+
+    $n      = [Math]::Max(1, $Stats.Frames)
+    $fpsNow = $Stats.Frames * 1000.0 / $Stats.Window.ElapsedMilliseconds
+
+    # Invariant, not the machine's culture: a decimal comma in a field this dense
+    # reads as a thousands separator, and these numbers get pasted into issues.
+    $inv = [System.Globalization.CultureInfo]::InvariantCulture
+
+    # Least useful last, and dropped rather than clipped. The row is stamped into
+    # the bottom line, so a narrow terminal would otherwise cut a field mid-number
+    # and show half of it - worse than not showing it, because "start 0.4" and
+    # "start 0.45s" are different claims.
+    $head = [string]::Format($inv, ' {0}x{1} {2:N0}{3}fps late {4:N0}%',
+        $Width, $Height, $fpsNow, $(if ($Stats.Target) { "/$($Stats.Target)" } else { ' ' }),
+        ($Stats.Late * 100.0 / $n))
+    $rest = @([string]::Format($inv, '  build {0:N2} write {1:N2} ms', ($Stats.BuildMs / $n), ($Stats.WriteMs / $n)))
+    if ($Stats.PollMs -ge 0) { $rest += [string]::Format($inv, ' poll {0:N1} ms', $Stats.PollMs) }
+    $rest += [string]::Format($inv, '  {0:N1}KB {1}runs{2}',
+        ($Renderer.LastBytes / 1024.0), $Renderer.LastRuns,
+        $(if ($Renderer.LastWrites -gt 1) { " $($Renderer.LastWrites)w" } else { '' }))
+    if ($Stats.StartMs -gt 0) { $rest += [string]::Format($inv, '  start {0:N1}s', ($Stats.StartMs / 1000.0)) }
+
+    $line = $head
+    foreach ($part in $rest) {
+        if ($line.Length + $part.Length + 1 -gt $Width - 2) { break }
+        $line += $part
     }
+    $Renderer.SetOverlay($line + ' ')
+
+    $Stats.Frames  = 0
+    $Stats.BuildMs = 0.0
+    $Stats.WriteMs = 0.0
+    $Stats.Late    = 0
+    $Stats.Window.Restart()
 }
