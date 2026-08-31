@@ -70,16 +70,33 @@ namespace MatrixVT__TAG__
         private const uint ISIG = 0x0001;
         private const int VTIME = 5, VMIN = 6;
 
-        private static readonly byte[] MouseOnSeq =
-            { 0x1b, (byte)'[', (byte)'?', (byte)'1', (byte)'0', (byte)'0', (byte)'0', (byte)'h',
-              0x1b, (byte)'[', (byte)'?', (byte)'1', (byte)'0', (byte)'0', (byte)'6', (byte)'h' };
-        private static readonly byte[] MouseOffSeq =
-            { 0x1b, (byte)'[', (byte)'?', (byte)'1', (byte)'0', (byte)'0', (byte)'0', (byte)'l',
-              0x1b, (byte)'[', (byte)'?', (byte)'1', (byte)'0', (byte)'0', (byte)'6', (byte)'l' };
+        // SGR mouse reporting on and off: mode 1000 reports presses, 1006 the
+        // SGR encoding (the coordinates the parser below reads).
+        private static readonly byte[] MouseOnSeq  = Encoding.ASCII.GetBytes("\x1b[?1000h\x1b[?1006h");
+        private static readonly byte[] MouseOffSeq = Encoding.ASCII.GetBytes("\x1b[?1000l\x1b[?1006l");
 
         private static Termios savedTermios;
-        private static bool rawOn, savedOk;
+        private static bool rawOn, savedOk, mouseWritten;
         private static byte[] pending = new byte[0];    // a sequence split across reads
+        // The frame loop runs up to 240 times a second: everything it touches
+        // per frame is allocated once, here.
+        private static readonly byte[] readBuf = new byte[64];
+        private static readonly byte[] noBytes = new byte[0];
+        private static readonly Termios probe = NewTermios();
+        private static int stdinIsTty = -1;             // cached: fd 0 does not change under us
+
+        static Termios NewTermios()
+        {
+            Termios t = new Termios();
+            t.c_cc = new byte[32];
+            return t;
+        }
+
+        static bool StdinIsTty()
+        {
+            if (stdinIsTty < 0) stdinIsTty = isatty(0);
+            return stdinIsTty != 0;
+        }
 
         public static uint GetStdinMode()
         {
@@ -96,12 +113,15 @@ namespace MatrixVT__TAG__
                 {
                     EnterRaw();
                     WriteOut(MouseOnSeq);
+                    mouseWritten = true;
                 }
                 else
                 {
                     // Leaving the mode always restores cooked input, so the restore
                     // path in matrix.ps1 works even when mouse reporting never ran.
-                    WriteOut(MouseOffSeq);
+                    // The mouse-off bytes only go out if the mouse-on ones did: a
+                    // run without -Click never switched reporting on.
+                    if (mouseWritten) { WriteOut(MouseOffSeq); mouseWritten = false; }
                     LeaveRaw();
                 }
                 return true;
@@ -111,11 +131,15 @@ namespace MatrixVT__TAG__
 
         private static void EnterRaw()
         {
-            if (isatty(0) == 0) return;
-            Termios t = new Termios();
-            t.c_cc = new byte[32];
+            if (!StdinIsTty()) return;
+            Termios t = probe;                            // the one scratch, reused per frame
             if (tcgetattr(0, ref t) != 0) return;
-            if (!savedOk) { savedTermios = t; savedOk = true; }   // the state to restore
+            if (!savedOk)
+            {
+                savedTermios = t;                         // the state to restore: flags copy,
+                savedTermios.c_cc = (byte[])t.c_cc.Clone();   // the array must not, or the
+                savedOk = true;                            // raw write below would cook the save
+            }
 
             // Do not trust that raw is still in effect from last time. Others with
             // an interest in stdin rewrite it behind our back: .NET's [Console]
@@ -146,28 +170,38 @@ namespace MatrixVT__TAG__
         public static int PollInput(out int x, out int y)
         {
             x = -1; y = -1;
-            if (isatty(0) == 0) return NONE;             // redirected: -Seconds owns the exit
+            if (!StdinIsTty()) return NONE;               // redirected: -Seconds owns the exit
             EnterRaw();
 
-            byte[] buf = new byte[64];
-            int n = read(0, buf, buf.Length);
+            int n = read(0, readBuf, readBuf.Length);
             if (n <= 0) return NONE;
 
-            byte[] all = new byte[pending.Length + n];   // finish a split sequence first
-            Array.Copy(pending, all, pending.Length);
-            Array.Copy(buf, 0, all, pending.Length, n);
-            pending = new byte[0];
+            byte[] all;
+            int len;
+            if (pending.Length == 0)
+            {
+                all = readBuf;                            // nothing stashed: read in place
+                len = n;
+            }
+            else
+            {
+                len = pending.Length + n;                 // finish a split sequence first
+                all = new byte[len];
+                Array.Copy(pending, all, pending.Length);
+                Array.Copy(readBuf, 0, all, pending.Length, n);
+                pending = noBytes;
+            }
 
             int off = 0;
-            while (off < all.Length)
+            while (off < len)
             {
                 int used, cx, cy;
-                int what = ClassifyAt(all, off, all.Length - off, out cx, out cy, out used);
+                int what = ClassifyAt(all, off, len - off, out cx, out cy, out used);
                 if (used == 0)
                 {
                     // A sequence the terminal has not finished sending. Keep it for
                     // the next read; nothing before it can matter more than it does.
-                    pending = new byte[all.Length - off];
+                    pending = new byte[len - off];
                     Array.Copy(all, off, pending, 0, pending.Length);
                     return NONE;
                 }
