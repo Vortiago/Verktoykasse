@@ -28,15 +28,30 @@ function Get-SessionStyle {
     if ($s) { $s } else { $script:SessionStyle['idle'] }
 }
 
+function ConvertTo-ProcStartTicks {
+    # /proc/N/stat field 22, the process start in clock ticks since boot. The
+    # comm field can hold spaces and ')' characters, so the fields are counted
+    # from after the LAST ')' - the text after it starts at field 3, and
+    # 22 - 3 = 19.
+    #
+    # Nothing, not zero, for a line this cannot read. Zero is a real tick value
+    # - a process started at boot - so returning it would be a claim, and the
+    # one caller compares the answer against the registry and drops the session
+    # when it differs. A line nobody could parse is not evidence of anything.
+    param([string] $Stat)
+    $fields = ($Stat.Substring($Stat.LastIndexOf(')') + 2)) -split ' '
+    if ($fields.Count -le 19) { return $null }
+    [long] $ticks = 0
+    if (-not [long]::TryParse($fields[19], [ref] $ticks)) { return $null }
+    $ticks
+}
+
 function Get-ProcessStartTicks {
-    # What Claude writes as "procStart" on Linux: /proc/N/stat field 22, the
-    # process start in clock ticks since boot. The comm field can hold spaces
-    # and ')' characters, so the fields are counted from after the LAST ')' -
-    # the text after it starts at field 3, and 22 - 3 = 19.
+    # What Claude writes as "procStart" on Linux, off the disk. Split from the
+    # parse above so the parse is testable on a box with no /proc.
     # The test setups read the same value to write into their fake registries.
     param([int] $ProcessId)
-    $stat = [System.IO.File]::ReadAllText("/proc/$ProcessId/stat")
-    [long](($stat.Substring($stat.LastIndexOf(')') + 2)) -split ' ')[19]
+    ConvertTo-ProcStartTicks ([System.IO.File]::ReadAllText("/proc/$ProcessId/stat"))
 }
 
 function Test-SessionAlive {
@@ -48,6 +63,9 @@ function Test-SessionAlive {
         try { $start = Get-ProcessStartTicks -ProcessId $ProcessId }
         catch { return $false }
         if (-not $ProcStart) { return $true }
+        # A stat line that would not parse verifies nothing either, and gets the
+        # same answer the unreadable procStart below gets: keep the session.
+        if ($null -eq $start) { return $true }
         # A procStart that does not parse verifies nothing, the same answer the
         # Windows branch gives: keep the session. A bare cast would throw, and the
         # caller's per-record catch would drop a live lane over an unreadable field.

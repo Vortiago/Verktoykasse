@@ -175,11 +175,25 @@ namespace MatrixVT__TAG__
             EnterRaw();
 
             int n = read(0, readBuf, readBuf.Length);
-            if (n <= 0) return NONE;
+            if (n < 0) n = 0;                             // EAGAIN and friends: nothing new
+            // Nothing new is not nothing to do. The stash holds either the bytes
+            // behind an event already reported - the second of two clicks in one
+            // frame sits there - or an ESC held back because the read filled the
+            // buffer and the sequence looked split. Returning here on an idle
+            // read strands both until some later byte arrives, and none may: the
+            // second click never lands, and an ESC that was the key after all
+            // never exits the rain.
+            if (n == 0 && pending.Length == 0) return NONE;
 
             byte[] all;
             int len;
-            if (pending.Length == 0)
+            if (n == 0)
+            {
+                all = pending;                            // nothing new: work the stash alone
+                len = pending.Length;
+                pending = noBytes;
+            }
+            else if (pending.Length == 0)
             {
                 all = readBuf;                            // nothing stashed: read in place
                 len = n;
@@ -198,7 +212,9 @@ namespace MatrixVT__TAG__
             // reads, not the key itself. A click burst is nine bytes of press and
             // nine of release: enough of them queued behind a slow frame and the
             // split lands there, and a lone trailing ESC would exit the rain on a
-            // click. Hold it back for the next read instead.
+            // click. Hold it back for the next read instead. An idle read is the
+            // other half of that bargain: nothing followed, so a held ESC was the
+            // key, and n of 0 puts it back inside the limit to be read as one.
             int limit = (n == readBuf.Length && all[len - 1] == 0x1b) ? len - 1 : len;
 
             int off = 0;
@@ -231,6 +247,11 @@ namespace MatrixVT__TAG__
         {
             int keep = len - off;
             if (keep <= 0 || keep > MAX_PENDING) return;
+            // An idle read that classified nothing hands back the array it was
+            // given, whole. Copying it would allocate once a frame for as long
+            // as an unterminated sequence sits there. readBuf is the exception
+            // the copy below exists for: the next read overwrites it.
+            if (off == 0 && all.Length == len && !ReferenceEquals(all, readBuf)) { pending = all; return; }
             pending = new byte[keep];
             Array.Copy(all, off, pending, 0, keep);
         }

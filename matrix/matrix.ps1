@@ -291,7 +291,12 @@ try {
             # shows up as a stutter and nowhere else.
             $pollAt = if ($frameStats.Show) { $clock.Elapsed.TotalMilliseconds } else { 0 }
             $lanes = Get-SessionLanes @(Get-LiveSession)
-            if ($frameStats.Show) { $frameStats.PollMs = $clock.Elapsed.TotalMilliseconds - $pollAt }
+            # Reported on its own, and taken back out of this frame's build: the
+            # poll ran inside the stretch the frame clock is timing.
+            if ($frameStats.Show) {
+                $frameStats.PollMs      = $clock.Elapsed.TotalMilliseconds - $pollAt
+                $frameStats.PollFrameMs = $frameStats.PollMs
+            }
             $relay = $true
         }
 

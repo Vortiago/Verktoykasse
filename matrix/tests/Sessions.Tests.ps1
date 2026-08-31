@@ -328,3 +328,46 @@ Describe 'Get-SessionTitle' {
             Should -Be 'tab here'
     }
 }
+
+Describe 'ConvertTo-ProcStartTicks' {
+    # /proc/N/stat field 22, read out of the line rather than off the disk, so the
+    # parse is testable on a box that has no /proc at all.
+    It 'reads the start time out of a stat line' {
+        # Fields 3 through 21 stand in as zeros; 22 is the one that matters.
+        $stat = '4242 (pwsh) S ' + ((1..18 | ForEach-Object { 0 }) -join ' ') + ' 987654'
+        ConvertTo-ProcStartTicks $stat | Should -Be 987654
+    }
+
+    It 'counts from the last close paren, so a comm with spaces and parens does not shift it' {
+        # comm is whatever the binary was called, up to 15 bytes, and the kernel
+        # does not escape it: "(a b) c)" is a legal one.
+        $stat = '4242 (a b) c) S ' + ((1..18 | ForEach-Object { 0 }) -join ' ') + ' 987654'
+        ConvertTo-ProcStartTicks $stat | Should -Be 987654
+    }
+
+    It 'answers nothing for a line that is too short to hold the field' {
+        # Not 0. Zero is a real tick value, and a caller comparing it against the
+        # registry would read "started at boot" and drop a live session.
+        ConvertTo-ProcStartTicks '4242 (pwsh) S 1 2 3' | Should -BeNullOrEmpty
+    }
+
+    It 'answers nothing for a line with no comm at all' {
+        ConvertTo-ProcStartTicks 'nothing here' | Should -BeNullOrEmpty
+    }
+
+    It 'answers nothing when the field is not a number' {
+        $stat = '4242 (pwsh) S ' + ((1..18 | ForEach-Object { 0 }) -join ' ') + ' later'
+        ConvertTo-ProcStartTicks $stat | Should -BeNullOrEmpty
+    }
+}
+
+Describe 'Test-SessionAlive on an unreadable stat line' -Skip:($IsWindows) {
+    It 'keeps the session, the same answer an unreadable procStart gets' {
+        # The rule this file already states for a procStart that will not parse:
+        # a field that verifies nothing is not evidence the process is gone. The
+        # reading side has to answer the same way, or a live lane vanishes for
+        # the rest of the run over a stat line nobody could read.
+        Mock Get-ProcessStartTicks { $null }
+        Test-SessionAlive -ProcessId $PID -ProcStart '12345' | Should -BeTrue
+    }
+}

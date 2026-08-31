@@ -167,6 +167,28 @@ Describe 'Frame stats' {
         Get-StatsLine 4.0 1.0 $stats | Should -Match 'poll 12\.5'
     }
 
+    It 'does not also charge the poll to build, which ran inside the same frame' {
+        # The poll happens inside the stretch the frame clock is timing, so a
+        # frame of 10 ms holding an 8 ms poll and a 1 ms write left 1 ms of our
+        # own work. Counting the poll twice makes the renderer look like the
+        # problem on exactly the frames where it is not.
+        $stats = New-FrameStats -Show $true -TargetFps 30
+        $stats.PollMs = 8.0; $stats.PollFrameMs = 8.0
+        Get-StatsLine 10.0 1.0 $stats | Should -Match 'build 1\.00 write 1\.00'
+    }
+
+    It 'charges the poll to the one frame that waited for it' {
+        # PollFrameMs is cleared as it is consumed: the next frame is not still
+        # paying for a poll that ran before it.
+        $stats = New-FrameStats -Show $true -TargetFps 30
+        $stats.PollFrameMs = 8.0
+        $stats.Frame  = New-FakeClock 10.0
+        $stats.Window = New-FakeClock 400          # under the window: keep accumulating
+        Update-FrameStats $stats -Renderer (New-FakeRenderer 1.0) -Width 200 -Height 25
+        $stats.PollFrameMs | Should -Be 0.0
+        [Math]::Round($stats.BuildMs, 2) | Should -Be 1.0
+    }
+
     It 'reports startup once it is known' {
         $stats = New-FrameStats -Show $true -TargetFps 30 -StartMs 940
         Get-StatsLine 4.0 1.0 $stats | Should -Match 'start 0\.9s'

@@ -249,6 +249,17 @@ Describe 'Wire: malformed input' {
             Should -Throw -ExpectedMessage '*matrix:*'
     }
 
+    It 'answers a string length that cannot be real with its own error' {
+        # A string's length is a u32 on the wire and an int in the reader, so a
+        # desynced stream can present it as negative or as more than the buffer
+        # holds. Both once reached Encoding.GetString and threw the runtime's
+        # ArgumentOutOfRangeException, which no caller here is written around.
+        { $Wire::DecodeValues([byte[]]@(0xFF, 0xFF, 0xFF, 0xFF), 's') } |
+            Should -Throw -ExpectedMessage '*matrix:*'
+        { $Wire::DecodeValues([byte[]]@(0xFF, 0xFF, 0xFF, 0x7F), 's') } |
+            Should -Throw -ExpectedMessage '*matrix:*'
+    }
+
     It 'answers a body length that cannot be real with its own error' {
         # 0xFFFFFFF0 body bytes. Cast to int that is -16, which slips past the
         # truncation check and reaches new byte[-16].

@@ -24,8 +24,13 @@ function New-TestSession ($id, $status = 'idle', $task = '', $processId = 0) {
 # here. The caller dot-sources ../lib/sessions.ps1 for Get-ProcessStartTicks, the
 # way Import-TestCsType below relies on console.ps1.
 function Get-TestProcStart ([int] $ProcessId = $PID) {
-    if ($IsWindows) { [System.Diagnostics.Process]::GetProcessById($ProcessId).StartTime.ToFileTimeUtc() }
-    else            { Get-ProcessStartTicks -ProcessId $ProcessId }
+    if ($IsWindows) {
+        # Dispose: StartTime opens a kernel handle, the reason sessions.ps1
+        # wraps its own copy of this call the same way.
+        $p = [System.Diagnostics.Process]::GetProcessById($ProcessId)
+        try { $p.StartTime.ToFileTimeUtc() } finally { $p.Dispose() }
+    }
+    else { Get-ProcessStartTicks -ProcessId $ProcessId }
 }
 
 # Compiles .cs sources standalone for a test, through the same tagged-type

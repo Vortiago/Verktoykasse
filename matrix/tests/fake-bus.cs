@@ -54,7 +54,10 @@ namespace MatrixDBus__TAG__
             stopping = true;
             try { listener.Stop(); } catch { }
             try { if (peer != null) peer.Close(); } catch { }
-            thread.Join(5000);
+            // Guarded like the two above it: a test that disposes in a finally
+            // may never have reached Start(), and an NRE here would replace the
+            // failure it was trying to report.
+            if (thread != null) thread.Join(5000);
         }
 
         void Fail(string why) { Failure = why; }

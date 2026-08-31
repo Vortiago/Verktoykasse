@@ -145,9 +145,13 @@ function Restore-ConsoleState {
 #           target fps is not being met, whatever the reason.
 #   runs    colour changes handed to the terminal. A terminal lays text out per
 #           attribute run, so this predicts its cost far better than KB does.
-#   cells   cells repainted, out of the grid. Shows how much of the screen the
-#           diff actually saved.
 #   start   startup, once: from the first line of the script to the first frame.
+#
+# build and poll are disjoint, not nested. The poll runs inside the frame the
+# loop is timing, so a loop that has one hands its duration over as PollFrameMs
+# and this subtracts it: otherwise the frame that polls reports the poll twice,
+# once under its own name and once inside build, and the field that is supposed
+# to say "the renderer is not the problem" says the opposite.
 #
 # The loops restart .Frame themselves at the top of a frame and call
 # Update-FrameStats once the frame is written, both behind `if ($stats.Show)`: a
@@ -164,7 +168,8 @@ function New-FrameStats {
        BuildMs   = 0.0
        WriteMs   = 0.0
        Late      = 0
-       PollMs    = -1.0 }        # -1: nothing polls here (the preview)
+       PollMs    = -1.0          # -1: nothing polls here (the preview)
+       PollFrameMs = 0.0 }       # this frame's poll, taken back out of build
 }
 
 function Update-FrameStats {
@@ -178,7 +183,11 @@ function Update-FrameStats {
     # The renderer times its own writes; the rest of the frame is ours.
     $writeMs = $Renderer.LastWriteTicks * 1000.0 / [System.Diagnostics.Stopwatch]::Frequency
     $Stats.WriteMs += $writeMs
-    $Stats.BuildMs += [Math]::Max(0.0, $Stats.Frame.Elapsed.TotalMilliseconds - $writeMs)
+    # Neither the terminal's time nor the poll's is ours. Cleared here, so a
+    # poll counts against the one frame that waited for it and no other.
+    $Stats.BuildMs += [Math]::Max(0.0,
+        $Stats.Frame.Elapsed.TotalMilliseconds - $writeMs - $Stats.PollFrameMs)
+    $Stats.PollFrameMs = 0.0
 
     if ($Stats.Window.ElapsedMilliseconds -lt 1000) { return }
 

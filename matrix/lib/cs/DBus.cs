@@ -217,7 +217,11 @@ namespace MatrixDBus__TAG__
             public int p;
             readonly int end;
             public Cur(byte[] a, int start, int len) { this.a = a; p = start; end = start + len; }
-            void Check(int n) { if (p + n > end) throw new DBusException("matrix: truncated D-Bus value"); }
+            // Counts reach here off the wire, so this cannot be spelled as
+            // `p + n > end`: a huge one overflows int and compares as negative,
+            // and a negative one passes outright. Measured against the room
+            // left instead, which never overflows.
+            void Check(int n) { if (n < 0 || n > end - p) throw new DBusException("matrix: truncated D-Bus value"); }
             public int Pad(int al) { int skip = (al - (p % al)) % al; Check(skip); p += skip; return skip; }
             // Padding that may run past the end: a header array's fields stop
             // wherever they stop, and the 8-alignment of the NEXT one is not ours to
@@ -228,7 +232,19 @@ namespace MatrixDBus__TAG__
             public int I32() { Pad(4); Check(4); int v = a[p] | a[p + 1] << 8 | a[p + 2] << 16 | a[p + 3] << 24; p += 4; return v; }
             public uint U32() { return unchecked((uint)I32()); }
             public long I64() { Pad(8); Check(8); long v = 0; for (int i = 7; i >= 0; i--) v = (v << 8) | a[p + i]; p += 8; return v; }
-            public string Str() { int n = I32(); Check(n + 1); string s = Encoding.UTF8.GetString(a, p, n); p += n + 1; return s; }
+            // The length is a u32 on the wire and an int here, so a desynced
+            // stream can present it as negative. Check(n + 1) alone does not
+            // catch that: -1 asks it for 0 bytes and passes, and GetString then
+            // throws the runtime's ArgumentOutOfRangeException instead of ours.
+            public string Str()
+            {
+                int n = I32();
+                if (n < 0) throw new DBusException("matrix: D-Bus string declares an impossible length");
+                Check(n + 1);
+                string s = Encoding.UTF8.GetString(a, p, n);
+                p += n + 1;
+                return s;
+            }
             public string SigStr() { int n = Byte(); Check(n + 1); string s = Encoding.ASCII.GetString(a, p, n); p += n + 1; return s; }
         }
 
