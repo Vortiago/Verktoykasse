@@ -21,34 +21,42 @@ function Wait-OllamaServer {
     return $false
 }
 
+function Get-OllamaUserEnv {
+    # The OLLAMA_* settings held in User scope, as a name -> value map, skipping the
+    # ones that are not set. Both the lazy start and the explicit restart configure the
+    # daemon from this, so the two cannot disagree about what a daemon of ours looks
+    # like. oclaude holds no daemon defaults of its own: whatever starts the daemon
+    # supplies them, and only User scope is read by every one of those.
+    #
+    # OLLAMA_HOST is the one that bites when missing: a daemon started without it binds
+    # loopback only, which breaks every container with no error anywhere.
+    $found = [ordered]@{}
+    foreach ($v in 'OLLAMA_HOST', 'OLLAMA_KEEP_ALIVE', 'OLLAMA_MAX_LOADED_MODELS',
+                   'OLLAMA_CONTEXT_LENGTH', 'OLLAMA_KV_CACHE_TYPE', 'OLLAMA_FLASH_ATTENTION',
+                   'OLLAMA_IGPU_ENABLE', 'OLLAMA_LLM_LIBRARY', 'OLLAMA_NUM_PARALLEL') {
+        $val = [Environment]::GetEnvironmentVariable($v, 'User')
+        if ($val) { $found[$v] = $val }
+    }
+    $found
+}
+
 function Start-OllamaServer {
     param([string]$Endpoint = (Get-OClaudeConfig).Endpoint, [int]$TimeoutSec = 30)
     if (Test-OllamaServer -Endpoint $Endpoint) { return $true }
 
-    $cfg = Get-OClaudeConfig
     Write-Host 'ollama: daemon down, starting...' -ForegroundColor DarkYellow
 
-    # The child inherits these, so they configure the daemon we are about to spawn.
-    # One entry per variable, the same shape session.ps1 uses: a name listed once
-    # cannot fall out of step with its own save or restore.
-    $spawnEnv = [ordered]@{
-        OLLAMA_KEEP_ALIVE        = $cfg.KeepAlive
-        OLLAMA_CONTEXT_LENGTH    = $cfg.ContextLength
-        OLLAMA_MAX_LOADED_MODELS = $cfg.MaxLoadedModels
-        OLLAMA_KV_CACHE_TYPE     = $cfg.KvCacheType
-        OLLAMA_NUM_PARALLEL      = $cfg.NumParallel
-        # A shell predating the User-scope change carries no OLLAMA_HOST, and a daemon
-        # started without it binds loopback, breaking every container with no error.
-        OLLAMA_HOST              = [Environment]::GetEnvironmentVariable('OLLAMA_HOST', 'User')
-    }
+    # The daemon reads its settings from whatever launched it, so take them from User
+    # scope: the same place oclaude-restart-daemon reads, and the same place they come
+    # from when the tray app or a login shell starts the daemon instead. A shell opened
+    # before a User-scope change carries a stale copy in its own environment, hence
+    # reading the scope rather than trusting $env:.
+    $spawnEnv = Get-OllamaUserEnv
 
     $saved = @{}
     foreach ($v in $spawnEnv.Keys) { $saved[$v] = [Environment]::GetEnvironmentVariable($v) }
     try {
-        foreach ($v in $spawnEnv.Keys) {
-            # A null stays null: OLLAMA_HOST is unset when User scope holds nothing.
-            if ($null -ne $spawnEnv[$v]) { Set-Item "Env:$v" $spawnEnv[$v] }
-        }
+        foreach ($v in $spawnEnv.Keys) { Set-Item "Env:$v" $spawnEnv[$v] }
         Start-Process -FilePath 'ollama' -ArgumentList 'serve' -WindowStyle Hidden | Out-Null
     } finally {
         foreach ($v in $spawnEnv.Keys) {
@@ -110,15 +118,8 @@ function oclaude-restart-daemon {
     # before a User-scope change carries a stale block. Re-read User scope, then
     # relaunch. Aborts any in-flight `ollama pull`.
     [void](Test-OClaudeStale)
-    $applied = @{}
-    # OLLAMA_HOST is here because containers reach the daemon over the network;
-    # dropping it silently rebinds to loopback.
-    foreach ($v in 'OLLAMA_HOST', 'OLLAMA_KEEP_ALIVE', 'OLLAMA_MAX_LOADED_MODELS',
-                   'OLLAMA_CONTEXT_LENGTH', 'OLLAMA_KV_CACHE_TYPE', 'OLLAMA_FLASH_ATTENTION',
-                   'OLLAMA_IGPU_ENABLE', 'OLLAMA_LLM_LIBRARY', 'OLLAMA_NUM_PARALLEL') {
-        $val = [Environment]::GetEnvironmentVariable($v, 'User')
-        if ($val) { Set-Item "Env:$v" $val; $applied[$v] = $val }
-    }
+    $applied = Get-OllamaUserEnv
+    foreach ($v in $applied.Keys) { Set-Item "Env:$v" $applied[$v] }
 
     # llama-server runners are children the tray does not manage: killing only the
     # parents orphans them, still holding tens of GiB and starving the scheduler

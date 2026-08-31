@@ -63,7 +63,7 @@ function oclaude-help {
     Write-Host '  notes' -ForegroundColor White
     Write-Host ("    context      Claude Code capped at {0}; must stay <= the smallest num_ctx" -f $cfg.MaxContextTokens) -ForegroundColor Gray
     Write-Host '    first turn   costs a full prefill; later turns extend the cache and are cheap' -ForegroundColor Gray
-    Write-Host '    daemon knobs live in User-scope OLLAMA_* env vars, not in lib/config.ps1' -ForegroundColor Gray
+    Write-Host '    daemon       set User-scope OLLAMA_* env vars; config.ps1 holds none' -ForegroundColor Gray
     Write-Host '    advisor      $env:OCLAUDE_ADVISOR overrides its model per shell (use an alias)' -ForegroundColor Gray
     Write-Host ("    waits        {0}s byte-idle, {1} tool calls at once (ollama serves 1 per model)" -f ($cfg.StreamIdleMs / 1000), $cfg.ToolConcurrency) -ForegroundColor Gray
     Write-Host ''

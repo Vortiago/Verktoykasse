@@ -70,24 +70,15 @@ function Get-OClaudeConfig {
         DefaultAlias    = 'opus'           # NOT 'opusplan' -- that runs execution on the
                                            #   SONNET tier, i.e. the 8B classifier
 
-        # The next five apply only when THIS file starts the daemon. The tray app ignores
-        # them, so the settings that actually stick live in User-scope OLLAMA_* env vars.
-        KeepAlive       = '4h'
-        MaxLoadedModels = 3                # keep EXPLICIT: 0 is not "unlimited". sched.go
-                                           #   defaults maxRunners to 3 x GPU count when <= 0,
-                                           #   so 0 silently means 3 anyway. Two are in use here
-                                           #   (cc-chat-35b-q8 and cc-fast-8b); the third slot
-                                           #   is headroom for a tag you add
-        NumParallel     = 2                # INERT for every tier here: sched.go:507 blocklists
-                                           #   these architectures (qwen35moe and lfm2moe among
-                                           #   them), forces 1 and logs it, so two sessions
-                                           #   SERIALIZE. Do not force it -- the blocklist
-                                           #   exists because recurrent state is not safe
-                                           #   across sequences and answers would bleed
-        ContextLength   = 262144           # matches the chat tier so an UNPINNED model does
-                                           #   not silently load with a smaller window
-        KvCacheType     = 'f16'            # LEAVE AT f16: quantized KV buys window at a
-                                           #   quality cost that is not acceptable here
+        # Daemon settings are NOT here. They only ever applied on the one path where
+        # oclaude starts the daemon itself, and the Ollama tray app, when installed,
+        # starts it first and ignores them. A knob that works sometimes is worse than
+        # none, so set the User-scope OLLAMA_* variables instead: those hold whoever
+        # starts the daemon. oclaude-restart-daemon re-reads them and reports what it
+        # applied. OLLAMA_KEEP_ALIVE, OLLAMA_MAX_LOADED_MODELS, OLLAMA_CONTEXT_LENGTH
+        # and OLLAMA_KV_CACHE_TYPE are the ones worth setting; note that
+        # OLLAMA_CONTEXT_LENGTH is why the per-tag num_ctx pins above exist, since one
+        # daemon-wide window sized for the largest model leaves room for only it.
 
         MaxContextTokens = 262144          # one global value, so at most the SMALLEST num_ctx
                                            #   among the TIERS, or Claude Code overfills that
