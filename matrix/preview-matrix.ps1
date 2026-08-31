@@ -95,14 +95,11 @@ $sizeEvery = [Math]::Max(1, [int]($Fps / 4))
 $sizeTick  = 0
 $W = 0; $H = 0
 $shuffleDue = 2.0
-$frame   = [System.Diagnostics.Stopwatch]::StartNew()   # one frame's build time
-$statSw  = [System.Diagnostics.Stopwatch]::StartNew()
-$frames  = 0
-$buildMs = 0.0
+$frameStats      = New-FrameStats -Show ([bool]$Stats)
 
 try {
     while ($true) {
-        $frame.Restart()
+        Update-FrameStats $frameStats -Begin
 
         $cx = 0; $cy = 0
         if ($VT::PollInput([ref]$cx, [ref]$cy) -eq $VT::EXIT) { break }
@@ -141,15 +138,7 @@ try {
         $prevSec = $nowSec
         if ($dt -le 0) { $dt = 1.0 / $Fps } elseif ($dt -gt 0.25) { $dt = 0.25 }
         $renderer.WriteFrame($rawOut, $needFlush, $dt)
-
-        $frames++
-        $buildMs += $frame.Elapsed.TotalMilliseconds
-        if ($Stats -and $statSw.ElapsedMilliseconds -ge 1000) {
-            $fpsNow = $frames * 1000.0 / $statSw.ElapsedMilliseconds
-            $renderer.SetOverlay((' {0}x{1}  {2:N1} fps  {3:N2} ms/frame  {4:N1} KB/frame  {5} write(s) ' -f
-                $W, $H, $fpsNow, ($buildMs / [Math]::Max(1, $frames)), ($renderer.LastBytes / 1024.0), $renderer.LastWrites))
-            $frames = 0; $buildMs = 0.0; $statSw.Restart()
-        }
+        Update-FrameStats $frameStats -Renderer $renderer -Width $W -Height $H
 
         $now  = $clock.Elapsed.TotalMilliseconds
         $wait = $nextDue - $now

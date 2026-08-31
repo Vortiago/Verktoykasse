@@ -232,15 +232,12 @@ Write-Raw $ENTER_SCREEN
 $timerRaised = $false
 try { $timerRaised = ($VT::timeBeginPeriod(1) -eq 0) } catch { }
 
-$frame   = [System.Diagnostics.Stopwatch]::StartNew()
 $clock   = [System.Diagnostics.Stopwatch]::StartNew()
-$statSw  = [System.Diagnostics.Stopwatch]::StartNew()
+$frameStats   = New-FrameStats -Show ([bool]$Stats)
 $frameMs = 1000.0 / $Fps
 $pollMs  = $PollSeconds * 1000.0
 $nextDue = $frameMs
 $pollDue = 0.0
-$frames  = 0
-$buildMs = 0.0
 $sizeEvery = [Math]::Max(1, [int]($Fps / 4))   # check the window size ~4x a second
 $sizeTick  = 0
 $prevSec   = 0.0
@@ -250,7 +247,7 @@ $laneBounds = $null         # col0[] and wid[], for routing a click back to a la
 
 try {
     while ($true) {
-        $frame.Restart()
+        Update-FrameStats $frameStats -Begin
 
         $cx = 0; $cy = 0
         $what = $VT::PollInput([ref]$cx, [ref]$cy)
@@ -309,15 +306,7 @@ try {
         $prevSec = $nowSec
         if ($dt -le 0) { $dt = 1.0 / $Fps } elseif ($dt -gt 0.25) { $dt = 0.25 }
         $renderer.WriteFrame($rawOut, $needFlush, $dt)
-
-        $frames++
-        $buildMs += $frame.Elapsed.TotalMilliseconds
-        if ($Stats -and $statSw.ElapsedMilliseconds -ge 1000) {
-            $fpsNow = $frames * 1000.0 / $statSw.ElapsedMilliseconds
-            $renderer.SetOverlay((' {0}x{1}  {2:N1} fps  {3:N2} ms/frame  {4:N1} KB/frame  {5} write(s) ' -f
-                $W, $H, $fpsNow, ($buildMs / [Math]::Max(1, $frames)), ($renderer.LastBytes / 1024.0), $renderer.LastWrites))
-            $frames = 0; $buildMs = 0.0; $statSw.Restart()
-        }
+        Update-FrameStats $frameStats -Renderer $renderer -Width $W -Height $H
 
         # Pace against a running deadline: jitter does not accumulate into drift.
         $now  = $clock.Elapsed.TotalMilliseconds

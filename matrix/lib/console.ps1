@@ -111,3 +111,33 @@ function Add-TaggedTypes {
     }
     foreach ($name in $TypeNames) { ($name -f $tag) -as [type] }
 }
+
+# The -Stats scaffolding both frame loops share: one frame's build time, and a
+# one-second window that turns it into the overlay line. Call with -Begin at the
+# top of the loop to restart the per-frame clock, and again after the frame is
+# written. Nothing runs when -Show is off.
+function New-FrameStats {
+    param([bool] $Show)
+    @{ Show      = [bool]$Show
+       Frame     = [System.Diagnostics.Stopwatch]::StartNew()
+       Window    = [System.Diagnostics.Stopwatch]::StartNew()
+       Frames    = 0
+       BuildMs   = 0.0 }
+}
+
+function Update-FrameStats {
+    param($Stats, [switch] $Begin, $Renderer, $Width = 0, $Height = 0)
+    if ($Begin) { $Stats.Frame.Restart(); return }
+    if (-not $Stats.Show) { return }
+    $Stats.Frames++
+    $Stats.BuildMs += $Stats.Frame.Elapsed.TotalMilliseconds
+    if ($Stats.Window.ElapsedMilliseconds -ge 1000) {
+        $fpsNow = $Stats.Frames * 1000.0 / $Stats.Window.ElapsedMilliseconds
+        $Renderer.SetOverlay((' {0}x{1}  {2:N1} fps  {3:N2} ms/frame  {4:N1} KB/frame  {5} write(s) ' -f
+            $Width, $Height, $fpsNow, ($Stats.BuildMs / [Math]::Max(1, $Stats.Frames)),
+            ($Renderer.LastBytes / 1024.0), $Renderer.LastWrites))
+        $Stats.Frames = 0
+        $Stats.BuildMs = 0.0
+        $Stats.Window.Restart()
+    }
+}
