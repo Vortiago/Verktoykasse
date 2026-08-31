@@ -114,10 +114,20 @@ try {
 
         if ($sizeTick -le 0) {
             $sizeTick = $sizeEvery
+            # Windows THROWS when there is no console to measure; Linux answers 0.
+            # Both mean the same thing, so both take the same fallback - without
+            # the second test, a redirected run on Linux falls into the
+            # too-small branch below and draws nothing for its whole life.
             try   { $nw = [Console]::WindowWidth; $nh = [Console]::WindowHeight }
-            catch { $nw = 80; $nh = 25 }
+            catch { $nw = 0; $nh = 0 }
+            if ($nw -le 0 -or $nh -le 0) { $nw = 80; $nh = 25 }
+            # Too small to rain in: draw nothing, recheck every 100 ms, and force a
+            # resize on the way back - the terminal reflowed the alternate screen
+            # while it was that narrow, so the way back needs a clear and a relay,
+            # not the "no change" every later check would otherwise see. Same rule
+            # as matrix.ps1.
             if ($nw -lt 2 -or $nh -lt 2) {
-                $sizeTick = 0
+                $W = -1; $sizeTick = 0
                 [System.Threading.Thread]::Sleep(100)
                 continue
             }

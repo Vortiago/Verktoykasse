@@ -274,8 +274,13 @@ try {
         # stdout is redirected: fall back to 80x25.
         if ($sizeTick -le 0) {
             $sizeTick = $sizeEvery
+            # Windows THROWS when there is no console to measure; Linux answers 0.
+            # Both mean the same thing, so both take the same fallback - without
+            # the second test, a redirected run on Linux falls into the
+            # too-small branch below and draws nothing for its whole life.
             try   { $nw = [Console]::WindowWidth; $nh = [Console]::WindowHeight }
-            catch { $nw = 80; $nh = 25 }
+            catch { $nw = 0; $nh = 0 }
+            if ($nw -le 0 -or $nh -le 0) { $nw = 80; $nh = 25 }
             # Too small to rain in: draw nothing, recheck every 100 ms, and force a
             # resize on the way back. Committing the size here would leave the
             # renderer on old geometry while every later check saw no change.
