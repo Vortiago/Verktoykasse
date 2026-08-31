@@ -10,6 +10,8 @@
 
 $script:KonsoleService = $env:KONSOLE_DBUS_SERVICE
 $script:KonsoleBus = $null
+$script:WindowIface  = 'org.kde.konsole.Window'
+$script:IntrospectIface = 'org.freedesktop.DBus.Introspectable'
 
 function Get-KonsoleBus {
     if ($null -ne $script:KonsoleBus) { return $script:KonsoleBus }
@@ -57,6 +59,12 @@ function Get-OwnTerminalWindow {
     if ($env:KONSOLE_DBUS_WINDOW -match '/Windows/(\d+)$') { [int]$Matches[1] } else { 0 }
 }
 
+function Get-KonsoleWindowId {
+    # Introspection answers with a <node name="N"/> per window.
+    param([string] $Xml)
+    foreach ($m in [regex]::Matches($Xml, '<node\s+name="(\d+)"')) { [int]$m.Groups[1].Value }
+}
+
 function Get-AllTerminalTab {
     # Every tab of every Konsole window in the process that launched this shell.
     # Like Windows Terminal, konsole keeps all its windows in one process, so one
@@ -64,14 +72,12 @@ function Get-AllTerminalTab {
     param([scriptblock] $Call = ${function:Invoke-Konsole})
 
     try {
-        # Invoke-Konsole's output comes through the pipeline, so a lone string
-        # arrives bare - and @() around a string enumerates its CHARACTERS, which
-        # is how one reply's first character once stood in for the whole XML.
-        $xml = [string](& $Call -Path '/Windows' -Iface 'org.freedesktop.DBus.Introspectable' `
+        # Cast, do not wrap. Invoke-Konsole returns through the pipeline, so a lone
+        # string arrives bare, and @() around a string enumerates its characters.
+        $xml = [string](& $Call -Path '/Windows' -Iface $script:IntrospectIface `
                                 -Member 'Introspect' -OutSig 's')
-        $tabs = foreach ($m in [regex]::Matches($xml, '<node\s+name="(\d+)"')) {
-            $w = [int]$m.Groups[1].Value
-            $ids = [string[]](& $Call -Path "/Windows/$w" -Iface 'org.kde.konsole.Window' `
+        $tabs = foreach ($w in Get-KonsoleWindowId $xml) {
+            $ids = [string[]](& $Call -Path "/Windows/$w" -Iface $script:WindowIface `
                                         -Member 'sessionList' -OutSig 'as')
             $i = 0
             foreach ($id in $ids) {
@@ -91,20 +97,18 @@ function Get-AllTerminalTab {
 }
 
 function Select-TerminalTab {
-    # Konsole switches the window's current session; there is no Activate on the
-    # session itself, and no raise either. org.kde.konsole.Window is ViewManager's
-    # whole Q_SCRIPTABLE list and nothing in it raises or activates
-    # (activationRequest is a signal, not a method). So a click on a session in
-    # another Konsole window switches that window's tab where nobody can see it,
-    # unlike windows-terminal.ps1, which has WinFinder::Activate. Fixing it means
-    # leaving Konsole for KWindowSystem or an XDG activation token, and Wayland
-    # lets the compositor refuse the raise anyway.
+    # Konsole switches the window's current session. It cannot raise the window:
+    # org.kde.konsole.Window is ViewManager's whole Q_SCRIPTABLE list, and nothing
+    # in it raises or activates. So a click on a session in another Konsole window
+    # switches that window's tab where nobody can see it. A fix means leaving
+    # Konsole for KWindowSystem or an XDG activation token, and Wayland lets the
+    # compositor refuse the raise anyway.
     param(
         [Parameter(Mandatory)] $Tab,
         [scriptblock] $Call = ${function:Invoke-Konsole}
     )
     try {
-        [void](& $Call -Path "/Windows/$($Tab.Hwnd)" -Iface 'org.kde.konsole.Window' `
+        [void](& $Call -Path "/Windows/$($Tab.Hwnd)" -Iface $script:WindowIface `
                        -Member 'setCurrentSession' -InSig 'i' -InArgs @([int]$Tab.Element))
         return $true
     } catch {
@@ -133,11 +137,10 @@ function Get-TabKey {
 }
 
 function Resolve-SessionTab {
-    # Konsole tab titles do not carry Claude's glyph - the default format is
-    # "dir : shell" - so the Windows title scoring has nothing to score. The tab's
-    # process id is exact instead: the tab whose pid is among a session's ancestors
-    # is the tab it runs in. The walk goes UP from the claude pid, because claude
-    # is often not the tab shell's direct child (bash -> ollama -> claude).
+    # Konsole tab titles do not carry Claude's glyph, so the Windows title scoring
+    # has nothing to score. The tab process id is exact instead. The walk goes up
+    # from the claude pid, because claude is often not the tab shell's direct child
+    # (bash -> ollama -> claude).
     param(
         [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Session,
         [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Tab,
@@ -161,9 +164,8 @@ function Resolve-SessionTab {
 }
 
 function Get-ProcessAncestorId {
-    # A pid and every pid above it, read from /proc. The chain is short (shell,
-    # terminal, init) and the walk runs once per session per tab-map rebuild, not
-    # per poll.
+    # A pid and every pid above it, from /proc. The chain is short, and the walk
+    # runs once per session per tab-map rebuild, not per poll.
     param([Parameter(Mandatory)] [int] $ProcessId)
     $out = [System.Collections.Generic.List[int]]::new()
     $p = $ProcessId

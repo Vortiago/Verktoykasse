@@ -29,10 +29,9 @@ namespace MatrixDBus__TAG__
     }
 
     // getuid, and the answer a platform without libc gives instead of throwing.
-    // Windows has no libc to bind: the D-Bus suite compiles this file there and
-    // drives the handshake against a fake bus over loopback, so a P/Invoke that
-    // cannot resolve would take the whole Windows gate down. The fake bus reads
-    // the uid through here too, so both sides agree on whatever it answers.
+    // The D-Bus suite compiles this file on Windows and drives the handshake
+    // against a fake bus, so an unresolvable P/Invoke would fail the Windows gate.
+    // The fake bus reads the uid through here too, so both sides agree.
     public static class Posix
     {
         [DllImport("libc")]
@@ -65,16 +64,15 @@ namespace MatrixDBus__TAG__
                 if (string.IsNullOrWhiteSpace(one)) continue;
                 try { return new Bus(one); }
                 catch (DBusException e) { last = e; }
-                // A socket timeout or a peer that hangs up mid-handshake is a
-                // reason to try the next address, not to abandon the list: the
-                // address variable can name several, and only one need answer.
+                // The address variable can name several buses, and only one need
+                // answer. Try the next one.
                 catch (Exception e) { last = new DBusException("matrix: session bus handshake failed: " + e.Message); }
             }
             throw last ?? new DBusException("matrix: no usable session bus address");
         }
 
-        // Over a socket the caller already connected - the tests point this at a
-        // fake bus on a loopback socket. The handshake is the same one.
+        // Over a socket the caller already connected. The tests point this at a
+        // fake bus on loopback. The handshake is the same.
         public Bus(Socket connected)
         {
             sock = connected;
@@ -105,27 +103,22 @@ namespace MatrixDBus__TAG__
             }
             catch (Exception e)
             {
-                // The socket exists by the time Connect can fail, and it is ours:
-                // close it here for the same reason the handshake below does.
+                // The socket exists by the time Connect can fail, and it is ours.
                 Dispose();
                 throw new DBusException("matrix: cannot reach the session bus: " + e.Message);
             }
-            // This ctor owns the socket it dialled: a handshake that throws must
-            // not leave it open, or a Session() walking several addresses leaks
-            // one file descriptor per address that did not answer.
+            // This ctor owns the socket it dialled. A handshake that throws must not
+            // leave it open, or Session() leaks one descriptor per address that did
+            // not answer.
             try { Hello(); }
             catch { Dispose(); throw; }
         }
 
-        // The handshake the bus wants before it will carry anything: a NUL byte,
-        // then EXTERNAL with the uid hex-encoded, then BEGIN - and then the
-        // org.freedesktop.DBus.Hello method call, on the wire, as the first
-        // message. The bus does not route for a connection that has not said
-        // Hello: it answers such a client's first call by closing the socket,
-        // a failure that sits on the far side of the wire and looks like nothing
-        // else. The reply carries the unique name it assigned us, which we have
-        // no use for - but the exchange has to complete before the first real
-        // call goes out.
+        // The handshake the bus wants before it carries anything: a NUL byte, then
+        // EXTERNAL with the uid in hex, then BEGIN, then a Hello method call. The
+        // bus does not route for a connection that has not said Hello. It answers
+        // that client's first call by closing the socket, which looks like nothing
+        // else on this wire.
         void Hello()
         {
             Send(new byte[] { 0 });
@@ -138,9 +131,8 @@ namespace MatrixDBus__TAG__
             Send(Encoding.ASCII.GetBytes("BEGIN\r\n"));
 
             // Hello is an ordinary method call once BEGIN has gone out, so it goes
-            // through the one message pump: the same serial, the same skipping of
-            // the signals the bus interleaves, the same error reply turned into a
-            // throw. The reply carries our unique name, which we have no use for.
+            // through the one message pump. The reply carries our unique name,
+            // which nothing here needs.
             Call("org.freedesktop.DBus", "/org/freedesktop/DBus",
                  "org.freedesktop.DBus", "Hello", "", null, "s");
         }

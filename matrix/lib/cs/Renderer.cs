@@ -53,19 +53,18 @@ namespace MatrixRain__TAG__
         public int LastBytes { get; private set; }
         public int LastWrites { get; private set; }
 
-        // What the last frame cost, and what it asked the terminal to do. -Stats
-        // is the only reader, so Measure gates the one part that is not free: two
-        // timestamps around each write. Everything else is a counter increment on
-        // a path that was already branching.
+        // What the last frame cost, and what it asked the terminal to do. Measure
+        // gates the only part that is not free: two timestamps around each write.
         public bool Measure;
         public long LastWriteTicks { get; private set; }   // blocked in Stream.Write
-        public int LastRuns { get; private set; }          // colour changes emitted
         public int LastCells { get; private set; }         // cells repainted
+        // A terminal lays text out per attribute run, so runs, not bytes, are what
+        // a repaint costs it. This is the number that explains a terminal keeping
+        // up on one machine and not another.
+        public int LastRuns { get; private set; }          // colour changes emitted
 
-        // A terminal lays text out per attribute run, so runs - not bytes - are
-        // what a repaint costs it. The two diverge sharply: a trail is a gradient,
-        // so it is close to one run per cell, and that is the number that explains
-        // a terminal keeping up on one machine and not another.
+        long Mark() { return Measure ? Stopwatch.GetTimestamp() : 0L; }
+        long Since(long t0) { return Measure ? Stopwatch.GetTimestamp() - t0 : 0L; }
 
         public Renderer(int levels, char[] glyphPool, int seed)
         {
@@ -367,9 +366,9 @@ namespace MatrixRain__TAG__
 
                     if (pos >= flushAt)
                     {
-                        long t0 = Measure ? Stopwatch.GetTimestamp() : 0L;
+                        long t0 = Mark();
                         s.Write(buf, 0, pos);
-                        if (Measure) writeTicks += Stopwatch.GetTimestamp() - t0;
+                        writeTicks += Since(t0);
                         writes++; written += pos; pos = 0;
                     }
                 }
@@ -377,10 +376,10 @@ namespace MatrixRain__TAG__
 
             if (pos > 0 || (flush && writes > 0))
             {
-                long t0 = Measure ? Stopwatch.GetTimestamp() : 0L;
+                long t0 = Mark();
                 if (pos > 0) { s.Write(buf, 0, pos); writes++; written += pos; }
                 if (flush && writes > 0) s.Flush();
-                if (Measure) writeTicks += Stopwatch.GetTimestamp() - t0;
+                writeTicks += Since(t0);
             }
             LastBytes = written;
             LastWrites = writes;

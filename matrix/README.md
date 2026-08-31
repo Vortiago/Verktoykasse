@@ -6,8 +6,13 @@
 exits. The glyphs are half-width katakana. They render one cell wide, so the
 grid stays square.
 
+It runs on Windows and on Linux. Each platform brings its own console layer and
+its own terminal backend: the Windows console API with Windows Terminal, or
+termios with Konsole. The rain above them is the same code.
+
 `Get-Help .\matrix.ps1 -Full` lists every flag. `Invoke-Pester ./tests` runs
-the test suite (Pester 5 or later).
+the test suite (Pester 5 or later). CI runs it on both platforms, because a
+green Windows job says nothing about code that only Linux executes.
 
 ## The Windows Terminal profile
 
@@ -132,6 +137,31 @@ the mouse. It goes back on at exit.
 Both flags need `showStatusInTerminalTab` on in Claude Code. Without it the
 tabs carry no glyph and nothing matches.
 
+### Konsole, on Linux
+
+Konsole answers the same six questions over D-Bus, spoken straight to its Unix
+socket. There is no client library and no helper binary.
+
+| Step | How |
+| --- | --- |
+| Find the windows | `Introspect` on `/Windows` names one node per window |
+| Find our window | `KONSOLE_DBUS_WINDOW`, set before the shell starts. Exact, not a guess |
+| Find each window's tabs | `sessionList` on the window, then `processId` per session |
+| Read the click | termios raw mode, SGR mouse reporting (modes 1000 and 1006) |
+| Switch the tab | `setCurrentSession` on the window |
+| Pick a session's tab | the tab whose process id is among the session's ancestors |
+
+The last row is the difference that matters. Konsole names a tab's shell PID, so
+the match is exact and none of the title scoring below applies. The walk goes up
+from the claude PID, because claude is often not the tab shell's direct child.
+
+Konsole cannot raise a window. `org.kde.konsole.Window` is ViewManager's whole
+scriptable list and nothing in it raises or activates, so clicking a session that
+lives in another Konsole window switches that window's tab where you cannot see
+it. Windows Terminal has no such gap.
+
+`showStatusInTerminalTab` is not needed here, since nothing reads the title.
+
 Start the rain from the window you want scoped, and keep that window in front
 while it starts. When `-ThisWindow` finds nothing it stops with an explanation;
 a filter that silently does nothing reads as a bug.
@@ -155,3 +185,31 @@ tab carries no glyph and is never a candidate.
 
 `tests/TabMap.Tests.ps1` replays all of it: a session appearing, a session
 prompted, the tabs renumbered, and the desktop refusing to be read.
+
+## Where the code lives
+
+```
+matrix.ps1              the rain
+preview-matrix.ps1      one lane per state, for checking styles.psd1
+lib/
+  console.ps1           the screen: escape sequences, text filtering, compilation
+  stats.ps1             the -Stats overlay
+  types.ps1             which C# sources this platform compiles
+  palette.ps1           colours
+  lanes.ps1             sessions to lanes
+  sessions.ps1          Claude's session registry
+  terminal/
+    tabmap.ps1          session to tab, over time. Knows no platform
+    windows-terminal.ps1  the UI Automation backend
+    konsole.ps1           the D-Bus backend
+  cs/
+    Renderer.cs         simulate and encode a frame
+    ConsoleVT_Windows.cs, ConsoleVT_Linux.cs
+    Windows.cs          window lookup, UI Automation
+    DBus.cs, DBusEncode.cs, DBusDecode.cs
+```
+
+A `_Windows` or `_Linux` suffix in `cs/` means the platform picks one of them. A
+file with no suffix is shared. `matrix.ps1` loads `tabmap.ps1` and exactly one
+backend under it, so Windows never sources Konsole code and Linux never sources
+UI Automation. A third platform adds a backend and a C# pair, nothing else.

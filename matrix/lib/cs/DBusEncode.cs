@@ -10,6 +10,16 @@ namespace MatrixDBus__TAG__
     {
         // --- sizes and alignments ------------------------------------------------
 
+        // The fixed header is 16 bytes. The body length sits at offset 4 and the
+        // header field array length at offset 12.
+        const int HEADER_SIZE = 16, BODY_LEN_AT = 4, ARRAY_LEN_AT = 12;
+
+        // Message types and header field codes, from the specification.
+        const byte METHOD_CALL = 1, METHOD_RETURN = 2;
+        const byte FIELD_PATH = 1, FIELD_INTERFACE = 2, FIELD_MEMBER = 3,
+                   FIELD_ERROR_NAME = 4, FIELD_REPLY_SERIAL = 5,
+                   FIELD_DESTINATION = 6, FIELD_SIGNATURE = 8;
+
         // The length of the complete type starting at sig[from]: one letter, or an
         // array prefix plus its element. A struct signature needs no slice of its
         // own: WriteSig and ReadSig reject '(' where every other unsupported type
@@ -144,16 +154,16 @@ namespace MatrixDBus__TAG__
                 ? new byte[0] : EncodeBody(inSig, args);
 
             Buf fields = new Buf();
-            Field(fields, 1, "o", path);
-            Field(fields, 6, "s", dest);
-            Field(fields, 2, "s", iface);
-            Field(fields, 3, "s", member);
-            // Off the BODY, not off inSig: a signature the body does not back is a
-            // malformed message, and the bus answers one of those by hanging up.
-            // `inSig` with a null `args` is exactly that pair.
-            if (body.Length > 0) Field(fields, 8, "g", inSig);
+            Field(fields, FIELD_PATH, "o", path);
+            Field(fields, FIELD_DESTINATION, "s", dest);
+            Field(fields, FIELD_INTERFACE, "s", iface);
+            Field(fields, FIELD_MEMBER, "s", member);
+            // Off the body, not off inSig. A signature the body does not back is a
+            // malformed message, and the bus hangs up on one. inSig with a null
+            // args is that pair.
+            if (body.Length > 0) Field(fields, FIELD_SIGNATURE, "g", inSig);
 
-            return Pack(1, serial, fields, body);
+            return Pack(METHOD_CALL, serial, fields, body);
         }
 
         // A METHOD_RETURN packing. Production only ever calls, never replies; the
@@ -164,10 +174,10 @@ namespace MatrixDBus__TAG__
                 ? new byte[0] : EncodeBody(outSig, args);
 
             Buf fields = new Buf();
-            Field(fields, 5, "u", replySerial);
-            if (body.Length > 0) Field(fields, 8, "g", outSig);   // see EncodeCall
+            Field(fields, FIELD_REPLY_SERIAL, "u", replySerial);
+            if (body.Length > 0) Field(fields, FIELD_SIGNATURE, "g", outSig);   // see EncodeCall
 
-            return Pack(2, serial, fields, body);
+            return Pack(METHOD_RETURN, serial, fields, body);
         }
 
         static byte[] Pack(byte type, uint serial, Buf fields, byte[] body)

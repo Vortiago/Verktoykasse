@@ -17,7 +17,7 @@
 # Counted twice, the field meant to clear the renderer would accuse it.
 #
 # The loops restart .Frame themselves and call Update-FrameStats behind
-# `if ($stats.Show)`: two parameter bindings 240 times a second is not free for a
+# `if ($stats.Show)`. Two parameter bindings 240 times a second is not free for a
 # switch that is off by default.
 function New-FrameStats {
     param([bool] $Show, [int] $TargetFps = 0, [double] $StartMs = 0.0)
@@ -51,16 +51,19 @@ function Update-FrameStats {
     $Stats.PollFrameMs = 0.0
 
     if ($Stats.Window.ElapsedMilliseconds -lt 1000) { return }
+    $Renderer.SetOverlay((Format-StatsLine $Stats $Renderer $Width $Height) + ' ')
+    Reset-StatsWindow $Stats
+}
+
+function Format-StatsLine {
+    param($Stats, $Renderer, [int] $Width, [int] $Height)
 
     $n      = [Math]::Max(1, $Stats.Frames)
     $fpsNow = $Stats.Frames * 1000.0 / $Stats.Window.ElapsedMilliseconds
-
     # InvariantCulture: a decimal comma in a field this dense reads as a thousands
     # separator, and these numbers get pasted into issues.
     $inv = [System.Globalization.CultureInfo]::InvariantCulture
 
-    # Least useful last, and dropped rather than clipped. StampOverlay takes
-    # $Width - 2, and half of "start 0.45s" is a different number.
     $head = [string]::Format($inv, ' {0}x{1} {2:N0}{3}fps late {4:N0}%',
         $Width, $Height, $fpsNow, $(if ($Stats.Target) { "/$($Stats.Target)" } else { ' ' }),
         ($Stats.Late * 100.0 / $n))
@@ -71,13 +74,19 @@ function Update-FrameStats {
         $(if ($Renderer.LastWrites -gt 1) { " $($Renderer.LastWrites)w" } else { '' }))
     if ($Stats.StartMs -gt 0) { $rest += [string]::Format($inv, '  start {0:N1}s', ($Stats.StartMs / 1000.0)) }
 
+    # Least useful last, and dropped whole rather than clipped. StampOverlay takes
+    # $Width - 2, and half of "start 0.45s" is a different number.
     $line = $head
     foreach ($part in $rest) {
         if ($line.Length + $part.Length + 1 -gt $Width - 2) { break }
         $line += $part
     }
-    $Renderer.SetOverlay($line + ' ')
+    $line
+}
 
+function Reset-StatsWindow {
+    # The averages cover one second each, so the accumulators start over with it.
+    param($Stats)
     $Stats.Frames  = 0
     $Stats.BuildMs = 0.0
     $Stats.WriteMs = 0.0

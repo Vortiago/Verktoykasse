@@ -79,6 +79,8 @@ namespace MatrixVT__TAG__
         private static bool rawOn, savedOk, mouseWritten;
         private static byte[] pending = new byte[0];    // a sequence split across reads
         private const int MAX_PENDING = 1024;           // longer than that is not a sequence
+        private const byte ESC = 0x1b;
+        private const int INCOMPLETE = 0;               // ClassifyAt used no bytes
         // The frame loop runs up to 240 times a second: everything it touches
         // per frame is allocated once, here.
         private static readonly byte[] readBuf = new byte[64];
@@ -174,74 +176,79 @@ namespace MatrixVT__TAG__
 
             int n = read(0, readBuf, readBuf.Length);
             if (n < 0) n = 0;                             // EAGAIN and friends: nothing new
-            // The stash holds either the bytes behind an event already reported -
-            // the second of two clicks in one frame - or an ESC held back below.
-            // Returning here on an idle read stranded both until some later byte
-            // arrived, and none need ever arrive.
             if (n == 0 && pending.Length == 0) return NONE;
 
             byte[] all;
-            int len;
-            if (n == 0)
-            {
-                all = pending;                            // nothing new: work the stash alone
-                len = pending.Length;
-                pending = noBytes;
-            }
-            else if (pending.Length == 0)
-            {
-                all = readBuf;                            // nothing stashed: read in place
-                len = n;
-            }
-            else
-            {
-                len = pending.Length + n;                 // finish a split sequence first
-                all = new byte[len];
-                Array.Copy(pending, all, pending.Length);
-                Array.Copy(readBuf, 0, all, pending.Length, n);
-                pending = noBytes;
-            }
-
-            // A read that filled the buffer means more was queued than fit, so a
-            // trailing ESC is the head of a split sequence, not the key: a click
-            // burst is nine bytes of press and nine of release, and a lone ESC at
-            // the split would exit the rain on a click. Hold it back. An idle read
-            // settles it the other way - nothing followed, so the ESC was the key,
-            // and n of 0 leaves it inside the limit.
-            int limit = (n == readBuf.Length && all[len - 1] == 0x1b) ? len - 1 : len;
+            int len = TakeWithStash(n, out all);
+            int limit = EndsWithSplitEscape(n, all, len) ? len - 1 : len;
 
             int off = 0;
             while (off < limit)
             {
                 int used, cx, cy;
                 int what = ClassifyAt(all, off, limit - off, out cx, out cy, out used);
-                // used == 0 is a sequence the terminal has not finished sending.
-                if (used == 0) break;
+                if (used == INCOMPLETE) break;
                 off += used;
-                // Stash before answering, not only on the way out. Returning the
-                // press and dropping what followed resumes the next read INSIDE the
-                // release, whose leftover parameter bytes (";3M") are printable -
-                // and a printable byte is an exit.
+                // Stash before answering. Dropping the bytes after a press resumes
+                // the next read inside the release, whose parameter bytes are
+                // printable, and a printable byte is an exit.
                 if (what != NONE) { x = cx; y = cy; Stash(all, off, len); return what; }
             }
             Stash(all, off, len);
             return NONE;
         }
 
-        // Keep the tail for the next read. The bytes are copied because `all` may
-        // be readBuf, which the next frame overwrites. Anything longer than the
-        // longest escape sequence a terminal sends is not one: drop it rather than
-        // let a stream that never terminates grow the stash without bound.
+        // The bytes to classify this frame: what was read, what was stashed, or both
+        // joined in order. An idle read still has the stash to work. Leaving it there
+        // strands a second click or a held ESC until a later byte arrives, and none
+        // need ever arrive.
+        private static int TakeWithStash(int n, out byte[] all)
+        {
+            if (n == 0)
+            {
+                all = pending;
+                pending = noBytes;
+                return all.Length;
+            }
+            if (pending.Length == 0)
+            {
+                all = readBuf;                            // read in place
+                return n;
+            }
+            all = new byte[pending.Length + n];
+            Array.Copy(pending, all, pending.Length);
+            Array.Copy(readBuf, 0, all, pending.Length, n);
+            pending = noBytes;
+            return all.Length;
+        }
+
+        // A full buffer means more was queued than fit, so a trailing ESC is the head
+        // of a sequence split across reads. Read as a key it exits the rain on a
+        // click, because a click burst is 18 bytes and the split lands inside it. An
+        // idle read settles it the other way: nothing followed, so the ESC was the key.
+        private static bool EndsWithSplitEscape(int n, byte[] b, int len)
+        {
+            return n == readBuf.Length && b[len - 1] == ESC;
+        }
+
+        // Keep the tail for the next read. Anything longer than the longest escape
+        // sequence a terminal sends is not one. Drop it, or a stream that never
+        // terminates grows the stash without bound.
         private static void Stash(byte[] all, int off, int len)
         {
             int keep = len - off;
             if (keep <= 0 || keep > MAX_PENDING) return;
-            // An idle read hands back the array it was given, whole: copying it
-            // would allocate once a frame for as long as an unterminated sequence
-            // sits there. readBuf is the exception - the next read overwrites it.
-            if (off == 0 && all.Length == len && !ReferenceEquals(all, readBuf)) { pending = all; return; }
+            if (IsWholeOwnedArray(all, off, len)) { pending = all; return; }
             pending = new byte[keep];
             Array.Copy(all, off, pending, 0, keep);
+        }
+
+        // The whole array, and ours to keep. readBuf is neither: the next read
+        // overwrites it. Saves one allocation a frame while an unfinished sequence
+        // sits in the stash.
+        private static bool IsWholeOwnedArray(byte[] all, int off, int len)
+        {
+            return off == 0 && all.Length == len && !ReferenceEquals(all, readBuf);
         }
 
         // Classifies the event at the start of the buffer. The escape sequence
@@ -257,7 +264,7 @@ namespace MatrixVT__TAG__
             x = -1; y = -1; used = 0;
             if (len <= 0) return NONE;
             byte c = b[off];
-            if (c == 0x1b) return ClassifyEscape(b, off, len, out x, out y, out used);
+            if (c == ESC) return ClassifyEscape(b, off, len, out x, out y, out used);
             if (c == 0x03) { used = 1; return EXIT; }     // Ctrl+C, with ISIG off
             if (c < 0x20) { used = 1; return NONE; }      // the other control bytes
             used = 1; return EXIT;                         // a printable key
