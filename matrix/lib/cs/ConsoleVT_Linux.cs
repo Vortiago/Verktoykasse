@@ -209,20 +209,30 @@ namespace MatrixVT__TAG__
                 // used == 0 is a sequence the terminal has not finished sending.
                 if (used == 0) break;
                 off += used;
-                if (what != NONE) { x = cx; y = cy; return what; }
+                // Stash before answering, not only on the way out with nothing to
+                // report. A click burst is nine bytes of press and nine of release:
+                // returning the press and dropping what followed resumes the next
+                // read INSIDE the release, whose leftover parameter bytes (";3M")
+                // are printable - and a printable byte is an exit. Clicking twice
+                // in one frame would end the rain.
+                if (what != NONE) { x = cx; y = cy; Stash(all, off, len); return what; }
             }
-            if (off < len)
-            {
-                // Keep the tail for the next read; nothing before it can matter
-                // more than it does. Anything longer than the longest escape
-                // sequence a terminal sends is not one: drop it rather than let a
-                // stream that never terminates grow the stash without bound.
-                int keep = len - off;
-                if (keep > MAX_PENDING) return NONE;      // pending is already empty
-                pending = new byte[keep];
-                Array.Copy(all, off, pending, 0, keep);
-            }
+            Stash(all, off, len);
             return NONE;
+        }
+
+        // Keep the tail for the next read; nothing before it can matter more than it
+        // does. The bytes are copied out because `all` may be readBuf itself, which
+        // the next frame overwrites. Anything longer than the longest escape sequence
+        // a terminal sends is not one: drop it rather than let a stream that never
+        // terminates grow the stash without bound. `pending` is empty on every path
+        // that reaches here, so dropping is simply not filling it.
+        private static void Stash(byte[] all, int off, int len)
+        {
+            int keep = len - off;
+            if (keep <= 0 || keep > MAX_PENDING) return;
+            pending = new byte[keep];
+            Array.Copy(all, off, pending, 0, keep);
         }
 
         // Classifies the event at the start of the buffer. The escape sequence

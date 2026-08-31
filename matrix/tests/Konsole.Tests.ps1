@@ -7,7 +7,14 @@ BeforeAll {
 }
 
 Describe 'Get-OwnTerminalWindow' {
-    AfterAll { Remove-Item Env:\KONSOLE_DBUS_WINDOW -ErrorAction SilentlyContinue }
+    # Restore, do not null: a developer running the suite inside a real Konsole tab
+    # must not lose the variable from their process - the same rule Invoke-Rain
+    # follows for CLAUDE_CONFIG_DIR.
+    BeforeAll { $script:realWindow = $env:KONSOLE_DBUS_WINDOW }
+    AfterAll {
+        if ($null -eq $script:realWindow) { Remove-Item Env:\KONSOLE_DBUS_WINDOW -ErrorAction SilentlyContinue }
+        else { $env:KONSOLE_DBUS_WINDOW = $script:realWindow }
+    }
 
     It 'reads the window Konsole exported into the environment' {
         # Konsole sets KONSOLE_DBUS_WINDOW before starting the shell in a tab. Unlike
@@ -36,11 +43,23 @@ Describe 'Test-TabSupport' {
 
     It 'names the missing bus when there is a window but nothing to ask' {
         # KONSOLE_DBUS_SERVICE is what Get-KonsoleBus dials, and it is unset
-        # anywhere that is not a Konsole tab - including this runner. Dialling
-        # here rather than at the first rebuild is the point: a failed call inside
-        # Get-AllTerminalTab returns an empty list, which -ThisWindow would render
-        # as a window holding no sessions rather than as a reason.
-        Test-TabSupport -Hwnd 1 | Should -Not -BeNullOrEmpty
+        # anywhere that is not a Konsole tab. Blank it for the length of this test
+        # rather than trust the runner to be outside one: run the suite from a
+        # Konsole tab and the real service would answer, and the assertion below
+        # would be judging that machine's desktop instead of this branch.
+        # Dialling here rather than at the first rebuild is the point: a failed call
+        # inside Get-AllTerminalTab returns an empty list, which -ThisWindow would
+        # render as a window holding no sessions rather than as a reason.
+        $prevService = $script:KonsoleService
+        $prevBus     = $script:KonsoleBus
+        try {
+            $script:KonsoleService = $null
+            $script:KonsoleBus     = $null
+            Test-TabSupport -Hwnd 1 | Should -Not -BeNullOrEmpty
+        } finally {
+            $script:KonsoleService = $prevService
+            $script:KonsoleBus     = $prevBus
+        }
     }
 }
 

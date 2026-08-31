@@ -46,10 +46,13 @@ namespace MatrixDBus__TAG__
         {
             switch (c)
             {
-                case 'y': case 'g': return 1;
+                // A variant aligns to 1, not to 8: the specification's table gives
+                // the 8 to STRUCT and DICT_ENTRY, and the variant carries its own
+                // alignment inside, in the signature it opens with.
+                case 'y': case 'g': case 'v': return 1;
                 case 'n': case 'q': return 2;
                 case 'b': case 'i': case 'u': case 'h': case 's': case 'o': case 'a': return 4;
-                default: return 8;    // 'x', 'd', 't', 'v'
+                default: return 8;    // 'x', 'd', 't'
             }
         }
 
@@ -96,7 +99,9 @@ namespace MatrixDBus__TAG__
                     case 'g': b.Sig((string)v); i++; break;
                     case 'v':
                         Variant va = (Variant)v;
-                        b.Pad(8);                       // a variant is a struct
+                        // No padding of its own: a variant aligns to 1. The value
+                        // inside pads to whatever its signature says, from wherever
+                        // the signature happens to end.
                         b.Sig(va.Sig);
                         WriteSig(b, va.Sig, new object[] { va.Value }, 0);
                         i++;
@@ -113,8 +118,15 @@ namespace MatrixDBus__TAG__
         }
 
         // The array length counts the element data, so the elements go into a
-        // scratch buffer first. They are built from offset 0, which shares every
-        // alignment class with the real element start, so the bytes append as-is.
+        // scratch buffer first, then append as-is at the real element start.
+        //
+        // That start is aligned to the ELEMENT's own alignment, and offset 0 in the
+        // scratch is aligned to everything, so the two agree for every element type
+        // whose internal padding never exceeds its own alignment - which is every
+        // type these calls send. It does NOT hold for an element that pads harder
+        // inside than it aligns outside ('aat', 'av'): the inner 8-alignment would be
+        // measured from 0 rather than from a start only 4- or 1-aligned. Nothing here
+        // writes one; encoding at the real offset is what it would take.
         static int WriteArray(Buf b, string elemSig, object arrayVal, int i)
         {
             List<object> items = new List<object>();
@@ -154,7 +166,10 @@ namespace MatrixDBus__TAG__
             Field(fields, 6, "s", dest);
             Field(fields, 2, "s", iface);
             Field(fields, 3, "s", member);
-            if (!string.IsNullOrEmpty(inSig)) Field(fields, 8, "g", inSig);
+            // Off the BODY, not off inSig: a signature the body does not back is a
+            // malformed message, and the bus answers one of those by hanging up.
+            // `inSig` with a null `args` is exactly that pair.
+            if (body.Length > 0) Field(fields, 8, "g", inSig);
 
             return Pack(1, serial, fields, body);
         }
@@ -168,7 +183,7 @@ namespace MatrixDBus__TAG__
 
             Buf fields = new Buf();
             Field(fields, 5, "u", replySerial);
-            if (!string.IsNullOrEmpty(outSig)) Field(fields, 8, "g", outSig);
+            if (body.Length > 0) Field(fields, 8, "g", outSig);   // see EncodeCall
 
             return Pack(2, serial, fields, body);
         }
@@ -235,7 +250,8 @@ namespace MatrixDBus__TAG__
                     case 's': case 'o': outv.Add(c.Str()); break;
                     case 'g': outv.Add(c.SigStr()); break;
                     case 'v':
-                        c.Pad(8);
+                        // No padding of its own: a variant aligns to 1, and the
+                        // value inside pads from wherever its signature ends.
                         string vsig = c.SigStr();
                         object[] inner = ReadSig(c, vsig);
                         outv.Add(new Variant(vsig, inner.Length == 1 ? inner[0] : inner));
@@ -428,6 +444,9 @@ namespace MatrixDBus__TAG__
             }
             catch (Exception e)
             {
+                // The socket exists by the time Connect can fail, and it is ours:
+                // close it here for the same reason the handshake below does.
+                Dispose();
                 throw new DBusException("matrix: cannot reach the session bus: " + e.Message);
             }
             // This ctor owns the socket it dialled: a handshake that throws must

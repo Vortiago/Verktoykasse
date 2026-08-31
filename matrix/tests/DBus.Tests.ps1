@@ -76,7 +76,7 @@ Describe 'Wire: body encoding' {
             Should -Be '07-00-00-00-06-00-00-00-01-00-00-00-61-00'
     }
 
-    It 'packs a variant as an 8-aligned signature-then-value struct' {
+    It 'packs a variant as a signature followed by its value' {
         # variant: signature 'i' (length, chars, NUL), then the value padded to its
         # own alignment. Signature is 3 bytes, so the int32 pads from offset 3 to 4.
         Get-Hex ($Wire::EncodeBody('v', @($Variant::new('i', 5)))) | Should -Be '01-69-00-00-05-00-00-00'
@@ -86,6 +86,16 @@ Describe 'Wire: body encoding' {
         # signature 'x' is 3 bytes; an int64 aligns to 8.
         Get-Hex ($Wire::EncodeBody('v', @($Variant::new('x', [int64]1)))) |
             Should -Be '01-78-00-00-00-00-00-00-01-00-00-00-00-00-00-00'
+    }
+
+    It 'does not pad the variant itself, which aligns to one' {
+        # The specification gives the 8 to STRUCT and DICT_ENTRY; a VARIANT aligns to
+        # 1. A variant at offset 0 - which is what every other case here writes -
+        # cannot tell the two apart. Put a byte in front of it and it can: the
+        # signature must start at offset 1, not at 8. Getting this wrong is invisible
+        # in a round trip and rejected by the bus, e.g. Properties.Set ("ssv").
+        Get-Hex ($Wire::EncodeBody('yv', @([byte]1, $Variant::new('i', 5)))) |
+            Should -Be '01-01-69-00-05-00-00-00'
     }
 }
 
