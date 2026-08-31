@@ -1,5 +1,6 @@
 BeforeAll {
-    . (Join-Path $PSScriptRoot '..\lib\console.ps1')
+    . (Join-Path $PSScriptRoot '../lib/console.ps1')
+    . (Join-Path $PSScriptRoot '../lib/stats.ps1')
     $script:E = [char]27
 }
 
@@ -96,5 +97,135 @@ namespace PesterProbe__TAG__
         $rt = "net$([System.Environment]::Version.Major)"
         Get-ChildItem ([System.IO.Path]::GetTempPath()) -Filter "matrix-PesterProbe-*-$rt.dll" |
             Should -Not -BeNullOrEmpty
+    }
+}
+
+Describe 'Frame stats' {
+    # The overlay exists to say WHERE a slow frame went, so the split is what is
+    # asserted. The clocks are stand-ins: a real Stopwatch cannot be moved to the
+    # one-second mark, and Update-FrameStats only asks them for elapsed time.
+    BeforeAll {
+        function New-FakeClock ($ms) {
+            [pscustomobject]@{ ElapsedMilliseconds = $ms
+                               Elapsed = [pscustomobject]@{ TotalMilliseconds = [double]$ms } } |
+                Add-Member ScriptMethod Restart {} -PassThru |
+                Add-Member ScriptMethod Stop {} -PassThru
+        }
+        function New-FakeRenderer ($writeMs = 0.0, $bytes = 2048, $runs = 110, $writes = 1, $cells = 60) {
+            $ticks = [long]($writeMs * [System.Diagnostics.Stopwatch]::Frequency / 1000.0)
+            [pscustomobject]@{ LastWriteTicks = $ticks; LastBytes = $bytes; LastRuns = $runs
+                               LastWrites = $writes; LastCells = $cells; Overlay = '' } |
+                Add-Member ScriptMethod SetOverlay { param($l) $this.Overlay = $l } -PassThru
+        }
+        # One frame of $frameMs, of which $writeMs was spent in the terminal.
+        # Wide by default: which fields are present is one question, and what a
+        # narrow terminal drops is another.
+        function Get-StatsLine ($frameMs, $writeMs, $stats = $null, $width = 200) {
+            if (-not $stats) { $stats = New-FrameStats -Show $true -TargetFps 30 }
+            $stats.Frame  = New-FakeClock $frameMs
+            $stats.Window = New-FakeClock 1000
+            $r = New-FakeRenderer $writeMs
+            Update-FrameStats $stats -Renderer $r -Width $width -Height 25
+            $r.Overlay
+        }
+    }
+
+    It 'splits a frame into our build and the time blocked in the terminal' {
+        # 10 ms of frame, 8 of it waiting on the terminal: the renderer is not the
+        # problem, and the line has to be able to say so.
+        Get-StatsLine 10.0 8.0 | Should -Match 'build 2\.00 write 8\.00'
+    }
+
+    It 'reports the geometry, the achieved rate against the target, and late frames' {
+        $line = Get-StatsLine 10.0 8.0
+        $line | Should -Match '200x25'
+        $line | Should -Match '1/30fps'          # one frame in the fake second
+        $line | Should -Match 'late 0%'
+    }
+
+    It 'counts a frame that overran its slot' {
+        $stats = New-FrameStats -Show $true -TargetFps 30
+        $stats.Late = 1
+        Get-StatsLine 10.0 8.0 $stats | Should -Match 'late 100%'
+    }
+
+    It 'names what the terminal was handed, in runs and not only in bytes' {
+        # A terminal lays text out per attribute run, so this is the number that
+        # predicts its cost. Bytes alone do not.
+        Get-StatsLine 4.0 1.0 | Should -Match '2\.0KB 110runs'
+    }
+
+    It 'leaves the poll out where nothing polls' {
+        # The preview has no session read, and "poll 0.0" would read as a
+        # measurement rather than an absence.
+        Get-StatsLine 4.0 1.0 | Should -Not -Match 'poll'
+    }
+
+    It 'reports the poll once a loop that has one has run it' {
+        $stats = New-FrameStats -Show $true -TargetFps 30
+        $stats.PollMs = 12.5
+        Get-StatsLine 4.0 1.0 $stats | Should -Match 'poll 12\.5'
+    }
+
+    It 'does not also charge the poll to build, which ran inside the same frame' {
+        # A 10 ms frame holding an 8 ms poll and a 1 ms write left 1 ms of our
+        # own work. Counted twice, the poll makes the renderer look like the
+        # problem on exactly the frames where it is not.
+        $stats = New-FrameStats -Show $true -TargetFps 30
+        $stats.PollMs = 8.0; $stats.PollFrameMs = 8.0
+        Get-StatsLine 10.0 1.0 $stats | Should -Match 'build 1\.00 write 1\.00'
+    }
+
+    It 'charges the poll to the one frame that waited for it' {
+        # Cleared as it is consumed: the next frame does not still pay for it.
+        $stats = New-FrameStats -Show $true -TargetFps 30
+        $stats.PollFrameMs = 8.0
+        $stats.Frame  = New-FakeClock 10.0
+        $stats.Window = New-FakeClock 400          # under the window: keep accumulating
+        Update-FrameStats $stats -Renderer (New-FakeRenderer 1.0) -Width 200 -Height 25
+        $stats.PollFrameMs | Should -Be 0.0
+        [Math]::Round($stats.BuildMs, 2) | Should -Be 1.0
+    }
+
+    It 'reports startup once it is known' {
+        $stats = New-FrameStats -Show $true -TargetFps 30 -StartMs 940
+        Get-StatsLine 4.0 1.0 $stats | Should -Match 'start 0\.9s'
+    }
+
+    It 'formats invariantly, whatever the machine decides a decimal point is' {
+        # A decimal comma in a field this dense reads as a thousands separator.
+        $prev = [System.Threading.Thread]::CurrentThread.CurrentCulture
+        try {
+            [System.Threading.Thread]::CurrentThread.CurrentCulture = [cultureinfo]'nb-NO'
+            Get-StatsLine 10.0 8.0 | Should -Match 'build 2\.00'
+        } finally { [System.Threading.Thread]::CurrentThread.CurrentCulture = $prev }
+    }
+
+    It 'drops whole fields on a narrow terminal rather than cutting one in half' {
+        # The row is stamped into the bottom line and clipped there, so a field cut
+        # mid-number would not read as missing - it would read as a smaller number.
+        $stats = New-FrameStats -Show $true -TargetFps 30 -StartMs 940
+        $stats.PollMs = 12.0
+        $narrow = Get-StatsLine 10.0 8.0 $stats 60
+        $narrow | Should -Match 'build 2\.00 write 8\.00'
+        $narrow | Should -Not -Match 'start'
+        $narrow.Length | Should -BeLessOrEqual 58        # what StampOverlay will take
+    }
+
+    It 'keeps every field when there is room for it' {
+        $stats = New-FrameStats -Show $true -TargetFps 30 -StartMs 940
+        $stats.PollMs = 12.0
+        $wide = Get-StatsLine 10.0 8.0 $stats 200
+        foreach ($f in 'build', 'write', 'poll', 'runs', 'start') { $wide | Should -Match $f }
+    }
+
+    It 'says nothing until its window is up' {
+        $stats = New-FrameStats -Show $true -TargetFps 30
+        $stats.Frame  = New-FakeClock 10
+        $stats.Window = New-FakeClock 400          # not a second yet
+        $r = New-FakeRenderer 8.0
+        Update-FrameStats $stats -Renderer $r -Width 80 -Height 25
+        $r.Overlay | Should -BeNullOrEmpty
+        $stats.Frames | Should -Be 1               # still accumulating
     }
 }

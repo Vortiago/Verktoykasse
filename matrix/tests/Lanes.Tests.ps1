@@ -1,7 +1,7 @@
 BeforeAll {
-    . (Join-Path $PSScriptRoot '..\lib\console.ps1')
-    . (Join-Path $PSScriptRoot '..\lib\palette.ps1')
-    . (Join-Path $PSScriptRoot '..\lib\lanes.ps1')
+    . (Join-Path $PSScriptRoot '../lib/console.ps1')
+    . (Join-Path $PSScriptRoot '../lib/palette.ps1')
+    . (Join-Path $PSScriptRoot '../lib/lanes.ps1')
 
     # Stands in for the compiled renderer. Set-RendererLanes is layout, and this
     # captures the layout it hands over.

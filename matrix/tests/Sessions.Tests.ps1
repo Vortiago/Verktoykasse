@@ -5,18 +5,19 @@ BeforeAll {
     $script:fakeHome = Join-Path ([System.IO.Path]::GetTempPath()) "matrix-tests-$PID"
     $env:CLAUDE_CONFIG_DIR = $fakeHome
     New-Item -ItemType Directory -Path (Join-Path $fakeHome 'sessions') -Force | Out-Null
-    New-Item -ItemType Directory -Path (Join-Path $fakeHome 'projects\D--repos-matrix') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $fakeHome 'projects/D--repos-matrix') -Force | Out-Null
 
-    . (Join-Path $PSScriptRoot '..\lib\console.ps1')
-    . (Join-Path $PSScriptRoot '..\lib\sessions.ps1')
+    . (Join-Path $PSScriptRoot '../lib/console.ps1')
+    . (Join-Path $PSScriptRoot '../lib/sessions.ps1')
+    . (Join-Path $PSScriptRoot 'Fixtures.ps1')
 
     # This process is the only PID guaranteed alive, with a start time we can read.
     $script:livePid   = $PID
-    $script:liveStart = [System.Diagnostics.Process]::GetCurrentProcess().StartTime.ToFileTimeUtc()
+    $script:liveStart = Get-TestProcStart
     $script:deadPid   = 999999
 
     function Write-Registry ($name, $record) {
-        $path = Join-Path $fakeHome "sessions\$name.json"
+        $path = Join-Path $fakeHome "sessions/$name.json"
         ($record | ConvertTo-Json -Compress) | Set-Content -LiteralPath $path -Encoding utf8
     }
     function New-Record ($id, $status, $overrides) {
@@ -147,13 +148,20 @@ Describe 'Get-ClaudeSession' {
         @(Get-ClaudeSession) | Should -HaveCount 0
     }
 
+    It 'accepts the start time Claude writes on this platform' {
+        # The registry holds a FILETIME on Windows and /proc clock ticks on Linux.
+        # A check that reads one as the other finds every session dead.
+        Write-Registry 'a' (New-Record 'sid-a' 'busy')
+        @(Get-ClaudeSession) | Should -HaveCount 1
+    }
+
     It 'shows only interactive sessions' {
         Write-Registry 'a' (New-Record 'sid-a' 'busy' @{ kind = 'background' })
         @(Get-ClaudeSession) | Should -HaveCount 0
     }
 
     It 'skips a record it cannot read instead of failing the poll' {
-        'not json at all' | Set-Content -LiteralPath (Join-Path $fakeHome 'sessions\broken.json')
+        'not json at all' | Set-Content -LiteralPath (Join-Path $fakeHome 'sessions/broken.json')
         Write-Registry 'a' (New-Record 'sid-a' 'busy')
         @(Get-ClaudeSession) | Should -HaveCount 1
     }
@@ -169,7 +177,7 @@ Describe 'Get-ClaudeSession' {
         # would parse and surface it, so its absence proves the claim.
         # (A garbage fixture proved nothing: unparseable files are skipped anyway.)
         (New-Record 'sid-from-key-file' 'busy' | ConvertTo-Json -Compress) |
-            Set-Content -LiteralPath (Join-Path $fakeHome 'sessions\1234.abcd.key')
+            Set-Content -LiteralPath (Join-Path $fakeHome 'sessions/1234.abcd.key')
         Write-Registry 'a' (New-Record 'sid-a' 'busy')
         $live = @(Get-ClaudeSession)
         $live | Should -HaveCount 1
@@ -211,7 +219,7 @@ Describe 'Get-SessionFact' {
             (@{ type = 'assistant'; gitBranch = 'old-branch' } | ConvertTo-Json -Compress -Depth 5),
             (@{ type = 'assistant'; gitBranch = 'matrix' } | ConvertTo-Json -Compress -Depth 5)
         )
-        $lines | Set-Content -LiteralPath (Join-Path $fakeHome "projects\D--repos-matrix\$id.jsonl") -Encoding utf8
+        $lines | Set-Content -LiteralPath (Join-Path $fakeHome "projects/D--repos-matrix/$id.jsonl") -Encoding utf8
 
         $fact = Get-SessionFact ([pscustomobject]@{ SessionId = $id })
         $fact.Task   | Should -Be 'the opening prompt of this session'
@@ -223,7 +231,7 @@ Describe 'Get-SessionFact' {
         # violation must not blank the header for the rest of the run, exactly as a
         # missing transcript does not.
         $id = 'sid-locked'
-        $path = Join-Path $fakeHome "projects\D--repos-matrix\$id.jsonl"
+        $path = Join-Path $fakeHome "projects/D--repos-matrix/$id.jsonl"
         (@{ type = 'user'; message = @{ content = 'the opening prompt of this session' } } |
             ConvertTo-Json -Compress -Depth 5) | Set-Content -LiteralPath $path -Encoding utf8
         $script:TranscriptIndex = $null
@@ -252,7 +260,7 @@ Describe 'Get-SessionFact' {
         # for a beat before the first user turn lands. Caching that gap as "no prompt"
         # blanked the header for the whole run.
         $id = 'sid-young'
-        $path = Join-Path $fakeHome "projects\D--repos-matrix\$id.jsonl"
+        $path = Join-Path $fakeHome "projects/D--repos-matrix/$id.jsonl"
         (@{ type = 'assistant'; gitBranch = 'matrix' } | ConvertTo-Json -Compress -Depth 5) |
             Set-Content -LiteralPath $path -Encoding utf8
         (Get-SessionFact ([pscustomobject]@{ SessionId = $id })).Task | Should -Be ''
@@ -289,7 +297,7 @@ Describe 'Get-SessionTitle' {
     It 'adds the branch when it says something the folder does not' {
         $id = 'sid-title'
         (@{ type = 'assistant'; gitBranch = 'feature-x' } | ConvertTo-Json -Compress -Depth 5) |
-            Set-Content -LiteralPath (Join-Path $fakeHome "projects\D--repos-matrix\$id.jsonl") -Encoding utf8
+            Set-Content -LiteralPath (Join-Path $fakeHome "projects/D--repos-matrix/$id.jsonl") -Encoding utf8
         # [char] escape, so the expectation never depends on this file's encoding.
         Get-SessionTitle ([pscustomobject]@{
             NameSource = 'derived'; Name = 'x'; Cwd = 'D:\repos\matrix'; SessionId = $id }) |
@@ -300,7 +308,7 @@ Describe 'Get-SessionTitle' {
         # HEAD is what a cwd outside a work tree reports.
         $id = 'sid-head'
         (@{ type = 'assistant'; gitBranch = 'HEAD' } | ConvertTo-Json -Compress -Depth 5) |
-            Set-Content -LiteralPath (Join-Path $fakeHome "projects\D--repos-matrix\$id.jsonl") -Encoding utf8
+            Set-Content -LiteralPath (Join-Path $fakeHome "projects/D--repos-matrix/$id.jsonl") -Encoding utf8
         Get-SessionTitle ([pscustomobject]@{
             NameSource = 'derived'; Name = 'x'; Cwd = 'D:\repos\matrix'; SessionId = $id }) |
             Should -Be 'matrix'
@@ -318,5 +326,47 @@ Describe 'Get-SessionTitle' {
         Get-SessionTitle ([pscustomobject]@{
             NameSource = 'user'; Name = "tab`there"; Cwd = 'D:\repos\matrix'; SessionId = 'x' }) |
             Should -Be 'tab here'
+    }
+}
+
+Describe 'ConvertTo-ProcStartTicks' {
+    # /proc/N/stat field 22, read out of the line rather than off the disk, so the
+    # parse is testable on a box that has no /proc at all.
+    It 'reads the start time out of a stat line' {
+        # Fields 3 through 21 stand in as zeros; 22 is the one that matters.
+        $stat = '4242 (pwsh) S ' + ((1..18 | ForEach-Object { 0 }) -join ' ') + ' 987654'
+        ConvertTo-ProcStartTicks $stat | Should -Be 987654
+    }
+
+    It 'counts from the last close paren, so a comm with spaces and parens does not shift it' {
+        # comm is whatever the binary was called, up to 15 bytes, and the kernel
+        # does not escape it: "(a b) c)" is a legal one.
+        $stat = '4242 (a b) c) S ' + ((1..18 | ForEach-Object { 0 }) -join ' ') + ' 987654'
+        ConvertTo-ProcStartTicks $stat | Should -Be 987654
+    }
+
+    It 'answers nothing for a line that is too short to hold the field' {
+        # Not 0. Zero is a real tick value, and a caller comparing it against the
+        # registry would read "started at boot" and drop a live session.
+        ConvertTo-ProcStartTicks '4242 (pwsh) S 1 2 3' | Should -BeNullOrEmpty
+    }
+
+    It 'answers nothing for a line with no comm at all' {
+        ConvertTo-ProcStartTicks 'nothing here' | Should -BeNullOrEmpty
+    }
+
+    It 'answers nothing when the field is not a number' {
+        $stat = '4242 (pwsh) S ' + ((1..18 | ForEach-Object { 0 }) -join ' ') + ' later'
+        ConvertTo-ProcStartTicks $stat | Should -BeNullOrEmpty
+    }
+}
+
+Describe 'Test-SessionAlive on an unreadable stat line' -Skip:($IsWindows) {
+    It 'keeps the session, the same answer an unreadable procStart gets' {
+        # The rule sessions.ps1 already states for a procStart that will not
+        # parse. The reading side has to answer the same way, or a live lane
+        # vanishes for the rest of the run over an unreadable stat line.
+        Mock Get-ProcessStartTicks { $null }
+        Test-SessionAlive -ProcessId $PID -ProcStart '12345' | Should -BeTrue
     }
 }

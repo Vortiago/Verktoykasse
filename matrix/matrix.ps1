@@ -13,12 +13,14 @@
     See README.md for how it works.
 
 .PARAMETER ThisWindow
-    Show only sessions in the same Windows Terminal window as this rain.
+    Show only sessions in the same terminal window as this rain (Windows Terminal
+    or Konsole).
 
 .PARAMETER Click
-    Left-click a lane to switch to that session's Windows Terminal tab. Tabs match
-    on title, so the match can be wrong: the lane header names the tab it would
-    open. Needs "Show status in terminal tab" on in Claude Code.
+    Left-click a lane to switch to that session's terminal tab. On Windows, tabs
+    match on title, so the match can be wrong: the lane header names the tab it
+    would open, and it needs "Show status in terminal tab" on in Claude Code. On
+    Konsole the match is exact - a tab is that session's process ancestor.
 
 .PARAMETER PollSeconds
     How often the session registry is re-read. Default 1.
@@ -31,7 +33,21 @@
     Stop automatically after N seconds. 0 (default) = run until a key is pressed.
 
 .PARAMETER Stats
-    Show frames/sec, frame build time and bytes per frame on the bottom line.
+    Put a performance line on the bottom row, split by step so a slow rain says
+    which step is slow:
+
+        80x25 28/30fps late 3%  build 5.22 write 0.12 ms poll 12.0 ms  7.1KB 296runs  start 0.4s
+
+    build   our own work: simulate the fall, stamp the labels, encode the diff
+    write   blocked in the terminal. Build near zero with a large write means the
+            terminal cannot drain what it is handed, not that the rain is slow
+    poll    the last session read, the registry scan and the tab map with it
+    late    frames that missed their deadline, whatever the reason
+    runs    colour changes handed to the terminal. A terminal lays text out per
+            attribute run, so this predicts its cost better than KB does
+    start   startup, up to the first frame. A first run pays a C# compile
+
+    Fields are dropped from the right on a narrow terminal, never half-printed.
 
 .EXAMPLE
     .\matrix.ps1
@@ -57,12 +73,28 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# Started before anything is loaded or compiled, and read once at the first
+# frame: -Stats reports it as "start". A first run pays a C# compile that a
+# cached one does not, and that is the difference this number makes visible.
+$bootClock = [System.Diagnostics.Stopwatch]::StartNew()
+
 if ($Host.Name -like '*ISE*') {
     throw 'Run this in Windows Terminal, PowerShell or conhost - the ISE has no real console.'
 }
 
-foreach ($part in 'console', 'types', 'palette', 'lanes', 'sessions', 'tabs') {
-    $file = Join-Path (Join-Path $PSScriptRoot 'lib') "$part.ps1"
+# terminal/ splits in two: tabmap.ps1 is the map itself and knows no platform,
+# and exactly one backend under it answers the six terminal functions the map
+# calls - Windows Terminal over UI Automation, or Konsole over D-Bus.
+$lib  = Join-Path $PSScriptRoot 'lib'
+$term = Join-Path $lib 'terminal'
+$load = @(
+    foreach ($part in 'console', 'stats', 'types', 'palette', 'lanes', 'sessions') {
+        Join-Path $lib "$part.ps1"
+    }
+    Join-Path $term 'tabmap.ps1'
+    Join-Path $term $(if ($IsWindows) { 'windows-terminal.ps1' } else { 'konsole.ps1' })
+)
+foreach ($file in $load) {
     if (-not (Test-Path -LiteralPath $file)) { throw "matrix: cannot load $file" }
     . $file
 }
@@ -96,12 +128,11 @@ $glyphs = Get-RainGlyph -Ascii:$useAscii
 
 # -ThisWindow and -Click both need the tab map. Windows Terminal keeps every window
 # in one process: a window is identified by its handle, a session by the tab whose
-# title matches it. Resolved once - this rain cannot move window.
+# title matches it. Konsole is the same, one process for every window, but the
+# session-to-tab match there is a pid walk, not a title match.
 $needTabs = [bool]($ThisWindow -or $Click)
 if ($needTabs) {
-    $why = ''
-    if (-not $hostHwnd) { $why = 'this is not a Windows Terminal window, or it was not in front at startup' }
-    elseif (-not (Initialize-Uia)) { $why = 'UI Automation is unavailable' }
+    $why = Test-TabSupport -Hwnd $hostHwnd
     if ($why) {
         # -ThisWindow asked for a smaller set. Quietly showing every session looks
         # like a broken filter: say so and stop.
@@ -219,15 +250,14 @@ Write-Raw $ENTER_SCREEN
 $timerRaised = $false
 try { $timerRaised = ($VT::timeBeginPeriod(1) -eq 0) } catch { }
 
-$frame   = [System.Diagnostics.Stopwatch]::StartNew()
 $clock   = [System.Diagnostics.Stopwatch]::StartNew()
-$statSw  = [System.Diagnostics.Stopwatch]::StartNew()
+$frameStats   = New-FrameStats -Show ([bool]$Stats) -TargetFps $Fps -StartMs $bootClock.Elapsed.TotalMilliseconds
+$renderer.Measure = $frameStats.Show
+$frameStats.PollMs = 0.0        # this loop does poll: report it even before the first
 $frameMs = 1000.0 / $Fps
 $pollMs  = $PollSeconds * 1000.0
 $nextDue = $frameMs
 $pollDue = 0.0
-$frames  = 0
-$buildMs = 0.0
 $sizeEvery = [Math]::Max(1, [int]($Fps / 4))   # check the window size ~4x a second
 $sizeTick  = 0
 $prevSec   = 0.0
@@ -237,7 +267,7 @@ $laneBounds = $null         # col0[] and wid[], for routing a click back to a la
 
 try {
     while ($true) {
-        $frame.Restart()
+        if ($frameStats.Show) { $frameStats.Frame.Restart() }
 
         $cx = 0; $cy = 0
         $what = $VT::PollInput([ref]$cx, [ref]$cy)
@@ -260,7 +290,17 @@ try {
         # header's age current.
         if ($nowMs -ge $pollDue) {
             $pollDue = $nowMs + $pollMs
+            # The registry scan, and Update-SessionTabMap behind it. It does not run
+            # every frame, but the loop waits for it when it does, so a slow one
+            # shows up as a stutter and nowhere else.
+            $pollAt = if ($frameStats.Show) { $clock.Elapsed.TotalMilliseconds } else { 0 }
             $lanes = Get-SessionLanes @(Get-LiveSession)
+            # Reported on its own, and taken back out of build: it ran inside the
+            # stretch the frame clock is timing.
+            if ($frameStats.Show) {
+                $frameStats.PollMs      = $clock.Elapsed.TotalMilliseconds - $pollAt
+                $frameStats.PollFrameMs = $frameStats.PollMs
+            }
             $relay = $true
         }
 
@@ -269,8 +309,13 @@ try {
         # stdout is redirected: fall back to 80x25.
         if ($sizeTick -le 0) {
             $sizeTick = $sizeEvery
+            # Windows THROWS when there is no console to measure; Linux answers 0.
+            # Both mean the same thing, so both take the same fallback - without
+            # the second test, a redirected run on Linux falls into the
+            # too-small branch below and draws nothing for its whole life.
             try   { $nw = [Console]::WindowWidth; $nh = [Console]::WindowHeight }
-            catch { $nw = 80; $nh = 25 }
+            catch { $nw = 0; $nh = 0 }
+            if ($nw -le 0 -or $nh -le 0) { $nw = 80; $nh = 25 }
             # Too small to rain in: draw nothing, recheck every 100 ms, and force a
             # resize on the way back. Committing the size here would leave the
             # renderer on old geometry while every later check saw no change.
@@ -296,28 +341,23 @@ try {
         $prevSec = $nowSec
         if ($dt -le 0) { $dt = 1.0 / $Fps } elseif ($dt -gt 0.25) { $dt = 0.25 }
         $renderer.WriteFrame($rawOut, $needFlush, $dt)
-
-        $frames++
-        $buildMs += $frame.Elapsed.TotalMilliseconds
-        if ($Stats -and $statSw.ElapsedMilliseconds -ge 1000) {
-            $fpsNow = $frames * 1000.0 / $statSw.ElapsedMilliseconds
-            $renderer.SetOverlay((' {0}x{1}  {2:N1} fps  {3:N2} ms/frame  {4:N1} KB/frame  {5} write(s) ' -f
-                $W, $H, $fpsNow, ($buildMs / [Math]::Max(1, $frames)), ($renderer.LastBytes / 1024.0), $renderer.LastWrites))
-            $frames = 0; $buildMs = 0.0; $statSw.Restart()
+        if ($frameStats.Show) {
+            Update-FrameStats $frameStats -Renderer $renderer -Width $W -Height $H
         }
 
         # Pace against a running deadline: jitter does not accumulate into drift.
         $now  = $clock.Elapsed.TotalMilliseconds
         $wait = $nextDue - $now
+        # No time left to wait means the frame overran its slot. Counted, not
+        # corrected: it is the symptom the build/write split explains.
+        if ($wait -lt 0 -and $frameStats.Show) { $frameStats.Late++ }
         if ($wait -ge 1) { [System.Threading.Thread]::Sleep([int]$wait) }
         $nextDue += $frameMs
         if ($nextDue -lt $now) { $nextDue = $now + $frameMs }   # fell behind, resync
     }
 } finally {
     Write-Raw $LEAVE_SCREEN
-    try { [Console]::CursorVisible = $true } catch { }
-    try { [Console]::TreatControlCAsInput = $false } catch { }
-    if ($null -ne $prevStdin) { try { [void]$VT::SetStdinMode($prevStdin) } catch { } }
+    Restore-ConsoleState -VT $VT -StdinMode $prevStdin
     if ($timerRaised) { try { [void]$VT::timeEndPeriod(1) } catch { } }
     if ($prevEncoding) { try { [Console]::OutputEncoding = $prevEncoding } catch { } }
 }

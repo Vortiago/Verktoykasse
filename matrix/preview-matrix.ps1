@@ -12,6 +12,11 @@
     Every few seconds, flip one of the three session lanes to another state, to
     see how transitions flow.
 
+.PARAMETER Stats
+    The same performance line matrix.ps1 shows, described there - with nothing
+    behind it but the render: no session reads and no tab map, so there is no
+    poll field and the build time is the renderer alone.
+
 .EXAMPLE
     .\preview-matrix.ps1
 #>
@@ -20,12 +25,18 @@
 param(
     [ValidateRange(5, 240)]   [int] $Fps     = 30,
     [ValidateRange(0, 86400)] [int] $Seconds = 0,
-    [switch] $Shuffle
+    [switch] $Shuffle,
+    [switch] $Stats
 )
 
 $ErrorActionPreference = 'Stop'
 
-foreach ($part in 'console', 'types', 'palette', 'lanes') {
+# Started before anything is loaded or compiled, and read once at the first
+# frame: -Stats reports it as "start". A first run pays a C# compile that a
+# cached one does not, and that is the difference this number makes visible.
+$bootClock = [System.Diagnostics.Stopwatch]::StartNew()
+
+foreach ($part in 'console', 'stats', 'types', 'palette', 'lanes') {
     $file = Join-Path (Join-Path $PSScriptRoot 'lib') "$part.ps1"
     if (-not (Test-Path -LiteralPath $file)) { throw "matrix: cannot load $file" }
     . $file
@@ -77,6 +88,13 @@ function Write-Raw {
     $rawOut.Flush()
 }
 
+# The stdin mode word has one owner: this snapshot. PollInput puts the terminal
+# into raw mode to read a keypress without waiting for a line, and only a write
+# back through SetStdinMode undoes it. Without this, the preview hands the shell
+# back with no echo and no line editing.
+$prevStdin = $null
+try { $prevStdin = $VT::GetStdinMode() } catch { }
+
 try { [Console]::TreatControlCAsInput = $true } catch { }
 try { [Console]::CursorVisible = $false } catch { }
 Write-Raw $ENTER_SCREEN
@@ -89,19 +107,33 @@ $sizeEvery = [Math]::Max(1, [int]($Fps / 4))
 $sizeTick  = 0
 $W = 0; $H = 0
 $shuffleDue = 2.0
+$frameStats      = New-FrameStats -Show ([bool]$Stats) -TargetFps $Fps -StartMs $bootClock.Elapsed.TotalMilliseconds
+$renderer.Measure = $frameStats.Show
 
 try {
     while ($true) {
+        if ($frameStats.Show) { $frameStats.Frame.Restart() }
+
         $cx = 0; $cy = 0
         if ($VT::PollInput([ref]$cx, [ref]$cy) -eq $VT::EXIT) { break }
         if ($Seconds -gt 0 -and $clock.Elapsed.TotalSeconds -ge $Seconds) { break }
 
         if ($sizeTick -le 0) {
             $sizeTick = $sizeEvery
+            # Windows THROWS when there is no console to measure; Linux answers 0.
+            # Both mean the same thing, so both take the same fallback - without
+            # the second test, a redirected run on Linux falls into the
+            # too-small branch below and draws nothing for its whole life.
             try   { $nw = [Console]::WindowWidth; $nh = [Console]::WindowHeight }
-            catch { $nw = 80; $nh = 25 }
+            catch { $nw = 0; $nh = 0 }
+            if ($nw -le 0 -or $nh -le 0) { $nw = 80; $nh = 25 }
+            # Too small to rain in: draw nothing, recheck every 100 ms, and force a
+            # resize on the way back - the terminal reflowed the alternate screen
+            # while it was that narrow, so the way back needs a clear and a relay,
+            # not the "no change" every later check would otherwise see. Same rule
+            # as matrix.ps1.
             if ($nw -lt 2 -or $nh -lt 2) {
-                $sizeTick = 0
+                $W = -1; $sizeTick = 0
                 [System.Threading.Thread]::Sleep(100)
                 continue
             }
@@ -129,16 +161,21 @@ try {
         $prevSec = $nowSec
         if ($dt -le 0) { $dt = 1.0 / $Fps } elseif ($dt -gt 0.25) { $dt = 0.25 }
         $renderer.WriteFrame($rawOut, $needFlush, $dt)
+        if ($frameStats.Show) {
+            Update-FrameStats $frameStats -Renderer $renderer -Width $W -Height $H
+        }
 
         $now  = $clock.Elapsed.TotalMilliseconds
         $wait = $nextDue - $now
+        # No time left to wait means the frame overran its slot. Counted, not
+        # corrected: it is the symptom the build/write split explains.
+        if ($wait -lt 0 -and $frameStats.Show) { $frameStats.Late++ }
         if ($wait -ge 1) { [System.Threading.Thread]::Sleep([int]$wait) }
         $nextDue += $frameMs
         if ($nextDue -lt $now) { $nextDue = $now + $frameMs }
     }
 } finally {
     Write-Raw $LEAVE_SCREEN
-    try { [Console]::CursorVisible = $true } catch { }
-    try { [Console]::TreatControlCAsInput = $false } catch { }
+    Restore-ConsoleState -VT $VT -StdinMode $prevStdin
     if ($prevEncoding) { try { [Console]::OutputEncoding = $prevEncoding } catch { } }
 }

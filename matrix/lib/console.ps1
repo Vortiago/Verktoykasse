@@ -70,15 +70,22 @@ $script:LEAVE_SCREEN = "$script:ESC[0m$script:CLS$script:ESC[?1007h$script:ESC[?
 function Add-TaggedTypes {
     param([string] $Source, [string[]] $TypeNames)   # names hold {0} where the tag goes
     $sha = [System.Security.Cryptography.SHA256]::Create()
-    try { $bytes = $sha.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($Source)) } finally { $sha.Dispose() }
+    try {
+        $bytes = $sha.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($Source))
+        $family = $sha.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($TypeNames -join '|'))
+    } finally { $sha.Dispose() }
     $tag = ([BitConverter]::ToString($bytes) -replace '-').Substring(0, 8)
 
     if (-not (($TypeNames[0] -f $tag) -as [type])) {
         # One cache per source family: two compiled sources must not evict each
-        # other. Only the renderer uses this today.
+        # other. The family is the whole name list, not just its first entry - the
+        # suite compiles ConsoleVT_Linux.cs on its own under the same first name
+        # types.ps1 uses for the whole bundle, and a family read from that name
+        # alone had the two deleting each other's cache on every alternating run.
         $stem = ($TypeNames[0] -split '[.{]')[0]
+        $fam  = ([BitConverter]::ToString($family) -replace '-').Substring(0, 6)
         $rt   = "net$([System.Environment]::Version.Major)"
-        $dll  = Join-Path ([System.IO.Path]::GetTempPath()) "matrix-$stem-$tag-$rt.dll"
+        $dll  = Join-Path ([System.IO.Path]::GetTempPath()) "matrix-$stem-$fam-$tag-$rt.dll"
         try {
             if (-not [System.IO.File]::Exists($dll)) {
                 # Compile to a private name, then move into place. A loaded assembly is
@@ -93,7 +100,7 @@ function Add-TaggedTypes {
                 # Keep the runtime in the filter: runtimes cache side by side, and a
                 # wider glob evicts them on every alternation.
                 # Skip a copy another process still has loaded; it is locked.
-                Get-ChildItem -LiteralPath ([System.IO.Path]::GetTempPath()) -Filter "matrix-$stem-*-$rt.dll" -File -ErrorAction SilentlyContinue |
+                Get-ChildItem -LiteralPath ([System.IO.Path]::GetTempPath()) -Filter "matrix-$stem-$fam-*-$rt.dll" -File -ErrorAction SilentlyContinue |
                     Where-Object { $_.FullName -ne $dll } |
                     Remove-Item -Force -ErrorAction SilentlyContinue
             }
@@ -111,3 +118,16 @@ function Add-TaggedTypes {
     }
     foreach ($name in $TypeNames) { ($name -f $tag) -as [type] }
 }
+
+# Handing stdin back, in the one order that works. CursorVisible and
+# TreatControlCAsInput each apply .NET's own cached console state, so a stdin
+# mode restored before them is overwritten by the setter after it: the mode has
+# to go last of the three. Both frame loops call this from their finally, and
+# both restore the output encoding after - that one does not touch stdin.
+function Restore-ConsoleState {
+    param($VT, $StdinMode)
+    try { [Console]::CursorVisible = $true } catch { }
+    try { [Console]::TreatControlCAsInput = $false } catch { }
+    if ($null -ne $StdinMode) { try { [void]$VT::SetStdinMode($StdinMode) } catch { } }
+}
+

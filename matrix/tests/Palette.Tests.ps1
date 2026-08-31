@@ -1,6 +1,6 @@
 BeforeAll {
-    . (Join-Path $PSScriptRoot '..\lib\console.ps1')
-    . (Join-Path $PSScriptRoot '..\lib\palette.ps1')
+    . (Join-Path $PSScriptRoot '../lib/console.ps1')
+    . (Join-Path $PSScriptRoot '../lib/palette.ps1')
     $script:E = [char]27
     $script:LV = 20
 }

@@ -1,23 +1,23 @@
 # The tab map over time: this is where the lanes went wrong. A session the matcher
 # missed once stayed missed, and a prompted session lost the tab it already had.
 BeforeAll {
-    . (Join-Path $PSScriptRoot '..\lib\tabs.ps1')
+    # The map, plus a backend to give it Get-TabKey. Windows Terminal's is the
+    # one that runs on both CI legs.
+    . (Join-Path $PSScriptRoot '../lib/terminal/windows-terminal.ps1')
+    . (Join-Path $PSScriptRoot '../lib/terminal/tabmap.ps1')
     . (Join-Path $PSScriptRoot 'Fixtures.ps1')
 
-    # Pid too: the map's signature builds from it. New-TabState comes from tabs.ps1,
-    # so the tests cannot drift from the shape matrix.ps1 actually initialises.
-    function New-TestSession ($id, $pid_, $status, $task) {
-        [pscustomobject]@{ SessionId = $id; Pid = $pid_; Status = $status; Task = $task
-                           Name = $task; Cwd = '' }
-    }
+    # New-TestSession comes from Fixtures.ps1, and carries a Pid: the map's
+    # signature builds from it. New-TabState comes from tabmap.ps1, so the tests
+    # cannot drift from the shape matrix.ps1 actually initialises.
 }
 
 Describe 'Update-SessionTabMap' {
     BeforeEach {
         $script:reads = 0
         # Two settled sessions, each with a titled tab, plus the tab the rain runs in.
-        $script:alpha = New-TestSession 'sid-a' 101 'idle' 'alpha work here'
-        $script:beta  = New-TestSession 'sid-b' 102 'idle' 'beta work here'
+        $script:alpha = New-TestSession 'sid-a' 'idle' 'alpha work here' 101
+        $script:beta  = New-TestSession 'sid-b' 'idle' 'beta work here' 102
         $script:settledTabs = @(
             (New-TestTab 900 0 'Matrix' 'none'),
             (New-TestTab 900 1 'alpha work here' 'idle'),
@@ -60,7 +60,7 @@ Describe 'Update-SessionTabMap' {
             Update-SessionTabMap -Session @($alpha, $beta) -State $state -ReadTab $reader -Now 0
 
             # The third session appears. Claude has opened the tab but not titled it.
-            $gamma = New-TestSession 'sid-c' 103 'idle' 'gamma work here'
+            $gamma = New-TestSession 'sid-c' 'idle' 'gamma work here' 103
             $untitled = $settledTabs + @(New-TestTab 900 3 'PowerShell' 'none')
             $reader = { $script:reads++; $untitled }
             Update-SessionTabMap -Session @($alpha, $beta, $gamma) -State $state -ReadTab $reader -Now 1000
@@ -83,7 +83,7 @@ Describe 'Update-SessionTabMap' {
         It 'is found even when its tab says only what Claude puts there before a turn' {
             # A fresh tab reads "Claude Code": the right glyph, and no word in common
             # with the session. The glyph alone has to be enough.
-            $gamma = New-TestSession 'sid-c' 103 'idle' 'gamma work here'
+            $gamma = New-TestSession 'sid-c' 'idle' 'gamma work here' 103
             $tabs = $settledTabs + @(New-TestTab 900 3 'Claude Code' 'idle')
             Update-SessionTabMap -Session @($alpha, $beta, $gamma) -State $state -ReadTab { $tabs } -Now 0
             $state.Map['sid-c'].Index | Should -Be 3
@@ -244,5 +244,47 @@ Describe 'Update-SessionTabMap' {
         Update-SessionTabMap -Session @($alpha) -State $state -ReadTab { $script:settledTabs } -Now 100
         $state.Map.Count  | Should -Be 1
         $state.Map['sid-a'] | Should -Not -BeNullOrEmpty
+    }
+}
+
+Describe 'Merge-SessionTab' {
+    BeforeAll {
+        $script:t1 = New-TestTab 100 1 'alpha' 'busy'
+        $script:t2 = New-TestTab 100 2 'beta'  'idle'
+        $script:a  = New-TestSession 'A' 'busy' 'alpha'
+        $script:b  = New-TestSession 'B' 'idle' 'beta'
+    }
+
+    It 'takes the fresh match over the previous one' {
+        $map = Merge-SessionTab -Session @($a) -Fresh @{ A = $t2 } -Previous @{ A = $t1 }
+        $map['A'].Index | Should -Be 2
+    }
+
+    It 'keeps the last tab of a session this pass could not match' {
+        # A tab is retitled every turn, and its glyph lags the registry. A rebuild can
+        # fail to re-match a session it matched a moment ago. Dropping it here made a
+        # lane vanish the moment its session was prompted.
+        $map = Merge-SessionTab -Session @($a, $b) -Fresh @{ B = $t2 } -Previous @{ A = $t1; B = $t2 }
+        $map['A'].Index | Should -Be 1
+        $map['B'].Index | Should -Be 2
+    }
+
+    It 'does not carry a tab this pass gave to someone else' {
+        $map = Merge-SessionTab -Session @($a, $b) -Fresh @{ B = $t1 } -Previous @{ A = $t1 }
+        $map.ContainsKey('A') | Should -BeFalse
+        $map['B'].Index | Should -Be 1
+    }
+
+    It 'lets only one session inherit a tab' {
+        $map = Merge-SessionTab -Session @($a, $b) -Fresh @{} -Previous @{ A = $t1; B = $t1 }
+        $map.Count | Should -Be 1
+    }
+
+    It 'leaves a session with no evidence unmatched, which is what makes the caller re-try' {
+        (Merge-SessionTab -Session @($a) -Fresh @{} -Previous @{}).Count | Should -Be 0
+    }
+
+    It 'returns nothing for no sessions, whatever it was given' {
+        (Merge-SessionTab -Session @() -Fresh @{} -Previous @{ A = $t1 }).Count | Should -Be 0
     }
 }
