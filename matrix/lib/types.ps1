@@ -9,11 +9,11 @@
 # The platform brings its own ConsoleVT and its own window lookup; the renderer
 # is shared. Windows: the console API and UIA over Windows Terminal. Linux:
 # termios/escape input and a raw D-Bus client for Konsole, which has no client
-# library worth pulling in. The Windows type keeps a stub on Linux so the
-# dot-sourced tabs.ps1 still parses; nothing calls it there.
+# library worth pulling in. Windows_Stub.cs stands in for the Windows lookup on
+# Linux, where nothing calls it.
 
 $csFiles = if ($IsWindows) { 'ConsoleVT.cs', 'Renderer.cs', 'Windows.cs' }
-           else            { 'ConsoleVT_Linux.cs', 'Renderer.cs', 'DBus.cs' }
+           else            { 'ConsoleVT_Linux.cs', 'Renderer.cs', 'DBus.cs', 'Windows_Stub.cs' }
 
 $typesSource = foreach ($f in $csFiles) {
     $p = Join-Path (Join-Path $PSScriptRoot 'cs') $f
@@ -21,27 +21,8 @@ $typesSource = foreach ($f in $csFiles) {
     [System.IO.File]::ReadAllText($p)
 }
 
-if (-not $IsWindows) {
-    # tabs.ps1's Windows functions reference $WinFinder at CALL time and are never
-    # reached on Linux, but the variable must still exist for the ones matrix.ps1
-    # touches directly.
-    $typesSource += @'
-namespace MatrixWin__TAG__
-{
-    public static class Windows
-    {
-        public static long Foreground() { return 0; }
-        public static long[] Terminals() { return new long[0]; }
-        public static bool Activate(long hwnd) { return false; }
-    }
-}
-'@
-}
+$typeNames = 'MatrixVT{0}.ConsoleVT', 'MatrixRain{0}.Renderer', 'MatrixWin{0}.Windows'
+if (-not $IsWindows) { $typeNames += 'MatrixDBus{0}.Bus' }
 
-if ($IsWindows) {
-    $VT, $RendererType, $WinFinder = Add-TaggedTypes ($typesSource -join "`n") `
-                            'MatrixVT{0}.ConsoleVT', 'MatrixRain{0}.Renderer', 'MatrixWin{0}.Windows'
-} else {
-    $VT, $RendererType, $WinFinder, $DBusType = Add-TaggedTypes ($typesSource -join "`n") `
-                            'MatrixVT{0}.ConsoleVT', 'MatrixRain{0}.Renderer', 'MatrixWin{0}.Windows', 'MatrixDBus{0}.Bus'
-}
+# $DBusType stays $null on Windows, where nothing calls it.
+$VT, $RendererType, $WinFinder, $DBusType = Add-TaggedTypes ($typesSource -join "`n") $typeNames

@@ -12,6 +12,15 @@
 $script:KonsoleService = $env:KONSOLE_DBUS_SERVICE
 $script:KonsoleBus = $null
 
+# The one default -Call seam, built once and shared by the tab functions: they
+# differ in which arguments they pass, not in how a call reaches the bus. A
+# seam that drifted from Invoke-Konsole's defaults once sent an empty interface
+# field, and the bus answers an invalid message by hanging up.
+$script:KonsoleCall = { param($Path, $Iface = 'org.kde.konsole.Session', $Member,
+                              $OutSig = '', $InSig = '', $InArgs = @())
+                        Invoke-Konsole -Path $Path -Iface $Iface -Member $Member `
+                                       -InSig $InSig -InArgs $InArgs -OutSig $OutSig }
+
 function Get-KonsoleBus {
     if ($null -ne $script:KonsoleBus) { return $script:KonsoleBus }
     if (-not $script:KonsoleService) {
@@ -46,25 +55,16 @@ function Get-AllTerminalTab {
     # Like Windows Terminal, konsole keeps all its windows in one process, so one
     # bus name covers them all.
     param([scriptblock] $Call)
-    if (-not $Call) {
-        # The defaults must mirror Invoke-Konsole's own: an unset $Iface would
-        # reach the wire as an empty interface field, and the bus answers an
-        # invalid message by closing the connection.
-        $Call = { param($Path, $Iface = 'org.kde.konsole.Session', $Member,
-                        $OutSig = '', $InSig = '', $InArgs = @())
-                  Invoke-Konsole -Path $Path -Iface $Iface -Member $Member `
-                                 -InSig $InSig -InArgs $InArgs -OutSig $OutSig }
-    }
+    if (-not $Call) { $Call = $script:KonsoleCall }
 
     try {
-        $tabs = @()
         # The bus values arrive unwrapped: Invoke-Konsole's output comes through
         # the pipeline, so a lone string arrives as a bare string - and @() around
         # a string enumerates its CHARACTERS, which is how one reply's first
         # character once stood in for the whole XML. Cast instead of index.
         $xml = [string](& $Call -Path '/Windows' -Iface 'org.freedesktop.DBus.Introspectable' `
                                 -Member 'Introspect' -OutSig 's')
-        foreach ($m in [regex]::Matches($xml, '<node\s+name="(\d+)"')) {
+        $tabs = foreach ($m in [regex]::Matches($xml, '<node\s+name="(\d+)"')) {
             $w = [int]$m.Groups[1].Value
             $ids = [string[]](& $Call -Path "/Windows/$w" -Iface 'org.kde.konsole.Window' `
                                         -Member 'sessionList' -OutSig 'as')
@@ -72,14 +72,14 @@ function Get-AllTerminalTab {
             foreach ($id in $ids) {
                 $tabPid = [int](& $Call -Path "/Sessions/$id" -Member 'processId' `
                                        -OutSig 'i')
-                $tabs += [pscustomobject]@{
+                [pscustomobject]@{
                     Hwnd = $w; Index = $i; Name = ''; Text = ''
                     Element = [int]$id; Pid = $tabPid
                 }
                 $i++
             }
         }
-        return $tabs
+        return @($tabs)
     } catch {
         return @()          # a closed window mid-walk is no reason to blank the rain
     }
@@ -92,11 +92,7 @@ function Select-TerminalTab {
         [Parameter(Mandatory)] $Tab,
         [scriptblock] $Call
     )
-    if (-not $Call) {
-        $Call = { param($Path, $Iface, $Member, $InSig, $InArgs)
-                  Invoke-Konsole -Path $Path -Iface $Iface -Member $Member `
-                                 -InSig $InSig -InArgs $InArgs }
-    }
+    if (-not $Call) { $Call = $script:KonsoleCall }
     try {
         [void](& $Call -Path "/Windows/$($Tab.Hwnd)" -Iface 'org.kde.konsole.Window' `
                        -Member 'setCurrentSession' -InSig 'i' -InArgs @([int]$Tab.Element))
@@ -144,10 +140,10 @@ function Get-ProcessAncestorId {
     # terminal, init) and the walk runs once per session per tab-map rebuild, not
     # per poll.
     param([Parameter(Mandatory)] [int] $ProcessId)
-    $out = @()
+    $out = [System.Collections.Generic.List[int]]::new()
     $p = $ProcessId
     for ($i = 0; $i -lt 64 -and $p -ge 1; $i++) {
-        $out += $p
+        $out.Add($p)
         try {
             $m = [regex]::Match([System.IO.File]::ReadAllText("/proc/$p/status"),
                                 '(?m)^PPid:\s+(\d+)')

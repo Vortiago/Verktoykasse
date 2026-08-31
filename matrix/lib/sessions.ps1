@@ -24,27 +24,38 @@ function Get-SessionStyle {
     if ($s) { $s } else { $script:SessionStyle['idle'] }
 }
 
+function Get-ProcessStartTicks {
+    # What Claude writes as "procStart" on Linux: /proc/N/stat field 22, the
+    # process start in clock ticks since boot. The comm field can hold spaces
+    # and ')' characters, so the fields are counted from after the LAST ')' -
+    # the text after it starts at field 3, and 22 - 3 = 19.
+    # The test setups read the same value to write into their fake registries.
+    param([int] $ProcessId)
+    $stat = [System.IO.File]::ReadAllText("/proc/$ProcessId/stat")
+    [long](($stat.Substring($stat.LastIndexOf(')') + 2)) -split ' ')[19]
+}
+
 function Test-SessionAlive {
     # PID alive, and started when the file says. A recycled PID fails the second test.
+    param([int] $ProcessId, [string] $ProcStart)
+    if (-not $IsWindows) {
+        # One /proc read answers both questions here: no stat file, no process.
+        # GetProcessById would read the same /proc entry a second time.
+        try { $start = Get-ProcessStartTicks -ProcessId $ProcessId }
+        catch { return $false }
+        if (-not $ProcStart) { return $true }
+        return ($start -eq [long]$ProcStart)
+    }
     # GetProcessById, not Get-Process: the cmdlet enumerates every process and wraps
     # each in a PSObject. This lookup runs per session per poll.
-    param([int] $ProcessId, [string] $ProcStart)
     try { $p = [System.Diagnostics.Process]::GetProcessById($ProcessId) } catch { return $false }
     # Dispose: StartTime opens a kernel handle. This runs per session per poll.
     try {
         if (-not $ProcStart) { return $true }
-        # Claude writes a FILETIME on Windows and /proc clock ticks (field 22 of
-        # /proc/N/stat) on Linux. Read the same one back, or every session is dead.
-        if (-not $IsWindows) {
-            try {
-                $stat = [System.IO.File]::ReadAllText("/proc/$ProcessId/stat")
-                $rest = $stat.Substring($stat.LastIndexOf(')') + 2) -split ' '
-                return ([long]$rest[19] -eq [long]$ProcStart)
-            } catch { return $true }   # unreadable start verifies nothing: keep it
-        }
-        # 2 s of slop: the file holds the value Claude read, not our conversion of it.
-        # No StartTime rights, or a procStart that does not cast, verifies nothing.
-        # Keep the session rather than kill the poll under EAP=Stop.
+        # Claude writes a FILETIME on Windows. 2 s of slop: the file holds the
+        # value Claude read, not our conversion of it. No StartTime rights, or a
+        # procStart that does not cast, verifies nothing. Keep the session
+        # rather than kill the poll under EAP=Stop.
         try { return [Math]::Abs($p.StartTime.ToFileTimeUtc() - [int64]$ProcStart) -lt 20000000 }
         catch { return $true }
     } finally { $p.Dispose() }
