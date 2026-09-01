@@ -32,6 +32,36 @@ BeforeAll {
     function Clear-Registry {
         Get-ChildItem (Join-Path $fakeHome 'sessions') -File | Remove-Item -Force
     }
+    # One place to drop every per-session cache in sessions.ps1, so a new one is
+    # added here rather than to each BeforeEach that has to forget it.
+    function Clear-SessionCache {
+        $script:TranscriptIndex = $null
+        $script:SessionFact     = @{}
+        $script:SessionProbe    = @{}
+        $script:TranscriptState = @{}
+    }
+
+    # The transcript is the only witness for a host that writes no status, so these
+    # write real records and move the file's mtime to place them in time.
+    function Write-Transcript ($id, $records, $quietSeconds = 0) {
+        $path = Join-Path $fakeHome "projects/D--repos-matrix/$id.jsonl"
+        ($records | ForEach-Object { $_ | ConvertTo-Json -Compress -Depth 6 }) |
+            Set-Content -LiteralPath $path -Encoding utf8
+        [System.IO.File]::SetLastWriteTimeUtc($path, [datetime]::UtcNow.AddSeconds(-$quietSeconds))
+        $path
+    }
+    function New-Ended   { @{ type = 'assistant'; message = @{ stop_reason = 'end_turn' } } }
+    function New-MidTurn { @{ type = 'assistant'; message = @{ stop_reason = 'tool_use' } } }
+    # What Claude Code actually appends after a turn ends. A transcript almost never
+    # ends on the assistant record: 68 of 82 on the machine this was written for end
+    # on last-prompt. Any fixture that leaves this off tests a file shape that does
+    # not occur.
+    function New-Bookkeeping {
+        @{ type = 'cost-state' }, @{ type = 'last-prompt' }, @{ type = 'permission-mode' }
+    }
+    # A finished turn the way it really lands on disk: the assistant record, then
+    # the bookkeeping written after it.
+    function New-EndedTurn { @(New-Ended) + @(New-Bookkeeping) }
 }
 
 AfterAll {
@@ -126,8 +156,7 @@ Describe 'Read-TaskLine' {
 Describe 'Get-ClaudeSession' {
     BeforeEach {
         Clear-Registry
-        $script:TranscriptIndex = $null
-        $script:SessionFact = @{}
+        Clear-SessionCache
     }
 
     It 'reads a live interactive session' {
@@ -209,8 +238,7 @@ Describe 'Get-ClaudeSession' {
 
 Describe 'Get-SessionFact' {
     BeforeEach {
-        $script:TranscriptIndex = $null
-        $script:SessionFact = @{}
+        Clear-SessionCache
     }
 
     It 'reads the opening prompt from the head and the branch from the tail' {
@@ -277,8 +305,7 @@ Describe 'Get-SessionFact' {
 
 Describe 'Get-SessionTitle' {
     BeforeEach {
-        $script:TranscriptIndex = $null
-        $script:SessionFact = @{}
+        Clear-SessionCache
     }
 
     It 'uses a name the user set' {
@@ -328,6 +355,174 @@ Describe 'Get-SessionTitle' {
         Get-SessionTitle ([pscustomobject]@{
             NameSource = 'user'; Name = "tab`there"; Cwd = 'D:\repos\matrix'; SessionId = 'x' }) |
             Should -Be 'tab here'
+    }
+}
+
+Describe 'Get-TranscriptStatus' {
+    BeforeEach { Clear-SessionCache }
+
+    It 'calls a turn that ended idle, past the bookkeeping written after it' {
+        # The shape a real finished transcript has. Reading the newest record rather
+        # than the newest conversation record calls this mid-turn, and then blocked.
+        Write-Transcript 'ts-idle' (@(New-MidTurn) + (New-EndedTurn)) | Out-Null
+        (Get-TranscriptStatus 'ts-idle').Status | Should -Be 'idle'
+    }
+
+    It 'calls a turn that ended on <reason> idle too' -ForEach @(
+        @{ reason = 'stop_sequence' }, @{ reason = 'max_tokens' }, @{ reason = $null }
+    ) {
+        # Only tool_use leaves a turn open. A subagent transcript ends on a null
+        # stop_reason, and reading end_turn as the sole end marker misses every one.
+        Write-Transcript "ts-stop-$reason" @(
+            @{ type = 'assistant'; message = @{ stop_reason = $reason } } ) | Out-Null
+        (Get-TranscriptStatus "ts-stop-$reason").Status | Should -Be 'idle'
+    }
+
+    It 'calls a turn still running busy' {
+        # An assistant record that stopped to call a tool has not ended the turn.
+        Write-Transcript 'ts-busy' @((New-Ended), (New-MidTurn)) | Out-Null
+        (Get-TranscriptStatus 'ts-busy').Status | Should -Be 'busy'
+    }
+
+    It 'calls a user record busy: a prompt or a tool result, and the turn is open' {
+        Write-Transcript 'ts-mid-user' @((New-Ended), @{ type = 'user' }) | Out-Null
+        (Get-TranscriptStatus 'ts-mid-user').Status | Should -Be 'busy'
+    }
+
+    It 'walks back past a <type> record, which says nothing about the turn' -ForEach @(
+        @{ type = 'attachment' }, @{ type = 'system' }, @{ type = 'queue-operation' }
+    ) {
+        # Bookkeeping is not a conversation record either way round: it must not end
+        # a turn, and it must not keep one open.
+        Write-Transcript "ts-book-$type" @((New-MidTurn), @{ type = $type }) | Out-Null
+        (Get-TranscriptStatus "ts-book-$type").Status | Should -Be 'busy'
+    }
+
+    It 'calls a mid-turn transcript that has gone quiet waiting' {
+        # A permission prompt is written to no file. The turn stops at the tool_use
+        # record and the transcript stops with it, which is the only sign there is.
+        Write-Transcript 'ts-blocked' @((New-MidTurn)) ($script:BlockedSeconds + 10) | Out-Null
+        (Get-TranscriptStatus 'ts-blocked').Status | Should -Be 'waiting'
+    }
+
+    It 'leaves a finished turn idle however long it has been quiet' {
+        Write-Transcript 'ts-old-idle' (New-EndedTurn) ($script:BlockedSeconds + 600) | Out-Null
+        (Get-TranscriptStatus 'ts-old-idle').Status | Should -Be 'idle'
+    }
+
+    It 'does not take a conversation record quoted inside a bookkeeping one' {
+        # The cheap match that skips bookkeeping runs over the whole record, so one
+        # that carries an assistant record inside it reaches the parse. The parsed
+        # type is what decides.
+        Write-Transcript 'ts-quoted' @(
+            (New-MidTurn)
+            @{ type = 'last-prompt'; echo = '{"type":"assistant","stop_reason":"end_turn"}' }
+        ) | Out-Null
+        (Get-TranscriptStatus 'ts-quoted').Status | Should -Be 'busy'
+    }
+
+    It 'ages a status from the write that changed it, not the newest one' {
+        # A working lane appends every second or two. Aged from the newest write it
+        # would read "working 0s" for the whole turn.
+        $id = 'ts-age'
+        Write-Transcript $id @((New-MidTurn)) 30 | Out-Null
+        $first = Get-TranscriptStatus $id
+        Write-Transcript $id @((New-MidTurn), (New-MidTurn)) 0 | Out-Null
+        $second = Get-TranscriptStatus $id
+
+        $second.Status    | Should -Be 'busy'
+        $second.UpdatedAt | Should -Be $first.UpdatedAt
+    }
+
+    It 'restarts the age when the status changes' {
+        $id = 'ts-flip'
+        Write-Transcript $id @((New-MidTurn)) 30 | Out-Null
+        $busy = Get-TranscriptStatus $id
+        Write-Transcript $id @((New-MidTurn), (New-Ended)) 0 | Out-Null
+        $idle = Get-TranscriptStatus $id
+
+        $idle.Status    | Should -Be 'idle'
+        $idle.UpdatedAt | Should -BeGreaterThan $busy.UpdatedAt
+    }
+
+    It 'reads the newest record past a first line the seek cut in half' {
+        # The tail window starts mid-file, so line one is a fragment. Only the
+        # newest line that parses is the answer.
+        $id = 'ts-cut'
+        Write-Transcript $id (@(@{ type = 'user'; message = @{ content = ('x' * 40KB) } }) +
+                              (New-EndedTurn)) | Out-Null
+        (Get-TranscriptStatus $id).Status | Should -Be 'idle'
+    }
+
+    It 'widens the window for a last record too big for the first one' {
+        # One tool_result can be far larger than the ordinary window. Answering
+        # "cannot tell" there would blank the status for the whole of a turn.
+        $id = 'ts-huge'
+        Write-Transcript $id @(
+            (New-MidTurn)
+            @{ type = 'assistant'; pad = ('x' * 40KB); message = @{ stop_reason = 'end_turn' } }
+        ) | Out-Null
+        (Get-TranscriptStatus $id).Status | Should -Be 'idle'
+    }
+
+    It 'answers nothing for a session with no transcript' {
+        Get-TranscriptStatus 'ts-missing' | Should -BeNullOrEmpty
+    }
+
+    It 'answers nothing when not one record parses' {
+        # Not idle. The caller keeps what the registry said rather than colouring a
+        # working session amber on the strength of an unreadable file.
+        $path = Join-Path $fakeHome 'projects/D--repos-matrix/ts-junk.jsonl'
+        'not json at all' | Set-Content -LiteralPath $path -Encoding utf8
+        Get-TranscriptStatus 'ts-junk' | Should -BeNullOrEmpty
+    }
+
+    It 'answers nothing for a transcript it cannot open' {
+        $id = 'ts-locked'
+        $path = Write-Transcript $id @((New-Ended))
+        $script:TranscriptIndex = $null
+        $lock = [System.IO.File]::Open($path, 'Open', 'ReadWrite', 'None')
+        try { Get-TranscriptStatus $id | Should -BeNullOrEmpty } finally { $lock.Dispose() }
+
+        # The lock is gone, so the next look gets the answer. Nothing was cached.
+        (Get-TranscriptStatus $id).Status | Should -Be 'idle'
+    }
+}
+
+Describe 'Get-ClaudeSession status without a registry status' {
+    BeforeEach {
+        Clear-Registry
+        Clear-SessionCache
+    }
+
+    It 'believes a registry that writes a status, whatever the transcript says' {
+        # The CLI knows what a file cannot, such as why a session is waiting.
+        $id = 'reg-wins'
+        Write-Transcript $id (New-EndedTurn) | Out-Null
+        Write-Registry 'r1' (New-Record $id 'busy')
+
+        $s = @(Get-ClaudeSession)
+        $s.Count        | Should -Be 1
+        $s[0].Status    | Should -Be 'busy'
+        $s[0].UpdatedAt | Should -Be 2000        # the registry's own timestamp
+    }
+
+    It 'asks the transcript when the registry carries no status' {
+        # What the VS Code extension leaves behind: a record written once, at
+        # startup, with no status and no statusUpdatedAt in it at all.
+        $id = 'reg-blank'
+        Write-Transcript $id @((New-MidTurn)) | Out-Null
+        Write-Registry 'r1' (New-Record $id $null @{ statusUpdatedAt = 0 })
+
+        $s = @(Get-ClaudeSession)
+        $s[0].Status      | Should -Be 'busy'
+        $s[0].Style.Label | Should -Be 'working'
+        $s[0].UpdatedAt   | Should -BeGreaterThan 0     # aged off the transcript
+    }
+
+    It 'stays idle when the transcript cannot answer either' {
+        Write-Registry 'r1' (New-Record 'reg-notranscript' $null)
+        @(Get-ClaudeSession)[0].Status | Should -Be 'idle'
     }
 }
 

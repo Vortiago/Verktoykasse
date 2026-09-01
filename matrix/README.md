@@ -70,8 +70,58 @@ Colour and fall rate track the status. Tune them per status in `styles.psd1`;
 | `waiting` | red, blocked on an answer; `waitingFor` names it | crawling |
 
 Status comes from `~/.claude/sessions/<pid>.json`, the peer-discovery registry
-every session writes - the same source `ListAgents` reads. It updates the
-moment a session changes state.
+every session writes - the same source `ListAgents` reads. The CLI rewrites its
+record the moment a session changes state.
+
+### A host that writes no status
+
+Not every host does. A session started from the VS Code extension registers
+itself once, at startup, and never returns: its record carries no `status` and
+no `statusUpdatedAt` for the whole of its life. Read literally that is an idle
+session, so every such lane sat amber whatever it was doing.
+
+The transcript is the second witness. `~/.claude/projects/*/<sessionId>.jsonl`
+is appended in real time by every host, and its newest *conversation* record
+says whether the turn is over:
+
+| Newest conversation record | Lane |
+| --- | --- |
+| `assistant`, not stopped on a tool | `idle` - the turn ended, the prompt is showing |
+| `assistant`, `stop_reason` `tool_use` | `busy` - stopped for a tool, waiting on the result |
+| `user` - a prompt, or a tool result | `busy` |
+| either of those two, but the file has not grown for 90 s | `waiting` |
+
+**Not the newest record: the newest conversation record.** Claude Code appends
+bookkeeping around a turn - `last-prompt`, `ai-title`, `cost-state`,
+`permission-mode`, `queue-operation`, `file-history-delta` - and nearly always
+after it. Of the 82 transcripts this was first tested against, 68 end on
+`last-prompt` and 2 on an assistant record. Reading the last line of the file
+calls every finished session mid-turn, and 90 seconds later calls it blocked:
+the bug inverted. The scan walks back to the newest record whose type is
+`assistant` or `user`, and skips the rest.
+
+Nor is `end_turn` the end marker. Only `tool_use` leaves a turn open - a
+subagent transcript ends on a null `stop_reason`, and a long turn is mostly
+`tool_use` records, so testing for `end_turn` alone finds almost nothing.
+
+That last row is a guess, and the only one here. A permission prompt is written
+to no file: the turn stops dead at the `tool_use` record and the transcript
+stops with it, so a long silence mid-turn is the one sign there is. A tool that
+honestly runs that long - a build, a slow test suite - goes red too. It is the
+right way round: a working session shown red early is a nuisance, a blocked
+session shown green forever is the bug the fallback exists to fix. `BlockedSeconds`
+in `lib/sessions.ps1` is the threshold.
+
+A registry that does write a status is always believed. It knows what a file
+cannot, including the `waitingFor` reason the header prints. The transcript is
+read only when the registry says nothing, and when it cannot answer either - no
+file yet, not one complete record in the tail - the lane keeps the registry's
+answer rather than being recoloured on a bad read.
+
+The header ages a status from the write that changed it, not the newest one: a
+working session appends every second or two and would otherwise read `working 0s`
+for the whole turn. A session already mid-turn when the rain starts has no such
+write to point at, so its first age is short and grows true from there.
 
 The registry also names a per-session pipe, `\\.\pipe\LOCAL\cc-msg-<hash>`,
 which carries the peer message protocol and its `notify_idle` subscription.
