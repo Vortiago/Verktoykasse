@@ -8,13 +8,9 @@ BeforeAll {
 
 Describe 'Get-OwnTerminalWindow' {
     # Restore, do not null: a developer running the suite inside a real Konsole tab
-    # must not lose the variable from their process - the same rule Invoke-Rain
-    # follows for CLAUDE_CONFIG_DIR.
-    BeforeAll { $script:realWindow = $env:KONSOLE_DBUS_WINDOW }
-    AfterAll {
-        if ($null -eq $script:realWindow) { Remove-Item Env:\KONSOLE_DBUS_WINDOW -ErrorAction SilentlyContinue }
-        else { $env:KONSOLE_DBUS_WINDOW = $script:realWindow }
-    }
+    # must not lose the variable from their process.
+    BeforeAll { $script:snap = Get-EnvSnapshot 'KONSOLE_DBUS_WINDOW' }
+    AfterAll  { Restore-EnvSnapshot $snap }
 
     It 'reads the window Konsole exported into the environment' {
         # Konsole sets KONSOLE_DBUS_WINDOW before starting the shell in a tab. Unlike
@@ -197,14 +193,7 @@ Describe 'Select-TerminalTab' {
     }
 }
 
-Describe 'Get-ProcessAncestorId' {
-    It "walks this shell's own chain through /proc" -Skip:(-not (Test-Path '/proc')) {
-        # The only process the test can promise exists. Its chain contains itself
-        # and its parent, and reaches init at the top. Only Linux has /proc, so this
-        # is the one test the Windows run of this file skips.
-        $chain = @(Get-ProcessAncestorId -ProcessId $PID)
-        $chain.Count | Should -BeGreaterThan 1
-        $chain[0]   | Should -Be $PID
-        $chain      | Should -Contain 1              # the walk reaches init
-    }
-}
+# Get-ProcessAncestorId moved to sessions.ps1, next to the other process-table
+# readers - the tmux backend needs the same walk. Its live-/proc test moved to
+# Sessions.Tests.ps1; everything here still exercises it through the -Ancestors
+# seam.

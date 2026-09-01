@@ -2,8 +2,9 @@
 # that stays correct, and carried across a pass that failed to re-match.
 #
 # Nothing here knows which terminal it is on. It calls Get-TabKey,
-# Get-AllTerminalTab and Resolve-SessionTab by name, and exactly one backend -
-# windows-terminal.ps1 or konsole.ps1 - defines them.
+# Get-AllTerminalTab and Resolve-SessionTab by name, and exactly one backend
+# under this directory defines them - windows-terminal.ps1 on Windows,
+# konsole.ps1 or tmux.ps1 on Linux.
 
 function Merge-SessionTab {
     <#

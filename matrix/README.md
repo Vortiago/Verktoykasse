@@ -8,7 +8,7 @@ grid stays square.
 
 It runs on Windows and on Linux. Each platform brings its own console layer and
 its own terminal backend: the Windows console API with Windows Terminal, or
-termios with Konsole. The rain above them is the same code.
+termios with Konsole or tmux. The rain above them is the same code.
 
 `Get-Help .\matrix.ps1 -Full` lists every flag. `Invoke-Pester ./tests` runs
 the test suite (Pester 5 or later). CI runs it on both platforms, because a
@@ -166,6 +166,47 @@ Start the rain from the window you want scoped, and keep that window in front
 while it starts. When `-ThisWindow` finds nothing it stops with an explanation;
 a filter that silently does nothing reads as a bug.
 
+### tmux, on Linux
+
+tmux nests in every terminal, so it wins the backend question: a rain inside
+tmux talks tmux, whether the outer terminal is Konsole, a plain xterm, or
+another tmux - `$TMUX` names the innermost server, and the client reaches it on
+its own. There is nothing to configure beyond that.
+
+| Step | How |
+| --- | --- |
+| Find the windows | there are none; a tmux session is the scope, a window is the tab |
+| Find our scope | `tmux display-message -p -t $TMUX_PANE '#{session_id}'` - exact, like `KONSOLE_DBUS_WINDOW` |
+| Find every tab | one `tmux list-panes -a -F '…'`: session id, window id, window index, `pane_pid`, `pane_id` |
+| Read the click | the same termios + SGR mouse path; tmux translates it both ways, coordinates pane-relative |
+| Switch the tab | `tmux select-window -t @3` |
+| Pick a session's tab | the pane whose `pane_pid` is among the session's ancestors - exact, no title scoring |
+
+tmux parses every escape the rain writes - the alternate screen, the cursor, the
+mouse modes - and re-encodes them for the outer terminal itself, so there is no
+`allow-passthrough`, no DCS wrapper, and no tmux version floor beyond mouse
+forwarding. It re-encodes mouse coordinates relative to the pane too, which is
+what the grid wants: a rain in a split still lines its lanes up with its clicks.
+
+**`set -g mouse on` in the outer tmux is required.** With it, a click's default
+binding is `select-pane` followed by a pass-through, so the rain sees it. Without
+it tmux never asks the outer terminal for mouse events and `-Click` silently
+does nothing - tmux does not warn.
+
+**Windows, not panes.** A click switches to the session's window; a pane
+sharing the rain's own window is a no-op click, and the rain stays where it is
+until a keypress leaves it. A session in another tmux *session* has that
+session's current window moved where nobody can see it - Konsole's "cannot
+raise" gap, one level up; `switch-client` would fix it and is deliberately out
+of scope.
+
+Sessions running over ssh inside a pane never appear: their pid is not in this
+machine's `/proc`, so liveness drops them before the tab map is consulted.
+
+Start the rain from the tmux session you want scoped, and keep that session in
+front while it starts. When `-ThisWindow` finds nothing it stops with an
+explanation; a filter that silently does nothing reads as a bug.
+
 ### A match that has not caught up
 
 A tab read costs ~100 ms (three frames), so it runs only when a session
@@ -197,11 +238,12 @@ lib/
   types.ps1             which C# sources this platform compiles
   palette.ps1           colours
   lanes.ps1             sessions to lanes
-  sessions.ps1          Claude's session registry
+  sessions.ps1          Claude's session registry, and the /proc process-table readers
   terminal/
     tabmap.ps1          session to tab, over time. Knows no platform
     windows-terminal.ps1  the UI Automation backend
     konsole.ps1           the D-Bus backend
+    tmux.ps1              the backend that runs inside tmux: a session is the scope, a window the tab
   cs/
     Renderer.cs         simulate and encode a frame
     ConsoleVT_Windows.cs, ConsoleVT_Linux.cs

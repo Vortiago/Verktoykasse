@@ -1,7 +1,10 @@
 BeforeAll {
+    . (Join-Path $PSScriptRoot 'Fixtures.ps1')
+
     # sessions.ps1 reads CLAUDE_CONFIG_DIR once, at load. Put the fake home in place
-    # before dot-sourcing it.
-    $script:realHome = $env:CLAUDE_CONFIG_DIR
+    # before dot-sourcing it. Restore, do not null: a developer running the suite
+    # with a real CLAUDE_CONFIG_DIR must not lose it from their process.
+    $script:snap = Get-EnvSnapshot 'CLAUDE_CONFIG_DIR'
     $script:fakeHome = Join-Path ([System.IO.Path]::GetTempPath()) "matrix-tests-$PID"
     $env:CLAUDE_CONFIG_DIR = $fakeHome
     New-Item -ItemType Directory -Path (Join-Path $fakeHome 'sessions') -Force | Out-Null
@@ -9,7 +12,6 @@ BeforeAll {
 
     . (Join-Path $PSScriptRoot '../lib/console.ps1')
     . (Join-Path $PSScriptRoot '../lib/sessions.ps1')
-    . (Join-Path $PSScriptRoot 'Fixtures.ps1')
 
     # This process is the only PID guaranteed alive, with a start time we can read.
     $script:livePid   = $PID
@@ -33,7 +35,7 @@ BeforeAll {
 }
 
 AfterAll {
-    $env:CLAUDE_CONFIG_DIR = $realHome
+    Restore-EnvSnapshot $snap
     Remove-Item -LiteralPath $fakeHome -Recurse -Force -ErrorAction SilentlyContinue
 }
 
@@ -368,5 +370,20 @@ Describe 'Test-SessionAlive on an unreadable stat line' -Skip:($IsWindows) {
         # vanishes for the rest of the run over an unreadable stat line.
         Mock Get-ProcessStartTicks { $null }
         Test-SessionAlive -ProcessId $PID -ProcStart '12345' | Should -BeTrue
+    }
+}
+
+Describe 'Get-ProcessAncestorId' {
+    # Lives here, next to the other process-table readers, once both tab backends
+    # that need it (Konsole, tmux) get it from sessions.ps1 instead of carrying
+    # their own copy.
+    It "walks this shell's own chain through /proc" -Skip:(-not (Test-Path '/proc')) {
+        # The only process the test can promise exists. Its chain contains itself
+        # and its parent, and reaches init at the top. Only Linux has /proc, so this
+        # is the one test the Windows run of this file skips.
+        $chain = @(Get-ProcessAncestorId -ProcessId $PID)
+        $chain.Count | Should -BeGreaterThan 1
+        $chain[0]   | Should -Be $PID
+        $chain      | Should -Contain 1              # the walk reaches init
     }
 }

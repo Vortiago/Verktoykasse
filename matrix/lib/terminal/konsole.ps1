@@ -1,6 +1,7 @@
-# Konsole on Linux: the backend tabmap.ps1 calls when the rain is not on Windows.
+# Konsole on Linux: the backend tabmap.ps1 calls when the rain is on Linux and not
+# inside tmux - tmux owns every terminal it nests in, so it answers before Konsole.
 # It answers the same six names windows-terminal.ps1 does, so the map above it
-# never asks which platform it is on. matrix.ps1 loads one of the two, not both.
+# never asks which platform it is on. matrix.ps1 loads one of the three, not several.
 #
 # Every call goes through the -Call seam, which is how the tests drive these
 # without a bus. It defaults to Invoke-Konsole so the call's defaults are written
@@ -144,9 +145,16 @@ function Resolve-SessionTab {
     param(
         [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Session,
         [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Tab,
-        # test seam: pid -> ancestor pid list
+        # test seam: pid -> ancestor pid list. ${function:...} resolves by name at
+        # call time, so it reads $null - silently - whenever sessions.ps1 was not
+        # sourced before this file. Name the missing dependency instead of dying
+        # inside the poll on '&' against nothing.
         [scriptblock] $Ancestors = ${function:Get-ProcessAncestorId}
     )
+
+    if (-not $Ancestors) {
+        throw 'matrix: Get-ProcessAncestorId is not loaded - source lib/sessions.ps1 before the terminal backend'
+    }
 
     $tabPids = @{}
     foreach ($t in $Tab) { $tabPids[[int]$t.Pid] = $t }
@@ -154,6 +162,9 @@ function Resolve-SessionTab {
     $map = @{}
     foreach ($s in $Session) {
         foreach ($ancestor in @(& $Ancestors ([int]$s.Pid))) {
+            # A walk that dies mid-chain returns $null inside an array, and
+            # [int]$null is 0: skip it rather than match a tab with no pid.
+            if (-not $ancestor) { continue }
             if ($tabPids.ContainsKey([int]$ancestor)) {
                 $map[$s.SessionId] = $tabPids[[int]$ancestor]
                 break
@@ -163,20 +174,6 @@ function Resolve-SessionTab {
     $map
 }
 
-function Get-ProcessAncestorId {
-    # A pid and every pid above it, from /proc. The chain is short, and the walk
-    # runs once per session per tab-map rebuild, not per poll.
-    param([Parameter(Mandatory)] [int] $ProcessId)
-    $out = [System.Collections.Generic.List[int]]::new()
-    $p = $ProcessId
-    for ($i = 0; $i -lt 64 -and $p -ge 1; $i++) {
-        $out.Add($p)
-        try {
-            $m = [regex]::Match([System.IO.File]::ReadAllText("/proc/$p/status"),
-                                '(?m)^PPid:\s+(\d+)')
-            if (-not $m.Success) { break }
-            $p = [int]$m.Groups[1].Value
-        } catch { break }
-    }
-    $out
-}
+# Get-ProcessAncestorId lives in sessions.ps1 now, next to the other process-table
+# readers: the tmux backend needs the same walk. Resolve-SessionTab still reaches
+# it through the -Ancestors seam's default, which by name resolves to that copy.
