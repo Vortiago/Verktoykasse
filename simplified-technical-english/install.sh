@@ -7,7 +7,7 @@
 # file. It is two files, each symlinked to where Claude Code already looks for
 # its kind:
 #
-#   ste-rules.md   -> ~/.claude/rules/     loads on any *.md edit, in every project
+#   ste-rules.md   -> ~/.claude/rules/     loads on a markdown touch, every project
 #   ste-review.md  -> ~/.claude/agents/    the reviewer, by `@` or by delegation
 #
 # Not a skill does not mean user-only. Claude delegates to `ste-review` on its
