@@ -145,6 +145,15 @@ prose.
 If the cache misses, query the datastore.
 ```
 
+**Put the warning before the step it guards.** `[ASD 7]` A reader who meets the
+prohibition after the action has already taken it. Start the warning with the
+command, not with the reason.
+
+```
+3. Run `vendor.sh` to refresh the copy. Do not edit a vendored copy.
+   →  3. Do not edit a vendored copy. Run `vendor.sh` to refresh it.
+```
+
 ## Words and voice
 
 **One term for one concept.** Pick one word for a thing and keep it for the whole
