@@ -74,16 +74,18 @@ tree. → [`reference/internals.md`](reference/internals.md)
 
 ## Default-branch edit guard
 
-`guard-default-branch.sh` (`PreToolUse`) blocks `Edit`/`Write`/`NotebookEdit` and `git commit`/`git add` when the target tree is on the repo's
-default branch. Feature work must not land on main directly, and main advances
-only through merge or pull.
+`guard-default-branch.sh` (`PreToolUse`) blocks `Edit`/`Write`/`NotebookEdit`
+and `git commit`/`git add` when the target tree is on the repo's default
+branch. Feature work must not land on main directly, and main advances only
+through merge or pull.
 
 - Scope: bare+sibling layout only. It fails open elsewhere, on ordinary repos,
   detached HEAD, bare root, `worktree-seed/`, non-git paths.
 - Default = `origin/HEAD`. If unset, it falls back to `main`/`master` only.
 - Unaffected: feature worktrees, and `git pull`/`merge`/`fetch`/`rebase` on main.
-- Best-effort on `Bash`: matches the literal `git commit`/`git add` verbs (so a
-  `cd … && git commit` or a quoted mention can slip/over-match), so it fails open.
+- Best-effort on `Bash` and `PowerShell`: matches the literal `git commit`/`git
+  add` verbs (so a `cd … && git commit` or a quoted mention can slip or
+  over-match), so it fails open.
 - Override: `WORKTREES_ALLOW_MAIN_EDITS=1` (launch env, user-only).
 - Verify: `bash worktrees/selftest.sh`.
 
@@ -93,5 +95,5 @@ only through merge or pull.
   refuses, as there is no work tree). Work in a worktree, and the guard above
   enforces this for `main`.
 - Do not bypass the hook with ad-hoc `git worktree add` into
-  `.claude/worktrees/`, because `.new-worktree.sh` and the `--worktree` flag already
-  route through it.
+  `.claude/worktrees/`, because `.new-worktree.sh` and the `--worktree` flag
+  already route through it.

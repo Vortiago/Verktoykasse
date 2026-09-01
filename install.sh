@@ -3,7 +3,7 @@
 # A real directory at a live path is backed up to <path>.pre-verktoykasse
 # rather than overwritten.
 #
-# The CALLER decides target + skills; this installer holds NO skill->CLI policy,
+# The CALLER decides target + skills. This installer holds NO skill->CLI policy,
 # only where each CLI keeps its skills (TARGET_DIR).
 #
 # Usage:
@@ -12,14 +12,14 @@
 #
 # Targets: claude (default) | opencode.
 # A skill's own <skill>/install.sh (hooks / extra setup) is Claude-specific, so it is
-# sourced ONLY for the claude target; every other target gets a plain symlink of the dir.
+# sourced ONLY for the claude target. Every other target gets a plain symlink of the dir.
 set -euo pipefail
 
 HERE=$(dirname "$(readlink -f "$0")")
 
 # Where each CLI keeps its skills. A function (not a `declare -A` associative
 # array) so this runs on macOS's stock bash 3.2, which predates `declare -A`.
-target_dir() { # $1 = target name — prints its skills dir, empty if unknown
+target_dir() { # $1 = target name. Prints its skills dir, empty if unknown
   case $1 in
     claude)   echo "$HOME/.claude/skills" ;;
     opencode) echo "$HOME/.config/opencode/skills" ;;
@@ -28,7 +28,7 @@ target_dir() { # $1 = target name — prints its skills dir, empty if unknown
 KNOWN_TARGETS="claude opencode"
 TARGET=claude
 
-link() { # $1 = repo dir, $2 = live path
+link() { # $1 = repo path (a dir or a file), $2 = live path
   local target=$1 live=$2
   if [[ -L $live ]]; then
     [[ $(readlink -f "$live") == "$target" ]] && { echo "ok      $live"; return; }
@@ -47,20 +47,23 @@ link() { # $1 = repo dir, $2 = live path
     || ln -s "$target" "$live"
   if [[ -L $live ]]; then
     echo "linked  $live -> $target"
-  else
+  elif [[ -e $live ]]; then
     echo "COPIED  $live (not a symlink: edits in the repo will NOT reach it)" >&2
     echo "        enable Windows Developer Mode, or run the shell as admin, then re-run" >&2
+  else
+    echo "error: neither a link nor a copy landed at $live" >&2
+    return 1
   fi
 }
 
-install_skill() { # $1 = skill name — installed for the current $TARGET
+install_skill() { # $1 = skill name. Installed for the current $TARGET
   # NOTE: skills are keyed by DIRECTORY name here; a skill's invocation name comes
-  # from its SKILL.md `name:` frontmatter and may differ — e.g. the `statusline/`
+  # from its SKILL.md `name:` frontmatter and may differ. For example the `statusline/`
   # dir is invoked as `/expand-statusline`.
   local name=$1
   [[ -d "$HERE/$name" ]] || { echo "error: no skill '$name' in $HERE" >&2; return 1; }
   if [[ $TARGET == claude && -f "$HERE/$name/install.sh" ]]; then
-    # Claude-specific hooks / extra setup — only for the claude target.
+    # Claude-specific hooks / extra setup, only for the claude target.
     # shellcheck source=/dev/null
     source "$HERE/$name/install.sh"
   else

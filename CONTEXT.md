@@ -28,7 +28,7 @@ Resolved by re-copying, and never an error.
 
 **Forked**:
 A vendored copy that differs from what its stamp says was copied: a local edit
-that violates the extend-do-not-fork invariant. Always an error.
+that violates the `extend-don't-fork` invariant. Always an error.
 _Avoid_: diverged, dirty
 
 ### Quality

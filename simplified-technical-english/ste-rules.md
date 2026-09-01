@@ -175,17 +175,11 @@ Widget Service Data Access Layer Configuration Manager
 **Keep the reason where a reader needs judgement.** Cut it from a mechanical
 step. A prohibition with no reason leaves the reader guessing what to do instead.
 
-## Rules we deliberately reject
+## The rest of the standard
 
-These are real ASD-STE100 rules. Do not apply them here, and this is why.
-
-- **The modal restriction** (approve only `can`, `will`, `must`, and rewrite
-  `should` to `must`). It turns a soft default into a hard requirement and
-  destroys the hedging an agent needs. `may have failed` is not `failed`.
-- **An approved-word allowlist.** Flagging every word outside a fixed list fires
-  constantly on ordinary prose, and it fights the advice to write in the words a
-  reader actually uses.
-- **The ban on compound tenses.** It loses a state distinction that matters:
-  `the job has completed` is not `the job completed`.
-- **Cutting the rationale**, which the rule above replaces.
-- **American spelling**, which the British English rule above replaces.
+This file adopts a subset of ASD-STE100 and rejects the rest. Apply no other
+rule from the standard. Do not restrict modals: `should` stays `should`, and
+`may have failed` is not `failed`. Do not ban compound tenses: `the job has
+completed` is not `the job completed`. Do not check words against the STE
+approved-word list. `docs/adr/0003-ste-rules-adopt-a-subset.md`, in this
+file's repo, records why.

@@ -26,7 +26,7 @@ Two hard constraints bound any fix:
    dependency is `typescript`. Nothing may transform source between edit and run/ship.
 2. **Skills install independently.** `install.sh` symlinks each skill into
    `~/.claude/skills/<name>` on its own, and apps vendor files *out of* a skill's tree. So
-   `vanilla-components` must remain self-contained, so it cannot reach across to
+   `vanilla-components` must remain self-contained: it cannot reach across to
    `vanilla-web` at runtime or install time.
 
 ## Decision
@@ -51,7 +51,7 @@ list.
 ## Consequences
 
 - **One edit site.** `reconcileList` and the rest of the engine live in exactly one module.
-  leverage flows to every consumer (the internal copy and every downstream app) identically.
+  Leverage flows to every consumer (the internal copy and every downstream app) identically.
 - **No drift.** The gate makes a divergent copy un-committable, rather than merely
   discouraging it with a comment.
 - **The copy is a generated artifact.** `vanilla-components/lib/templates.js` et al. are

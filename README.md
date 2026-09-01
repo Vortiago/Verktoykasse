@@ -28,14 +28,14 @@ do not belong here.
   `empty-state`, `dialog`, `segmented-control`), and layout (`table-shell`,
   `checklist-row`) on the create-factory + `@scope` contract, plus a unified
   `light-dark()` design-token set extracted from across GitLandscape, Slipestein
-  and TapScribe. No build, no deps, and each part is copied into an app (`vendor.sh`
-  stamps provenance). Ships a runnable preview catalogue (`node serve.mjs` →
+  and TapScribe. No build, no deps, and each part is copied into an app
+  (`vendor.sh` stamps provenance). Ships a runnable preview catalogue (`node serve.mjs` →
   `/preview.html`).
 
 - **[statusline](statusline/SKILL.md)**: the status line for all my Claude Code
   sessions. A generic core renders fixed regions: `project ⎇ branch (worktree)`,
-  two core-owned link regions (GitHub issue/PR, then services / running code), then a
-  per-project status segment. Links are full URLs, clickable even where OSC-8 is
+  two core-owned link regions (GitHub issue/PR, then services / running code),
+  then a per-project status segment. Links are full URLs, clickable even where OSC-8 is
   stripped (tmux over ssh). `gh` lookups are background-cached so renders stay
   instant. A project adds an *extension* that declares links (`cl_addlink`) and
   prints status, sharing `lib.sh`. It lives committed at `.claude/statusline-ext.sh`
@@ -52,22 +52,23 @@ do not belong here.
 
 - **[conventional-commits](conventional-commits/SKILL.md)**: Conventional
   Commits enforced machine-wide, zero deps. A POSIX-sh `commit-msg` hook wired
-  globally through git 2.54 config-based hooks (`hook.conventional-commits`) validates
-  every commit header (standard 11 types, `!`/`BREAKING CHANGE`, optional scope,
-  and merge/revert/fixup allow-listed). Because PRs squash-merge, the PR title is the
-  moniker that ships, so a Claude `PreToolUse(Bash)` hook validates `gh pr create`
-  titles, blocks an empty PR body, and flags a breaking-change under-report
-  against the branch, pointing at the reflow workflow. Both hooks share one `validate.sh`. User-invocable as
+  globally through git 2.54 config-based hooks (`hook.conventional-commits`)
+  validates every commit header (standard 11 types, `!`/`BREAKING CHANGE`,
+  optional scope, and merge/revert/fixup allow-listed). Because PRs squash-merge,
+  the PR title is the moniker that ships, so a Claude `PreToolUse(Bash)` hook
+  validates `gh pr create` titles, blocks an empty PR body, and flags a
+  breaking-change under-report against the branch, pointing at the reflow
+  workflow. Both hooks share one `validate.sh`. User-invocable as
   `/conventional-commits`.
 
 - **[verify-prd-implemented](verify-prd-implemented/SKILL.md)**: verify a PRD
   (epic / umbrella issue / spec) is *actually* done before closing it: map every
-  user story to the code that delivers it AND the single assertion that guards it,
-  then **mutation-check** each guard: break the behaviour, confirm the named test
+  user story to the code that delivers it AND the single assertion that guards
+  it, then **mutation-check** each guard: break the behaviour, confirm the named test
   goes red, revert. The premise is that a green suite is not evidence of coverage
   (coverage is proven per-story, by an assertion watched go red), so it hunts the
-  plausible-but-vacuous test with a bad-test catalogue (tautology / passes-with-zero
-  / shape-only / passes-for-the-wrong-reason) in a disclosed
+  plausible-but-vacuous test with a bad-test catalogue (tautology /
+  passes-with-zero / shape-only / passes-for-the-wrong-reason) in a disclosed
   [`test-patterns.md`](verify-prd-implemented/test-patterns.md), and returns a
   per-story matrix + a close / do-not-close verdict. Scales to a fan-out workflow
   for large PRDs. User-invocable as `/verify-prd-implemented`.
@@ -82,7 +83,9 @@ do not belong here.
   reviews on demand (`@ste-review`), covering markdown, **code comments and
   docstrings**, commit messages and PR bodies, and judging the things no pattern
   can catch, above all one term per concept. Nothing else references the file
-  yet, so no other skill depends on it while it is new.
+  yet, so no other skill depends on it while it is new. The rules it does not
+  adopt from the standard, and why, live in
+  [ADR 0003](docs/adr/0003-ste-rules-adopt-a-subset.md).
 
 ## Install
 

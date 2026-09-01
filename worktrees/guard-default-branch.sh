@@ -1,29 +1,29 @@
 #!/usr/bin/env bash
-# PreToolUse guard for Claude Code — refuse direct edits/commits on the DEFAULT
-# branch of a bare+sibling repo (the `<repo>/main` worktree). main should only
-# advance via merge/pull; author changes on a feature worktree instead.
+# PreToolUse guard for Claude Code. It refuses direct edits and commits on the
+# DEFAULT branch of a bare+sibling repo (the `<repo>/main` worktree). main should
+# only advance through merge or pull. Author changes on a feature worktree.
 #
 # Canonical copy lives in the Verktøykasse `worktrees` skill and is symlinked to
 # ~/.claude/hooks/guard-default-branch.sh by worktrees/install.sh. Edit it here.
 #
 # Matches:
-#   Edit | Write | NotebookEdit               → checks tool_input.file_path
-#   Bash, only `git commit` / `git add …`    → checks the session cwd
+#   Edit | Write | NotebookEdit                    → checks tool_input.file_path
+#   Bash | PowerShell, only `git commit` / `git add …`  → checks the session cwd
 #
 # Contract (https://code.claude.com/docs/en/hooks#pretooluse):
 #   stdin JSON {tool_name, tool_input{file_path|command}, cwd}
-#   exit 2 + stderr → block the call (Claude sees the reason); exit 0 → allow.
+#   exit 2 + stderr → block the call (Claude sees the reason). exit 0 → allow.
 # Fails OPEN: anything it cannot positively confirm as "on the default branch of
 # a bare+sibling repo" is allowed, so it never blocks an edit it cannot reason
 # about (non-git dirs, detached HEAD, ordinary repos, the bare root, seed tree…).
 set -u
 
 # User-only opt-out: env is inherited from Claude's launch, and Bash-tool env
-# does not persist across calls — so Claude cannot flip this mid-session.
+# does not persist across calls, so Claude cannot flip this mid-session.
 [[ -n "${WORKTREES_ALLOW_MAIN_EDITS:-}" ]] && exit 0
 
 input=$(cat)
-# tool_name + cwd in one parse (neither is ever multi-line); the payload field
+# tool_name + cwd in one parse (neither is ever multi-line). The payload field
 # (file_path / command) is extracted per-branch below, where it may be.
 IFS=$'\t' read -r tool cwd <<<"$(jq -r '[.tool_name, .cwd] | @tsv' <<<"$input")"
 [[ -n "$cwd" ]] || cwd=$PWD
@@ -42,10 +42,12 @@ case "$tool" in
     # New file in a not-yet-created dir: walk up to the nearest existing ancestor.
     while [[ "$dir" != / && ! -d "$dir" ]]; do dir=$(dirname "$dir"); done
     ;;
-  Bash)
+  # PowerShell is a separate tool on Windows, and it runs git just as Bash does,
+  # so a guard that matches Bash alone leaves a commit path open on that platform.
+  Bash|PowerShell)
     verb=commit
     cmd=$(jq -r '.tool_input.command // empty' <<<"$input")
-    # Only authoring commands — pull/merge/fetch/rebase advance main legitimately
+    # Only authoring commands. pull/merge/fetch/rebase advance main legitimately
     # and contain neither verb, so they fall through to exit 0.
     case "$cmd" in *"git commit"*|*"git add "*) dir=$cwd ;; *) exit 0 ;; esac
     ;;
@@ -77,7 +79,7 @@ fi
 repo=$(basename "$(dirname "$common")")
 cat >&2 <<EOF
 ✗ Refusing to $verb on the default branch \`$branch\` of $repo (bare+sibling layout).
-  main should only advance via merge/pull — author changes on a feature branch.
+  main should only advance through merge or pull. Author changes on a feature branch.
   → Create a worktree and work there:
         /worktrees $repo <branch>     (or  \$REPOS_ROOT/.new-worktree.sh $repo <branch>)
     then cd in and retry.

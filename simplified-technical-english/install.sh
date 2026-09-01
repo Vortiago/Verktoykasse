@@ -9,8 +9,9 @@
 #   ste-rules.md   -> ~/.claude/rules/     loads on any *.md edit, in every project
 #   ste-review.md  -> ~/.claude/agents/    the reviewer, invoked by name
 #
-# One rules file, two consumers, no copies. `conventional-commits/SKILL.md` points
-# at the same path for commit messages and PR bodies.
+# One rules file, one consumer, no copies. `ste-review` reads it at run time, and
+# nothing else in this repo points at it. The rules themselves cover a commit
+# message body and a PR body, which `conventional-commits` owns the grammar of.
 
 here="$HERE/simplified-technical-english"
 

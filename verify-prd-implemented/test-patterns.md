@@ -6,20 +6,20 @@ Consulted from steps 4–5 of `SKILL.md`. Two parts: the catalogue of tests that
 
 A test matching any pattern below is `testGuarded: no` (or `weak`) even though it is green. Name the pattern in your finding.
 
-- **Tautology / self-reference.** Asserts a function against another call to the same production code: `assert(reader.output === extractImports(src))`. It guards *dispatch/plumbing*, not the behavior, and it passes unchanged if the behavior's meaning silently changes. Fix: assert a **literal expected value**.
+- **Tautology / self-reference.** Asserts a function against another call to the same production code: `assert(reader.output === extractImports(src))`. It guards *dispatch/plumbing*, not the behaviour, and it passes unchanged if the behaviour's meaning silently changes. Fix: assert a **literal expected value**.
 - **Vacuous / passes-with-zero.** Would pass if the feature produced nothing. A "Python imports are extracted and folded" test that only checks `commit.imports` is dispatched, never that an **edge resolves**, passes even when every edge is dropped. Demand a positive assertion on the **output value** the story is about.
 - **Shape-not-value.** Asserts the type/length/keys of a result but not its content (`assert(Array.isArray(roads))`, `assert(result.length === 3)`). Survives a result that is the right shape and wrong everywhere.
-- **Name-only.** A file/`test()` named for the behavior whose body asserts something adjacent and trivial. The name is documentation, not a guard.
+- **Name-only.** A file/`test()` named for the behaviour whose body asserts something adjacent and trivial. The name is documentation, not a guard.
 - **Skipped / disabled / focused.** `.skip`, `xit`, `it.only` elsewhere narrowing the run, commented-out asserts, an early `return`. Grep for these in the suites you trust.
 - **Passes for the wrong reason.** The assertion holds, but not because of the code it claims to test: a virtual-repo-boundary test that passes because the target is not born yet (commit ordering), not because the boundary keying works. Caught only by the mutation check (step 5): break the *claimed* mechanism. If the test stays green, this is the pattern.
 - **No negative/positive pair.** Only-negative tests ("no edge here") pass against a resolver that *always* returns null. Require at least one **positive** assertion (the edge that must exist) beside the negatives.
 
 ## The mutation check (step 5)
 
-A guard is real only if it goes red when its behavior breaks. Prove it:
+A guard is real only if it goes red when its behaviour breaks. Prove it:
 
 1. **Back up** the file you will mutate (`cp file file.bak`) so revert is exact.
-2. **Inject one targeted fault** into the specific code path the unit depends on, not a syntax error. Make the behavior wrong, minimally:
+2. **Inject one targeted fault** into the specific code path the unit depends on, not a syntax error. Make the behaviour wrong, minimally:
    - a resolver/handler: `return null;` (or `return [];`) as its first line,
    - a classifier: flip the branch it selects,
    - a threshold/constant: shift it past the boundary the test sits on,

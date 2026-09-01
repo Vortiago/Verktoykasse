@@ -20,7 +20,7 @@ where OSC-8 is stripped (tmux over ssh). Outside git: `[user@host dir]`.
 
 A per-project **extension** DECLARES service links (the core places them) and
 prints a status segment. This skill writes that extension. Keep the core
-generic, so never hard-code a project into it.
+generic. Never hard-code a project into it.
 
 ## The contract
 
@@ -57,8 +57,8 @@ First match wins:
    history, survives worktree churn (`<project>` = `CL_PROJECT`).
 
 **Default to #1** when the segment is about the project (dev server, CI, counts,
-freshness), because it travels with the repo. Give it a header noting it needs the core.
-Use **#2** for machine-specific or personal bits.
+freshness), because it travels with the repo. Give it a header noting it needs
+the core. Use **#2** for machine-specific or personal bits.
 
 ## Steps when invoked
 
@@ -102,10 +102,11 @@ printf '%s● ci%s %squeue%s %s' "$dot" "$CL_RESET" "$CL_DIM" "$CL_RESET" "$coun
 
 ## Reference
 
-Worked example bundled with this skill: [`example-ext.sh`](example-ext.sh), which counts
-the toolbox's own skills, defined against linked live (`🧰 skills N/N`). It declares one
-`svc` link. Copy it as a starting point. (It also ships live in the toolbox at
-`$CL_ROOT/.claude/statusline-ext.sh`, auto-found with no `install.sh` wiring.)
+Worked example bundled with this skill: [`example-ext.sh`](example-ext.sh), which
+counts the toolbox's own skills, defined versus linked live (`🧰 skills N/N`). It
+declares one `svc` link. Copy it as a starting point. (It also ships live in the
+toolbox at `$CL_ROOT/.claude/statusline-ext.sh`, auto-found with no `install.sh`
+wiring.)
 
 Testing, or how to run the extension directly and through the core:
 → [`reference/testing.md`](reference/testing.md)

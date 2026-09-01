@@ -106,7 +106,7 @@ const rowSignal = AbortSignal.any([signal, tick.signal]);
 // build this tick's per-row components with rowSignal; tick.abort() at the next tick
 ```
 
-so the resource dies at tick end *or* view unmount, whichever comes first, which is a
+so the resource dies at tick end *or* view unmount, whichever comes first. A
 BARE per-tick controller alone (no `signal` composed in) only dies at the START
 of the *next* tick, so a view that unmounts mid-tick leaves it stranded until a
 next tick that, post-unmount, never comes.
@@ -135,8 +135,8 @@ it needs it.
 - **Re-renders** of live data (SSE-driven or polled) go through `renderRegion`
   (never raw `replaceChildren`/`innerHTML`). Mutate in place for fast-ticking
   values. `heldInside(host)` exposes the same interaction hold as a predicate for
-  the shapes `renderRegion` cannot serve (in-place updaters, `reconcileList`),
-  ask it, never re-derive the guards. A *user-initiated* change (tab switch, open
+  the shapes `renderRegion` cannot serve (in-place updaters, `reconcileList`).
+  Ask it, and never re-derive the guards. A *user-initiated* change (tab switch, open
   detail, expand/sort) may animate through `withTransition` (View Transitions),
   never the polled path. → `reference/interactivity.md`
 - **Overlays** use native `<dialog>` / `popover` / `<details>`, never
@@ -152,7 +152,8 @@ it needs it.
   `withPending` marks the region busy and CSS renders the busy look. Background
   SSE/poll updates do not flash busy, and they use the no-flicker re-render.
   → `reference/interactivity.md`
-- **Numbers / dates / durations** render through `Intl` (see `lib/format.js`).
+- **Numbers / dates / durations** render through `Intl`, wrapped by
+  `lib/format.js`.
   → `reference/modules.md`
 - **In a dense view, an event handler never touches DOM. It only writes
   state.** Every dependent region subscribes once at `mount()`. Reach for
