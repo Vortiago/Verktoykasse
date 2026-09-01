@@ -190,5 +190,4 @@ step. A prohibition with no reason leaves the reader guessing what to do instead
 This file adopts a subset of ASD-STE100 and rejects the rest. Apply no other
 rule from the standard. Do not restrict modals: `should` stays `should`, and
 `may have failed` is not `failed`. Do not ban compound tenses: `the job has
-completed` is not `the job completed`. Do not check words against the STE
-approved-word list.
+completed` is not `the job completed`.

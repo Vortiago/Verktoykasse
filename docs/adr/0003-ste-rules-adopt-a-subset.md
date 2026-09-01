@@ -16,9 +16,9 @@ applies. Design history is not a directive.
 ## Decision
 
 The rules file keeps a short guard: apply no other rule from the standard. The
-guard names the three rejections an agent is most likely to reintroduce, each
-with the contrast example that shows the bad rewrite. This record holds every
-rejected rule and the reason, so the rules file states only what to do.
+guard names the two rejections an agent reintroduces unprompted, each with the
+contrast example that shows the bad rewrite. This record holds every rejected
+rule and the reason, so the rules file states only what to do.
 
 ## Rejected rules
 
@@ -29,7 +29,9 @@ These are real ASD-STE100 rules. The rules file does not adopt them.
   destroys the hedging an agent needs. `may have failed` is not `failed`.
 - **An approved-word allowlist.** Flagging every word outside a fixed list fires
   constantly on ordinary prose, and it fights the advice to write in the words a
-  reader actually uses.
+  reader actually uses. The guard stays silent on this one. Left unmentioned, an
+  agent already picks plain words, and it reuses the vocabulary the codebase and
+  the documentation established.
 - **The ban on compound tenses.** It loses a state distinction that matters:
   `the job has completed` is not `the job completed`.
 - **Cutting the rationale.** The rule "keep the reason where a reader needs
