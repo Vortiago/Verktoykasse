@@ -41,6 +41,7 @@ ck() { # desc  want(0 allow / 2 block)  json  [env assignment]
 edit() { jq -nc --arg p "$1" --arg c "$2" '{tool_name:"Edit",tool_input:{file_path:$p},cwd:$c}'; }
 nb()   { jq -nc --arg p "$1" --arg c "$2" '{tool_name:"NotebookEdit",tool_input:{notebook_path:$p},cwd:$c}'; }
 bash_() { jq -nc --arg x "$1" --arg c "$2" '{tool_name:"Bash",tool_input:{command:$x},cwd:$c}'; }
+pwsh_() { jq -nc --arg x "$1" --arg c "$2" '{tool_name:"PowerShell",tool_input:{command:$x},cwd:$c}'; }
 
 base=$(mkrepo main)
 
@@ -62,6 +63,13 @@ ck "git pull on default"           0 "$(bash_ "git pull"         "$base/main")"
 ck "git merge on default"          0 "$(bash_ "git merge origin/main" "$base/main")"
 ck "git commit on feature"         0 "$(bash_ "git commit -m x" "$base/feature")"
 ck "non-git-author Bash on main"   0 "$(bash_ "ls -la"          "$base/main")"
+
+# --- PowerShell is a separate tool on Windows and runs git the same way ---
+ck "pwsh commit on default"        2 "$(pwsh_ "git commit -m x" "$base/main")"
+ck "pwsh add on default"           2 "$(pwsh_ "git add ."        "$base/main")"
+ck "pwsh pull on default"          0 "$(pwsh_ "git pull"         "$base/main")"
+ck "pwsh commit on feature"        0 "$(pwsh_ "git commit -m x" "$base/feature")"
+ck "non-git-author pwsh on main"   0 "$(pwsh_ "Get-ChildItem"   "$base/main")"
 
 # --- origin/HEAD detection beats the {main,master} fallback ---
 trunk=$(mkrepo trunk)
