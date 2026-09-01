@@ -4,11 +4,15 @@
 
 *Verktøykasse* — Norwegian for **toolbox**.
 
-My general-purpose [Claude Code](https://claude.com/claude-code) skills:
-conventions and canonical helper code that apply across projects, versioned
-here and symlinked into `~/.claude/skills/` dotfiles-style. Project-specific
-skills live with their projects; third-party skills are installed separately
-and don't belong here.
+My general-purpose [Claude Code](https://claude.com/claude-code) skills and
+terminal tools.
+
+A **skill** is conventions and helper code that Claude reads. `install.sh`
+symlinks it into `~/.claude/skills/`, dotfiles-style.
+
+A **tool** is a program I run myself. It runs from where it sits.
+
+A directory is a skill when it holds a `SKILL.md`.
 
 ## Skills
 
@@ -72,12 +76,17 @@ and don't belong here.
   per-story matrix + a close / do-not-close verdict. Scales to a fan-out workflow
   for large PRDs. User-invocable as `/verify-prd-implemented`.
 
-- **[matrix](matrix/README.md)** - every open Claude Code session as Matrix
-  rain in a PowerShell console. One lane per session, coloured by status (green
-  working, amber idle, red waiting), under a header with the name, status age,
-  and opening prompt. `-ThisWindow` scopes to the current Windows Terminal
-  window; `-Click` raises a session's tab on click.
-  `install-terminal-profile.ps1` adds a Windows Terminal profile for it.
+## Tools
+
+- **[matrix](matrix/README.md)** - every open Claude Code session as Matrix rain
+  in a terminal. One lane per session, coloured by status (green working, amber
+  idle, red waiting), under a header with the name, status age, and opening
+  prompt. It runs on Windows and on Linux, each platform bringing its own console
+  layer and terminal backend: the Windows console API with Windows Terminal, or
+  termios with Konsole or tmux. `-ThisWindow` scopes the lanes to the terminal
+  window the rain starts in, or to the tmux session under tmux; `-Click` raises a
+  session's tab on click. `install-terminal-profile.ps1` adds a Windows Terminal
+  profile for it. PowerShell 7, and Pester 5 or later for the tests.
 
 ## Install
 
@@ -88,6 +97,9 @@ and don't belong here.
 
 Symlinks each skill into `~/.claude/skills/<name>`. Idempotent; a real
 directory already at a live path is backed up to `<path>.pre-verktoykasse`.
+
+`--target opencode` installs into `~/.config/opencode/skills` instead, as plain
+symlinks with no hook wiring.
 
 A skill may ship its own `<skill>/install.sh` for extra wiring — e.g.
 `worktrees` also symlinks its hook into `~/.claude/hooks/`, links the helper
