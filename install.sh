@@ -84,6 +84,8 @@ done
 
 if [[ ${#skills[@]} -eq 0 ]]; then
   for d in "$HERE"/*/; do
+    # Only dirs with a SKILL.md are skills. Plain tools (matrix/) and docs/ are not.
+    [[ -f "$d/SKILL.md" ]] || continue
     skills+=("$(basename "$d")")
   done
 fi

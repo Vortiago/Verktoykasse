@@ -1,7 +1,8 @@
 # Verktøykasse
 
-A toolbox of LLM-consumed skills. The vanilla-* skills carry a zero-dependency,
-no-build web toolkit whose files are distributed by copying, never by packaging.
+A toolbox of skills Claude reads and tools I run myself. The vanilla-* skills
+carry a zero-dependency, no-build web toolkit whose files are distributed by
+copying, never by packaging.
 
 ## Language
 
