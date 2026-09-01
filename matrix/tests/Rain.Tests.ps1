@@ -167,9 +167,10 @@ esac
             $env:PATH = "$stubDir$([System.IO.Path]::PathSeparator)$env:PATH"
             # liveHome, not emptyHome: the tab map is only rebuilt when a session
             # exists, so the stub's list-panes - the call that names the backend -
-            # would never run against an empty one. The fixture pane belongs to no
-            # real pane of this tree, so -ThisWindow drops the lane it cannot
-            # place rather than guess it is ours.
+            # would never run against an empty one. The stub's own session ('$5')
+            # owns neither listed pane ('$1', '$2'), so -ThisWindow drops the lane
+            # whether or not the pid walk placed it, and the empty header proves
+            # the tmux wording rather than the pid match.
             $r = Invoke-Rain $liveHome @('-Seconds', '2', '-Fps', '10', '-ThisWindow')
             $r.ExitCode | Should -Be 0
             $r.Stderr | Should -Not -Match 'Konsole'

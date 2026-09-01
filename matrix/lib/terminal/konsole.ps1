@@ -139,39 +139,17 @@ function Get-TabKey {
 
 function Resolve-SessionTab {
     # Konsole tab titles do not carry Claude's glyph, so the Windows title scoring
-    # has nothing to score. The tab process id is exact instead. The walk goes up
-    # from the claude pid, because claude is often not the tab shell's direct child
-    # (bash -> ollama -> claude).
+    # has nothing to score. The tab process id is exact instead, and the match is
+    # Resolve-SessionTabByPid in tabmap.ps1: tmux's pane_pid is the same kind of pid,
+    # so the walk is written once above both Linux backends rather than twice inside
+    # them. All this adds is the -Ancestors default.
     param(
         [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Session,
         [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Tab,
-        # test seam: pid -> ancestor pid list. ${function:...} resolves by name at
-        # call time, so it reads $null - silently - whenever sessions.ps1 was not
-        # sourced before this file. Name the missing dependency instead of dying
-        # inside the poll on '&' against nothing.
+        # test seam: pid -> ancestor pid list
         [scriptblock] $Ancestors = ${function:Get-ProcessAncestorId}
     )
-
-    if (-not $Ancestors) {
-        throw 'matrix: Get-ProcessAncestorId is not loaded - source lib/sessions.ps1 before the terminal backend'
-    }
-
-    $tabPids = @{}
-    foreach ($t in $Tab) { $tabPids[[int]$t.Pid] = $t }
-
-    $map = @{}
-    foreach ($s in $Session) {
-        foreach ($ancestor in @(& $Ancestors ([int]$s.Pid))) {
-            # A walk that dies mid-chain returns $null inside an array, and
-            # [int]$null is 0: skip it rather than match a tab with no pid.
-            if (-not $ancestor) { continue }
-            if ($tabPids.ContainsKey([int]$ancestor)) {
-                $map[$s.SessionId] = $tabPids[[int]$ancestor]
-                break
-            }
-        }
-    }
-    $map
+    Resolve-SessionTabByPid -Session $Session -Tab $Tab -Ancestors $Ancestors
 }
 
 # Get-ProcessAncestorId lives in sessions.ps1 now, next to the other process-table

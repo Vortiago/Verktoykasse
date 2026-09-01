@@ -45,7 +45,7 @@ function Get-EnvSnapshot ([string[]] $Names) {
 
 function Restore-EnvSnapshot ($Saved) {
     foreach ($n in $Saved.Keys) {
-        if ($null -eq $Saved[$n]) { Remove-Item "Env:\$n" -ErrorAction SilentlyContinue }
+        if ($null -eq $Saved[$n]) { Remove-Item -LiteralPath "Env:\$n" -ErrorAction SilentlyContinue }
         else { Set-Item -LiteralPath "Env:\$n" -Value $Saved[$n] }
     }
 }

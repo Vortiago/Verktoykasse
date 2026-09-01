@@ -167,39 +167,16 @@ function Get-TabKey {
 }
 
 function Resolve-SessionTab {
-    # The tmux twin of Konsole's exact match: pane_pid is the pane's root
-    # process, and the last hop of a claude pid's /proc walk inside a pane is
-    # exactly that process. No title scoring - tmux window names say nothing
-    # usable. The walk goes up from the claude pid, because claude is often not
-    # the pane shell's direct child (bash -> ollama -> claude).
+    # The tmux twin of Konsole's exact match: pane_pid is the pane's root process,
+    # and the last hop of a claude pid's /proc walk inside a pane is exactly that
+    # process. Being the same kind of pid, it takes the same matcher -
+    # Resolve-SessionTabByPid in tabmap.ps1 - and all this adds is the -Ancestors
+    # default. No title scoring: tmux window names say nothing usable.
     param(
         [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Session,
         [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Tab,
-        # test seam: pid -> ancestor pid list. ${function:...} resolves by name at
-        # call time, so it reads $null - silently - whenever sessions.ps1 was not
-        # sourced before this file. Name the missing dependency instead of dying
-        # inside the poll on '&' against nothing.
+        # test seam: pid -> ancestor pid list
         [scriptblock] $Ancestors = ${function:Get-ProcessAncestorId}
     )
-
-    if (-not $Ancestors) {
-        throw 'matrix: Get-ProcessAncestorId is not loaded - source lib/sessions.ps1 before the terminal backend'
-    }
-
-    $tabPids = @{}
-    foreach ($t in $Tab) { $tabPids[[int]$t.Pid] = $t }
-
-    $map = @{}
-    foreach ($s in $Session) {
-        foreach ($ancestor in @(& $Ancestors ([int]$s.Pid))) {
-            # A walk that dies mid-chain returns $null inside an array, and
-            # [int]$null is 0: skip it rather than match a pane with no pid.
-            if (-not $ancestor) { continue }
-            if ($tabPids.ContainsKey([int]$ancestor)) {
-                $map[$s.SessionId] = $tabPids[[int]$ancestor]
-                break
-            }
-        }
-    }
-    $map
+    Resolve-SessionTabByPid -Session $Session -Tab $Tab -Ancestors $Ancestors
 }

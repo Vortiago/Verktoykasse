@@ -134,6 +134,55 @@ Describe 'Get-AllTerminalTab' {
     It 'answers nothing when the server has nothing to say' {
         @(Get-AllTerminalTab -Call $script:badRows) | Should -HaveCount 0
     }
+
+    It 'asks tmux for exactly the five fields the parse reads' {
+        # The rows above are only parseable because -F asked for these five fields
+        # in this order. Every other fake here checks the subcommand and answers
+        # from canned rows, so none of them would notice the format going missing -
+        # and an empty -F makes tmux print blank lines, which reads upstream as a
+        # server with no panes at all.
+        $seen = @{}
+        [void](Get-AllTerminalTab -Call { param([string[]] $TmuxArgs) $seen.Args = $TmuxArgs; '' })
+        $seen.Args | Should -Be @('list-panes', '-a', '-F', $script:TmuxFormat)
+        @($script:TmuxFormat -split $T) | Should -Be @('#{session_id}', '#{window_id}',
+                                                       '#{window_index}', '#{pane_pid}', '#{pane_id}')
+    }
+}
+
+Describe 'Invoke-Tmux' {
+    # The one function no seam covers: the fork itself. This process stands in for
+    # the tmux binary, because the contract under test is "hand back stdout, and
+    # throw with stderr on a non-zero exit" - not tmux's own argv. Runs on both CI
+    # platforms for the same reason.
+    BeforeAll {
+        # pwsh installed as a dotnet global tool runs under the muxer: the process
+        # path alone cannot relaunch it, the way Rain.Tests.ps1 relaunches the rain.
+        $script:exe = [Environment]::ProcessPath
+        $script:pre = if ([IO.Path]::GetFileNameWithoutExtension($exe) -eq 'dotnet') {
+                          @(Join-Path $PSHOME 'pwsh.dll')
+                      } else { @() }
+    }
+
+    It 'hands back what the client wrote to stdout' {
+        # A tmux-shaped row, tab and all: nothing between the fork and the parse
+        # rewraps or re-splits what the client printed.
+        Invoke-Tmux -Tmux $exe -TmuxArgs ($pre + @('-NoProfile', '-Command',
+            "[Console]::Out.Write('`$0' + [char]9 + '@0')")) | Should -Be "`$0$T@0"
+    }
+
+    It 'throws with the stderr text when the client exits non-zero' {
+        # tmux says why on stderr, and a raw write there would land on the alt
+        # screen mid-frame and shear it. So it comes back as a message instead -
+        # which is also the only place a caller could ever see it.
+        { Invoke-Tmux -Tmux $exe -TmuxArgs ($pre + @('-NoProfile', '-Command',
+            '[Console]::Error.Write("no server running"); exit 1')) } |
+            Should -Throw -ExpectedMessage '*no server running*'
+    }
+
+    It 'names the call when there is no tmux to run' {
+        { Invoke-Tmux -Tmux 'matrix-no-such-binary' -TmuxArgs @('list-panes', '-a') } |
+            Should -Throw -ExpectedMessage '*list-panes -a*'
+    }
 }
 
 Describe 'Select-TerminalTab' {
@@ -241,6 +290,10 @@ Describe 'the tmux backend against the tab map' {
         $script:state = New-TabState
         $script:clock = [System.Diagnostics.Stopwatch]::StartNew()
     }
+
+    # Take the stub back out: a scope function outlives the block that defined it,
+    # and the real Get-ProcessAncestorId is what every file after this one wants.
+    AfterAll { Remove-Item -LiteralPath 'Function:\Get-ProcessAncestorId' -ErrorAction SilentlyContinue }
 
     It 'lands a session in its pane the first time it is asked' {
         Update-SessionTabMap -Session @((New-TestSession -Id 'A' -ProcessId 100)) `

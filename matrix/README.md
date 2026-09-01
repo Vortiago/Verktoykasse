@@ -203,9 +203,11 @@ of scope.
 Sessions running over ssh inside a pane never appear: their pid is not in this
 machine's `/proc`, so liveness drops them before the tab map is consulted.
 
-Start the rain from the tmux session you want scoped, and keep that session in
-front while it starts. When `-ThisWindow` finds nothing it stops with an
-explanation; a filter that silently does nothing reads as a bug.
+Start the rain from the tmux session you want scoped. Nothing has to be in front
+while it starts - `$TMUX_PANE` names our pane and the server answers for it
+exactly, so unlike Windows Terminal there is no launch-time race to lose. When
+`-ThisWindow` finds nothing it stops with an explanation; a filter that silently
+does nothing reads as a bug.
 
 ### A match that has not caught up
 
@@ -240,7 +242,8 @@ lib/
   lanes.ps1             sessions to lanes
   sessions.ps1          Claude's session registry, and the /proc process-table readers
   terminal/
-    tabmap.ps1          session to tab, over time. Knows no platform
+    tabmap.ps1          session to tab, over time, and the pid match both Linux
+                        backends answer with. Knows no platform
     windows-terminal.ps1  the UI Automation backend
     konsole.ps1           the D-Bus backend
     tmux.ps1              the backend that runs inside tmux: a session is the scope, a window the tab

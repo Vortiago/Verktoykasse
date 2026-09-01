@@ -3,6 +3,9 @@
 # involved - the D-Bus call is a scriptblock seam, and the pid walk is injected.
 BeforeAll {
     . (Join-Path $PSScriptRoot '../lib/terminal/konsole.ps1')
+    # tabmap.ps1 too: Resolve-SessionTab is a two-line wrapper over the pid matcher
+    # that lives there, because tmux's pane_pid takes the same walk.
+    . (Join-Path $PSScriptRoot '../lib/terminal/tabmap.ps1')
     . (Join-Path $PSScriptRoot 'Fixtures.ps1')
 }
 

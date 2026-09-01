@@ -90,18 +90,22 @@ if ($Host.Name -like '*ISE*') {
 # its own client.
 $lib  = Join-Path $PSScriptRoot 'lib'
 $term = Join-Path $lib 'terminal'
+# Decided once, and read again below for the words -ThisWindow says back: a second
+# spelling of this condition would drift from the backend that actually answers.
+#
+# tmux owns every terminal it nests in, so it answers before Konsole: a rain inside
+# tmux talks tmux, whether the outer terminal is Konsole, a plain xterm, or another
+# tmux - $TMUX names the innermost server. Windows never gets here with TMUX set: a
+# WSL tmux pane is a separate environment.
+$backend = if ($IsWindows)    { 'windows-terminal.ps1' }
+           elseif ($env:TMUX) { 'tmux.ps1' }
+           else               { 'konsole.ps1' }
 $load = @(
     foreach ($part in 'console', 'stats', 'types', 'palette', 'lanes', 'sessions') {
         Join-Path $lib "$part.ps1"
     }
     Join-Path $term 'tabmap.ps1'
-    # tmux owns every terminal it nests in, so it answers before Konsole: a rain
-    # inside tmux talks tmux, whether the outer terminal is Konsole, a plain
-    # xterm, or another tmux - $TMUX names the innermost server. Windows never
-    # gets here with TMUX set: a WSL tmux pane is a separate environment.
-    Join-Path $term $(if ($IsWindows)    { 'windows-terminal.ps1' }
-                      elseif ($env:TMUX) { 'tmux.ps1' }
-                      else               { 'konsole.ps1' })
+    Join-Path $term $backend
 )
 foreach ($file in $load) {
     if (-not (Test-Path -LiteralPath $file)) { throw "matrix: cannot load $file" }
@@ -109,13 +113,20 @@ foreach ($file in $load) {
 }
 
 # What -ThisWindow scopes on: a terminal window, or the tmux session a pane runs
-# in. Named once here, because both the empty-lane header and the -ThisWindow
+# in. Named off $backend, because both the empty-lane header and the -ThisWindow
 # failure below say it back to the user, and the words must match the backend
 # that actually answers.
-$scopeName = if (-not $IsWindows -and $env:TMUX) { 'tmux session' } else { 'terminal window' }
+$scopeName = if ($backend -eq 'tmux.ps1') { 'tmux session' } else { 'terminal window' }
+# Only Windows guesses: it takes the window that was in front at startup. Konsole
+# and tmux each export their scope into the environment, so "keep it in front" is
+# advice only the Windows backend's user can act on - and it reads as a wrong
+# diagnosis anywhere else.
+$scopeHint = if ($backend -eq 'windows-terminal.ps1') { " and leave that $scopeName in front" } else { '' }
 
-# Read before anything slow runs. -ThisWindow and -Click take the foreground
-# terminal. It is only reliably ours right after the user typed the command.
+# Read before anything slow runs, because the Windows backend has to guess: it
+# takes the foreground terminal, which is only reliably ours right after the user
+# typed the command. Konsole and tmux both read an exported variable and are exact
+# whenever this runs.
 $hostHwnd = if ($ThisWindow -or $Click) { Get-OwnTerminalWindow } else { 0 }
 
 # Enable ANSI escape processing (a no-op where it is already on).
@@ -154,8 +165,8 @@ if ($needTabs) {
         # like a broken filter: say so and stop.
         if ($ThisWindow) {
             throw ("matrix: -ThisWindow needs to know which $scopeName this is, and $why. " +
-                   "Start it from the $scopeName you want scoped and leave it in " +
-                   'front, or drop -ThisWindow to show every session.')
+                   "Start it from the $scopeName you want scoped$scopeHint, " +
+                   'or drop -ThisWindow to show every session.')
         }
         Write-Host "matrix: -Click does nothing - $why." -ForegroundColor Yellow
         $needTabs = $false; $Click = $false
