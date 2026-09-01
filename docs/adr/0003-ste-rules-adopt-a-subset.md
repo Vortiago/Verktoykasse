@@ -10,16 +10,15 @@
 standard. The model knows the full standard from training, so the name alone
 primes an agent to apply rules the file never adopted. The `ste-review`
 subagent reads the rules file at run time, in whichever project it runs, and
-no other file in this repo reaches it there. The rules file also loads into
-context on every markdown touch, so every line in it has a recurring token
-cost.
+no other file in this repo reaches it there. That file is a directive an agent
+applies. Design history is not a directive.
 
 ## Decision
 
 The rules file keeps a short guard: apply no other rule from the standard. The
 guard names the three rejections an agent is most likely to reintroduce, each
 with the contrast example that shows the bad rewrite. This record holds every
-rejected rule and the reason, so the rationale costs no context.
+rejected rule and the reason, so the rules file states only what to do.
 
 ## Rejected rules
 
@@ -41,14 +40,14 @@ These are real ASD-STE100 rules. The rules file does not adopt them.
 
 - `ste-review` still learns which rules not to apply, because the guard travels
   with the rules file it reads at run time.
-- The reasons live here and cost no context.
+- The reasons live here, where a reader who wants them looks for a decision.
 - A new rejection edits two places: this list always, and the guard when an
   agent is likely to reintroduce the rule.
 
 ## Alternatives considered
 
-- **Keep the full section in the rules file.** Rejected: the reasons are design
-  history, and the file pays their token cost on every markdown touch.
+- **Keep the full section in the rules file.** Rejected: an agent reading the
+  file to apply it does not need the argument for what it already says.
 - **Move the whole section to a README.** Rejected: a README is no more
   reachable at run time than this record, and the repo keeps design rationale
   in `docs/adr/`.
