@@ -3,11 +3,16 @@
 # install.sh, so it inherits the `link()` helper and $HERE (the repo root).
 # Not meant to run standalone. Idempotent.
 #
-# This is NOT a skill: there is no SKILL.md and nothing is model-invocable. It is
-# two files, each symlinked to where Claude Code already looks for its kind:
+# This is NOT a skill: there is no SKILL.md, so no slash command reaches either
+# file. It is two files, each symlinked to where Claude Code already looks for
+# its kind:
 #
 #   ste-rules.md   -> ~/.claude/rules/     loads on any *.md edit, in every project
-#   ste-review.md  -> ~/.claude/agents/    the reviewer, invoked by name
+#   ste-review.md  -> ~/.claude/agents/    the reviewer, by `@` or by delegation
+#
+# Not a skill does not mean user-only. Claude delegates to `ste-review` on its
+# `description`, and no frontmatter field turns that off. To stop it, deny
+# `Agent(ste-review)` in settings.
 #
 # One rules file, one consumer, no copies. `ste-review` reads it at run time, and
 # nothing else in this repo points at it. The rules themselves cover a commit
