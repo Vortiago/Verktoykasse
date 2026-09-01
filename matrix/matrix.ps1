@@ -13,14 +13,16 @@
     See README.md for how it works.
 
 .PARAMETER ThisWindow
-    Show only sessions in the same terminal window as this rain (Windows Terminal
-    or Konsole).
+    Show only sessions in the same terminal window as this rain (Windows Terminal,
+    Konsole), or the same tmux session (inside tmux).
 
 .PARAMETER Click
     Left-click a lane to switch to that session's terminal tab. On Windows, tabs
     match on title, so the match can be wrong: the lane header names the tab it
     would open, and it needs "Show status in terminal tab" on in Claude Code. On
-    Konsole the match is exact - a tab is that session's process ancestor.
+    Konsole and in tmux the match is exact - the tab is that session's process
+    ancestor. Inside tmux a tab is a window: the click is select-window, and a
+    pane is never focused.
 
 .PARAMETER PollSeconds
     How often the session registry is re-read. Default 1.
@@ -84,23 +86,47 @@ if ($Host.Name -like '*ISE*') {
 
 # terminal/ splits in two: tabmap.ps1 is the map itself and knows no platform,
 # and exactly one backend under it answers the six terminal functions the map
-# calls - Windows Terminal over UI Automation, or Konsole over D-Bus.
+# calls - Windows Terminal over UI Automation, Konsole over D-Bus, or tmux over
+# its own client.
 $lib  = Join-Path $PSScriptRoot 'lib'
 $term = Join-Path $lib 'terminal'
+# Decided once, and read again below for the words -ThisWindow says back: a second
+# spelling of this condition would drift from the backend that actually answers.
+#
+# tmux owns every terminal it nests in, so it answers before Konsole: a rain inside
+# tmux talks tmux, whether the outer terminal is Konsole, a plain xterm, or another
+# tmux - $TMUX names the innermost server. Windows never gets here with TMUX set: a
+# WSL tmux pane is a separate environment.
+$backend = if ($IsWindows)    { 'windows-terminal.ps1' }
+           elseif ($env:TMUX) { 'tmux.ps1' }
+           else               { 'konsole.ps1' }
 $load = @(
     foreach ($part in 'console', 'stats', 'types', 'palette', 'lanes', 'sessions') {
         Join-Path $lib "$part.ps1"
     }
     Join-Path $term 'tabmap.ps1'
-    Join-Path $term $(if ($IsWindows) { 'windows-terminal.ps1' } else { 'konsole.ps1' })
+    Join-Path $term $backend
 )
 foreach ($file in $load) {
     if (-not (Test-Path -LiteralPath $file)) { throw "matrix: cannot load $file" }
     . $file
 }
 
-# Read before anything slow runs. -ThisWindow and -Click take the foreground
-# terminal. It is only reliably ours right after the user typed the command.
+# What -ThisWindow scopes on: a terminal window, or the tmux session a pane runs
+# in. Named off $backend, because both the empty-lane header and the -ThisWindow
+# failure below say it back to the user, and the words must match the backend
+# that actually answers.
+$scopeName = if ($backend -eq 'tmux.ps1') { 'tmux session' } else { 'terminal window' }
+# Only Windows guesses: it takes the window that was in front at startup. Konsole
+# and tmux each export their scope into the environment, so "keep it in front" is
+# advice only the Windows backend's user can act on - and it reads as a wrong
+# diagnosis anywhere else.
+$scopeHint = if ($backend -eq 'windows-terminal.ps1') { " and leave that $scopeName in front" } else { '' }
+
+# Read before anything slow runs, because the Windows backend has to guess: it
+# takes the foreground terminal, which is only reliably ours right after the user
+# typed the command. Konsole and tmux both read an exported variable and are exact
+# whenever this runs.
 $hostHwnd = if ($ThisWindow -or $Click) { Get-OwnTerminalWindow } else { 0 }
 
 # Enable ANSI escape processing (a no-op where it is already on).
@@ -129,7 +155,8 @@ $glyphs = Get-RainGlyph -Ascii:$useAscii
 # -ThisWindow and -Click both need the tab map. Windows Terminal keeps every window
 # in one process: a window is identified by its handle, a session by the tab whose
 # title matches it. Konsole is the same, one process for every window, but the
-# session-to-tab match there is a pid walk, not a title match.
+# session-to-tab match there is a pid walk, not a title match. tmux scopes on its
+# own session and matches on pane_pid, so its tab objects carry that session id.
 $needTabs = [bool]($ThisWindow -or $Click)
 if ($needTabs) {
     $why = Test-TabSupport -Hwnd $hostHwnd
@@ -137,9 +164,9 @@ if ($needTabs) {
         # -ThisWindow asked for a smaller set. Quietly showing every session looks
         # like a broken filter: say so and stop.
         if ($ThisWindow) {
-            throw ("matrix: -ThisWindow needs to know which terminal window this is, and $why. " +
-                   'Start it from the window you want scoped and leave that window in ' +
-                   'front, or drop -ThisWindow to show every session.')
+            throw ("matrix: -ThisWindow needs to know which $scopeName this is, and $why. " +
+                   "Start it from the $scopeName you want scoped$scopeHint, " +
+                   'or drop -ThisWindow to show every session.')
         }
         Write-Host "matrix: -Click does nothing - $why." -ForegroundColor Yellow
         $needTabs = $false; $Click = $false
@@ -182,7 +209,7 @@ function Get-SessionLanes {
     # collection parameter rejects an empty array before the body runs.
     param([Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Live)
     if ($Live.Count -eq 0) {
-        $where = if ($ThisWindow) { 'none in this terminal window' } else { 'waiting for one to start' }
+        $where = if ($ThisWindow) { "none in this $scopeName" } else { 'waiting for one to start' }
         $st = Get-SessionStyle 'none'
         return , @(New-Lane $st.Rgb $st.Speed $st.Density $st.Label $where $null)
     }

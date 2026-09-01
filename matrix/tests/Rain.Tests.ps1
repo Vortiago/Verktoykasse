@@ -42,9 +42,7 @@ BeforeAll {
     function Invoke-Rain ($claudeHome, [string[]] $argv, $script = $rain) {
         $out = Join-Path ([System.IO.Path]::GetTempPath()) "matrix-rain-$PID.out"
         $err = Join-Path ([System.IO.Path]::GetTempPath()) "matrix-rain-$PID.err"
-        # Restore, do not null: a developer running the suite with a real
-        # CLAUDE_CONFIG_DIR must not lose it from their process.
-        $prevHome = $env:CLAUDE_CONFIG_DIR
+        $snap = Get-EnvSnapshot 'CLAUDE_CONFIG_DIR'
         $env:CLAUDE_CONFIG_DIR = $claudeHome
         try {
             $p = Start-Process -FilePath $pwshExe -PassThru -Wait -NoNewWindow `
@@ -56,7 +54,7 @@ BeforeAll {
                 Stderr   = (Get-Content -LiteralPath $err -Raw -ErrorAction SilentlyContinue)
             }
         } finally {
-            $env:CLAUDE_CONFIG_DIR = $prevHome
+            Restore-EnvSnapshot $snap
             Remove-Item $out, $err -Force -ErrorAction SilentlyContinue
         }
     }
@@ -122,6 +120,67 @@ Describe 'preview-matrix.ps1' {
 
         $plain = Invoke-Rain $emptyHome @('-Seconds', '3', '-Fps', '20') $preview
         (Remove-Sgr $plain.Stdout) | Should -Not -Match 'build'
+    }
+}
+
+Describe 'matrix.ps1 inside tmux' {
+    # Which backend runs is decided by $TMUX, and that decision only shows at the
+    # process boundary: with TMUX set, the rain must go and ask tmux. The stub
+    # binary records every argv it is handed into $TMUX_STUB_LOG and answers the
+    # two reads the rain makes, so the run reaches a real frame, and the log
+    # proves which backend was loaded.
+    BeforeAll {
+        $script:stubDir = Join-Path ([System.IO.Path]::GetTempPath()) "matrix-tmux-stub-$PID"
+        New-Item -ItemType Directory -Path $stubDir -Force | Out-Null
+        $script:stubLog = Join-Path $stubDir 'calls.log'
+        # A POSIX stub: answer the own-session read, list one pane in each of two
+        # sessions, exit 0 for anything else (select-window). The -replace keeps a
+        # CRLF checkout's line endings out of the shebang - sh would read
+        # '#!/bin/sh\r' and refuse to exec it, failing this Linux-only test
+        # somewhere far from the cause.
+        Set-Content -LiteralPath (Join-Path $stubDir 'tmux') -Encoding utf8NoBOM `
+            -Value (@'
+#!/bin/sh
+printf '%s\n' "$*" >> "$TMUX_STUB_LOG"
+case "$*" in
+    *display-message*) echo '$5' ;;
+    *list-panes*)
+        printf '$1\t@1\t0\t4242\t%%1\n$2\t@2\t0\t9999\t%%9\n' ;;
+esac
+'@ -replace "`r", '')
+        if (-not $IsWindows) { & chmod +x (Join-Path $stubDir 'tmux') }
+    }
+
+    AfterAll {
+        Remove-Item $stubDir -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    It 'asks tmux, not the outer terminal, when TMUX is set' -Skip:($IsWindows) {
+        Remove-Item (Join-Path $stubDir 'calls.log') -ErrorAction SilentlyContinue
+        $snap = Get-EnvSnapshot 'TMUX', 'TMUX_PANE', 'TMUX_STUB_LOG', 'PATH'
+        try {
+            # TMUX names the innermost server, so matrix must pick the tmux backend
+            # even though no Konsole variable exists in this child.
+            $env:TMUX = 'stub,1,0'
+            $env:TMUX_PANE = '%0'
+            $env:TMUX_STUB_LOG = $stubLog
+            $env:PATH = "$stubDir$([System.IO.Path]::PathSeparator)$env:PATH"
+            # liveHome, not emptyHome: the tab map is only rebuilt when a session
+            # exists, so the stub's list-panes - the call that names the backend -
+            # would never run against an empty one. The stub's own session ('$5')
+            # owns neither listed pane ('$1', '$2'), so -ThisWindow drops the lane
+            # whether or not the pid walk placed it, and the empty header proves
+            # the tmux wording rather than the pid match.
+            $r = Invoke-Rain $liveHome @('-Seconds', '2', '-Fps', '10', '-ThisWindow')
+            $r.ExitCode | Should -Be 0
+            $r.Stderr | Should -Not -Match 'Konsole'
+                (Remove-Sgr $r.Stdout) | Should -Match 'none in this tmux session'
+            $calls = @(Get-Content -LiteralPath $stubLog -ErrorAction SilentlyContinue)
+            $calls | Where-Object { $_ -match '^display-message' } | Should -Not -BeNullOrEmpty
+            $calls | Where-Object { $_ -match '^list-panes' }      | Should -Not -BeNullOrEmpty
+        } finally {
+            Restore-EnvSnapshot $snap
+        }
     }
 }
 

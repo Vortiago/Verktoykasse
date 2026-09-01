@@ -2,8 +2,13 @@
 # that stays correct, and carried across a pass that failed to re-match.
 #
 # Nothing here knows which terminal it is on. It calls Get-TabKey,
-# Get-AllTerminalTab and Resolve-SessionTab by name, and exactly one backend -
-# windows-terminal.ps1 or konsole.ps1 - defines them.
+# Get-AllTerminalTab and Resolve-SessionTab by name, and exactly one backend
+# under this directory defines them - windows-terminal.ps1 on Windows,
+# konsole.ps1 or tmux.ps1 on Linux.
+#
+# Resolve-SessionTabByPid below is the one piece of matching that lives here
+# instead: it knows nothing about terminals either, and both Linux backends
+# answer Resolve-SessionTab with it rather than each carrying the walk.
 
 function Merge-SessionTab {
     <#
@@ -34,6 +39,60 @@ function Merge-SessionTab {
         if (-not $old -or $taken[(Get-TabKey $old)]) { continue }
         $map[$s.SessionId] = $old
         $taken[(Get-TabKey $old)] = $true
+    }
+    $map
+}
+
+function Resolve-SessionTabByPid {
+    <#
+    .SYNOPSIS
+        Match each session to the tab whose process is one of the session's ancestors.
+    .DESCRIPTION
+        The exact match both Linux backends want, written once. Konsole's tab shell
+        and tmux's pane_pid are the same kind of pid - the process the terminal
+        started in that tab or pane - so the walk and the matching are the same code,
+        and only the field names around them differ. It is also why
+        Get-ProcessAncestorId lives in sessions.ps1 rather than in either backend.
+
+        No title scoring: neither Konsole nor tmux decorates a title with anything
+        Claude puts there, which is the whole reason the Windows backend cannot
+        share this.
+
+        The walk goes UP from the claude pid, because claude is often not the tab or
+        pane shell's direct child (bash -> ollama -> claude).
+    .PARAMETER Ancestors
+        pid -> the pid and every pid above it. Injected, so this is testable without
+        a process tree.
+    #>
+    param(
+        [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Session,
+        [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Tab,
+        [scriptblock] $Ancestors
+    )
+
+    # The backends default this to ${function:Get-ProcessAncestorId}, which resolves
+    # by name at call time and so reads $null - silently - whenever sessions.ps1 was
+    # not sourced first. Name the missing dependency instead of dying inside the
+    # poll on '&' against nothing.
+    if (-not $Ancestors) {
+        throw 'matrix: Get-ProcessAncestorId is not loaded - source lib/sessions.ps1 before the terminal backend'
+    }
+
+    $tabPids = @{}
+    foreach ($t in $Tab) { $tabPids[[int]$t.Pid] = $t }
+
+    $map = @{}
+    foreach ($s in $Session) {
+        foreach ($ancestor in @(& $Ancestors ([int]$s.Pid))) {
+            # A seam is free to answer with holes, and [int]$null is 0: skip it
+            # rather than match a tab whose own pid failed to parse. The real walk
+            # never emits one - it only adds a pid it already proved is >= 1.
+            if (-not $ancestor) { continue }
+            if ($tabPids.ContainsKey([int]$ancestor)) {
+                $map[$s.SessionId] = $tabPids[[int]$ancestor]
+                break
+            }
+        }
     }
     $map
 }

@@ -86,6 +86,28 @@ function Test-SessionAlive {
     } finally { $p.Dispose() }
 }
 
+function Get-ProcessAncestorId {
+    # A pid and every pid above it, from /proc. The chain is short, and the walk
+    # runs once per session per tab-map rebuild, not per poll.
+    #
+    # Lives here, next to the other process-table readers, because both tab
+    # backends that match a session on a process tree - Konsole's tab shell and
+    # tmux's pane_pid - walk the same one.
+    param([Parameter(Mandatory)] [int] $ProcessId)
+    $out = [System.Collections.Generic.List[int]]::new()
+    $p = $ProcessId
+    for ($i = 0; $i -lt 64 -and $p -ge 1; $i++) {
+        $out.Add($p)
+        try {
+            $m = [regex]::Match([System.IO.File]::ReadAllText("/proc/$p/status"),
+                                '(?m)^PPid:\s+(\d+)')
+            if (-not $m.Success) { break }
+            $p = [int]$m.Groups[1].Value
+        } catch { break }
+    }
+    $out
+}
+
 function Get-ClaudeSession {
     <#
     .SYNOPSIS

@@ -33,6 +33,23 @@ function Get-TestProcStart ([int] $ProcessId = $PID) {
     else { Get-ProcessStartTicks -ProcessId $ProcessId }
 }
 
+# Snapshot and restore a set of environment variables around a test.
+# "Restore, do not null": a developer running the suite inside a real tmux pane
+# or Konsole tab must not lose their variables from their own process the way
+# Remove-Item Env:\ would.
+function Get-EnvSnapshot ([string[]] $Names) {
+    $saved = @{}
+    foreach ($n in $Names) { $saved[$n] = [Environment]::GetEnvironmentVariable($n) }
+    $saved
+}
+
+function Restore-EnvSnapshot ($Saved) {
+    foreach ($n in $Saved.Keys) {
+        if ($null -eq $Saved[$n]) { Remove-Item -LiteralPath "Env:\$n" -ErrorAction SilentlyContinue }
+        else { Set-Item -LiteralPath "Env:\$n" -Value $Saved[$n] }
+    }
+}
+
 # Compiles .cs sources standalone for a test, through the same tagged-type
 # machinery lib/console.ps1 uses, so Windows CI covers the Linux C# too. The
 # types come back flat: collect with @() at the call site, because a bare
