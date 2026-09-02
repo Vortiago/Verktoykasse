@@ -2,7 +2,7 @@
 
 [![gate](https://github.com/Vortiago/Verktoykasse/actions/workflows/gate.yml/badge.svg)](https://github.com/Vortiago/Verktoykasse/actions/workflows/gate.yml)
 
-*Verktøykasse* — Norwegian for **toolbox**.
+*Verktøykasse*: Norwegian for **toolbox**.
 
 My general-purpose [Claude Code](https://claude.com/claude-code) skills and
 terminal tools.
@@ -16,7 +16,7 @@ A directory is a skill when it holds a `SKILL.md`.
 
 ## Skills
 
-- **[vanilla-web](vanilla-web/SKILL.md)** — how websites get built here:
+- **[vanilla-web](vanilla-web/SKILL.md)**: how websites get built here:
   vanilla ES modules, HTML `<template>` components loaded by JS (no HTML
   strings in JS), `@scope` CSS with `light-dark()` tokens and container
   queries, interaction-safe re-renders (`renderRegion`), SSE for live data,
@@ -24,7 +24,7 @@ A directory is a skill when it holds a `SKILL.md`.
   routing with view transitions, zero-dep node server, JSDoc+tsc gate.
   Ships three canonical skeletons: `templates.js`, `shell.js`, `serve.mjs`.
 
-- **[vanilla-components](vanilla-components/SKILL.md)** — a concrete component
+- **[vanilla-components](vanilla-components/SKILL.md)**: a concrete component
   library built *on* the `vanilla-web` conventions (the "what" to its "how"):
   copy-verbatim atoms (`panel`, `stat-card`, `chip`, `status-dot`, `tooltip`),
   shell components (`app-bar`, `side-nav` with a numbered "journey" variant,
@@ -32,61 +32,76 @@ A directory is a skill when it holds a `SKILL.md`.
   `empty-state`, `dialog`, `segmented-control`), and layout (`table-shell`,
   `checklist-row`) on the create-factory + `@scope` contract, plus a unified
   `light-dark()` design-token set extracted from across GitLandscape, Slipestein
-  and TapScribe. No build, no deps; each part is copied into an app (`vendor.sh`
-  stamps provenance). Ships a runnable preview catalogue (`node serve.mjs` →
+  and TapScribe. No build, no deps, and each part is copied into an app
+  (`vendor.sh` stamps provenance). Ships a runnable preview catalogue (`node serve.mjs` →
   `/preview.html`).
 
-- **[statusline](statusline/SKILL.md)** — the status line for all my Claude Code
+- **[statusline](statusline/SKILL.md)**: the status line for all my Claude Code
   sessions. A generic core renders fixed regions: `project ⎇ branch (worktree)`,
-  two core-owned link regions (GitHub issue/PR; services / running code), then a
-  per-project status segment. Links are full URLs — clickable even where OSC-8 is
-  stripped (tmux over ssh); `gh` lookups are background-cached so renders stay
+  two core-owned link regions (GitHub issue/PR, then services / running code),
+  then a per-project status segment. Links are full URLs, clickable even where OSC-8 is
+  stripped (tmux over ssh). `gh` lookups are background-cached so renders stay
   instant. A project adds an *extension* that declares links (`cl_addlink`) and
   prints status, sharing `lib.sh`. It lives committed at `.claude/statusline-ext.sh`
   (inert without the core) or personal at `~/.config/claude-statusline/projects/<project>.sh`.
-  User-invocable as `/expand-statusline`; worked example at
+  User-invocable as `/expand-statusline`, with a worked example at
   [`.claude/statusline-ext.sh`](.claude/statusline-ext.sh) (a live `🧰 skills` count).
 
-- **[worktrees](worktrees/SKILL.md)** — git worktrees in the bare+sibling
+- **[worktrees](worktrees/SKILL.md)**: git worktrees in the bare+sibling
   layout (`<repo>/.git` bare, working trees as siblings like `<repo>/main`).
   A layout-detecting `WorktreeCreate` hook handles bare+sibling *and* ordinary
-  repos, PR-ref worktrees (`#123`), and `.worktreeinclude` file copying;
-  `clone-bare.sh` / `new-worktree.sh` helpers drive it. User-invocable as
+  repos, PR-ref worktrees (`#123`), and `.worktreeinclude` file copying.
+  The `clone-bare.sh` / `new-worktree.sh` helpers drive it. User-invocable as
   `/worktrees [repo] [branch]`.
 
-- **[conventional-commits](conventional-commits/SKILL.md)** — Conventional
+- **[conventional-commits](conventional-commits/SKILL.md)**: Conventional
   Commits enforced machine-wide, zero deps. A POSIX-sh `commit-msg` hook wired
-  globally via git 2.54 config-based hooks (`hook.conventional-commits`) validates
-  every commit header (standard 11 types, `!`/`BREAKING CHANGE`, optional scope;
-  merge/revert/fixup allow-listed). Because PRs squash-merge, the PR title is the
-  moniker that ships — a Claude `PreToolUse(Bash)` hook validates `gh pr create`
-  titles, blocks an empty PR body, and flags a breaking-change under-report
-  against the branch, pointing at the reflow workflow. Both hooks share one `validate.sh`. User-invocable as
+  globally through git 2.54 config-based hooks (`hook.conventional-commits`)
+  validates every commit header (standard 11 types, `!`/`BREAKING CHANGE`,
+  optional scope, and merge/revert/fixup allow-listed). Because PRs squash-merge,
+  the PR title is the moniker that ships, so a Claude `PreToolUse(Bash)` hook
+  validates `gh pr create` titles, blocks an empty PR body, and flags a
+  breaking-change under-report against the branch, pointing at the reflow
+  workflow. Both hooks share one `validate.sh`. User-invocable as
   `/conventional-commits`.
 
-- **[verify-prd-implemented](verify-prd-implemented/SKILL.md)** — verify a PRD
+- **[verify-prd-implemented](verify-prd-implemented/SKILL.md)**: verify a PRD
   (epic / umbrella issue / spec) is *actually* done before closing it: map every
-  user story to the code that delivers it AND the single assertion that guards it,
-  then **mutation-check** each guard — break the behaviour, confirm the named test
+  user story to the code that delivers it AND the single assertion that guards
+  it, then **mutation-check** each guard: break the behaviour, confirm the named test
   goes red, revert. The premise is that a green suite is not evidence of coverage
   (coverage is proven per-story, by an assertion watched go red), so it hunts the
-  plausible-but-vacuous test via a bad-test catalogue (tautology / passes-with-zero
-  / shape-only / passes-for-the-wrong-reason) in a disclosed
+  plausible-but-vacuous test with a bad-test catalogue (tautology /
+  passes-with-zero / shape-only / passes-for-the-wrong-reason) in a disclosed
   [`test-patterns.md`](verify-prd-implemented/test-patterns.md), and returns a
   per-story matrix + a close / do-not-close verdict. Scales to a fan-out workflow
   for large PRDs. User-invocable as `/verify-prd-implemented`.
 
 ## Tools
 
-- **[matrix](matrix/README.md)** - every open Claude Code session as Matrix rain
+- **[matrix](matrix/README.md)**: every open Claude Code session as Matrix rain
   in a terminal. One lane per session, coloured by status (green working, amber
   idle, red waiting), under a header with the name, status age, and opening
   prompt. It runs on Windows and on Linux, each platform bringing its own console
   layer and terminal backend: the Windows console API with Windows Terminal, or
   termios with Konsole or tmux. `-ThisWindow` scopes the lanes to the terminal
-  window the rain starts in, or to the tmux session under tmux; `-Click` raises a
-  session's tab on click. `install-terminal-profile.ps1` adds a Windows Terminal
+  window the rain starts in, or to the tmux session under tmux. `-Click` raises
+  a session's tab on click. `install-terminal-profile.ps1` adds a Windows Terminal
   profile for it. PowerShell 7, and Pester 5 or later for the tests.
+
+- **[simplified-technical-english](simplified-technical-english/ste-rules.md)**:
+  writing rules for documentation, based on ASD-STE100 Simplified Technical
+  English. Guidance, not enforcement, and deliberately not a skill: it is two
+  files. [`ste-rules.md`](simplified-technical-english/ste-rules.md) is the single
+  source of the rules, symlinked to `~/.claude/rules/` where its `paths:`
+  frontmatter loads it whenever Claude touches a `*.md` file, in any project.
+  [`ste-review.md`](simplified-technical-english/ste-review.md) is a subagent that
+  reviews on demand (`@ste-review`), covering markdown, **code comments and
+  docstrings**, commit messages and PR bodies, and judging the things no pattern
+  can catch, above all one term per concept. Nothing else references the file
+  yet, so no other skill depends on it while it is new. The rules it does not
+  adopt from the standard, and why, live in
+  [ADR 0003](docs/adr/0003-ste-rules-adopt-a-subset.md).
 
 ## Install
 
@@ -95,13 +110,13 @@ A directory is a skill when it holds a `SKILL.md`.
 ./install.sh worktrees    # just one skill
 ```
 
-Symlinks each skill into `~/.claude/skills/<name>`. Idempotent; a real
+Symlinks each skill into `~/.claude/skills/<name>`. Idempotent, and a real
 directory already at a live path is backed up to `<path>.pre-verktoykasse`.
 
 `--target opencode` installs into `~/.config/opencode/skills` instead, as plain
 symlinks with no hook wiring.
 
-A skill may ship its own `<skill>/install.sh` for extra wiring — e.g.
+A skill may ship its own `<skill>/install.sh` for extra wiring. For example
 `worktrees` also symlinks its hook into `~/.claude/hooks/`, links the helper
-scripts into your repos root (it prompts for the path; override with
+scripts into your repos root (it prompts for the path, and you override with
 `REPOS_ROOT=…`), and registers the `WorktreeCreate` hook in `settings.json`.
