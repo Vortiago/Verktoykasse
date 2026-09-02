@@ -18,6 +18,35 @@ function New-TestSession ($id, $status = 'idle', $task = '', $processId = 0) {
                        Name = ''; Cwd = ''; Pid = $processId }
 }
 
+# A session in the shape Get-LocalSession hands out: everything the lane header
+# and the wire format read. Not New-TestSession above. That one leaves Name and
+# Cwd empty, which sends Get-SessionTitle into Get-SessionFact to read a
+# transcript, and the protocol suites must not touch a file.
+function New-WireSession ($id, $name = 'api', $status = 'idle', $task = '') {
+    [pscustomobject]@{
+        Pid = 0; SessionId = $id; Name = $name; NameSource = 'user'; Cwd = '?'
+        Status = $status; WaitingFor = ''; StartedAt = 1000; UpdatedAt = 2000
+        Style = (Get-SessionStyle $status); Task = $task
+    }
+}
+
+# Poll until a condition holds, or give up. Sockets and child processes are not
+# synchronous: a connect on loopback lands in well under a millisecond, but "well
+# under" is not "before the next statement". Every wait in the suite is bounded.
+# An unbounded one hangs the whole run, and CI shows it as a timeout with no name.
+#
+# Anything the condition accumulates must be $script:-scoped. A bare $x += inside
+# the block writes a NEW local each call, so the caller sees nothing and the
+# condition still passes off its own copy.
+function Wait-Until ([scriptblock] $Condition, [int] $TimeoutMs = 2000, [int] $StepMs = 10) {
+    $sw = [System.Diagnostics.Stopwatch]::StartNew()
+    while ($sw.ElapsedMilliseconds -lt $TimeoutMs) {
+        if (& $Condition) { return $true }
+        Start-Sleep -Milliseconds $StepMs
+    }
+    $false
+}
+
 # What Claude writes as "procStart" for a live process on this platform: a
 # FILETIME on Windows, /proc clock ticks on Linux. The fake registries a test
 # writes have to carry the same shape sessions.ps1 reads back, so both come from

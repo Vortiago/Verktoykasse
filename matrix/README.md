@@ -2,7 +2,7 @@
 
 ![One lane per session, coloured and paced by its status](demo.gif)
 
-`matrix.ps1` runs in the alternate screen buffer: scrollback survives, any key
+`matrix.ps1` runs in the alternate screen buffer: scrollback survives, `q`
 exits. The glyphs are half-width katakana. They render one cell wide, so the
 grid stays square.
 
@@ -81,6 +81,22 @@ Nothing here touches the pipe.
 
 Liveness is a PID check plus the recorded `procStart` FILETIME. The FILETIME
 stops a recycled PID from resurrecting a dead session.
+
+## Keys
+
+`q` exits, upper or lower case. Ctrl+C exits too, because the rain runs stdin
+raw and there is no SIGINT to catch.
+
+The rain reads every other key and discards it. The reader in `lib/cs/ConsoleVT_*.cs`
+answers one of four verdicts: `NONE`, `EXIT` for Ctrl+C, `CLICK` with the cell,
+and `KEY` with the character. The reader never decides what a letter does. The
+one binding lives in the frame loop in `matrix.ps1`, so a second binding is a
+line in one place.
+
+A chord is not a key. Ctrl and Alt combinations, bare modifiers, function keys
+and the arrow and page keys the wheel sends all read as `NONE`. Alt+q does not
+quit a rain that quits on `q`, and scrolling back through the history does not
+end it.
 
 ## This window only, and clicking a lane
 
@@ -195,13 +211,15 @@ does nothing - tmux does not warn.
 
 **Windows, not panes.** A click switches to the session's window; a pane
 sharing the rain's own window is a no-op click, and the rain stays where it is
-until a keypress leaves it. A session in another tmux *session* has that
+until `q` leaves it. A session in another tmux *session* has that
 session's current window moved where nobody can see it - Konsole's "cannot
 raise" gap, one level up; `switch-client` would fix it and is deliberately out
 of scope.
 
-Sessions running over ssh inside a pane never appear: their pid is not in this
-machine's `/proc`, so liveness drops them before the tab map is consulted.
+A session running over ssh inside a pane never appears in the tab map: its pid is
+not in this machine's `/proc`, so liveness drops it before the rain reads the map.
+`-Remote` shows those sessions instead, by a route that does not involve this
+machine's process tree at all. See "Sessions over ssh" below.
 
 Start the rain from the tmux session you want scoped. Nothing has to be in front
 while it starts - `$TMUX_PANE` names our pane and the server answers for it
@@ -229,6 +247,110 @@ tab carries no glyph and is never a candidate.
 `tests/TabMap.Tests.ps1` replays all of it: a session appearing, a session
 prompted, the tabs renumbered, and the desktop refusing to be read.
 
+## Sessions over ssh
+
+One rain on the machine you sit at, showing every machine you ssh to.
+
+Add one line per machine to `~/.ssh/config`, once:
+
+```
+Host lab1 lab2 lab3
+    RemoteForward 127.0.0.1:47777 127.0.0.1:47777
+```
+
+Then, in a tmux window on the machine you logged in to:
+
+```powershell
+./matrix.ps1 -ExposeOnSSH
+```
+
+On the machine in front of you:
+
+```powershell
+./matrix.ps1 -Remote -Click
+```
+
+A remote lane is named `lab1: <session>`. The machine leads because the header's
+name row is one clipped line, so a trailing machine name is the first thing a
+narrow lane loses. It is a colon, not the middle dot a derived name already uses:
+`lab1 · api · main` reads as three parts. `lab1: api · main` reads as one machine
+and one session. Under 10 columns the name row goes, for every lane alike.
+
+### The route
+
+The reporting side connects to its own `127.0.0.1:47777`. sshd is already
+listening there because of the `RemoteForward`, and it hands the channel to the
+ssh client on your machine, which connects to the rain. So neither end runs ssh
+itself, and no second connection is opened. The forward rides the login you
+already typed, which is why nothing here assumes a key.
+
+Every machine dials the same port, and the rain tells them apart by the first
+line each one sends. One listener, however many machines.
+
+The payload is one JSON object per line.
+
+A remote session never enters the tab map, because it has no pid on this machine.
+A remote pid that happened to exist here would claim a local tab and block the
+session that owns it. `-ThisWindow` does not drop remote lanes either. Asking for
+another machine's sessions and then filtering them by window would read as a
+broken flag.
+
+### Clicking a remote lane
+
+Two moves, in this order. The rain writes one line back down the same connection,
+naming the session. The reporting side looks that id up in the tab map it already
+keeps. It runs `tmux select-window` on the answer, the same lookup its own local
+click does. Then the rain brings the ssh session holding it to the front here,
+because switching a window nobody is looking at is a click that visibly does
+nothing.
+
+The line carries the session, not a window. A window id never leaves the machine
+that produced it, so shipping it out and echoing it back would only hand the
+other end the tab it started from.
+
+Finding that ssh session takes nothing from the wire. The process that connected
+to the rain is the local ssh client. Its source port is already on the accepted
+socket, and `ss -Htnp` names the process. From there it is `Resolve-TabByPid`,
+the same walk both Linux backends answer with: up the ancestors, stopping at the
+nearest tab. The rain never takes that number from a message, because a peer that
+could name its own ssh could steal a click.
+
+| Backend the rain runs in | Remote window switch | Local ssh tab raised |
+| --- | --- | --- |
+| tmux | yes | yes |
+| Konsole | yes | yes |
+| Windows Terminal | yes | no, it matches tabs on title and has no pid to match |
+
+The reporting side needs tmux for the switch, because the switch is a tmux
+command. Without it, sessions are still reported and the rain says so once at
+startup rather than letting a click do nothing quietly.
+
+### The token
+
+Anyone else logged in to a remote machine can reach its forwarded loopback port.
+They could invent a lane, or receive a focus line naming a real session. Put the
+same secret in `~/.claude/matrix-remote.token` on both machines and both ends use
+it. Without the file, the rain accepts any peer, and says so once.
+
+A file rather than a flag: a token on the command line is in the shell history
+and in every process listing on the machine.
+
+### What goes wrong, and what it looks like
+
+| Case | What happens |
+| --- | --- |
+| Rain started after the report | The report retries every second and connects on its own |
+| A machine stops reporting | Its lanes keep their last text and turn grey after 5 s |
+| A machine comes back | The lanes recover their colour, with no restart here |
+| A laptop closes mid-session | Half-open socket, dropped after 60 s. Frozen lanes are worse than none |
+| Two ssh sessions to one machine | The second `RemoteForward` cannot bind and ssh warns. Both shells still reach the first forward, and the lane is shown once, from whichever spoke last |
+| The rain's port is already bound | It says so and keeps drawing the local lanes |
+| Nothing has reported yet | The empty lane says `waiting for a machine to report` |
+
+Do not set `ExitOnForwardFailure yes`. It turns a port that is merely busy into a
+login that fails.
+
+
 ## Where the code lives
 
 ```
@@ -247,12 +369,22 @@ lib/
     windows-terminal.ps1  the UI Automation backend
     konsole.ps1           the D-Bus backend
     tmux.ps1              the backend that runs inside tmux: a session is the scope, a window the tab
+  remote/
+    wire.ps1            the line format both machines speak. Pure: no socket, no clock
+    hub.ps1             the host's view of the machines reporting in. No socket either
+    tcp.ps1             the only file that opens one
+    expose.ps1          the reporting side: connect, retry, send, obey a focus
   cs/
     Renderer.cs         simulate and encode a frame
     ConsoleVT_Windows.cs, ConsoleVT_Linux.cs
     Windows.cs          window lookup, UI Automation
     DBus.cs, DBusEncode.cs, DBusDecode.cs
 ```
+
+`remote/` stacks the same way `terminal/` does. The files that hold the rules
+know nothing about sockets, and the one that holds a socket knows nothing about
+the rules. That is why a stale machine, a wrong token and a line split across two
+reads are all tested without a peer.
 
 A `_Windows` or `_Linux` suffix in `cs/` means the platform picks one of them. A
 file with no suffix is shared. `matrix.ps1` loads `tabmap.ps1` and exactly one

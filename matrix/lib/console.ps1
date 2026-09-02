@@ -20,8 +20,19 @@ foreach ($cellCode in @(0x20..0x7E) + @(0xA0..0xFF) + @(0x0100..0x017F)) {
     [void]$script:CellAllowed.Add([char]$cellCode)
 }
 
+# The same three ranges as $CellAllowed, as a regex, for the "is there anything
+# to do?" question only. Never for the replacing: it decides whether the loop
+# runs, and the loop still decides every character.
+# \u escapes, so the pattern is ASCII and this file's encoding stays irrelevant.
+$script:CellNeedsWork = [regex]::new('[^\u0020-\u007E\u00A0-\u00FF\u0100-\u017F]',
+                                     [System.Text.RegularExpressions.RegexOptions]::Compiled)
+
 function ConvertTo-CellText {
     param([string] $Text)
+    # Almost every string here is already clean, and a clean string can be handed
+    # back untouched. The scan below is an interpreted loop over every character,
+    # and it runs for each remote session on every poll as well as locally.
+    if (-not $script:CellNeedsWork.IsMatch($Text)) { return $Text }
     $sb = [System.Text.StringBuilder]::new($Text.Length)
     $chars = $Text.ToCharArray()
     for ($i = 0; $i -lt $chars.Length; $i++) {

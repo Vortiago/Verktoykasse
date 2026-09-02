@@ -62,6 +62,41 @@ BeforeAll {
     # Header text survives the frame diff as one run. Strip the colour changes and
     # it is greppable.
     function Remove-Sgr ([string] $Text) { $Text -replace "$([char]27)\[[0-9;?]*[A-Za-z]", '' }
+
+    # The remote cases need the rain running while the test talks to it, so this
+    # is Invoke-Rain without the wait. The caller stops it and reads the output.
+    function Start-RainAsync ($claudeHome, [string[]] $argv, $script = $rain) {
+        $stem = Join-Path ([System.IO.Path]::GetTempPath()) "matrix-rain-async-$PID-$(Get-Random)"
+        $snap = Get-EnvSnapshot 'CLAUDE_CONFIG_DIR'
+        $env:CLAUDE_CONFIG_DIR = $claudeHome
+        try {
+            $p = Start-Process -FilePath $pwshExe -PassThru -NoNewWindow `
+                    -RedirectStandardOutput "$stem.out" -RedirectStandardError "$stem.err" `
+                    -ArgumentList ($pwshArgs + @('-NoProfile', '-File', $script) + $argv)
+            @{ Process = $p; Out = "$stem.out"; Err = "$stem.err" }
+        } finally { Restore-EnvSnapshot $snap }
+    }
+
+    function Stop-RainAsync ($Run) {
+        # -Seconds stops it on its own. This is the backstop for a case that fails
+        # before then, so a failing test leaves no rain behind.
+        if (-not $Run.Process.HasExited) {
+            try { $Run.Process.Kill() } catch { }
+        }
+        [void]$Run.Process.WaitForExit(5000)
+        $out = Get-Content -LiteralPath $Run.Out -Raw -ErrorAction SilentlyContinue
+        $err = Get-Content -LiteralPath $Run.Err -Raw -ErrorAction SilentlyContinue
+        Remove-Item "$($Run.Out)", "$($Run.Err)" -Force -ErrorAction SilentlyContinue
+        [pscustomobject]@{ Stdout = $out; Stderr = $err; ExitCode = $Run.Process.ExitCode }
+    }
+
+    # A free loopback port, found by taking one and letting it go. Nothing here
+    # may use the real 47777: a developer running the suite may have a rain up.
+    function Get-FreePort {
+        $l = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, 0)
+        $l.Start()
+        try { $l.LocalEndpoint.Port } finally { $l.Stop() }
+    }
 }
 
 AfterAll {
@@ -94,6 +129,118 @@ Describe 'matrix.ps1' {
         # depend on -Click or -ThisWindow, the flags that ask for the tab map.
         $r = Invoke-Rain $liveHome @('-Seconds', '2', '-Fps', '10')
         (Remove-Sgr $r.Stdout) | Should -Match 'zeppelin'
+    }
+}
+
+# Another machine's sessions, end to end. The test plays the part of the machine.
+# It connects to the rain's port over loopback, exactly as the reporting side
+# would, and that is what the ssh forward delivers anyway. Nothing here needs ssh,
+# and both runners run all of it.
+Describe 'matrix.ps1 -Remote' {
+    It 'shows a machine that reports in, and names it in the lane' {
+        $port = Get-FreePort
+        $run = Start-RainAsync $emptyHome @('-Seconds', '12', '-Fps', '10',
+                                            '-Remote', '-RemotePort', "$port")
+        $client = $null
+        try {
+            # The rain compiles on a first run, so the port is not there at once.
+            $client = [System.Net.Sockets.TcpClient]::new()
+            (Wait-Until -TimeoutMs 15000 -StepMs 50 -Condition {
+                try { $client.Connect('127.0.0.1', $port); $true } catch { $false }
+            }) | Should -BeTrue -Because 'the rain should be listening within the timeout'
+
+            $stream = $client.GetStream()
+            $now = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+            $hello = '{"v":1,"t":"hello","machine":"orkanger","token":"","now":' + $now + '}'
+            $frame = '{"v":1,"t":"frame","seq":1,"now":' + $now + ',"sessions":[' +
+                     '{"id":"r1","status":"busy","waitingFor":"","title":"kaleidoscope",' +
+                     '"task":"","startedAt":' + $now + ',"updatedAt":' + $now + '}]}'
+            foreach ($line in @($hello, $frame)) {
+                $b = [System.Text.Encoding]::UTF8.GetBytes("$line`n")
+                $stream.Write($b, 0, $b.Length); $stream.Flush()
+            }
+            # Frames stop after this one, so the lane goes offline five seconds
+            # later. Give the rain a moment to draw it before that.
+            Start-Sleep -Milliseconds 1500
+        } finally {
+            if ($client) { try { $client.Dispose() } catch { } }
+            $r = Stop-RainAsync $run
+        }
+        $r.Stderr | Should -Not -Match 'Exception'
+        $text = Remove-Sgr $r.Stdout
+        $text | Should -Match 'orkanger'
+        $text | Should -Match 'kaleidoscope'
+    }
+
+    It 'says it is waiting when no machine has reported' {
+        # An empty screen with no explanation is the failure this wording exists
+        # to prevent: the user cannot tell a quiet network from a wrong port.
+        $port = Get-FreePort
+        $r = Invoke-Rain $emptyHome @('-Seconds', '2', '-Fps', '10',
+                                      '-Remote', '-RemotePort', "$port")
+        $r.ExitCode | Should -Be 0
+        (Remove-Sgr $r.Stdout) | Should -Match 'waiting for a machine to report'
+    }
+
+    It 'keeps drawing local lanes when the port is already taken' {
+        # A second rain on one machine must say what is wrong and carry on. Dying
+        # at startup would make the flag worse than not having it.
+        $held = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, 0)
+        $held.Start()
+        try {
+            $r = Invoke-Rain $liveHome @('-Seconds', '2', '-Fps', '10',
+                                         '-Remote', '-RemotePort', "$($held.LocalEndpoint.Port)")
+            $r.ExitCode | Should -Be 0
+            (Remove-Sgr $r.Stdout) | Should -Match 'cannot listen'
+            (Remove-Sgr $r.Stdout) | Should -Match 'zeppelin'
+        } finally { $held.Stop() }
+    }
+}
+
+Describe 'matrix.ps1 -ExposeOnSSH' {
+    It 'reports this machine to a listener while it draws' {
+        $port = Get-FreePort
+        $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, $port)
+        $listener.Start()
+        $run = $null; $conn = $null
+        try {
+            $run = Start-RainAsync $liveHome @('-Seconds', '10', '-Fps', '10', '-ExposeOnSSH',
+                                               '-RemotePort', "$port", '-RemoteName', 'orkanger')
+            (Wait-Until -TimeoutMs 15000 -StepMs 50 -Condition { $listener.Pending() }) | Should -BeTrue -Because 'the report should dial in'
+            $conn = $listener.AcceptTcpClient()
+            $stream = $conn.GetStream()
+
+            $script:text = ''
+            $buf = [byte[]]::new(8192)
+            (Wait-Until -TimeoutMs 15000 -StepMs 50 -Condition {
+                if ($conn.Available -gt 0) {
+                    $n = $stream.Read($buf, 0, $buf.Length)
+                    $script:text += [System.Text.Encoding]::UTF8.GetString($buf, 0, $n)
+                }
+                ($script:text -split "`n").Count -ge 3   # hello, one frame, and the rest
+            }) | Should -BeTrue -Because 'a hello and a frame should arrive'
+
+            $lines = @($script:text -split "`n" | Where-Object { $_ })
+            $hello = ConvertFrom-Json $lines[0]
+            $hello.t | Should -Be 'hello'
+            $hello.machine | Should -Be 'orkanger'
+            $frame = ConvertFrom-Json $lines[1]
+            $frame.t | Should -Be 'frame'
+            @($frame.sessions).Count | Should -BeGreaterThan 0
+
+            # The other half of the flag: it draws too. Waited for rather than
+            # read after the stop, because the first frame lands after the first
+            # report and Stop-RainAsync kills a child that is still running.
+            (Wait-Until -TimeoutMs 15000 -StepMs 100 -Condition {
+                $so = Get-Content -LiteralPath $run.Out -Raw -ErrorAction SilentlyContinue
+                (Remove-Sgr $so) -match 'zeppelin'
+            }) | Should -BeTrue -Because 'the rain should draw the local session while it reports'
+        } finally {
+            if ($conn) { try { $conn.Dispose() } catch { } }
+            $listener.Stop()
+            $r = if ($run) { Stop-RainAsync $run } else { $null }
+        }
+        $r.Stdout | Should -Match ([regex]::Escape("$([char]27)[?1049h"))
     }
 }
 

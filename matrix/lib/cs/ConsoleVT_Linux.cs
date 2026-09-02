@@ -19,9 +19,28 @@ namespace MatrixVT__TAG__
     //     reporting as well.
     public static class ConsoleVT
     {
+        // The four verdicts, and what each one fills in:
+        //   NONE   nothing happened. x, y and key are all unset.
+        //   EXIT   the terminal says stop. Ctrl+C only. Nothing else exits here:
+        //          which letter quits is a binding, and bindings live in matrix.ps1.
+        //   CLICK  a left press. x and y are the cell, zero based.
+        //   KEY    a plain keypress. key is the character. A chord is not a key:
+        //          Ctrl and Alt combinations read as NONE, so a future binding can
+        //          claim a letter without fighting a terminal shortcut.
         public const int NONE = 0;
         public const int EXIT = 1;
         public const int CLICK = 2;
+        public const int KEY = 3;
+
+        // Which characters count as a key. Printable ASCII, plus Tab, Enter and
+        // Escape. Those three arrive as control bytes, and a user still calls them
+        // keys. For anything else, a UTF-8 lead byte included, the reader consumes
+        // the byte and reports NONE rather than passing on half a character.
+        private static bool IsKeyChar(int c)
+        {
+            return c == 0x09 || c == 0x0A || c == 0x0D || c == 0x1B
+                || (c >= 0x20 && c <= 0x7E);
+        }
 
         // The stdin mode word, Windows-shaped. QUICK_EDIT has no Linux work, so
         // the script's attempt to clear it changes nothing here.
@@ -168,9 +187,9 @@ namespace MatrixVT__TAG__
             if (isatty(1) != 0) write(1, seq, seq.Length);
         }
 
-        public static int PollInput(out int x, out int y)
+        public static int PollInput(out int x, out int y, out int key)
         {
-            x = -1; y = -1;
+            x = -1; y = -1; key = 0;
             if (!StdinIsTty()) return NONE;               // redirected: -Seconds owns the exit
             EnterRaw();
 
@@ -185,14 +204,14 @@ namespace MatrixVT__TAG__
             int off = 0;
             while (off < limit)
             {
-                int used, cx, cy;
-                int what = ClassifyAt(all, off, limit - off, out cx, out cy, out used);
+                int used, cx, cy, ck;
+                int what = ClassifyAt(all, off, limit - off, out cx, out cy, out ck, out used);
                 if (used == INCOMPLETE) break;
                 off += used;
                 // Stash before answering. Dropping the bytes after a press resumes
                 // the next read inside the release, whose parameter bytes are
-                // printable, and a printable byte is an exit.
-                if (what != NONE) { x = cx; y = cy; Stash(all, off, len); return what; }
+                // printable, and a printable byte is a key.
+                if (what != NONE) { x = cx; y = cy; key = ck; Stash(all, off, len); return what; }
             }
             Stash(all, off, len);
             return NONE;
@@ -252,28 +271,31 @@ namespace MatrixVT__TAG__
         }
 
         // Classifies the event at the start of the buffer. The escape sequence
-        // grammar: plain bytes are keys (an exit), Ctrl+C is an exit, everything a
-        // terminal sends as CSI or SS3 is scrolling or mouse reporting.
-        public static int Classify(byte[] buf, int len, out int x, out int y, out int used)
+        // grammar: plain bytes are keys, Ctrl+C is an exit, everything a terminal
+        // sends as CSI or SS3 is scrolling or mouse reporting.
+        public static int Classify(byte[] buf, int len, out int x, out int y, out int key, out int used)
         {
-            return ClassifyAt(buf, 0, len, out x, out y, out used);
+            return ClassifyAt(buf, 0, len, out x, out y, out key, out used);
         }
 
-        private static int ClassifyAt(byte[] b, int off, int len, out int x, out int y, out int used)
+        private static int ClassifyAt(byte[] b, int off, int len, out int x, out int y, out int key, out int used)
         {
-            x = -1; y = -1; used = 0;
+            x = -1; y = -1; key = 0; used = 0;
             if (len <= 0) return NONE;
             byte c = b[off];
-            if (c == ESC) return ClassifyEscape(b, off, len, out x, out y, out used);
+            if (c == ESC) return ClassifyEscape(b, off, len, out x, out y, out key, out used);
             if (c == 0x03) { used = 1; return EXIT; }     // Ctrl+C, with ISIG off
-            if (c < 0x20) { used = 1; return NONE; }      // the other control bytes
-            used = 1; return EXIT;                         // a printable key
+            used = 1;
+            // Every other control byte is a Ctrl chord, and every byte at or above
+            // 0x7F is part of a character this reader does not assemble.
+            if (!IsKeyChar(c)) return NONE;
+            key = c; return KEY;
         }
 
-        private static int ClassifyEscape(byte[] b, int off, int len, out int x, out int y, out int used)
+        private static int ClassifyEscape(byte[] b, int off, int len, out int x, out int y, out int key, out int used)
         {
-            x = -1; y = -1; used = 0;
-            if (len < 2) { used = 1; return EXIT; }       // a lone ESC is the key itself
+            x = -1; y = -1; key = 0; used = 0;
+            if (len < 2) { used = 1; key = ESC; return KEY; }   // a lone ESC is the key itself
             // A terminal writes a whole escape sequence in one go, so an ESC with
             // nothing after it in the buffer is a keypress, not the start of
             // something longer.
@@ -313,8 +335,10 @@ namespace MatrixVT__TAG__
                 used = 3; return NONE;                      // SS3 cursor key
             }
 
-            // ESC and a printable: Alt+key. Konsole sends Alt+q as ESC q.
-            used = 2; return EXIT;
+            // ESC and a printable: Alt+key. Konsole sends Alt+q as ESC q. A chord
+            // belongs to the terminal, so it is consumed and reported as nothing.
+            // Alt+q must not quit a rain that quits on q.
+            used = 2; return NONE;
         }
     }
 }
