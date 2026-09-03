@@ -8,6 +8,15 @@ function oclaude-status {
     Write-Host ''
     Write-Host ("daemon   {0}  {1}" -f $cfg.Endpoint, $(if ($up) { 'up' } else { 'DOWN' })) `
         -ForegroundColor $(if ($up) { 'DarkGreen' } else { 'Red' })
+
+    # The first question when a tier is not the one you expected is which file was read.
+    if ($cfg.MachineConfig) {
+        Write-Host ("config   {0}" -f $cfg.MachineConfig) -ForegroundColor DarkGray
+    } else {
+        Write-Host ("config   defaults from lib/config.ps1  (no {0})" -f (Get-OClaudeMachineConfigPath)) `
+            -ForegroundColor DarkYellow
+        Write-Host '         run oclaude-init-config to make one for this machine' -ForegroundColor DarkGray
+    }
     $have = if ($up) { Get-OllamaModel -Endpoint $cfg.Endpoint } else { @() }
     Write-Host ''
     foreach ($tier in $cfg.Models.Keys) {
@@ -43,6 +52,10 @@ function oclaude-help {
     Write-Host '                            args pass straight through: -p, -c, --model, ...'
     Write-Host '  oclaude-status' -ForegroundColor Cyan -NoNewline
     Write-Host '             daemon state, per-tier model, live cloud access check'
+    Write-Host '  oclaude-init-config' -ForegroundColor Cyan -NoNewline
+    Write-Host '        create this machine''s config from config.example.ps1'
+    Write-Host '  oclaude-config-path' -ForegroundColor Cyan -NoNewline
+    Write-Host '        which config file this shell reads, and whether it exists'
     Write-Host '  oclaude-pull' -ForegroundColor Cyan -NoNewline
     Write-Host '               pull base models, then rebuild derived tags'
     Write-Host '  oclaude-build-models' -ForegroundColor Cyan -NoNewline
@@ -63,7 +76,11 @@ function oclaude-help {
     Write-Host '  notes' -ForegroundColor White
     Write-Host ("    context      Claude Code capped at {0}; must stay <= the smallest num_ctx" -f $cfg.MaxContextTokens) -ForegroundColor Gray
     Write-Host '    first turn   costs a full prefill; later turns extend the cache and are cheap' -ForegroundColor Gray
-    Write-Host '    daemon       set User-scope OLLAMA_* env vars; config.ps1 holds none' -ForegroundColor Gray
+    Write-Host ('    config       {0}' -f $(if ($cfg.MachineConfig) { $cfg.MachineConfig }
+                                              else { 'defaults, no machine file' })) -ForegroundColor Gray
+    Write-Host ('    daemon       {0}. config.ps1 holds no daemon setting' -f
+                $(if (Test-OClaudeIsWindows) { 'set User-scope OLLAMA_* variables' }
+                  else { 'set OLLAMA_* in the service drop-in, or in this shell' })) -ForegroundColor Gray
     Write-Host '    advisor      $env:OCLAUDE_ADVISOR overrides its model per shell (use an alias)' -ForegroundColor Gray
     Write-Host ("    waits        {0}s byte-idle, {1} tool calls at once (ollama serves 1 per model)" -f ($cfg.StreamIdleMs / 1000), $cfg.ToolConcurrency) -ForegroundColor Gray
     Write-Host ''

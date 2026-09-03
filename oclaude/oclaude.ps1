@@ -2,9 +2,12 @@
 # Ollama >= 0.32 serves /v1/messages natively, so ANTHROPIC_BASE_URL points at the daemon.
 # The reasoning behind the choices in here is written up in README.md.
 #
-# This file loads lib/ and nothing else. Edit the model map in lib/config.ps1.
+# This file loads lib/ and nothing else. Edit the model map in
+# ~/.config/oclaude/config.ps1, which oclaude-init-config creates for you.
+# lib/config.ps1 holds the committed defaults that file overrides.
 #
-#   config   model map, tiers, derived tags, every tunable
+#   config   the DEFAULT model map, tiers, derived tags, every tunable
+#   machine  the per-machine override file, and where it lives
 #   daemon   probe, start and restart ollama
 #   models   the model store, and building the derived tags
 #   session  oclaude itself
@@ -12,7 +15,11 @@
 
 # The pwsh profile dot-sources this file, so it runs in the global scope. The
 # dot-sources below inherit that scope, which is where the shell looks for functions.
-$oclaudeParts = 'config', 'daemon', 'models', 'session', 'report' |
+# Read here rather than from $PSScriptRoot inside a function: a function dot-sourced
+# into the global scope is a case where that automatic variable is easy to get wrong.
+$global:OClaudeRoot = $PSScriptRoot
+
+$oclaudeParts = 'config', 'machine', 'daemon', 'models', 'session', 'report' |
     ForEach-Object { Join-Path (Join-Path $PSScriptRoot 'lib') "$_.ps1" }
 
 # An explicit list, not a glob: a renamed part fails here instead of at the call site.
@@ -26,7 +33,8 @@ foreach ($part in $oclaudeParts) {
 # when, so entry points can warn instead of running stale code. The timestamps must be
 # read HERE rather than lazily on first use: taken later they would describe the file as
 # it is by then, not as this shell loaded it, and an edit made before the first call
-# would read as current. Measured at ~0.8 ms for the six files, which the profile pays.
+# would read as current. Measured at ~0.8 ms for the six files it loaded then, a cost
+# the profile pays on every new shell.
 $global:OClaudeFiles  = @(@($PSCommandPath) + $oclaudeParts | Where-Object { $_ })
 $global:OClaudeLoaded = ($global:OClaudeFiles |
     ForEach-Object { (Get-Item $_).LastWriteTimeUtc } | Measure-Object -Maximum).Maximum

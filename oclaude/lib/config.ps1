@@ -1,8 +1,16 @@
-# oclaude config -- the model map and every tunable. This is the file you edit.
+# oclaude config -- the DEFAULT model map and every tunable.
 # Loaded by ../oclaude.ps1.
+#
+# This file is committed, so it holds one machine's map as a worked example. Do not
+# edit it to configure your own box: write ~/.config/oclaude/config.ps1 instead, which
+# is outside the repo and overrides any key here. Run `oclaude-init-config` to create
+# it from config.example.ps1, and see lib/machine.ps1 for how the two combine.
+#
+# The map below is a Ryzen APU with 128 GiB of shared memory, which is why every chat
+# tier is local. config.example.ps1 is the other worked example: an all-cloud map.
 
-function Get-OClaudeConfig {
-    # ---- model map: edit here -------------------------------------------------
+function Get-OClaudeDefaultConfig {
+    # ---- model map ------------------------------------------------------------
     # Tiers point at derived tags, not base models: the tray forces
     # OLLAMA_CONTEXT_LENGTH=262144, at which only one model fits. The per-tag
     # `PARAMETER num_ctx` in $derived is what lets several stay resident.
@@ -57,7 +65,9 @@ function Get-OClaudeConfig {
     # Use an ALIAS (fable / opus / sonnet / haiku), not a raw Ollama tag: an unresolvable
     # subagent model silently falls back to the CALLER's, so a typo makes the advisor
     # the very model that asked for advice.
-    $advisor = if ($env:OCLAUDE_ADVISOR) { $env:OCLAUDE_ADVISOR } else { 'fable' }
+    # Get-OClaudeConfig applies $env:OCLAUDE_ADVISOR on top of this, so the per-shell
+    # variable outranks the machine file rather than the other way round.
+    $advisor = 'fable'
     # --------------------------------------------------------------------------
 
     [pscustomobject]@{
@@ -86,6 +96,13 @@ function Get-OClaudeConfig {
                                            #   subtract MaxOutputTokens: the CLI already
                                            #   reserves room for the reply
         MaxOutputTokens = 32000
+        Disable1MContext = $true           # drops the account's [1m] marker, which advertises
+                                           #   a window a local model does not have. Set it
+                                           #   $false ONLY when every tier that receives the
+                                           #   transcript really has a window above 200K, and
+                                           #   then raise MaxContextTokens and
+                                           #   AutoCompactWindow together: leaving them at
+                                           #   200000 buys nothing
         AutoCompactWindow = 200000         # where Claude Code COMPACTS, deliberately below
                                            #   num_ctx so the runner never context-shifts.
                                            #   Must be 200000 exactly: DISABLE_1M_CONTEXT

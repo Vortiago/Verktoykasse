@@ -63,8 +63,11 @@ function oclaude {
         # transcript outgrows the runner and llama-server context-shifts, silently
         # dropping the oldest tokens.
         $env:CLAUDE_CODE_AUTO_COMPACT_WINDOW          = $cfg.AutoCompactWindow
-        # Drops the account's [1m] marker, which advertised a window we do not have.
-        $env:CLAUDE_CODE_DISABLE_1M_CONTEXT           = '1'
+        # Drops the account's [1m] marker, which advertises a window a local model does
+        # not have. Config decides it, because an all-cloud map may genuinely have one.
+        # Removed rather than left alone when off: an inherited value would still apply.
+        if ($cfg.Disable1MContext) { $env:CLAUDE_CODE_DISABLE_1M_CONTEXT = '1' }
+        else { Remove-Item Env:CLAUDE_CODE_DISABLE_1M_CONTEXT -ErrorAction SilentlyContinue }
         $env:CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = '1'
         # Background calls DISABLE_NONESSENTIAL_TRAFFIC does not cover. Both fork the whole
         # conversation onto the MAIN LOOP model, so on Anthropic they are a cache hit and

@@ -82,9 +82,12 @@ and don't belong here.
   classifier, HAIKU takes background traffic, FABLE is cloud), derived Ollama
   tags that pin `num_ctx` so several models stay resident, daemon lifecycle
   with a wrong-daemon-on-the-port check, and a per-launch advisor subagent.
+  The map is per machine: the repo holds commented defaults, and
+  `oclaude-init-config` writes `~/.config/oclaude/config.ps1`, which overrides
+  them and stays out of the repo. Windows, Linux and macOS.
   Not a skill but a launcher you run to *start* a session, so it ships no
   `SKILL.md` and `install.sh` skips it — install with `oclaude/install.ps1`,
-  which dot-sources it into your `$PROFILE`. Windows only.
+  which dot-sources it into your `$PROFILE`.
 
 ## Install
 

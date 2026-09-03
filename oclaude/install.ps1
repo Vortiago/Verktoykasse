@@ -72,3 +72,4 @@ if ($stale) {
 
 Write-Host ''
 Write-Host "Open a new PowerShell session, then run 'oclaude-help' to verify." -ForegroundColor Cyan
+Write-Host "Then 'oclaude-init-config' to write this machine's model map." -ForegroundColor Cyan
