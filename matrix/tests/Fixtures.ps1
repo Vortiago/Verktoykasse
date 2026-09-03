@@ -1,10 +1,13 @@
 # Shared test fixtures. Not named *.Tests.ps1, so Pester does not try to run it.
 
-function New-TestTab ($hwnd, $index, $text, $glyph) {
+function New-TestTab ($hwnd, $index, $text, $glyph, $processId = 0) {
     # $glyph: 'busy', 'idle', or 'none' for a tab Claude has not titled
+    # $processId: what the Linux backends match on, 0 where nothing should.
+    # Named as New-TestSession names it: $PID is read-only and never binds.
     [pscustomobject]@{
         Hwnd = $hwnd; Index = $index; Text = $text
         IsBusy = $glyph -eq 'busy'; IsIdle = $glyph -eq 'idle'
+        Pid = $processId
     }
 }
 

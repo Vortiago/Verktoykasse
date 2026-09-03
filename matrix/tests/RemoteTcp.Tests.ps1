@@ -188,12 +188,12 @@ Describe 'tcp: naming the local ssh process' {
     It 'takes the pid out of an ss row' {
         # Verified against a live socket on Linux: the row ends in the process
         # list, and the first entry is the process that opened it.
-        ConvertTo-SocketOwnerId '0 0 127.0.0.1:34234 127.0.0.1:47777 users:(("ssh",pid=169854,fd=3))' |
+        ConvertTo-SocketOwnerId '0 0 127.0.0.1:34234 127.0.0.1:9999 users:(("ssh",pid=169854,fd=3))' |
             Should -Be 169854
     }
 
     It 'answers zero for a row with no process, and for no row' {
-        ConvertTo-SocketOwnerId '0 0 127.0.0.1:34234 127.0.0.1:47777' | Should -Be 0
+        ConvertTo-SocketOwnerId '0 0 127.0.0.1:34234 127.0.0.1:9999' | Should -Be 0
         ConvertTo-SocketOwnerId '' | Should -Be 0
     }
 

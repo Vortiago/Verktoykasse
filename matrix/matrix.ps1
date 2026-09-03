@@ -40,6 +40,14 @@
 
         80x25 28/30fps late 3%  build 5.22 write 0.12 ms poll 12.0 ms  7.1KB 296runs  start 0.4s
 
+    With -ExposeOnSSH, one field of words leads the timings:
+
+        80x25 28/30fps late 3%  host connected  build 5.22 write 0.12 ms ...
+
+    host    where the report stands: waiting (nothing takes the connection, so
+            no ssh session carries the forward), connecting (something takes it
+            and no rain has answered - a host running no rain holds here),
+            connected (the rain answered), or refused: <why>
     build   our own work: simulate the fall, stamp the labels, encode the diff
     write   blocked in the terminal. Build near zero with a large write means the
             terminal cannot drain what it is handed, not that the rain is slow
@@ -57,17 +65,20 @@
     carries a reverse forward:
 
         ~/.ssh/config     Host lab1 lab2
-                              RemoteForward 127.0.0.1:47777 127.0.0.1:47777
+                              RemoteForward 127.0.0.1:9999 127.0.0.1:9999
+
+        or per login    ssh -R 127.0.0.1:9999:127.0.0.1:9999 lab1
 
     One port serves every machine. A remote lane is named "<machine>: <session>".
     It never enters the tab map, because its process is not on this machine.
 
 .PARAMETER ExposeOnSSH
     Report this machine's sessions to the rain on the machine you sit at. The
-    rain draws here as well.
+    rain draws here as well. Add -Stats to see whether the host has answered:
+    its line leads with host waiting, connecting, connected or refused.
 
 .PARAMETER RemotePort
-    The loopback port both sides use. Default 47777. It must match the one in the
+    The loopback port both sides use. Default 9999. It must match the one in the
     RemoteForward line.
 
 .PARAMETER RemoteAddress
@@ -112,7 +123,7 @@ param(
     [switch] $Stats,
     [switch] $Remote,
     [switch] $ExposeOnSSH,
-    [ValidateRange(1, 65535)] [int]    $RemotePort  = 47777,
+    [ValidateRange(1, 65535)] [int]    $RemotePort  = 9999,
     [string] $RemoteAddress = '127.0.0.1',
     [string] $RemoteToken,
     [string] $RemoteName
@@ -212,7 +223,10 @@ $expose = $null
 if ($ExposeOnSSH) {
     $why = Test-ExposeSupport
     if ($why) { Write-Host $why -ForegroundColor DarkGray }
-    $expose = New-ExposeState -Machine (Get-ExposeMachineName $RemoteName) -Token $RemoteToken
+    # A dial only happens on a poll, so a shorter retry is one that never fires -
+    # and RefusedMs, counted in retries, would expire between two refusals.
+    $expose = New-ExposeState -Machine (Get-ExposeMachineName $RemoteName) -Token $RemoteToken `
+                              -RetryMs ([int][Math]::Max(1000.0, $PollSeconds * 1000.0))
 }
 
 # What -ThisWindow scopes on: a terminal window, or the tmux session a pane runs
@@ -351,7 +365,7 @@ function Get-LiveSession {
         $now = Get-EpochMs
         Update-RemoteHub -Hub $script:hub -Now $now `
                          -Accept { Receive-RemoteConnection -Listener $script:listener.Listener } `
-                         -Read $script:tcpSeam.Read -Close $script:tcpSeam.Close
+                         -Read $script:tcpSeam.Read -Write $script:tcpSeam.Write -Close $script:tcpSeam.Close
         $live = @($live) + @(Get-RemoteSession -Hub $script:hub -Now $now)
     }
 
@@ -520,6 +534,8 @@ try {
             if ($frameStats.Show) {
                 $frameStats.PollMs      = $clock.Elapsed.TotalMilliseconds - $pollAt
                 $frameStats.PollFrameMs = $frameStats.PollMs
+                # After the poll, not per frame: it only changes on a poll.
+                if ($expose) { $frameStats.Note = Get-ExposeStatus $expose }
             }
             $relay = $true
         }

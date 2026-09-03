@@ -4,7 +4,7 @@
 # The carrier is one TCP connection per machine, riding the ssh session the user
 # already opened:
 #
-#   ~/.ssh/config     RemoteForward 127.0.0.1:47777 127.0.0.1:47777
+#   ~/.ssh/config     RemoteForward 127.0.0.1:9999 127.0.0.1:9999
 #
 # The remote connects to its own loopback, sshd hands the channel to the local ssh
 # client, and the ssh client connects to this listener. Every machine uses the

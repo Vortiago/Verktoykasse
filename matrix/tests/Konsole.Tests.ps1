@@ -9,6 +9,16 @@ BeforeAll {
     . (Join-Path $PSScriptRoot 'Fixtures.ps1')
 }
 
+Describe 'Resolve-MachineTab' {
+    It 'answers nothing, and does not read the tabs to say so' {
+        # The remote click is answered by the pid walk. A Konsole tab carries no
+        # title, so reading them would spend D-Bus round trips for nothing.
+        $script:reads = 0
+        Resolve-MachineTab -Machine 'lab1' -ReadTab { $script:reads++; @() } | Should -BeNullOrEmpty
+        $reads | Should -Be 0
+    }
+}
+
 Describe 'Get-OwnTerminalWindow' {
     # Restore, do not null: a developer running the suite inside a real Konsole tab
     # must not lose the variable from their process.
