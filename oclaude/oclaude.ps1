@@ -33,15 +33,16 @@ foreach ($part in $oclaudeParts) {
 # when, so entry points can warn instead of running stale code. The timestamps must be
 # read HERE rather than lazily on first use: taken later they would describe the file as
 # it is by then, not as this shell loaded it, and an edit made before the first call
-# would read as current. Measured at ~0.8 ms for the six files it loaded then, a cost
-# the profile pays on every new shell.
+# would read as current. Measured at ~0.8 ms when there were six files, a cost the
+# profile pays on every new shell.
 $global:OClaudeFiles  = @(@($PSCommandPath) + $oclaudeParts | Where-Object { $_ })
 $global:OClaudeLoaded = ($global:OClaudeFiles |
     ForEach-Object { (Get-Item $_).LastWriteTimeUtc } | Measure-Object -Maximum).Maximum
 
 function Test-OClaudeStale {
     # $true (and warns once per edit) when any loaded file is newer on disk than what
-    # this shell loaded. Entry points call each other, hence the warned-at latch.
+    # this shell loaded. The latch keeps one edit to one warning across a shell's whole
+    # life, rather than one per command until you reload.
     if (-not $global:OClaudeFiles -or -not $global:OClaudeLoaded) { return $false }
     $changed = @($global:OClaudeFiles | Where-Object { Test-Path $_ } |
         ForEach-Object { Get-Item $_ } |

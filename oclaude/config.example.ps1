@@ -6,8 +6,9 @@
 # The file must END with a hashtable. Every key in it REPLACES the matching key in
 # lib/config.ps1 outright, and nothing merges inside a key. So Models must list all four
 # tiers, and Derived must list every spec you need. oclaude warns at launch about a tier
-# left out, a tier with no label, a key it does not recognise, and a context cap above
-# the ceiling Disable1MContext asserts.
+# left out, a tier with no label, and a key it does not recognise. It also checks that
+# AutoCompactWindow stays under the ceiling Disable1MContext asserts, which is an
+# invariant of the values rather than of the replace rule.
 #
 # Run `oclaude-config-path` to see which file this shell reads. It is read fresh on
 # every command, so an edit takes effect on the next `oclaude` with no reload.

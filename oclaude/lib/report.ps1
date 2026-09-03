@@ -11,7 +11,7 @@ function oclaude-status {
 
     # The first question when a tier is not the one you expected is which file was read.
     $cfgState = Get-OClaudeConfigState -Cfg $cfg
-    Write-Host ("config   {0}" -f $cfgState.Description) `
+    Write-Host ("config   {0}" -f $cfgState.Summary) `
         -ForegroundColor $(if ($cfgState.Loaded) { 'DarkGray' } else { 'DarkYellow' })
     if (-not $cfgState.Exists) {
         Write-Host '         run oclaude-init-config to make one for this machine' -ForegroundColor DarkGray
@@ -21,13 +21,14 @@ function oclaude-status {
     # Two tiers can share one cloud tag, and the access check is a real generation with a
     # 120s timeout. Ask once per tag rather than once per tier.
     $probed = @{}
+    foreach ($tag in @($cfg.Models.Values | Where-Object { Test-CloudModel $_ } | Sort-Object -Unique)) {
+        $probed[$tag] = if ($up) { Test-OllamaCloudModel -Model $tag -Endpoint $cfg.Endpoint }
+                        else { 'daemon down' }
+    }
+
     foreach ($tier in $cfg.Models.Keys) {
         $model = $cfg.Models[$tier]
         if (Test-CloudModel $model) {
-            if (-not $probed.ContainsKey($model)) {
-                $probed[$model] = if ($up) { Test-OllamaCloudModel -Model $model -Endpoint $cfg.Endpoint }
-                                  else { 'daemon down' }
-            }
             $state = $probed[$model]
             $ok    = $state -eq 'ok'
             $clean = ($state -replace '\s+', ' ').Trim()
@@ -74,7 +75,8 @@ function oclaude-help {
     Write-Host '  tiers' -ForegroundColor White
     foreach ($tier in $cfg.Models.Keys) {
         $model = $cfg.Models[$tier]
-        $ctx = if ($cfg.Derived.Contains($model)) { "num_ctx $($cfg.Derived[$model].NumCtx)" } else { '' }
+        $pin = Get-OClaudeNumCtx -Cfg $cfg -Model $model
+        $ctx = if ($null -ne $pin) { "num_ctx $pin" } else { '' }
         Write-Host ("    {0,-7} {1,-24} {2}" -f $tier.ToLower(), $model, $ctx) -ForegroundColor Gray
     }
     Write-Host ("    {0,-7} {1,-24} {2}" -f 'advisor', $cfg.Advisor, 'subagent, ask it when stuck') -ForegroundColor Gray
@@ -82,7 +84,7 @@ function oclaude-help {
     Write-Host '  notes' -ForegroundColor White
     Write-Host ("    context      Claude Code capped at {0}; must stay <= the smallest num_ctx" -f $cfg.MaxContextTokens) -ForegroundColor Gray
     Write-Host '    first turn   costs a full prefill; later turns extend the cache and are cheap' -ForegroundColor Gray
-    Write-Host ('    config       {0}' -f (Get-OClaudeConfigState -Cfg $cfg).Description) -ForegroundColor Gray
+    Write-Host ('    config       {0}' -f (Get-OClaudeConfigState -Cfg $cfg).Summary) -ForegroundColor Gray
     Write-Host ('    daemon       not in either config file. {0}' -f
                 (Get-OllamaSettingsHint)) -ForegroundColor Gray
     Write-Host '    advisor      $env:OCLAUDE_ADVISOR overrides its model per shell (use an alias)' -ForegroundColor Gray

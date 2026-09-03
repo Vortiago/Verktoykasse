@@ -86,8 +86,9 @@ function Get-OllamaServiceUnit {
 }
 
 function Get-OllamaSystemctlArgument {
-    # The argument list that addresses this unit. The --user prefix is decided here and
-    # nowhere else, so a third scope means editing one function rather than five.
+    # The argument list that addresses this unit. Every systemctl invocation and every
+    # systemctl command this file PRINTS goes through here, so a third scope means
+    # editing one function rather than four.
     param([Parameter(Mandatory)][string]$Unit, [Parameter(Mandatory)][string[]]$Arguments)
     if ($Unit -eq 'user') { return @('--user') + $Arguments }
     return $Arguments
@@ -133,8 +134,11 @@ function Show-OllamaServiceDropIn {
     # drop-in needs root to write, so a knob oclaude set here would be one that never
     # took.
     param([Parameter(Mandatory)][string]$Unit)
-    $reload = if ($Unit -eq 'user') { 'systemctl --user daemon-reload' }
-              else { 'sudo systemctl daemon-reload' }
+    # sudo is a privilege decision and stays here. The scope prefix is not, so it comes
+    # from the one function that owns it.
+    $sc     = Get-OllamaSystemctlArgument -Unit $Unit -Arguments @('daemon-reload')
+    $reload = if ($Unit -eq 'user') { 'systemctl {0}' -f ($sc -join ' ') }
+              else { 'sudo systemctl {0}' -f ($sc -join ' ') }
     Write-Host '  A drop-in file is this platform''s User scope. Set them there:' -ForegroundColor DarkGray
     Write-Host ('    {0}' -f (Get-OllamaServiceDropInPath -Unit $Unit)) -ForegroundColor DarkGray
     Write-Host '      [Service]' -ForegroundColor DarkGray

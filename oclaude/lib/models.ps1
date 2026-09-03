@@ -18,6 +18,23 @@ function Get-OClaudeLocalModel {
     @(@($Cfg.Models.Values | Where-Object { -not (Test-CloudModel $_) }) | Sort-Object -Unique)
 }
 
+function Get-OClaudeDerivedTagInUse {
+    # The derived tags some tier points at: what to build, and whose bases to pull. Both
+    # loops asked this question with their own copy of the filter, held in step by a
+    # comment. Widening what counts as in use now lands in one place.
+    param([Parameter(Mandatory)]$Cfg)
+    $local = Get-OClaudeLocalModel -Cfg $Cfg
+    @($Cfg.Derived.Keys | Where-Object { $local -contains $_ })
+}
+
+function Get-OClaudeNumCtx {
+    # The num_ctx pinned behind a tag, or nothing when the tier names a base model
+    # directly and so has no pin. Three callers asked this with a Contains test and a
+    # double subscript.
+    param([Parameter(Mandatory)]$Cfg, [string]$Model)
+    if ($Model -and $Cfg.Derived.Contains($Model)) { $Cfg.Derived[$Model].NumCtx }
+}
+
 function Get-OllamaModel {
     # Both tagged and bare names: /api/tags reports "cc-chat-35b-q8:latest" while the
     # model map spells it "cc-chat-35b-q8". Either form is valid to send to the API.
@@ -65,8 +82,7 @@ function Build-OClaudeDerivedTag {
 
     # Only the tags a tier points at. A spec nothing runs costs nothing, so Derived can
     # carry a model you are not using today without building or pulling its weights.
-    $localModels = Get-OClaudeLocalModel -Cfg $cfg
-    $tags = @($cfg.Derived.Keys | Where-Object { $localModels -contains $_ })
+    $tags = Get-OClaudeDerivedTagInUse -Cfg $cfg
     if (-not $tags) { Write-Host 'no derived tag is in use' -ForegroundColor DarkGray }
 
     foreach ($tag in $tags) {
@@ -88,9 +104,7 @@ function Build-OClaudeDerivedTag {
     # classifier that never sees the session's context, so including it fired a false
     # warning. Warn only when the cap EXCEEDS the tier: below it is a valid choice.
     $mainTier = if ($cfg.DefaultAlias -match 'opus') { 'OPUS' } else { $cfg.DefaultAlias.ToUpper() }
-    $mainCtx  = if ($cfg.Derived.Contains($cfg.Models[$mainTier])) {
-        $cfg.Derived[$cfg.Models[$mainTier]].NumCtx
-    } else { $null }
+    $mainCtx  = Get-OClaudeNumCtx -Cfg $cfg -Model $cfg.Models[$mainTier]
     if ($null -ne $mainCtx -and $cfg.MaxContextTokens -gt $mainCtx) {
         Write-Host (("warn: MaxContextTokens is {0} but the {1} tier num_ctx is {2}; " +
                      'Claude Code will overfill that tier') -f $cfg.MaxContextTokens, $mainTier, $mainCtx) `
@@ -100,9 +114,7 @@ function Build-OClaudeDerivedTag {
     # Softer check: the classifier reads a slice of the transcript, so its num_ctx has
     # to cover a session grown to the auto-compact window. Overflow is not a crash, but
     # a classifier that stops answering is one that stops gating tool calls.
-    $fastCtx = if ($cfg.Derived.Contains($cfg.Models['SONNET'])) {
-        $cfg.Derived[$cfg.Models['SONNET']].NumCtx
-    } else { $null }
+    $fastCtx = Get-OClaudeNumCtx -Cfg $cfg -Model $cfg.Models['SONNET']
     if ($null -ne $fastCtx -and $fastCtx -lt $cfg.AutoCompactWindow) {
         Write-Host (("note: classifier tier num_ctx {0} is below the auto-compact window {1}; " +
                      'long sessions will hit transcript_too_long') -f $fastCtx, $cfg.AutoCompactWindow) `
@@ -117,12 +129,10 @@ function oclaude-pull {
     if (-not (Start-OllamaServer -Endpoint $cfg.Endpoint)) { return }
     $have = Get-OllamaModel -Endpoint $cfg.Endpoint
 
-    # Same filter as Build-OClaudeDerivedTag: the bases of the derived tags in use, plus
-    # any tier that names a base model directly.
-    $localModels = Get-OClaudeLocalModel -Cfg $cfg
-    $bases = @($cfg.Derived.Keys | Where-Object { $localModels -contains $_ } |
+    # The bases of the derived tags in use, plus any tier that names a base directly.
+    $bases = @(Get-OClaudeDerivedTagInUse -Cfg $cfg |
                ForEach-Object { $cfg.Derived[$_].From }) | Sort-Object -Unique
-    $plain = @($localModels | Where-Object { -not $cfg.Derived.Contains($_) })
+    $plain = @(Get-OClaudeLocalModel -Cfg $cfg | Where-Object { -not $cfg.Derived.Contains($_) })
     $missing = @(@($bases) + @($plain) | Sort-Object -Unique |
         Where-Object { $have -notcontains $_ })
 

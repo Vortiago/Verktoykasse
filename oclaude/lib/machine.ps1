@@ -4,7 +4,8 @@
 # One rule, so that there is nothing to remember: a key present in the machine file
 # REPLACES the default value for that key outright. Nothing merges inside a key. So a
 # machine file that sets Models must list all four tiers. Test-OClaudeConfig below warns
-# about the mistakes that rule makes possible.
+# about the mistakes that rule makes possible. Test-OClaudeContextCap checks the one
+# invariant that holds for either file.
 
 function Get-OClaudeMachineConfigPath {
     # One path on every platform, so the docs and the error messages can name it.
@@ -92,17 +93,22 @@ function Test-OClaudeConfig {
         Write-Warning (('oclaude: Names has no label for {0}, so the picker shows the raw ' +
                         'tag.') -f ($unnamed -join ', '))
     }
+}
 
-    # DISABLE_1M_CONTEXT asserts a 200K ceiling in the CLI, and a larger value trips its
-    # window_above_boundary path. config.ps1 says so in prose. This is the check.
-    if ($Cfg.Disable1MContext) {
-        foreach ($key in 'MaxContextTokens', 'AutoCompactWindow') {
-            if ($Cfg.$key -gt 200000) {
-                Write-Warning (('oclaude: {0} is {1} while Disable1MContext is on, which ' +
-                                'asserts a 200000 ceiling. Lower it, or turn the flag off ' +
-                                'and raise both together.') -f $key, $Cfg.$key)
-            }
-        }
+function Test-OClaudeContextCap {
+    # An invariant of the values themselves rather than of whole-key replacement, so it
+    # runs whether or not a machine file loaded. The defaults are committed, but they are
+    # still config, and a check that never sees them has a blind spot by construction.
+    #
+    # AutoCompactWindow is the key the ceiling binds. MaxContextTokens deliberately sits
+    # above it in the shipped defaults, which is why this does not test that one:
+    # DISABLE_1M_CONTEXT caps where the CLI COMPACTS, and 262144 there trips its
+    # window_above_boundary path.
+    param([Parameter(Mandatory)]$Cfg)
+    if ($Cfg.Disable1MContext -and $Cfg.AutoCompactWindow -gt 200000) {
+        Write-Warning (('oclaude: AutoCompactWindow is {0} while Disable1MContext is on, ' +
+                        'which asserts a 200000 ceiling. Lower it, or turn the flag off ' +
+                        'and raise MaxContextTokens with it.') -f $Cfg.AutoCompactWindow)
     }
 }
 
@@ -112,7 +118,10 @@ function Get-OClaudeConfig {
     $override = Read-OClaudeMachineConfig -Path $path
     $cfg      = Merge-OClaudeMachineConfig -Default (Get-OClaudeDefaultConfig) `
                                            -Override $override -Path $path
+    # Test-OClaudeConfig is about what replacing a whole key gets wrong, so it has
+    # nothing to say when no machine file loaded. The cap invariant holds either way.
     if ($override) { Test-OClaudeConfig -Cfg $cfg -Path $path }
+    Test-OClaudeContextCap -Cfg $cfg
 
     # Last word, so that one shell can ask a different model for advice without editing a
     # file. An ALIAS, never a raw tag: config.ps1 says why.
@@ -129,19 +138,28 @@ function Get-OClaudeConfigState {
     # Exists and Loaded differ for a file that is there but threw, or that returned no
     # hashtable. Reporting that as "no machine file" is what sends someone hunting for a
     # file they are looking straight at.
+    # Pass -Cfg when you already hold one. The default resolves the config itself,
+    # which is what oclaude-config-path wants (running the machine file is what emits
+    # the load warning it then points at) and what every other caller already did.
     param($Cfg = (Get-OClaudeConfig))
     $path   = Get-OClaudeMachineConfigPath
     $exists = [bool](Test-Path -LiteralPath $path)
     $loaded = [bool]$Cfg.MachineConfig
 
+    # Description says what became of the file and never names it. Summary is the
+    # one-line form, for a printer whose subject is the path. Keeping the two apart is
+    # what stops oclaude-config-path printing the same path on two lines.
+    $description = if ($loaded) { 'loaded' }
+                   elseif ($exists) { 'present, but it did not load (see the warning above)' }
+                   else { 'not present, so the defaults in lib/config.ps1 are in use' }
+
     [pscustomobject]@{
-        Path   = $path
-        Source = if ($env:OCLAUDE_CONFIG) { '$env:OCLAUDE_CONFIG' } else { 'default path' }
-        Exists = $exists
-        Loaded = $loaded
-        Description = if ($loaded) { $path }
-                      elseif ($exists) { "$path is present but did not load (see the warning above)" }
-                      else { "defaults from lib/config.ps1 (no $path)" }
+        Path        = $path
+        Source      = if ($env:OCLAUDE_CONFIG) { '$env:OCLAUDE_CONFIG' } else { 'default path' }
+        Exists      = $exists
+        Loaded      = $loaded
+        Description = $description
+        Summary     = if ($loaded) { $path } else { '{0}  ({1})' -f $path, $description }
     }
 }
 
@@ -179,5 +197,5 @@ function oclaude-config-path {
     $state = Get-OClaudeConfigState
     Write-Host ('{0}  ({1})' -f $state.Path, $state.Source)
     Write-Host ('  {0}' -f $state.Description) `
-        -ForegroundColor $(if ($state.Loaded) { 'Gray' } else { 'DarkYellow' })
+        -ForegroundColor $(if ($state.Loaded) { 'DarkGray' } else { 'DarkYellow' })
 }

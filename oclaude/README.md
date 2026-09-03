@@ -175,9 +175,13 @@ So a machine file that sets `Models` must list all four tiers, and one that sets
 comments and all.
 
 oclaude warns about the mistakes that rule makes possible: a tier left out of
-`Models`, a tier with no label in `Names`, a key it does not recognise, and a
-context cap above the 200K ceiling `Disable1MContext` asserts. All four are
-silent failures otherwise.
+`Models`, a tier with no label in `Names`, and a key it does not recognise. All
+three are silent failures otherwise.
+
+One further check is not about the rule and so runs for either file:
+`AutoCompactWindow` must stay at or below 200000 while `Disable1MContext` is on,
+because that flag asserts the ceiling and a larger value trips the CLI's
+`window_above_boundary` path.
 
 `Derived` is a library of specs, not a list of things to build. `oclaude-pull`
 and `oclaude-build-models` only touch a tag some tier points at, so a spec left

@@ -36,9 +36,10 @@ function oclaude {
 
         $have = Get-OllamaModel -Endpoint $cfg.Endpoint
         foreach ($tier in $cfg.Models.Keys) {
+            $model = $cfg.Models[$tier]
             # cloud tags resolve server-side, so only local models can be "missing"
-            if (-not (Test-CloudModel $cfg.Models[$tier]) -and $have -notcontains $cfg.Models[$tier]) {
-                Write-Host ("warn: {0} -> {1} is not pulled (run oclaude-pull)" -f $tier.ToLower(), $cfg.Models[$tier]) `
+            if (-not (Test-CloudModel $model) -and $have -notcontains $model) {
+                Write-Host ("warn: {0} -> {1} is not pulled (run oclaude-pull)" -f $tier.ToLower(), $model) `
                     -ForegroundColor DarkYellow
             }
         }
@@ -48,8 +49,11 @@ function oclaude {
         Remove-Item Env:ANTHROPIC_API_KEY -ErrorAction SilentlyContinue
 
         foreach ($tier in $cfg.Models.Keys) {
+            # A tier with no label falls back to its tag, so the picker shows something
+            # true rather than an empty row. Test-OClaudeConfig warns about it either way.
+            $label = if ($cfg.Names[$tier]) { $cfg.Names[$tier] } else { $cfg.Models[$tier] }
             Set-Item "Env:ANTHROPIC_DEFAULT_${tier}_MODEL"      $cfg.Models[$tier]
-            Set-Item "Env:ANTHROPIC_DEFAULT_${tier}_MODEL_NAME" $cfg.Names[$tier]
+            Set-Item "Env:ANTHROPIC_DEFAULT_${tier}_MODEL_NAME" $label
         }
 
         # Outranks every subagent's own model, including the advisor's, so an inherited
