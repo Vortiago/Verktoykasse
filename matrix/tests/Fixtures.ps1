@@ -2,9 +2,8 @@
 
 function New-TestTab ($hwnd, $index, $text, $glyph, $processId = 0) {
     # $glyph: 'busy', 'idle', or 'none' for a tab Claude has not titled
-    # $processId: what the Linux backends match on, and 0 where nothing should.
-    # Named the way New-TestSession names it, and for the same reason: the
-    # automatic $PID is read-only, and a parameter that shadows it never binds.
+    # $processId: what the Linux backends match on, 0 where nothing should.
+    # Named as New-TestSession names it: $PID is read-only and never binds.
     [pscustomobject]@{
         Hwnd = $hwnd; Index = $index; Text = $text
         IsBusy = $glyph -eq 'busy'; IsIdle = $glyph -eq 'idle'

@@ -65,9 +65,9 @@
     carries a reverse forward:
 
         ~/.ssh/config     Host lab1 lab2
-                              RemoteForward 127.0.0.1:47777 127.0.0.1:47777
+                              RemoteForward 127.0.0.1:9999 127.0.0.1:9999
 
-        or per login    ssh -R 127.0.0.1:47777:127.0.0.1:47777 lab1
+        or per login    ssh -R 127.0.0.1:9999:127.0.0.1:9999 lab1
 
     One port serves every machine. A remote lane is named "<machine>: <session>".
     It never enters the tab map, because its process is not on this machine.
@@ -78,7 +78,7 @@
     its line leads with host waiting, connecting, connected or refused.
 
 .PARAMETER RemotePort
-    The loopback port both sides use. Default 47777. It must match the one in the
+    The loopback port both sides use. Default 9999. It must match the one in the
     RemoteForward line.
 
 .PARAMETER RemoteAddress
@@ -123,7 +123,7 @@ param(
     [switch] $Stats,
     [switch] $Remote,
     [switch] $ExposeOnSSH,
-    [ValidateRange(1, 65535)] [int]    $RemotePort  = 47777,
+    [ValidateRange(1, 65535)] [int]    $RemotePort  = 9999,
     [string] $RemoteAddress = '127.0.0.1',
     [string] $RemoteToken,
     [string] $RemoteName
@@ -223,10 +223,8 @@ $expose = $null
 if ($ExposeOnSSH) {
     $why = Test-ExposeSupport
     if ($why) { Write-Host $why -ForegroundColor DarkGray }
-    # A redial is only ever attempted on a poll, so a retry shorter than the poll
-    # interval is one that never happens - and RefusedMs, which is counted in
-    # retries, would then expire between two refusals and flap the reason off the
-    # -Stats line every other poll. Told the real cadence, both are honest.
+    # A dial only happens on a poll, so a shorter retry is one that never fires -
+    # and RefusedMs, counted in retries, would expire between two refusals.
     $expose = New-ExposeState -Machine (Get-ExposeMachineName $RemoteName) -Token $RemoteToken `
                               -RetryMs ([int][Math]::Max(1000.0, $PollSeconds * 1000.0))
 }
@@ -536,8 +534,7 @@ try {
             if ($frameStats.Show) {
                 $frameStats.PollMs      = $clock.Elapsed.TotalMilliseconds - $pollAt
                 $frameStats.PollFrameMs = $frameStats.PollMs
-                # Read here, after the poll that just dialled or read the host,
-                # and not per frame: the answer changes only when a poll does.
+                # After the poll, not per frame: it only changes on a poll.
                 if ($expose) { $frameStats.Note = Get-ExposeStatus $expose }
             }
             $relay = $true

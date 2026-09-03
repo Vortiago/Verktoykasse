@@ -287,14 +287,13 @@ Add one line per machine to `~/.ssh/config`, once:
 
 ```
 Host lab1 lab2 lab3
-    RemoteForward 127.0.0.1:47777 127.0.0.1:47777
+    RemoteForward 127.0.0.1:9999 127.0.0.1:9999
 ```
 
-Or carry the forward on the login itself, which needs no config and is how you
-try it before writing one:
+Or carry the forward on the login itself:
 
 ```bash
-ssh -R 127.0.0.1:47777:127.0.0.1:47777 lab1
+ssh -R 127.0.0.1:9999:127.0.0.1:9999 lab1
 ```
 
 Change the port in both halves and in `-RemotePort` on both ends, or in none.
@@ -319,7 +318,7 @@ and one session. Under 10 columns the name row goes, for every lane alike.
 
 ### The route
 
-The reporting side connects to its own `127.0.0.1:47777`. sshd is already
+The reporting side connects to its own `127.0.0.1:9999`. sshd is already
 listening there because of the `RemoteForward`, and it hands the channel to the
 ssh client on your machine, which connects to the rain. So neither end runs ssh
 itself, and no second connection is opened. The forward rides the login you
@@ -330,18 +329,16 @@ line each one sends. One listener, however many machines.
 
 The payload is one JSON object per line.
 
-The rain answers the first line: a welcome, or the reason it refused. That answer
-is the only thing that tells the reporting side a rain is there. sshd accepts its
-connection whether or not one is, and drops the channel a moment later when the
-ssh client on your machine finds nothing to connect to. Run the report with
-`-Stats` and its line leads with where it stands:
+The rain answers the first line: a welcome, or the reason it refused. Without it
+the reporting side cannot tell a rain from an sshd that took the connection and
+dropped it. Run the report with `-Stats` and its line leads with where it stands:
 
 | It reads | It means |
 | --- | --- |
-| `host waiting` | Nothing takes the connection. No ssh session carries the forward, or it is on another port |
-| `host connecting` | Something takes it and no rain has answered. A host running no rain holds here: sshd accepts, the far end drops the channel a moment later, and the report redials |
+| `host waiting` | Nothing takes the connection: no forward, or the wrong port |
+| `host connecting` | Taken, unanswered. A host running no rain holds here |
 | `host connected` | The rain welcomed this machine |
-| `host refused: wrong token` | The rain said no, and why. It outlasts the redial that follows, so the word that names the fix stays on screen, and expires a few retries after the rain stops saying it - retries, not seconds, because a slow `-PollSeconds` is a slow redial |
+| `host refused: wrong token` | The rain said no, and why. Held for a few retries, so it survives the redial |
 
 A remote session never enters the tab map, because it has no pid on this machine.
 A remote pid that happened to exist here would claim a local tab and block the
@@ -375,24 +372,17 @@ could name its own ssh could steal a click.
 | Konsole | yes | yes, by pid |
 | Windows Terminal | yes | best effort, by title |
 
-Where no pid names a tab, the backend answers for itself, through
-`Resolve-MachineTab`. Windows Terminal reads tab titles: ssh leaves the remote
-shell's title there, and a shell titles itself `user@machine`, so a tab saying
-`atle@lab1` is taken for `lab1`. A tab that only has the machine as a word comes
-second, and nothing else counts. Titles change with every prompt, so this is
-looked up on each click and never cached. Konsole and tmux answer nothing, and
-answer it without reading their tabs at all: they matched on the pid already, and
-a click must not spend a D-Bus round trip or a `tmux` process to be told so.
+Where no pid names a tab, the backend answers through `Resolve-MachineTab`.
+Windows Terminal reads tab titles: ssh leaves the remote shell's title there and a
+shell titles itself `user@machine`, so `atle@lab1` is taken for `lab1`. A tab that
+only has the machine as a word comes second, and nothing else counts. Looked up on
+each click, never cached, because titles change every prompt. Konsole and tmux
+answer nothing without reading their tabs at all.
 
-This route is the one exception to the rule above, and it is deliberate: the name
-it matches on is the one the peer put in its hello. A machine that lies about its
-name can therefore have a click raise a tab titled after some other machine. That
-is the whole of it - a tab is brought to the front and nothing is typed into it,
-no id is trusted, and no local session is touched. The exact route is preferred
-everywhere it exists, so this is only reachable on Windows Terminal, where no pid
-names a tab at all and the alternative is a click that visibly does nothing. Set
-a token if the loopback port is shared with anyone you would not hand the
-keyboard to.
+That route matches on the name the peer sent in its hello, so a machine that lies
+about its name can have a click raise a tab titled after another machine. A window
+is brought to the front, nothing is typed, no id is trusted. Set a token if the
+loopback port is shared.
 
 The reporting side needs tmux for the switch, because the switch is a tmux
 command. Without it, sessions are still reported and the rain says so once at
@@ -417,7 +407,7 @@ and in every process listing on the machine.
 | A machine comes back | The lanes recover their colour, with no restart here |
 | A laptop closes mid-session | Half-open socket, dropped after 60 s. Frozen lanes are worse than none |
 | Two ssh sessions to one machine | The second `RemoteForward` cannot bind and ssh warns. Both shells still reach the first forward, and the lane is shown once, from whichever spoke last |
-| The rain's port is already bound | It says so and keeps drawing the local lanes. On Windows a port nobody listens on can still be refused: Hyper-V and WSL reserve ranges, listed by `netsh interface ipv4 show excludedportrange protocol=tcp`. Pick a `-RemotePort` outside them, on both ends and in the `RemoteForward` line |
+| The rain's port is already bound | It says so and keeps drawing the local lanes. On Windows a port nobody listens on can still be refused: `netsh interface ipv4 show excludedportrange protocol=tcp` lists the reserved ranges |
 | No rain on the host | sshd still takes the report's connection, and the ssh client on the host drops it a moment later. The report redials, and its `-Stats` line holds at `host connecting` |
 | The tokens differ | The rain's empty lane says a machine was refused. The report's `-Stats` line reads `host refused: wrong token` |
 | Nothing has reported yet | The empty lane says `waiting for a machine to report` |

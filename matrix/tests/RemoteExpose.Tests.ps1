@@ -210,9 +210,8 @@ Describe 'expose: losing the rain' {
 }
 
 Describe 'expose: what the -Stats line reads' {
-    # sshd accepts this side's connection whether or not a rain is behind it, so
-    # a connect proves nothing. Only the rain's answer does, and these are the four
-    # words the user reads while finding out.
+    # A connect proves nothing: sshd accepts with or without a rain behind it.
+    # Only the rain's answer does.
     It 'reads as waiting while nothing takes the connection' {
         $s = New-ExposeState -Machine 'lab1'; $r = New-FakeRain
         $r.Listening = $false
@@ -227,11 +226,8 @@ Describe 'expose: what the -Stats line reads' {
     }
 
     It 'holds at connecting when the host takes the connection and drops it at once' {
-        # A host running no rain. sshd accepts, the far end finds nothing to hand
-        # the channel to and closes it within milliseconds, and this side
-        # redials. That is the case the whole indicator exists for, so it must
-        # not read one thing on the poll that dials and another on the poll that
-        # finds the connection gone.
+        # A host running no rain: sshd accepts, the far end closes within
+        # milliseconds, this side redials. The status must not flap in step.
         $s = New-ExposeState -Machine 'lab1' -RetryMs 1000; $r = New-FakeRain
         $r.Shut = $true
         foreach ($t in 0, 1000, 2000, 3000) {
@@ -258,9 +254,8 @@ Describe 'expose: what the -Stats line reads' {
     }
 
     It 'keeps the refusal through the redials that follow' {
-        # The rain hangs up after refusing, and this side redials every second. A
-        # status that read "connecting" between refusals would hide the one word
-        # that names the fix.
+        # The rain hangs up after refusing and this side redials: "connecting"
+        # between two refusals would hide the word that names the fix.
         $s = New-ExposeState -Machine 'lab1' -RetryMs 1000 -RefusedMs 5000; $r = New-FakeRain
         Step-Expose $s $r 0
         $r.Incoming = (ConvertTo-RefusedLine -Why 'wrong token') + "`n"
@@ -284,10 +279,8 @@ Describe 'expose: what the -Stats line reads' {
     }
 
     It 'drops the refusal once the rain stops saying it' {
-        # The rain was stopped rather than fixed. sshd goes on taking the
-        # connection, so nothing closes and nothing answers: the truth is
-        # connecting, and a refusal left standing would name a fix for a problem
-        # that is gone.
+        # The rain was stopped, not fixed. sshd keeps taking the connection, so
+        # nothing closes and nothing answers: the truth is connecting.
         $s = New-ExposeState -Machine 'lab1' -RefusedMs 5000; $r = New-FakeRain
         Step-Expose $s $r 0
         $r.Incoming = (ConvertTo-RefusedLine -Why 'wrong token') + "`n"

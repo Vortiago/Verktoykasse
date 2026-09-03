@@ -136,25 +136,14 @@ function Get-MatchToken {
 function Resolve-MachineTab {
     <#
     .SYNOPSIS
-        The tab holding an ssh session to a machine, or nothing. A guess, by design.
+        The tab holding an ssh session to a machine, or nothing. A guess.
     .DESCRIPTION
-        What a click on a remote lane falls back to, and here the only thing it
-        has: every window is one process, so no pid names a tab and the remote
-        click would otherwise switch the far machine's window and leave the ssh
-        session holding it behind whatever is in front.
-
-        ssh leaves the remote shell's title in the tab, and a shell titles itself
-        user@machine. So a tab saying @machine beats one that merely has the
-        machine as a word, and two equal matches go to the first, which makes a
-        repeat click land where the last one did.
-
-        Never cached, unlike the pid answer the Linux backends give: a shell
-        retitles its tab every prompt, so a click that misses now can hit next
-        time.
+        Where a remote click lands here: no pid names a tab, so it matches the
+        title ssh leaves behind. @machine beats the machine as a bare word, and
+        ties go to the first. Never cached - a shell retitles every prompt.
     .PARAMETER ReadTab
-        -> every tab of every window. The reader, not the tabs: this is the one
-        thing a click here costs (~100 ms), and the backends that cannot answer
-        at all must not spend it to say so.
+        -> every tab of every window. The reader, not the tabs: a backend that
+        cannot answer must not pay the ~100 ms read to say so.
     #>
     param([Parameter(Mandatory)] [string] $Machine,
           [scriptblock] $ReadTab = { Get-AllTerminalTab })
@@ -162,8 +151,7 @@ function Resolve-MachineTab {
     $best = $null; $bestScore = 0
     foreach ($tab in @(& $ReadTab)) {
         if ($null -eq $tab) { continue }
-        # Text, not Name: the glyph Claude leads a title with is not part of any
-        # host name, and Get-TerminalTab has already taken it off.
+        # Text, not Name: Get-TerminalTab has taken Claude's glyph off it.
         $score = Get-MachineTitleScore -Title ([string]$tab.Text) -Machine $Machine
         if ($score -gt $bestScore) { $best = $tab; $bestScore = $score }
     }
@@ -175,14 +163,11 @@ function Get-MachineTitleScore {
     .SYNOPSIS
         2 when the title says @machine, 1 when it names the machine as a word, 0 otherwise.
     .DESCRIPTION
-        Not Get-MatchToken, which lower-cases, splits on every non-alphanumeric
-        and drops words under four characters. All three would lose this: the @
-        is the whole signal, a dot separates a host name from its domain rather
-        than one word from another, and lab1 is three characters of machine name.
+        Not Get-MatchToken: it drops the @, splits on the dot, and cuts words
+        under four characters, all of which this needs.
 
-        A word is cut at its first dot before comparing, so the short name a
-        hello carries matches the fully qualified one a shell writes. It is not
-        cut anywhere else: lab1-old is not lab1, and neither is lab10.
+        A word is cut at its first dot, so a short name matches a fully
+        qualified one. Nowhere else: lab1-old is not lab1, nor is lab10.
     #>
     param([AllowEmptyString()] [string] $Title, [Parameter(Mandatory)] [string] $Machine)
     if (-not $Title) { return 0 }

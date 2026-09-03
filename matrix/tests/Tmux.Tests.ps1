@@ -13,9 +13,8 @@ BeforeAll {
 
 Describe 'Resolve-MachineTab' {
     It 'answers nothing, and does not read the tabs to say so' {
-        # A remote click is answered here by the pid walk. This route is for the
-        # backend that has no pid, and the pane list carries no title to read, so
-        # running tmux for it would be a process per click for nothing.
+        # The remote click is answered by the pid walk. The pane list carries no
+        # title, so reading it would run a tmux process for nothing.
         $script:reads = 0
         Resolve-MachineTab -Machine 'lab1' -ReadTab { $script:reads++; @() } | Should -BeNullOrEmpty
         $reads | Should -Be 0

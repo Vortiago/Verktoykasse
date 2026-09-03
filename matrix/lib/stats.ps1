@@ -13,8 +13,7 @@
 #   start   startup, once: first line of the script to first frame.
 #
 # One field is words, not a timing: Note, whatever the loop wants said alongside
-# the numbers. The rain uses it for -ExposeOnSSH's standing with the host, which
-# is the answer to "is this even connected" and so goes ahead of the timings.
+# the numbers. The rain puts -ExposeOnSSH's standing with the host there.
 #
 # build and poll are disjoint. The poll runs inside the frame being timed, so a
 # loop that has one hands its duration over as PollFrameMs and this subtracts it.
@@ -80,9 +79,8 @@ function Format-StatsLine {
         $(if ($Renderer.LastWrites -gt 1) { " $($Renderer.LastWrites)w" } else { '' }))
     if ($Stats.StartMs -gt 0) { $rest += [string]::Format($inv, '  start {0:N1}s', ($Stats.StartMs / 1000.0)) }
 
-    # The note leads, and is fitted on its own rather than at the head of the list
-    # below. That list drops its tail whole, so a note too wide for the terminal
-    # would take every timing with it - and the timings are what -Stats is for.
+    # Fitted on its own, not at the head of the list below: that list drops its
+    # tail whole, so a wide note would take every timing with it.
     $line = $head
     if ($Stats.Note) {
         $note = "  $($Stats.Note)"

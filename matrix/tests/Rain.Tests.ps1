@@ -91,23 +91,19 @@ BeforeAll {
     }
 
     # A free loopback port, found by taking one and letting it go. Nothing here
-    # may use the real 47777: a developer running the suite may have a rain up.
+    # may use the real 9999: a developer running the suite may have a rain up.
     function Get-FreePort {
         $l = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, 0)
         $l.Start()
         try { $l.LocalEndpoint.Port } finally { $l.Stop() }
     }
 
-    # One -ExposeOnSSH run against a listener playing the rain, start to finish:
-    # take the report's connection, hand it to $Answer, and give back what the
-    # run drew once it has ended.
+    # One -ExposeOnSSH run against a listener playing the rain: take the
+    # report's connection, hand it to $Answer, give back what the run drew.
     #
-    # Ended, not running. A redirected stdout cannot be opened for reading while
-    # the child still holds it, so a Get-Content mid-run answers nothing and a
-    # wait on one is only ever sitting out the run and calling that a pass.
-    #
-    # $Answer receives the accepted connection and does whatever that case needs
-    # said back down it, before the run ends.
+    # Read after the run ENDS. A redirected stdout cannot be opened while the
+    # child holds it, so a mid-run read answers nothing and a wait on one is
+    # only sitting out the run and calling that a pass.
     function Invoke-ExposeRain ($claudeHome, [string[]] $argv, [scriptblock] $Answer) {
         $port = Get-FreePort
         $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, $port)
@@ -191,8 +187,7 @@ Describe 'matrix.ps1 -Remote' {
                 $b = [System.Text.Encoding]::UTF8.GetBytes("$line`n")
                 $stream.Write($b, 0, $b.Length); $stream.Flush()
             }
-            # The rain answers the hello. That answer is what the reporting side's
-            # -Stats line turns to "connected" on, so it has to come down the wire.
+            # The answer the reporting side's -Stats line reads.
             (Wait-Until -TimeoutMs 15000 -StepMs 50 -Condition { $client.Available -gt 0 }) |
                 Should -BeTrue -Because 'the rain should answer the hello'
             $buf = [byte[]]::new(4096)
@@ -266,10 +261,9 @@ Describe 'matrix.ps1 -ExposeOnSSH' {
         $r.Stdout | Should -Match ([regex]::Escape("$([char]27)[?1049h"))
     }
 
-    # The -Stats line. Each case reads the FIRST line its rain stamps: the screen
-    # is diffed, so a line that changes later arrives as the handful of cells
-    # that moved and cannot be grepped whole. -PollSeconds 0.2 is what puts an
-    # answer in before that first line falls due, one second in.
+    # Each case reads the FIRST line its rain stamps: the screen is diffed, so a
+    # later change arrives as moved cells and cannot be grepped whole.
+    # -PollSeconds 0.2 puts an answer in before that line falls due.
     It 'says it is connecting while the host has not answered' {
         # sshd accepts whether or not a rain is behind it, so this is exactly
         # what a host running no rain looks like, for as long as it lasts.

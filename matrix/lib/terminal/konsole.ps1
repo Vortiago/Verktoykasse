@@ -138,14 +138,8 @@ function Get-TabKey {
 }
 
 function Resolve-MachineTab {
-    # Nothing here to read a machine name out of: Get-AllTerminalTab leaves Name
-    # and Text empty, because the match on this backend is a pid walk. A remote
-    # click gets its answer from that walk, and this route exists for the backend
-    # that has no pid to walk.
-    #
-    # Answered without touching -ReadTab, which is why the caller hands over the
-    # reader rather than the tabs: a verdict this file already knows is not worth
-    # a D-Bus round trip per window and per tab to reach.
+    # A Konsole tab carries no title to read: the remote click is answered by the
+    # pid walk. -ReadTab is untouched, so this costs no D-Bus round trips.
     param([Parameter(Mandatory)] [string] $Machine, [scriptblock] $ReadTab = $null)
     $null
 }

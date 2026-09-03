@@ -3,7 +3,7 @@
 #
 # The connection is dialled out, not listened for. With
 #
-#   ~/.ssh/config     RemoteForward 127.0.0.1:47777 127.0.0.1:47777
+#   ~/.ssh/config     RemoteForward 127.0.0.1:9999 127.0.0.1:9999
 #
 # sshd is already listening on this machine's loopback and forwards to the rain.
 # So this end connects to its own 127.0.0.1 and nothing here has to know that ssh
@@ -13,10 +13,8 @@
 # rain, or the ssh session goes and comes back, and the loop below keeps
 # trying. It never throws into the caller, because the caller is a frame loop.
 #
-# A connect that succeeds proves only that sshd took it. It does the same when no
-# rain is listening at the far end, and drops the channel a moment later. So this
-# side counts itself connected only once the rain has answered the hello, and
-# Get-ExposeStatus says which of those it is in the words the -Stats line shows.
+# A connect proves only that sshd took it: it does the same with no rain behind
+# it. Connected means the rain answered the hello. Get-ExposeStatus says which.
 
 function New-ExposeState {
     <#
@@ -30,19 +28,11 @@ function New-ExposeState {
         block's business, and a port on this state would read as if the state
         machine used it.
     .PARAMETER RetryMs
-        How long to wait after a refused connect. One second: fast enough that
-        starting the rain second is not noticed, slow enough that a machine with
-        no rain at all is not dialling in a loop. The caller raises it to its own
-        poll interval where that is longer, because a dial is only ever attempted
-        on a poll and a retry below that interval is one that never happens.
+        How long to wait after a refused connect. The caller raises it to its own
+        poll interval where that is longer: a dial only happens on a poll.
     .PARAMETER RefusedMs
-        How long a refusal stays on the status after the rain last said it. It
-        has to outlast the redial, or the reason would blink out between two
-        refusals; and it has to expire, or a rain that has since been stopped
-        would leave the report naming a fix for a problem that is gone. Five
-        retries' worth, so it defaults off RetryMs rather than off the clock: the
-        two are one setting, and a slower retry with this left fixed would give
-        exactly the blinking it exists to prevent.
+        How long a refusal stays on the status. Five retries, not five seconds:
+        shorter than the redial and the reason blinks out between two refusals.
     #>
     param([Parameter(Mandatory)] [string] $Machine,
           [AllowEmptyString()] [string] $Token = '',
@@ -57,7 +47,7 @@ function New-ExposeState {
         Dialled = $false   # the last dial was taken, whether or not it survived
         Welcomed = $false  # the rain has answered the hello on this connection
         RefusedWhy = ''    # why the rain last refused this machine
-        RefusedAt = 0      # when it said so, which is what RefusedMs runs from
+        RefusedAt = 0      # when it said so; RefusedMs runs from here
         Buffer = ''        # the partial control line held over from the last read
         Seq = 0
         RetryAt = 0        # the next moment a connect is worth trying
@@ -67,23 +57,15 @@ function New-ExposeState {
 function Get-ExposeStatus {
     <#
     .SYNOPSIS
-        Where the report stands with the host, in the words the -Stats line shows.
+        Where the report stands with the host, in the words -Stats shows.
     .DESCRIPTION
-        host waiting       nothing takes the connection. No ssh session carries
-                           the forward, or it is on another port.
-        host connecting    something takes it and no rain has answered. A host
-                           running no rain reads like this and holds there: sshd
-                           accepts, the far end drops the channel a moment later
-                           when it finds nothing to hand it to, and this side
-                           redials. It is read off the last DIAL, not off the
-                           live connection, so that drop-and-redial does not
-                           flap the status once a second.
-        host connected     the rain welcomed this machine.
-        host refused: ...  the rain said no, and why. It outlives the redial that
-                           follows, because "connecting" between two refusals
-                           would hide the one word that names the fix, and it
-                           expires on RefusedMs so a rain that has since been
-                           stopped does not leave it standing.
+        host waiting       nothing takes the connection: no forward, or wrong port
+        host connecting    taken, unanswered. A host with no rain holds here
+        host connected     the rain welcomed this machine
+        host refused: ...  the rain said no, and why
+
+        Read off the last DIAL, not the live connection: a host with no rain
+        accepts and drops every second, and that must not flap the status.
     #>
     param([Parameter(Mandatory)] [hashtable] $State)
     if ($State.RefusedWhy)    { return "host refused: $($State.RefusedWhy)" }
@@ -132,9 +114,8 @@ function Update-Expose {
           [Parameter(Mandatory)] [scriptblock] $Close,
           [scriptblock] $Focus = $null)
 
-    # A rain that is refusing says so on every redial, about once a second. One
-    # that has been stopped never will, and sshd goes on taking the connection
-    # either way, so nothing else would ever clear this.
+    # A refusing rain re-states it on every redial; a stopped one never will, and
+    # sshd keeps taking the connection either way.
     if ($State.RefusedWhy -and ($Now - $State.RefusedAt) -gt $State.RefusedMs) {
         $State.RefusedWhy = ''
     }
@@ -145,8 +126,7 @@ function Update-Expose {
         $conn = $null
         try { $conn = & $Connect } catch { $conn = $null }
         if (-not $conn) {
-            # Nothing is even taking the connection now, so what the rain last
-            # said is no longer the news.
+            # Nothing takes the connection now: what the rain last said is stale.
             $State.Dialled = $false
             $State.RefusedWhy = ''
             return
@@ -179,8 +159,7 @@ function Update-Expose {
             switch ([string]$o.t) {
                 'welcome' { $State.Welcomed = $true; $State.RefusedWhy = '' }
                 'refused' {
-                    # Filtered like every other string from a peer: the rain is
-                    # trusted to answer, not to write to this screen.
+                    # Filtered like every string from a peer: it reaches a screen.
                     $why = ConvertTo-WireText $o.why 64
                     $State.RefusedWhy = if ($why) { $why } else { 'no reason given' }
                     $State.RefusedAt = $Now

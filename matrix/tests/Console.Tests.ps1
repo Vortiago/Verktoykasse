@@ -221,8 +221,7 @@ Describe 'Frame stats' {
 
     It 'puts the note the loop hands it ahead of the timings' {
         # The one field that is not a number: -ExposeOnSSH's standing with the
-        # host. It answers "is this even connected", so a narrow terminal drops
-        # the timings before it.
+        # host. A narrow terminal drops the timings before it.
         $stats = New-FrameStats -Show $true -TargetFps 30 -StartMs 940
         $stats.Note = 'host connected'
         Get-StatsLine 10.0 8.0 $stats 200 | Should -Match 'late \d+%  host connected  build'
@@ -236,9 +235,8 @@ Describe 'Frame stats' {
     }
 
     It 'drops a note too wide for the terminal without taking the timings with it' {
-        # The tail is dropped whole from the first field that does not fit. The
-        # note leads, so were it in that tail a long refusal would leave nothing
-        # but the frame rate - and the timings are what -Stats is for.
+        # The tail is dropped whole from the first field that does not fit, so a
+        # note in that tail would take every timing with it.
         $stats = New-FrameStats -Show $true -TargetFps 30
         $stats.Note = 'host refused: not JSON, or a version this build does not speak'
         $narrow = Get-StatsLine 10.0 8.0 $stats 60

@@ -60,9 +60,8 @@ function Update-RemoteHub {
     .DESCRIPTION
         Nothing here blocks. Accept and Read are expected to answer at once with
         whatever is ready, because this runs inside the frame loop and a stall
-        shows as a dropped frame. Write is in that budget too: the only thing
-        written here is the answer to a hello, which is a couple of dozen bytes
-        and cannot fill a send window.
+        shows as a dropped frame. Write too: it only ever sends the hello's
+        answer, too few bytes to fill a send window.
     .PARAMETER Accept
         -> the connections that arrived since the last call, or nothing.
     .PARAMETER Read
@@ -70,9 +69,8 @@ function Update-RemoteHub {
         peer closed. The two differ: '' is a quiet peer, $null is a peer that has
         gone.
     .PARAMETER Write
-        conn, line -> writes it. Used once per peer, to answer the hello: a
-        welcome, or the reason it was refused. Throwing is how it reports a
-        broken pipe, and one line that short can only fail for that reason.
+        conn, line -> writes it. Once per peer, to answer the hello: a welcome,
+        or the reason it was refused. Throwing reports a broken pipe.
     .PARAMETER Close
         conn -> hangs it up. Called once per peer, by this function only.
     #>
@@ -109,8 +107,7 @@ function Update-RemoteHub {
                 # The hub hangs up on a peer that failed the hello. Ignoring
                 # it would hold a socket open to something that has already
                 # proved it is not a reporting rain, and would re-read its lines
-                # to the same verdict. It is told why first, best effort: the
-                # socket is going anyway, so a failed write changes nothing.
+                # to the same verdict. Told why first, best effort.
                 if ($peer.RefusedWhy) {
                     try { & $Write $peer.Conn (ConvertTo-RefusedLine -Why $peer.RefusedWhy) } catch { }
                     $gone = $true; break
@@ -118,11 +115,9 @@ function Update-RemoteHub {
             }
         }
 
-        # Answered as soon as the hello is in, and once. sshd accepts the peer's
-        # connection whether or not a rain is behind it, and this line is what
-        # tells the peer which it got. A welcome that cannot be written is a
-        # connection that was never usable: drop it now rather than let it sit
-        # out the whole drop window as a half-open peer.
+        # Answered as soon as the hello is in, and once: sshd accepts with or
+        # without a rain behind it, and this is what tells the peer which it got.
+        # A welcome that cannot be written means a connection that never worked.
         if (-not $gone -and $peer.Hello -and -not $peer.Welcomed) {
             $peer.Welcomed = $true
             try { & $Write $peer.Conn (ConvertTo-WelcomeLine) } catch { $gone = $true }
@@ -157,8 +152,7 @@ function Read-RemoteLine {
         $why = Test-RemoteHello $o -Token $Hub.Token
         if ($why) {
             $Hub.Note = "matrix: a machine was refused, $why"
-            # Test-RemoteHello answers a reason or nothing, so this doubles as
-            # the flag that the peer failed: one field, no pair to keep in step.
+            # A reason or nothing, so this is also the flag. One field.
             $Peer.RefusedWhy = $why
             return $false
         }
@@ -235,28 +229,18 @@ function Resolve-RemoteTab {
     .SYNOPSIS
         The local tab holding this machine's ssh session, or nothing.
     .DESCRIPTION
-        Two routes, exact one first. The port comes off the accepted socket, and
-        Resolve-PeerProcessId turns it into the pid of the local ssh client. From
-        there it is Resolve-TabByPid, which stops at the nearest tab. That answer
-        is cached per peer, miss included: the ssh client's pid does not change
-        for the life of the connection, and ss is an external call.
+        Two routes, exact one first. The port off the accepted socket names the
+        local ssh client, and Resolve-TabByPid walks up to the nearest tab. That
+        answer is cached per peer, miss included.
 
-        Where no pid names a tab, the backend's own Resolve-MachineTab answers
-        instead, by whatever its terminal gives it. It is asked on every click
-        rather than cached, because what it reads can change between two of them.
-        A backend with nothing to answer says so without reading anything, which
-        is why it is handed the reader and not the tabs.
+        Where no pid names a tab, the backend's Resolve-MachineTab answers, asked
+        on every click because what it reads changes between two of them. It
+        matches on Machine, a string the peer sent: a peer that lies about its
+        name can have a click raise a tab titled after another machine. A window
+        is brought to the front, nothing is typed, no id is trusted.
 
-        That second route matches on Machine, which is a string the peer sent.
-        The pid route takes nothing from the wire on purpose, and this one cannot:
-        no terminal ties a tab to a socket. So a peer that lies about its name can
-        have a click raise a tab titled after another machine - a window brought
-        to the front, nothing typed, no id trusted. The exact route is tried first
-        everywhere it exists, so this is reachable only where no pid names a tab.
-
-        Resolved on the click, not on the poll. A tab read costs about 100 ms, and
-        the frame loop must not pay it once a second for a click that may never
-        come. Between the two routes it is paid at most once.
+        On the click, not the poll: a tab read costs ~100 ms, and no path here
+        pays it twice.
     .PARAMETER OwnerOf
         port -> the pid holding it. Injected, so this is testable with no socket.
     .PARAMETER Ancestors
