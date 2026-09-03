@@ -70,8 +70,40 @@ Colour and fall rate track the status. Tune them per status in `styles.psd1`;
 | `waiting` | red, blocked on an answer; `waitingFor` names it | crawling |
 
 Status comes from `~/.claude/sessions/<pid>.json`, the peer-discovery registry
-every session writes - the same source `ListAgents` reads. It updates the
-moment a session changes state.
+every session writes - the same source `ListAgents` reads. The CLI rewrites its
+record the moment a session changes state.
+
+### A host that writes no status
+
+The VS Code extension registers a session once, at startup, and never returns:
+no `status` for the whole of its life. Read literally that is an idle session,
+so every such lane sat amber whatever it was doing.
+
+The transcript is the second witness. `~/.claude/projects/*/<sessionId>.jsonl`
+is appended in real time by every host, and its newest *conversation* record -
+`assistant` or `user`, walking back past the bookkeeping records most files end
+on - says whether the turn is over:
+
+| Newest conversation record | Lane |
+| --- | --- |
+| `assistant`, not stopped on a tool | `idle` |
+| `assistant` stopped on `tool_use`, or `user` | `busy` |
+| either of those, but the file has not grown for 90 s | `waiting` |
+
+The last row is the one guess: a permission prompt is written to no file, so a
+long silence mid-turn is the only sign of one, and a slow build goes red too.
+Red early is a nuisance, green forever is the bug. `BlockedSeconds` in
+`lib/sessions.ps1` is the threshold.
+
+A registry that does write a status is always believed - it knows the
+`waitingFor` reason a file cannot. The transcript is read only when the
+registry says nothing, and a lane it cannot answer for keeps the registry's
+answer. No transcript at all is a session that has never taken a turn, and gets
+no lane: that is the empty session a VS Code window opens with, left registered
+and alive when you open a past session in its place. The lane appears when the
+session is used.
+
+The header ages a status from the write that changed it, not the newest one.
 
 The registry also names a per-session pipe, `\\.\pipe\LOCAL\cc-msg-<hash>`,
 which carries the peer message protocol and its `notify_idle` subscription.

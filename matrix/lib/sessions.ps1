@@ -132,7 +132,24 @@ function Get-ClaudeSession {
             if ($r.kind -ne 'interactive') { continue }
             if (-not (Test-SessionAlive -ProcessId $r.pid -ProcStart $r.procStart)) { continue }
 
-            $status = if ($r.status) { [string]$r.status } else { 'idle' }
+            # A record with no status is not an idle session, it is a host that
+            # writes none. Ask the transcript. A host that does write status is
+            # always believed: it knows what a file cannot, such as why a session
+            # is waiting.
+            $status    = 'idle'
+            $updatedAt = [int64]$r.statusUpdatedAt
+            if ($r.status) { $status = [string]$r.status }
+            else {
+                # No transcript file at all, from a host that writes no status, is a
+                # session that has never taken a turn - and one of those is left
+                # behind every time a VS Code window opens its empty session and the
+                # user opens a past session in its place. The empty one stays
+                # registered and stays alive, so it rained a second lane for the
+                # same window with nothing in it. Nothing to show, so no lane. It
+                # appears the moment the session is used.
+                if (-not (Get-SessionTranscript $r.sessionId)) { continue }
+                if ($t = Get-TranscriptStatus $r.sessionId) { $status = $t.Status; $updatedAt = $t.UpdatedAt }
+            }
             [pscustomobject]@{
                 Pid        = [int]$r.pid
                 SessionId  = [string]$r.sessionId
@@ -142,7 +159,7 @@ function Get-ClaudeSession {
                 Status     = $status
                 WaitingFor = if ($r.waitingFor) { [string]$r.waitingFor } else { '' }
                 StartedAt  = [int64]$r.startedAt
-                UpdatedAt  = [int64]$r.statusUpdatedAt
+                UpdatedAt  = $updatedAt
                 Style      = Get-SessionStyle $status
             }
         } catch { continue }
@@ -196,6 +213,167 @@ function Get-SessionTranscript {
         $hit = $script:TranscriptIndex[$SessionId]
     }
     $hit
+}
+
+# Status for a session whose registry record does not carry one. Claude Code's CLI
+# rewrites its record on every status change; the VS Code extension writes it once,
+# at startup, and never returns - no "status", no "statusUpdatedAt". Those sessions
+# read as idle for their whole life, whatever they are doing.
+#
+# The transcript is the second witness. Every host appends it in real time, and its
+# last record says whether the turn is over:
+#
+#   assistant, not stopped on a tool  the turn ended, the prompt is showing    idle
+#   assistant, stop_reason tool_use   stopped for a tool, waiting on its result busy
+#   user                              a prompt or a tool result just landed     busy
+#
+# Bookkeeping records are skipped, not read as records: see ConversationRecord.
+#
+# A mid-turn transcript that has not grown for BlockedSeconds is not working, it is
+# blocked. A permission prompt is written to no file: the turn stops dead at the
+# tool_use record until it is answered, and the transcript goes quiet with it. A
+# tool that honestly runs that long - a build, a long test suite - reads as blocked
+# too. That is the trade worth making: a working session shown red early is a
+# nuisance, a blocked session shown green forever is the bug this exists to fix.
+$script:BlockedSeconds = 90
+
+# Tail windows for the newest record, tried in order. A seek into the middle of the
+# file cuts the first line in half and a record still being written cuts the last,
+# so the read walks back to the newest record it can read. 16 KB holds any ordinary
+# one; a single tool_result can be far larger, and the second window covers it
+# rather than answering "cannot tell" for the whole of a turn.
+$script:StatusTailBytes = @(16KB, 256KB)
+
+# The record types that are part of the conversation. Everything else in a
+# transcript is bookkeeping Claude Code appends around the turn - last-prompt,
+# ai-title, cost-state, permission-mode, queue-operation, file-history-delta - and
+# almost always after it: of 82 transcripts on the machine this was written for,
+# 68 end on last-prompt and 2 on an assistant record. So the newest record in the
+# file is nearly never the newest thing that was said, and reading it as though it
+# were called every finished session mid-turn, then blocked.
+$script:ConversationRecord = @('assistant', 'user')
+
+# sessionId -> the last verdict, as @{ MTime; Status; Since }. An unchanged file
+# cannot have changed its answer, and the age in the header wants the write that
+# changed the status, not the newest. A Status of $null is "this file cannot say".
+$script:TranscriptState = @{}
+
+function Read-StreamTail {
+    <#
+    .SYNOPSIS
+        The newest $Bytes of an open transcript, as text.
+    #>
+    param([Parameter(Mandatory)] [System.IO.FileStream] $Stream,
+          [Parameter(Mandatory)] [int] $Bytes)
+
+    $n = [int][Math]::Min([int64]$Bytes, $Stream.Length)
+    if ($Stream.Length -gt $n) { [void]$Stream.Seek(-$n, 'End') }
+    elseif ($Stream.CanSeek)   { [void]$Stream.Seek(0, 'Begin') }
+
+    # One exact-size read, not StreamReader.ReadToEnd: the reader grows a builder by
+    # doubling and carries its own buffers on top, ~4x the window in garbage per
+    # call. This runs per session per poll, inside a frame the rain is drawing.
+    $buf = [byte[]]::new($n)
+    $got = 0
+    while ($got -lt $n) {
+        $read = $Stream.Read($buf, $got, $n - $got)
+        if ($read -le 0) { break }
+        $got += $read
+    }
+    $text = [System.Text.Encoding]::UTF8.GetString($buf, 0, $got)
+    # Only a window that starts at byte 0 can carry the file's BOM, and a BOM left
+    # in place hides the first line from the parser. Every other window starts
+    # mid-file, where there is none.
+    if ($text.Length -and $text[0] -eq [char]0xFEFF) { $text.Substring(1) } else { $text }
+}
+
+function Test-TranscriptEnded {
+    <#
+    .SYNOPSIS
+        $true when the newest conversation record of a transcript ended the turn,
+        $false when it did not, $null when no such record could be read.
+    #>
+    param([Parameter(Mandatory)] [string] $Path)
+
+    foreach ($window in $script:StatusTailBytes) {
+        # FileShare ReadWrite: the session is appending to this file right now.
+        $fs = [System.IO.File]::Open($Path, 'Open', 'Read', 'ReadWrite')
+        try { $raw = Read-StreamTail -Stream $fs -Bytes $window } finally { $fs.Dispose() }
+
+        $lines = $raw -split "`n"
+        for ($i = $lines.Count - 1; $i -ge 0; $i--) {
+            $line = $lines[$i].Trim()
+            # The tail is mostly bookkeeping, and none of it can end a turn. One
+            # match skips a record without parsing it - the gate Read-TaskLine uses,
+            # for the same reason: a parse costs ~8x what the test does, and this
+            # walks back over several records to reach the one that answers.
+            if ($line -notmatch '"type"\s*:\s*"(assistant|user)"') { continue }
+            try { $o = ConvertFrom-Json $line } catch { continue }
+            # The match is a prefilter over the whole record, so a bookkeeping one
+            # that quotes a conversation record reaches here. The parsed type is the
+            # authority.
+            if ($script:ConversationRecord -notcontains $o.type) { continue }
+            # An assistant record that stopped to call a tool is waiting on the
+            # result: the turn is open. Every other reason it stopped ends it,
+            # including the null a subagent transcript ends on. A user record is a
+            # prompt or a tool result, and the turn is open either way.
+            return ($o.type -eq 'assistant' -and $o.message.stop_reason -ne 'tool_use')
+        }
+    }
+    return $null
+}
+
+function Get-TranscriptStatus {
+    <#
+    .SYNOPSIS
+        Status and its age for a session, read from its transcript.
+    .DESCRIPTION
+        A hashtable of Status (busy | waiting | idle) and UpdatedAt (epoch ms), or
+        $null when the transcript cannot answer - no file yet, or not one readable
+        record in it. A caller that gets $null keeps whatever the registry said.
+    #>
+    param([Parameter(Mandatory)] [string] $SessionId)
+
+    $path = Get-SessionTranscript $SessionId
+    if (-not $path) { return $null }
+
+    try {
+        $mtime = [System.IO.File]::GetLastWriteTimeUtc($path)
+        # The verdict is the newest record plus how old it is. Only the first needs
+        # the file, so an unchanged mtime re-ages the last one instead of reading a
+        # tail again. A busy session writes every second or two; this runs per
+        # session per poll. A cached $null is cached too: without it a transcript
+        # that says nothing re-reads both windows on every poll for the whole run.
+        $seen = $script:TranscriptState[$SessionId]
+        if ($seen -and $seen.MTime -eq $mtime) {
+            if ($null -eq $seen.Status) { return $null }
+            $ended = $seen.Status -eq 'idle'
+        }
+        else {
+            $ended = Test-TranscriptEnded $path
+            if ($null -eq $ended) {
+                $script:TranscriptState[$SessionId] = @{ MTime = $mtime; Status = $null; Since = $mtime }
+                return $null
+            }
+        }
+
+        $quiet  = ([datetime]::UtcNow - $mtime).TotalSeconds
+        $status = if ($ended) { 'idle' }
+                  elseif ($quiet -ge $script:BlockedSeconds) { 'waiting' }
+                  else { 'busy' }
+
+        # How long the status has held, which is not how long since the last write:
+        # a working lane appending every second would read "working 0s" forever.
+        # The write that changed the answer is when the answer changed - exact for a
+        # turn that ended, and for one that stalled. A session already mid-turn when
+        # the rain starts has no such write to point at, so its first age is short
+        # and grows true from there.
+        $since = if ($seen -and $seen.Status -eq $status) { $seen.Since } else { $mtime }
+        $script:TranscriptState[$SessionId] = @{ MTime = $mtime; Status = $status; Since = $since }
+
+        @{ Status    = $status
+           UpdatedAt = [DateTimeOffset]::new($since, [timespan]::Zero).ToUnixTimeMilliseconds() }
+    } catch { $null }
 }
 
 # Branch and opening prompt per session. Neither moves while the rain runs, so open
@@ -256,9 +434,7 @@ function Get-SessionFact {
                 }
                 $head.Dispose()
 
-                if ($fs.Length -gt $TailBytes) { [void]$fs.Seek(-$TailBytes, 'End') }
-                elseif ($fs.CanSeek) { [void]$fs.Seek(0, 'Begin') }
-                $raw = [System.IO.StreamReader]::new($fs, $enc).ReadToEnd()
+                $raw = Read-StreamTail -Stream $fs -Bytes $TailBytes
 
                 # Ordinal: the culture-sensitive default search is ~7x slower
                 $at = $raw.LastIndexOf('"gitBranch"', [StringComparison]::Ordinal)
