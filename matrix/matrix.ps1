@@ -67,6 +67,8 @@
         ~/.ssh/config     Host lab1 lab2
                               RemoteForward 127.0.0.1:47777 127.0.0.1:47777
 
+        or per login    ssh -R 127.0.0.1:47777:127.0.0.1:47777 lab1
+
     One port serves every machine. A remote lane is named "<machine>: <session>".
     It never enters the tab map, because its process is not on this machine.
 

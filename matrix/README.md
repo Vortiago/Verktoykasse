@@ -290,6 +290,15 @@ Host lab1 lab2 lab3
     RemoteForward 127.0.0.1:47777 127.0.0.1:47777
 ```
 
+Or carry the forward on the login itself, which needs no config and is how you
+try it before writing one:
+
+```bash
+ssh -R 127.0.0.1:47777:127.0.0.1:47777 lab1
+```
+
+Change the port in both halves and in `-RemotePort` on both ends, or in none.
+
 Then, in a tmux window on the machine you logged in to:
 
 ```powershell
