@@ -10,19 +10,25 @@ function oclaude-status {
         -ForegroundColor $(if ($up) { 'DarkGreen' } else { 'Red' })
 
     # The first question when a tier is not the one you expected is which file was read.
-    if ($cfg.MachineConfig) {
-        Write-Host ("config   {0}" -f $cfg.MachineConfig) -ForegroundColor DarkGray
-    } else {
-        Write-Host ("config   defaults from lib/config.ps1  (no {0})" -f (Get-OClaudeMachineConfigPath)) `
-            -ForegroundColor DarkYellow
+    $cfgState = Get-OClaudeConfigState -Cfg $cfg
+    Write-Host ("config   {0}" -f $cfgState.Description) `
+        -ForegroundColor $(if ($cfgState.Loaded) { 'DarkGray' } else { 'DarkYellow' })
+    if (-not $cfgState.Exists) {
         Write-Host '         run oclaude-init-config to make one for this machine' -ForegroundColor DarkGray
     }
     $have = if ($up) { Get-OllamaModel -Endpoint $cfg.Endpoint } else { @() }
     Write-Host ''
+    # Two tiers can share one cloud tag, and the access check is a real generation with a
+    # 120s timeout. Ask once per tag rather than once per tier.
+    $probed = @{}
     foreach ($tier in $cfg.Models.Keys) {
         $model = $cfg.Models[$tier]
         if (Test-CloudModel $model) {
-            $state = if ($up) { Test-OllamaCloudModel -Model $model -Endpoint $cfg.Endpoint } else { 'daemon down' }
+            if (-not $probed.ContainsKey($model)) {
+                $probed[$model] = if ($up) { Test-OllamaCloudModel -Model $model -Endpoint $cfg.Endpoint }
+                                  else { 'daemon down' }
+            }
+            $state = $probed[$model]
             $ok    = $state -eq 'ok'
             $clean = ($state -replace '\s+', ' ').Trim()
             $label = if ($ok) { 'cloud, access ok' }
@@ -61,7 +67,7 @@ function oclaude-help {
     Write-Host '  oclaude-build-models' -ForegroundColor Cyan -NoNewline
     Write-Host '       recreate derived tags (num_ctx + sampling params)'
     Write-Host '  oclaude-restart-daemon' -ForegroundColor Cyan -NoNewline
-    Write-Host '     restart ollama with User-scope OLLAMA_* applied'
+    Write-Host '     restart ollama so a changed setting takes'
     Write-Host '  oclaude-help' -ForegroundColor Cyan -NoNewline
     Write-Host "               this text; run 'claude --help' for the CLI's own flags"
     Write-Host ''
@@ -76,11 +82,9 @@ function oclaude-help {
     Write-Host '  notes' -ForegroundColor White
     Write-Host ("    context      Claude Code capped at {0}; must stay <= the smallest num_ctx" -f $cfg.MaxContextTokens) -ForegroundColor Gray
     Write-Host '    first turn   costs a full prefill; later turns extend the cache and are cheap' -ForegroundColor Gray
-    Write-Host ('    config       {0}' -f $(if ($cfg.MachineConfig) { $cfg.MachineConfig }
-                                              else { 'defaults, no machine file' })) -ForegroundColor Gray
-    Write-Host ('    daemon       {0}. config.ps1 holds no daemon setting' -f
-                $(if (Test-OClaudeIsWindows) { 'set User-scope OLLAMA_* variables' }
-                  else { 'set OLLAMA_* in the service drop-in, or in this shell' })) -ForegroundColor Gray
+    Write-Host ('    config       {0}' -f (Get-OClaudeConfigState -Cfg $cfg).Description) -ForegroundColor Gray
+    Write-Host ('    daemon       {0}. Neither config file holds one' -f
+                (Get-OllamaSettingsHint)) -ForegroundColor Gray
     Write-Host '    advisor      $env:OCLAUDE_ADVISOR overrides its model per shell (use an alias)' -ForegroundColor Gray
     Write-Host ("    waits        {0}s byte-idle, {1} tool calls at once (ollama serves 1 per model)" -f ($cfg.StreamIdleMs / 1000), $cfg.ToolConcurrency) -ForegroundColor Gray
     Write-Host ''

@@ -171,15 +171,17 @@ One rule: **a key in the machine file replaces the matching key outright.**
 Nothing merges inside a key.
 
 So a machine file that sets `Models` must list all four tiers, and one that sets
-`Derived` must list every tag it wants built. A key it leaves out keeps the
-default, comments and all.
+`Derived` must list every spec it needs. A key it leaves out keeps the default,
+comments and all.
 
-That rule is what keeps the file readable, and it has one sharp edge:
-`oclaude-pull` walks `Derived` and pulls every base model it names. A machine
-file that overrides `Models` but not `Derived` inherits the default's 35B and
-downloads it. oclaude warns about that, and about a tier left out of `Models`, a
-tier with no label in `Names`, and a key it does not recognise. All four are
+oclaude warns about the mistakes that rule makes possible: a tier left out of
+`Models`, a tier with no label in `Names`, a key it does not recognise, and a
+context cap above the 200K ceiling `Disable1MContext` asserts. All four are
 silent failures otherwise.
+
+`Derived` is a library of specs, not a list of things to build. `oclaude-pull`
+and `oclaude-build-models` only touch a tag some tier points at, so a spec left
+in place for a model you are not running today costs nothing.
 
 The machine file is read fresh on every command, so an edit takes effect on the
 next `oclaude` with no reload. Editing a file under `lib/` needs a reload, and

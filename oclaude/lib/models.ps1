@@ -7,6 +7,17 @@ function Test-CloudModel {
     return [bool]($Model -match '(:|-)cloud$')
 }
 
+function Get-OClaudeLocalModel {
+    # The tags this map runs locally: every tier model that is not a cloud tag. A derived
+    # tag name is one of these, because a tier points at the TAG and not at its base
+    # model. One list therefore answers three questions -- what to pull, what to build,
+    # and what proves the daemon is serving your model store.
+    param([Parameter(Mandatory)]$Cfg)
+    # Wrapped, because Sort-Object returns a scalar for a one-model map and every caller
+    # asks it for .Count or -contains.
+    @(@($Cfg.Models.Values | Where-Object { -not (Test-CloudModel $_) }) | Sort-Object -Unique)
+}
+
 function Get-OllamaModel {
     # Both tagged and bare names: /api/tags reports "cc-chat-35b-q8:latest" while the
     # model map spells it "cc-chat-35b-q8". Either form is valid to send to the API.
@@ -52,7 +63,13 @@ function Build-OClaudeDerivedTag {
     param([Parameter(Mandatory)]$cfg)
     if (-not (Start-OllamaServer -Endpoint $cfg.Endpoint)) { return }
 
-    foreach ($tag in $cfg.Derived.Keys) {
+    # Only the tags a tier points at. A spec nothing runs costs nothing, so Derived can
+    # carry a model you are not using today without building or pulling its weights.
+    $localModels = Get-OClaudeLocalModel -Cfg $cfg
+    $tags = @($cfg.Derived.Keys | Where-Object { $localModels -contains $_ })
+    if (-not $tags) { Write-Host 'no derived tag is in use' -ForegroundColor DarkGray }
+
+    foreach ($tag in $tags) {
         $spec = $cfg.Derived[$tag]
         $file = Join-Path ([System.IO.Path]::GetTempPath()) "Modelfile.$tag"
         $lines = @("FROM $($spec.From)", "PARAMETER num_ctx $($spec.NumCtx)")
@@ -100,9 +117,12 @@ function oclaude-pull {
     if (-not (Start-OllamaServer -Endpoint $cfg.Endpoint)) { return }
     $have = Get-OllamaModel -Endpoint $cfg.Endpoint
 
-    $bases = @($cfg.Derived.Values | ForEach-Object { $_.From }) | Sort-Object -Unique
-    $plain = @($cfg.Models.Values) |
-        Where-Object { -not (Test-CloudModel $_) -and -not $cfg.Derived.Contains($_) }
+    # Same filter as Build-OClaudeDerivedTag: the bases of the derived tags in use, plus
+    # any tier that names a base model directly.
+    $localModels = Get-OClaudeLocalModel -Cfg $cfg
+    $bases = @($cfg.Derived.Keys | Where-Object { $localModels -contains $_ } |
+               ForEach-Object { $cfg.Derived[$_].From }) | Sort-Object -Unique
+    $plain = @($localModels | Where-Object { -not $cfg.Derived.Contains($_) })
     $missing = @(@($bases) + @($plain) | Sort-Object -Unique |
         Where-Object { $have -notcontains $_ })
 

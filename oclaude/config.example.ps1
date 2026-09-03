@@ -4,9 +4,10 @@
 # repo: this file is a starting point, and your copy is yours.
 #
 # The file must END with a hashtable. Every key in it REPLACES the matching key in
-# lib/config.ps1 outright, and nothing merges inside a key. So Models must list all
-# four tiers, and Derived must list every tag you want built. oclaude warns at launch
-# about a tier left out, a tag no tier uses, and a key it does not recognise.
+# lib/config.ps1 outright, and nothing merges inside a key. So Models must list all four
+# tiers, and Derived must list every spec you need. oclaude warns at launch about a tier
+# left out, a tier with no label, a key it does not recognise, and a context cap above
+# the ceiling Disable1MContext asserts.
 #
 # Run `oclaude-config-path` to see which file this shell reads. It is read fresh on
 # every command, so an edit takes effect on the next `oclaude` with no reload.
@@ -48,9 +49,9 @@
     # references the base model's blobs, so it costs a manifest rather than a copy.
     # Rebuild after an edit with oclaude-build-models.
     #
-    # Only the local tier needs one. Listing this key at all drops the default's
-    # cc-chat-35b-q8, which is the point: oclaude-pull walks Derived and would otherwise
-    # fetch a 35B nothing here runs.
+    # Only the local tier needs one. Listing this key drops the default's cc-chat-35b-q8
+    # spec, though nothing would build or pull it either way: only a tag some tier points
+    # at is built.
     #
     # LFM2.5-8B-A1B is picked on IFEval and non-hallucination rate rather than size, and
     # 1B ACTIVE is what makes it usable with no GPU to spare. num_ctx is the model

@@ -52,8 +52,8 @@ function Get-OClaudeDefaultConfig {
             NumCtx = 128000
             Params = [ordered]@{ temperature = 0.2; top_k = 80; repeat_penalty = 1.05 }
         }
-        # A tag that no tier points at is still built and still pulled, so add one
-        # here only for something that actually uses it.
+        # A tag no tier points at is neither built nor pulled, so a spec left here for
+        # a model you are not running today costs nothing.
     }
     $names = [ordered]@{
         OPUS   = 'Qwen3.6 35B-A3B q8 256k (local)'
