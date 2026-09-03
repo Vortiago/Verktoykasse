@@ -219,6 +219,22 @@ Describe 'Frame stats' {
         foreach ($f in 'build', 'write', 'poll', 'runs', 'start') { $wide | Should -Match $f }
     }
 
+    It 'puts the note the loop hands it ahead of the timings' {
+        # The one field that is not a number: -ExposeOnSSH's standing with the
+        # host. It answers "is this even connected", so a narrow terminal drops
+        # the timings before it.
+        $stats = New-FrameStats -Show $true -TargetFps 30 -StartMs 940
+        $stats.Note = 'host connected'
+        Get-StatsLine 10.0 8.0 $stats 200 | Should -Match 'late \d+%  host connected  build'
+        $narrow = Get-StatsLine 10.0 8.0 $stats 48
+        $narrow | Should -Match 'host connected'
+        $narrow | Should -Not -Match 'build'
+    }
+
+    It 'leaves the note out where the loop has none' {
+        Get-StatsLine 10.0 8.0 | Should -Not -Match 'host'
+    }
+
     It 'says nothing until its window is up' {
         $stats = New-FrameStats -Show $true -TargetFps 30
         $stats.Frame  = New-FakeClock 10

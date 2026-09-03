@@ -321,6 +321,19 @@ line each one sends. One listener, however many machines.
 
 The payload is one JSON object per line.
 
+The rain answers the first line: a welcome, or the reason it refused. That answer
+is the only thing that tells the reporting side a rain is there. sshd accepts its
+connection whether or not one is, and drops the channel a moment later when the
+ssh client on your machine finds nothing to connect to. Run the report with
+`-Stats` and its line leads with where it stands:
+
+| It reads | It means |
+| --- | --- |
+| `host waiting` | Nothing takes the connection. No ssh session carries the forward, or it is on another port |
+| `host connecting` | Something takes it and no rain has answered. A host running no rain holds here: sshd accepts, the far end drops the channel a moment later, and the report redials |
+| `host connected` | The rain welcomed this machine |
+| `host refused: wrong token` | The rain said no, and why. It outlasts the redial that follows, so the word that names the fix stays on screen, and expires a few seconds after the rain stops saying it |
+
 A remote session never enters the tab map, because it has no pid on this machine.
 A remote pid that happened to exist here would claim a local tab and block the
 session that owns it. `-ThisWindow` does not drop remote lanes either. Asking for
@@ -349,9 +362,15 @@ could name its own ssh could steal a click.
 
 | Backend the rain runs in | Remote window switch | Local ssh tab raised |
 | --- | --- | --- |
-| tmux | yes | yes |
-| Konsole | yes | yes |
-| Windows Terminal | yes | no, it matches tabs on title and has no pid to match |
+| tmux | yes | yes, by pid |
+| Konsole | yes | yes, by pid |
+| Windows Terminal | yes | best effort, by title |
+
+Windows Terminal has no pid to match, so there the rain reads tab titles. ssh
+leaves the remote shell's title in the tab, and a shell titles itself
+`user@machine`, so a tab saying `atle@lab1` is taken for `lab1`. A tab that only
+has the machine as a word comes second, and nothing else counts. Titles change
+with every prompt, so this is looked up on each click and never cached.
 
 The reporting side needs tmux for the switch, because the switch is a tmux
 command. Without it, sessions are still reported and the rain says so once at
@@ -376,7 +395,9 @@ and in every process listing on the machine.
 | A machine comes back | The lanes recover their colour, with no restart here |
 | A laptop closes mid-session | Half-open socket, dropped after 60 s. Frozen lanes are worse than none |
 | Two ssh sessions to one machine | The second `RemoteForward` cannot bind and ssh warns. Both shells still reach the first forward, and the lane is shown once, from whichever spoke last |
-| The rain's port is already bound | It says so and keeps drawing the local lanes |
+| The rain's port is already bound | It says so and keeps drawing the local lanes. On Windows a port nobody listens on can still be refused: Hyper-V and WSL reserve ranges, listed by `netsh interface ipv4 show excludedportrange protocol=tcp`. Pick a `-RemotePort` outside them, on both ends and in the `RemoteForward` line |
+| No rain on the host | sshd still takes the report's connection, and the ssh client on the host drops it a moment later. The report redials, and its `-Stats` line holds at `host connecting` |
+| The tokens differ | The rain's empty lane says a machine was refused. The report's `-Stats` line reads `host refused: wrong token` |
 | Nothing has reported yet | The empty lane says `waiting for a machine to report` |
 
 Do not set `ExitOnForwardFailure yes`. It turns a port that is merely busy into a
@@ -396,8 +417,9 @@ lib/
   lanes.ps1             sessions to lanes
   sessions.ps1          Claude's session registry, and the /proc process-table readers
   terminal/
-    tabmap.ps1          session to tab, over time, and the pid match both Linux
-                        backends answer with. Knows no platform
+    tabmap.ps1          session to tab, over time, the pid match both Linux
+                        backends answer with, and the title match a remote click
+                        falls back to. Knows no platform
     windows-terminal.ps1  the UI Automation backend
     konsole.ps1           the D-Bus backend
     tmux.ps1              the backend that runs inside tmux: a session is the scope, a window the tab

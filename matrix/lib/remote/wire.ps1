@@ -10,7 +10,14 @@
 #
 #   {"v":1,"t":"hello","machine":"lab1","token":"...","now":1756...}
 #   {"v":1,"t":"frame","seq":12,"now":1756...,"sessions":[ ... ]}
-#   {"v":1,"t":"focus","id":"a1b2"}                    the one line the rain sends
+#
+# The rain answers the hello. That answer is the only way the reporting side can
+# tell a rain from an sshd that accepted the connection and found nothing behind
+# it, and it is what its -Stats line reads:
+#
+#   {"v":1,"t":"welcome"}                              the hello was accepted
+#   {"v":1,"t":"refused","why":"wrong token"}          it was not; the rain hangs up after
+#   {"v":1,"t":"focus","id":"a1b2"}                    switch to this session
 #
 # A session record carries what the lane header prints and nothing more. The
 # reporting side computes its own title and task, so the rain never reads a
@@ -244,10 +251,23 @@ function ConvertTo-FrameLine {
     })
 }
 
+function ConvertTo-WelcomeLine {
+    # The rain's answer to a hello it accepted. It carries nothing: the reporting
+    # side stores nothing from it but the fact that it came.
+    ConvertTo-Json -Compress -InputObject ([ordered]@{ v = $script:WireVersion; t = 'welcome' })
+}
+
+function ConvertTo-RefusedLine {
+    # The rain's answer to a hello it did not accept, sent before it hangs up. The
+    # reason is one of Test-RemoteHello's own strings, never text the peer sent.
+    param([Parameter(Mandatory)] [string] $Why)
+    ConvertTo-Json -Compress -InputObject ([ordered]@{ v = $script:WireVersion; t = 'refused'; why = $Why })
+}
+
 function ConvertTo-FocusLine {
     <#
     .SYNOPSIS
-        The one line the rain sends: switch to the session behind this lane.
+        The one thing the rain asks for: switch to the session behind this lane.
     .DESCRIPTION
         The session id is enough. The reporting machine looks it up in the tab map
         it already keeps, which is the same lookup the local click path does, and

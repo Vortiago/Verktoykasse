@@ -247,6 +247,63 @@ Describe 'Update-SessionTabMap' {
     }
 }
 
+Describe 'Resolve-TabByTitle' {
+    # The route a remote click takes when no pid names the tab, which on Windows
+    # Terminal is always. ssh leaves the remote shell's title in the tab, and a
+    # shell titles itself user@machine.
+    It 'finds the tab a shell titled user@machine' {
+        $tabs = @((New-TestTab 1 0 'PowerShell' 'none'), (New-TestTab 1 1 'atle@lab1' 'none'),
+                  (New-TestTab 1 2 'Matrix' 'none'))
+        (Resolve-TabByTitle -Machine 'lab1' -Tab $tabs).Index | Should -Be 1
+    }
+
+    It 'takes the short name out of a fully qualified one, with whatever follows' {
+        # The hello carries the name cut at the first dot; a shell often writes
+        # the whole thing, and the working directory after a colon.
+        $tabs = @((New-TestTab 1 0 'atle@lab1.example.net: ~/repos' 'none'))
+        (Resolve-TabByTitle -Machine 'lab1' -Tab $tabs).Index | Should -Be 0
+    }
+
+    It 'ignores case, the way a host name does' {
+        $tabs = @((New-TestTab 1 0 'atle@LAB1' 'none'))
+        (Resolve-TabByTitle -Machine 'lab1' -Tab $tabs).Index | Should -Be 0
+    }
+
+    It 'does not take the name inside a longer word' {
+        $tabs = @((New-TestTab 1 0 'atle@lab10' 'none'), (New-TestTab 1 1 'lab1-old notes' 'none'))
+        Resolve-TabByTitle -Machine 'lab1' -Tab $tabs | Should -BeNullOrEmpty
+    }
+
+    It 'prefers user@machine over a tab that merely mentions the machine' {
+        # A local Claude session can be working on that machine's code. Its tab
+        # names the machine; the ssh tab is the one whose title says @machine.
+        $tabs = @((New-TestTab 1 0 'lab1 deploy script' 'idle'), (New-TestTab 1 1 'atle@lab1' 'none'))
+        (Resolve-TabByTitle -Machine 'lab1' -Tab $tabs).Index | Should -Be 1
+    }
+
+    It 'settles for a tab that names the machine as a word' {
+        $tabs = @((New-TestTab 1 0 'PowerShell' 'none'), (New-TestTab 1 1 'ssh lab1' 'none'))
+        (Resolve-TabByTitle -Machine 'lab1' -Tab $tabs).Index | Should -Be 1
+    }
+
+    It 'takes the first of two equal matches, so a repeat click lands on the same tab' {
+        $tabs = @((New-TestTab 1 3 'atle@lab1' 'none'), (New-TestTab 2 0 'atle@lab1' 'none'))
+        (Resolve-TabByTitle -Machine 'lab1' -Tab $tabs).Hwnd | Should -Be 1
+    }
+
+    It 'answers nothing when no title names the machine' {
+        $tabs = @((New-TestTab 1 0 'PowerShell' 'none'), (New-TestTab 1 1 'atle@lab2' 'none'))
+        Resolve-TabByTitle -Machine 'lab1' -Tab $tabs | Should -BeNullOrEmpty
+    }
+
+    It 'answers nothing for tabs that carry no title at all' {
+        # Konsole's and tmux's tabs: matched by pid, and this route has nothing to read.
+        $tabs = @([pscustomobject]@{ Hwnd = 1; Index = 0; Pid = 40 })
+        Resolve-TabByTitle -Machine 'lab1' -Tab $tabs | Should -BeNullOrEmpty
+        Resolve-TabByTitle -Machine 'lab1' -Tab @() | Should -BeNullOrEmpty
+    }
+}
+
 Describe 'Merge-SessionTab' {
     BeforeAll {
         $script:t1 = New-TestTab 100 1 'alpha' 'busy'

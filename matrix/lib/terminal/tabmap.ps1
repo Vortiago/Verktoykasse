@@ -9,6 +9,8 @@
 # Resolve-SessionTabByPid below is the one piece of matching that lives here
 # instead: it knows nothing about terminals either, and both Linux backends
 # answer Resolve-SessionTab with it rather than each carrying the walk.
+# Resolve-TabByTitle is its counterpart for the remote click where no pid names
+# the tab: it reads only the title fields a tab object may carry.
 
 function Merge-SessionTab {
     <#
@@ -120,6 +122,60 @@ function Resolve-TabByPid {
         if ($TabPid.ContainsKey([int]$ancestor)) { return $TabPid[[int]$ancestor] }
     }
     $null
+}
+
+function Resolve-TabByTitle {
+    <#
+    .SYNOPSIS
+        The tab whose title names a machine, or nothing. A guess, by design.
+    .DESCRIPTION
+        The route a remote click takes when no pid names the tab, which on
+        Windows Terminal is always: it has no pid to match. ssh leaves the remote
+        shell's title in the tab, and a shell titles itself user@machine, so that
+        shape wins over a title that merely has the machine as a word. Two equal
+        matches go to the first, so a repeat click lands on the same tab.
+
+        Reads Text (the title with Claude's glyph stripped) and falls back to
+        Name. A backend whose tabs carry neither answers nothing here, and
+        matches by pid instead.
+    #>
+    param([Parameter(Mandatory)] [string] $Machine,
+          [Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Tab)
+
+    $best = $null; $bestScore = 0
+    foreach ($t in $Tab) {
+        if ($null -eq $t) { continue }
+        $title = [string]$t.Text
+        if (-not $title) { $title = [string]$t.Name }
+        $score = Get-MachineTitleScore -Title $title -Machine $Machine
+        if ($score -gt $bestScore) { $best = $t; $bestScore = $score }
+    }
+    $best
+}
+
+function Get-MachineTitleScore {
+    <#
+    .SYNOPSIS
+        2 when the title says @machine, 1 when it names the machine as a word, 0 otherwise.
+    .DESCRIPTION
+        Words are cut at their first dot before comparing, so the short name a
+        hello carries matches the fully qualified one a shell writes. They are
+        not cut anywhere else: lab1-old is not lab1, and lab10 is not either.
+        Case is ignored, the way a host name is.
+    #>
+    param([AllowEmptyString()] [string] $Title, [Parameter(Mandatory)] [string] $Machine)
+    if (-not $Title) { return 0 }
+    $score = 0
+    foreach ($word in ($Title -split '[\s:;,()\[\]"''<>|]+')) {
+        if (-not $word) { continue }
+        $at = $word.IndexOf('@')
+        $name = if ($at -ge 0) { $word.Substring($at + 1) } else { $word }
+        $name = ($name -split '\.')[0]
+        if ($name -ine $Machine) { continue }
+        if ($at -ge 0) { return 2 }
+        $score = 1
+    }
+    $score
 }
 
 function Get-NextWait {

@@ -12,6 +12,10 @@
 #           run, so this predicts its cost better than KB does.
 #   start   startup, once: first line of the script to first frame.
 #
+# One field is words, not a timing: Note, whatever the loop wants said alongside
+# the numbers. The rain uses it for -ExposeOnSSH's standing with the host, which
+# is the answer to "is this even connected" and so goes ahead of the timings.
+#
 # build and poll are disjoint. The poll runs inside the frame being timed, so a
 # loop that has one hands its duration over as PollFrameMs and this subtracts it.
 # Counted twice, the field meant to clear the renderer would accuse it.
@@ -31,7 +35,8 @@ function New-FrameStats {
        WriteMs   = 0.0
        Late      = 0
        PollMs    = -1.0          # -1: nothing polls here (the preview)
-       PollFrameMs = 0.0 }       # this frame's poll, taken back out of build
+       PollFrameMs = 0.0         # this frame's poll, taken back out of build
+       Note      = '' }          # words from the loop, '' for none
 }
 
 function Update-FrameStats {
@@ -67,7 +72,9 @@ function Format-StatsLine {
     $head = [string]::Format($inv, ' {0}x{1} {2:N0}{3}fps late {4:N0}%',
         $Width, $Height, $fpsNow, $(if ($Stats.Target) { "/$($Stats.Target)" } else { ' ' }),
         ($Stats.Late * 100.0 / $n))
-    $rest = @([string]::Format($inv, '  build {0:N2} write {1:N2} ms', ($Stats.BuildMs / $n), ($Stats.WriteMs / $n)))
+    $rest = @()
+    if ($Stats.Note) { $rest += "  $($Stats.Note)" }
+    $rest += [string]::Format($inv, '  build {0:N2} write {1:N2} ms', ($Stats.BuildMs / $n), ($Stats.WriteMs / $n))
     if ($Stats.PollMs -ge 0) { $rest += [string]::Format($inv, ' poll {0:N1} ms', $Stats.PollMs) }
     $rest += [string]::Format($inv, '  {0:N1}KB {1}runs{2}',
         ($Renderer.LastBytes / 1024.0), $Renderer.LastRuns,
