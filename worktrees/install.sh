@@ -69,6 +69,12 @@ for entry in entries:
             if h.get("command") != cmd:
                 h["command"] = cmd
                 changed = True
+            # The matcher sits on the ENTRY, and an entry written by an earlier
+            # version keeps the matcher it was written with. Rewrite it, or a tool
+            # added here never reaches a machine that installed before.
+            if matcher and entry.get("matcher") != matcher:
+                entry["matcher"] = matcher
+                changed = True
             kept.append(h)
         else:
             changed = True          # a duplicate from an earlier run, drop it
@@ -96,8 +102,8 @@ PY
 register_hook WorktreeCreate worktree-create.sh \
   'bash "$HOME/.claude/hooks/worktree-create.sh"' ''
 
-# One matcher covers the file-edit tools + Bash; the guard itself dispatches and
-# fails open outside the bare+sibling layout.
+# One matcher covers the file-edit tools plus the two shell tools. The guard itself
+# dispatches and fails open outside the bare+sibling layout.
 register_hook PreToolUse guard-default-branch.sh \
   'bash "$HOME/.claude/hooks/guard-default-branch.sh"' \
-  'Edit|Write|MultiEdit|NotebookEdit|Bash'
+  'Edit|Write|NotebookEdit|Bash|PowerShell'

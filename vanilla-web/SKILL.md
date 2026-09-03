@@ -1,13 +1,13 @@
 ---
 name: vanilla-web
-description: Atle's conventions for building web UIs — vanilla ES modules, HTML <template> components loaded by JS (no HTML strings in JS), reusable component folders with a create-factory contract, @scope CSS, interaction-safe re-renders, zero-dep node server, JSDoc+tsc gate. Use whenever creating or modifying a website, dashboard, or web UI, unless React is explicitly justified.
+description: Atle's conventions for building web UIs: vanilla ES modules, HTML <template> components loaded by JS (no HTML strings in JS), reusable component folders with a create-factory contract, @scope CSS, interaction-safe re-renders, zero-dep node server, JSDoc+tsc gate. Use whenever creating or modifying a website, dashboard, or web UI, unless React is explicitly justified.
 ---
 
-# vanilla-web — how websites get built here
+# vanilla-web: how websites get built here
 
-**No build step, no runtime deps** — plain ES modules served statically; the
+**No build step, no runtime deps**: plain ES modules served statically, and the
 only dev dependency is `typescript`. `node tools/check.mjs` runs the whole gate
-in one command — `tsc --noEmit`, `check-css-vars`, and `node --test` — with
+in one command (`tsc --noEmit`, `check-css-vars`, and `node --test`) with
 `--fast` to skip the `node --test` pass (→ `reference/modules.md`).
 
 ## Decision rule
@@ -18,10 +18,10 @@ existing React codebase, or a component ecosystem the task genuinely needs (rich
 editors, complex drag-drop). "It might grow" is not a driver. If React seems
 warranted, say so and ask before scaffolding.
 
-## App skeleton — always multi-view
+## App skeleton: always multi-view
 
 Every app starts as views + registry, even with one view (a single page is a
-multi-view app with one entry; the skeleton is then already there when page two
+multi-view app with one entry. The skeleton is then already there when page two
 arrives). `node <vanilla-web>/new-app.mjs <target-dir> [app-name]` scaffolds this
 canonical skeleton in one shot instead of copying files by hand.
 
@@ -59,11 +59,11 @@ web/
 ```
 
 Copy **verbatim** from the skill dir: `shell.js` (makes `location.hash`
-`#/<view-id>` the source of truth — deep links + back button free; one
-`AbortController` per mount; `document.startViewTransition` swaps; surfaces
+`#/<view-id>` the source of truth, so deep links and the back button are free. One
+`AbortController` per mount, `document.startViewTransition` swaps, and surfaces
 errors to `<output id="errbar">`), `lib/templates.js`, `lib/render.js`,
 `lib/chrome.js`, `serve.mjs`,
-`tsconfig.json`, `tools/check-css-vars.mjs` — plus `preview.*`, `preview-source.js`
+`tsconfig.json`, `tools/check-css-vars.mjs`, plus `preview.*`, `preview-source.js`
 + `previews/scan.mjs` if you want the
 component catalogue (→ `reference/preview.md`). `index.html` preloads the module graph
 (`modulepreload` for `shell.js`, `views/registry.js`, `lib/templates.js`,
@@ -90,14 +90,14 @@ export default {
 };
 ```
 
-Pass `signal` to everything that opens a resource — `loadCSS`, `store.subscribe`,
-`every`/`livePoll`/`liveSSE`, every `addEventListener` — and unmount is empty.
+Pass `signal` to everything that opens a resource (`loadCSS`, `store.subscribe`,
+`every`/`livePoll`/`liveSSE`, every `addEventListener`), and unmount is empty.
 Without a signal you own teardown by hand, and a forgotten `unsubscribe()` /
 `link.remove()` leaks that resource (and the detached DOM it closes over) on every
 re-mount: the classic slow browser OOM. One caveat for live updates: a component
-built **per tick** must NOT take the long-lived view `signal` directly — its
+built **per tick** must NOT take the long-lived view `signal` directly, because its
 teardown callbacks would pile up on that signal, one per tick, until unmount.
-Give it its own per-tick `AbortController`, composed with the view's via
+Give it its own per-tick `AbortController`, composed with the view's through
 `AbortSignal.any([signal, tick.signal])`:
 
 ```js
@@ -106,79 +106,80 @@ const rowSignal = AbortSignal.any([signal, tick.signal]);
 // build this tick's per-row components with rowSignal; tick.abort() at the next tick
 ```
 
-so the resource dies at tick end *or* view unmount, whichever comes first — a
+so the resource dies at tick end *or* view unmount, whichever comes first. A
 BARE per-tick controller alone (no `signal` composed in) only dies at the START
 of the *next* tick, so a view that unmounts mid-tick leaves it stranded until a
 next tick that, post-unmount, never comes.
 
-An `AbortError` escaping `mount()` is normal shutdown, not a failure — it means
+An `AbortError` escaping `mount()` is normal shutdown, not a failure. It means
 a newer navigation cancelled this one mid-flight. The shell and errbar already
-treat it as such (shell.js's `swap()`, `wireErrorBar`); don't wrap view code in
+treat it as such (shell.js's `swap()`, `wireErrorBar`), and do not wrap view code in
 defensive try/catch to hide it.
 
 After every mount (success or fallback) the shell moves focus to the stage for
 screen-reader announcement, so a view must not rely on `autofocus` (or a focus
-set during `mount()`) surviving — focus a control explicitly after the swap if
+set during `mount()`) surviving. Focus a control explicitly after the swap if
 it needs it.
 
-## Invariants — these always hold (detail behind each link)
+## Invariants: these always hold (detail behind each link)
 
 - **No HTML strings in JS.** Markup is `<template id="tpl-…">` in `.html` files
-  with `data-slot` markers, cloned via `tpl()`/`pick()`. → `reference/components.md`
+  with `data-slot` markers, cloned with `tpl()`/`pick()`. → `reference/components.md`
 - **Components** are `components/<name>/` folders with the factory contract
   `create<Name>(props, signal) → { el, …updaters }`. → `reference/components.md`
-- **CSS** is `@scope` per component + tokens in `@layer`; responsiveness via
+- **CSS** is `@scope` per component + tokens in `@layer`, and responsiveness through
   `@container`, not viewport media. → `reference/css.md`
 - **Live data** is pushed over SSE (`EventSource` + `liveSSE`), not interval
-  polling; `every`/`livePoll` is the fallback for trivial pages or pull-only
+  polling. `every`/`livePoll` is the fallback for trivial pages or pull-only
   upstreams. → `reference/server.md`
 - **Re-renders** of live data (SSE-driven or polled) go through `renderRegion`
-  (never raw `replaceChildren`/`innerHTML`); mutate in place for fast-ticking
+  (never raw `replaceChildren`/`innerHTML`). Mutate in place for fast-ticking
   values. `heldInside(host)` exposes the same interaction hold as a predicate for
-  the shapes `renderRegion` can't serve (in-place updaters, `reconcileList`) —
-  ask it, never re-derive the guards. A *user-initiated* change (tab switch, open
-  detail, expand/sort) may animate via `withTransition` (View Transitions) —
+  the shapes `renderRegion` cannot serve (in-place updaters, `reconcileList`).
+  Ask it, and never re-derive the guards. A *user-initiated* change (tab switch, open
+  detail, expand/sort) may animate through `withTransition` (View Transitions),
   never the polled path. → `reference/interactivity.md`
-- **Overlays** use native `<dialog>` / `popover` / `<details>` — never
+- **Overlays** use native `<dialog>` / `popover` / `<details>`, never
   hand-rolled. → `reference/interactivity.md`
 - **Forms** use native validation (`required`/`pattern`, `reportValidity()`,
   `:user-invalid`). → `reference/interactivity.md`
 - **Declarative over imperative.** Reach for a platform attribute before a JS
-  listener — `command`/`commandfor` and `popovertarget` for overlays,
-  `required`/`pattern` for forms — so an element's behaviour reads off its markup;
+  listener: `command`/`commandfor` and `popovertarget` for overlays,
+  `required`/`pattern` for forms, so an element's behaviour reads off its markup.
   `addEventListener` (always `{ signal }`-scoped) is the fallback for what no
   attribute covers. → `reference/interactivity.md`
 - **Pending state** for an initial or user-triggered load is attribute-driven:
-  `withPending` marks the region busy and CSS renders the busy look — background
-  SSE/poll updates don't flash busy; they use the no-flicker re-render.
+  `withPending` marks the region busy and CSS renders the busy look. Background
+  SSE/poll updates do not flash busy, and they use the no-flicker re-render.
   → `reference/interactivity.md`
-- **Numbers / dates / durations** render through `Intl` (via `lib/format.js`).
+- **Numbers / dates / durations** render through `Intl`, wrapped by
+  `lib/format.js`.
   → `reference/modules.md`
-- **In a dense view, an event handler never touches DOM — it only writes
-  state.** Every dependent region subscribes once at `mount()`; reach for
+- **In a dense view, an event handler never touches DOM. It only writes
+  state.** Every dependent region subscribes once at `mount()`. Reach for
   `lib/state.js`'s `createState` once one handler is calling more than ~2
   updaters, or two handlers update the same region. → `reference/state.md`
 - **No leaks across re-mounts.** Every resource a view opens (timer, listener,
   `EventSource`, observer, `store.subscribe`, injected `<link>`) ties to
-  `helpers.signal`, so a view switch releases all of it; the seams that take a
+  `helpers.signal`, so a view switch releases all of it. The seams that take a
   signal are `store.subscribe(cb, signal)` and `loadCSS(url, path, signal)`.
   Guarded by `*.leak.test.mjs` (node) + `testing/tests/e2e/memory-*` (browser).
   → `reference/testing.md`
-- **The gate**: every module starts `// @ts-check` + JSDoc; `tsc --noEmit`,
-  `check-css-vars` (undefined `var(--x)` fails silently), and `node --test` —
+- **The gate**: every module starts `// @ts-check` + JSDoc. `tsc --noEmit`,
+  `check-css-vars` (undefined `var(--x)` fails silently), and `node --test`,
   run all three with `node tools/check.mjs` (`--fast` skips the `node --test`
   pass). → `reference/modules.md`
 - **Preview** (optional): a component can ship `<name>.preview.js` exporting
-  `{ title, render, variants }`; `serve.mjs` generates the catalogue and serves
+  `{ title, render, variants }`. `serve.mjs` generates the catalogue and serves
   it at `/preview.html`. No npm, no build. → `reference/preview.md`
 
 ## Reference
 
-- `reference/components.md` — templates, the component factory, view markup
-- `reference/css.md` — `@scope`, tokens, `@container`, theming, motion
-- `reference/interactivity.md` — re-render/no-flicker rules, overlays, forms
-- `reference/server.md` — `serve.mjs`, `/api` modes (SSE/proxy/inline), live data
-- `reference/modules.md` — `api-client` / `store` / `format` / `live`, the gate (typing + `check-css-vars`), patterns to lift
-- `reference/state.md` — the unidirectional-flow rule, `createState`, the escalation ladder, trip-wires
-- `reference/preview.md` — component preview catalogue (`*.preview.js`, codegen registry, `/preview.html`)
-- `reference/testing.md` — Playwright e2e: setup, pointing the test-id attribute at `data-slot`, role/label vs structural selectors, running the app under test, and the interaction-hold test (`testing/*` configs)
+- `reference/components.md`: templates, the component factory, view markup
+- `reference/css.md`: `@scope`, tokens, `@container`, theming, motion
+- `reference/interactivity.md`: re-render/no-flicker rules, overlays, forms
+- `reference/server.md`: `serve.mjs`, `/api` modes (SSE/proxy/inline), live data
+- `reference/modules.md`: `api-client` / `store` / `format` / `live`, the gate (typing + `check-css-vars`), patterns to lift
+- `reference/state.md`: the unidirectional-flow rule, `createState`, the escalation ladder, trip-wires
+- `reference/preview.md`: component preview catalogue (`*.preview.js`, codegen registry, `/preview.html`)
+- `reference/testing.md`: Playwright e2e: setup, pointing the test-id attribute at `data-slot`, role/label vs structural selectors, running the app under test, and the interaction-hold test (`testing/*` configs)

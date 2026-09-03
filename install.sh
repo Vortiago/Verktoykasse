@@ -3,7 +3,7 @@
 # A real directory at a live path is backed up to <path>.pre-verktoykasse
 # rather than overwritten.
 #
-# The CALLER decides target + skills; this installer holds NO skill->CLI policy,
+# The CALLER decides target + skills. This installer holds NO skill->CLI policy,
 # only where each CLI keeps its skills (TARGET_DIR).
 #
 # Usage:
@@ -12,7 +12,7 @@
 #
 # Targets: claude (default) | opencode.
 # A skill's own <skill>/install.sh (hooks / extra setup) is Claude-specific, so it is
-# sourced ONLY for the claude target; every other target gets a plain symlink of the dir.
+# sourced ONLY for the claude target. Every other target gets a plain symlink of the dir.
 set -euo pipefail
 
 HERE=$(dirname "$(readlink -f "$0")")
@@ -67,7 +67,7 @@ is_our_copy() { # $1 = live path, $2 = expected source — true if we wrote it
 
 # Where each CLI keeps its skills. A function (not a `declare -A` associative
 # array) so this runs on macOS's stock bash 3.2, which predates `declare -A`.
-target_dir() { # $1 = target name — prints its skills dir, empty if unknown
+target_dir() { # $1 = target name. Prints its skills dir, empty if unknown
   case $1 in
     claude)   echo "$HOME/.claude/skills" ;;
     opencode) echo "$HOME/.config/opencode/skills" ;;
@@ -76,7 +76,7 @@ target_dir() { # $1 = target name — prints its skills dir, empty if unknown
 KNOWN_TARGETS="claude opencode"
 TARGET=claude
 
-link() { # $1 = repo dir, $2 = live path
+link() { # $1 = repo path (a dir or a file), $2 = live path
   local target=$1 live=$2
   local marker ours=0
   marker=$(copy_marker "$live" "$target")
@@ -129,9 +129,9 @@ link() { # $1 = repo dir, $2 = live path
   echo "copied  $live <- $target  (not a symlink)"
 }
 
-install_skill() { # $1 = skill name — installed for the current $TARGET
+install_skill() { # $1 = skill name. Installed for the current $TARGET
   # NOTE: skills are keyed by DIRECTORY name here; a skill's invocation name comes
-  # from its SKILL.md `name:` frontmatter and may differ — e.g. the `statusline/`
+  # from its SKILL.md `name:` frontmatter and may differ. For example the `statusline/`
   # dir is invoked as `/expand-statusline`.
   local name=$1
   [[ -d "$HERE/$name" ]] || { echo "error: no skill '$name' in $HERE" >&2; return 1; }
@@ -141,7 +141,7 @@ install_skill() { # $1 = skill name — installed for the current $TARGET
   # whatever lands here next.
   [[ -f "$HERE/$name/SKILL.md" ]] || { echo "skip    $name (no SKILL.md, not a skill)"; return; }
   if [[ $TARGET == claude && -f "$HERE/$name/install.sh" ]]; then
-    # Claude-specific hooks / extra setup — only for the claude target.
+    # Claude-specific hooks / extra setup, only for the claude target.
     # shellcheck source=/dev/null
     source "$HERE/$name/install.sh"
   else
@@ -162,6 +162,8 @@ done
 
 if [[ ${#skills[@]} -eq 0 ]]; then
   for d in "$HERE"/*/; do
+    # Only dirs with a SKILL.md are skills. Plain tools (matrix/) and docs/ are not.
+    [[ -f "$d/SKILL.md" ]] || continue
     skills+=("$(basename "$d")")
   done
 fi

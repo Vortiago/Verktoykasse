@@ -1,6 +1,6 @@
 ---
 name: worktrees
-description: Create and manage git worktrees in the bare+sibling layout (each <repo>/.git is a bare clone; working trees are siblings like <repo>/main and <repo>/<branch>). Use when creating a worktree, starting feature/branch work, reviewing a PR locally, or working on multiple repos or branches in parallel.
+description: Create and manage git worktrees in the bare+sibling layout (each <repo>/.git is a bare clone, and working trees are siblings like <repo>/main and <repo>/<branch>). Use when creating a worktree, starting feature/branch work, reviewing a PR locally, or working on multiple repos or branches in parallel.
 argument-hint: "[repo] [branch]"
 disable-model-invocation: true
 ---
@@ -26,7 +26,7 @@ immediately, then `cd` into it.
 
 ## Create a worktree
 
-Preferred — one command handles fetch, fresh `origin/HEAD` base, existing-branch
+Preferred, because one command handles fetch, fresh `origin/HEAD` base, existing-branch
 reuse, PR refs, and `.worktreeinclude` file copies:
 
 ```bash
@@ -43,7 +43,7 @@ git -C $REPOS_ROOT/<repo> worktree add $REPOS_ROOT/<repo>/<branch> -b <branch> o
 ```
 
 After creating: run the repo's dependency setup in the new worktree if needed
-(`npm install`, venv, etc.) — worktrees share git history, not build artifacts.
+(`npm install`, venv, and so on), because worktrees share git history, not build artifacts.
 
 ## Inspect / remove
 
@@ -59,7 +59,7 @@ git -C $REPOS_ROOT/<repo> branch -D <branch>                           # if the 
 $REPOS_ROOT/.clone-bare.sh <repo>    # with gh: name, owner/name, or URL; without gh: a full URL/path
 ```
 
-`gh` is preferred (it resolves shorthand like `owner/name`); if it isn't
+`gh` is preferred (it resolves shorthand like `owner/name`). If it is not
 installed, the script falls back to plain `git clone` for a full URL or local
 path.
 
@@ -74,24 +74,26 @@ tree. → [`reference/internals.md`](reference/internals.md)
 
 ## Default-branch edit guard
 
-`guard-default-branch.sh` (`PreToolUse`) blocks `Edit`/`Write`/`MultiEdit`/
-`NotebookEdit` and `git commit`/`git add` when the target tree is on the repo's
-default branch — feature work must not land on main directly; main advances only
-via merge/pull.
+`guard-default-branch.sh` (`PreToolUse`) blocks `Edit`/`Write`/`NotebookEdit`
+and `git commit`/`git add` when the target tree is on the repo's default
+branch. Feature work must not land on main directly, and main advances only
+through merge or pull.
 
-- Scope: bare+sibling layout only; fails open elsewhere — ordinary repos,
+- Scope: bare+sibling layout only. It fails open elsewhere, on ordinary repos,
   detached HEAD, bare root, `worktree-seed/`, non-git paths.
-- Default = `origin/HEAD`; if unset, falls back to `main`/`master` only.
-- Unaffected: feature worktrees; `git pull`/`merge`/`fetch`/`rebase` on main.
-- Best-effort on `Bash`: matches the literal `git commit`/`git add` verbs (so a
-  `cd … && git commit` or a quoted mention can slip/over-match) — fail-open.
-- Override: `WORKTREES_ALLOW_MAIN_EDITS=1` (launch env; user-only).
+- Default = `origin/HEAD`. If unset, it falls back to `main`/`master` only.
+- Unaffected: feature worktrees, and `git pull`/`merge`/`fetch`/`rebase` on main.
+- Best-effort on `Bash` and `PowerShell`: matches the literal `git commit`/`git
+  add` verbs (so a `cd … && git commit` or a quoted mention can slip or
+  over-match), so it fails open.
+- Override: `WORKTREES_ALLOW_MAIN_EDITS=1` (launch env, user-only).
 - Verify: `bash worktrees/selftest.sh`.
 
 ## Gotchas
 
-- Never commit in `$REPOS_ROOT/<repo>/` root — it's the bare repo (git refuses;
-  no work tree). Work in a worktree; the guard above enforces this for `main`.
-- Don't bypass the hook with ad-hoc `git worktree add` into
-  `.claude/worktrees/` — `.new-worktree.sh` and the `--worktree` flag already
-  route through it.
+- Never commit in `$REPOS_ROOT/<repo>/` root, because it is the bare repo (git
+  refuses, as there is no work tree). Work in a worktree, and the guard above
+  enforces this for `main`.
+- Do not bypass the hook with ad-hoc `git worktree add` into
+  `.claude/worktrees/`, because `.new-worktree.sh` and the `--worktree` flag
+  already route through it.
