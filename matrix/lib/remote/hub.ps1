@@ -139,6 +139,8 @@ function Read-RemoteLine {
             return $false
         }
         $Peer.Hello = $true
+        # The refusal note is stale as soon as one peer gets in.
+        $Hub.Note = ''
         $Peer.Machine = ConvertTo-WireText $o.machine 64
         $helloNow = ConvertTo-WireEpoch $o.now 0
         if ($helloNow -gt 0) { $Peer.Skew = $Now - $helloNow }
@@ -195,8 +197,10 @@ function Get-RemoteSession {
 
 function Get-RemotePeer {
     # The peer a lane came from, by the machine name its session id carries.
+    # Most recent speaker first, which is the rule Get-RemoteSession applies when
+    # two peers report the same machine name.
     param([Parameter(Mandatory)] [hashtable] $Hub, [Parameter(Mandatory)] $Session)
-    foreach ($peer in $Hub.Peer) {
+    foreach ($peer in @($Hub.Peer | Sort-Object { $_.LastMs } -Descending)) {
         if ($peer.Hello -and $peer.Machine -eq $Session.RemoteHost) { return $peer }
     }
     $null

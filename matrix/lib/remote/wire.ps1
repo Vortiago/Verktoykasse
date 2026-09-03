@@ -84,7 +84,7 @@ function ConvertFrom-WireLine {
         $o = ConvertFrom-Json $Line
     } catch { return $null }
     if ($null -eq $o -or $o -isnot [pscustomobject]) { return $null }
-    if ([int]$o.v -ne $script:WireVersion) { return $null }
+    if (($o.v -as [int]) -ne $script:WireVersion) { return $null }
     $o
 }
 

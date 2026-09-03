@@ -93,6 +93,14 @@ Describe 'wire: ConvertFrom-WireLine' {
         ConvertFrom-WireLine '' | Should -BeNullOrEmpty
     }
 
+    It 'drops a line whose version is not a number' {
+        # These parse, so they get past the catch and reach the version test. A
+        # hard cast there throws on the poll path and stops the rain.
+        ConvertFrom-WireLine '{"v":"x","t":"hello"}' | Should -BeNullOrEmpty
+        ConvertFrom-WireLine '{"v":[1,2],"t":"hello"}' | Should -BeNullOrEmpty
+        ConvertFrom-WireLine '{"t":"hello"}' | Should -BeNullOrEmpty
+    }
+
     It 'drops a bare JSON value that is not an object' {
         ConvertFrom-WireLine '[1,2,3]' | Should -BeNullOrEmpty
         ConvertFrom-WireLine '42' | Should -BeNullOrEmpty

@@ -76,12 +76,17 @@ function New-RemoteConnection {
     $peerPort = 0
     try { $peerPort = $Client.Client.RemoteEndPoint.Port } catch { }
 
+    # One encoding for both the decoder and the char buffer size. A decoder that
+    # holds a partial sequence can emit one more char than the byte count, so the
+    # buffer must be GetMaxCharCount wide or GetChars throws on a full read.
+    $enc = [System.Text.UTF8Encoding]::new($false)
+
     @{
         Client = $Client
         Stream = $Client.GetStream()
-        Decoder = [System.Text.UTF8Encoding]::new($false).GetDecoder()
+        Decoder = $enc.GetDecoder()
         Buffer = [byte[]]::new($script:TcpReadBufferSize)
-        Chars = [char[]]::new($script:TcpReadBufferSize)
+        Chars = [char[]]::new($enc.GetMaxCharCount($script:TcpReadBufferSize))
         PeerPort = $peerPort
     }
 }
