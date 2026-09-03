@@ -1,7 +1,7 @@
 # The rain side of the remote protocol: which machines are connected, what they
-# last said, and when they stopped saying it. No sockets here. Accepting, reading
-# and closing are three injected scriptblocks, the way the tab map takes -ReadTab,
-# so every timing case below is tested with a fake clock and no peer.
+# last said, and when they stopped saying it. No sockets here. Accepting, reading,
+# writing and closing are four injected scriptblocks, the way the tab map takes
+# -ReadTab, so every timing case below is tested with a fake clock and no peer.
 #
 # Needs wire.ps1, and through it console.ps1 and sessions.ps1.
 #
@@ -45,10 +45,11 @@ function New-RemotePeer {
         Skew = [long]0        # host clock minus peer clock
         LastMs = $Now         # when this peer last said anything usable
         Hello = $false
-        Refused = $false      # failed the hello: hang up rather than keep reading
+        Welcomed = $false     # the answer to the hello has been written
+        RefusedWhy = ''       # failed the hello: what it is told, then hang up
         Session = @()
         Tab = $null           # the local tab holding this peer's ssh, found on a click
-        TabTried = $false
+        PidTried = $false     # the pid route has run; the title route runs every click
     }
 }
 
@@ -59,13 +60,17 @@ function Update-RemoteHub {
     .DESCRIPTION
         Nothing here blocks. Accept and Read are expected to answer at once with
         whatever is ready, because this runs inside the frame loop and a stall
-        shows as a dropped frame.
+        shows as a dropped frame. Write too: it only ever sends the hello's
+        answer, too few bytes to fill a send window.
     .PARAMETER Accept
         -> the connections that arrived since the last call, or nothing.
     .PARAMETER Read
         conn -> the text waiting on it. '' when nothing is waiting, $null when the
         peer closed. The two differ: '' is a quiet peer, $null is a peer that has
         gone.
+    .PARAMETER Write
+        conn, line -> writes it. Once per peer, to answer the hello: a welcome,
+        or the reason it was refused. Throwing reports a broken pipe.
     .PARAMETER Close
         conn -> hangs it up. Called once per peer, by this function only.
     #>
@@ -73,6 +78,7 @@ function Update-RemoteHub {
           [Parameter(Mandatory)] [long] $Now,
           [Parameter(Mandatory)] [scriptblock] $Accept,
           [Parameter(Mandatory)] [scriptblock] $Read,
+          [Parameter(Mandatory)] [scriptblock] $Write,
           [Parameter(Mandatory)] [scriptblock] $Close)
 
     foreach ($conn in @(& $Accept)) {
@@ -101,9 +107,20 @@ function Update-RemoteHub {
                 # The hub hangs up on a peer that failed the hello. Ignoring
                 # it would hold a socket open to something that has already
                 # proved it is not a reporting rain, and would re-read its lines
-                # to the same verdict.
-                if ($peer.Refused) { $gone = $true; break }
+                # to the same verdict. Told why first, best effort.
+                if ($peer.RefusedWhy) {
+                    try { & $Write $peer.Conn (ConvertTo-RefusedLine -Why $peer.RefusedWhy) } catch { }
+                    $gone = $true; break
+                }
             }
+        }
+
+        # Answered as soon as the hello is in, and once: sshd accepts with or
+        # without a rain behind it, and this is what tells the peer which it got.
+        # A welcome that cannot be written means a connection that never worked.
+        if (-not $gone -and $peer.Hello -and -not $peer.Welcomed) {
+            $peer.Welcomed = $true
+            try { & $Write $peer.Conn (ConvertTo-WelcomeLine) } catch { $gone = $true }
         }
 
         # Only after the read: a peer that closed and a peer that went quiet at the
@@ -135,7 +152,8 @@ function Read-RemoteLine {
         $why = Test-RemoteHello $o -Token $Hub.Token
         if ($why) {
             $Hub.Note = "matrix: a machine was refused, $why"
-            $Peer.Refused = $true
+            # A reason or nothing, so this is also the flag. One field.
+            $Peer.RefusedWhy = $why
             return $false
         }
         $Peer.Hello = $true
@@ -211,14 +229,18 @@ function Resolve-RemoteTab {
     .SYNOPSIS
         The local tab holding this machine's ssh session, or nothing.
     .DESCRIPTION
-        The port comes off the accepted socket, and Resolve-PeerProcessId turns it
-        into the pid of the local ssh client. From there it is Resolve-TabByPid,
-        which stops at the nearest tab. Windows Terminal has no pid to match, so
-        it answers nothing.
+        Two routes, exact one first. The port off the accepted socket names the
+        local ssh client, and Resolve-TabByPid walks up to the nearest tab. That
+        answer is cached per peer, miss included.
 
-        Resolved on the click, not on the poll. A tab read costs about 100 ms, and
-        the frame loop must not pay it once a second for a click that may never
-        come. Cached per peer, failure included.
+        Where no pid names a tab, the backend's Resolve-MachineTab answers, asked
+        on every click because what it reads changes between two of them. It
+        matches on Machine, a string the peer sent: a peer that lies about its
+        name can have a click raise a tab titled after another machine. A window
+        is brought to the front, nothing is typed, no id is trusted.
+
+        On the click, not the poll: a tab read costs ~100 ms, and no path here
+        pays it twice.
     .PARAMETER OwnerOf
         port -> the pid holding it. Injected, so this is testable with no socket.
     .PARAMETER Ancestors
@@ -231,23 +253,26 @@ function Resolve-RemoteTab {
           [scriptblock] $Ancestors = ${function:Get-ProcessAncestorId},
           [scriptblock] $ReadTab = { Get-AllTerminalTab })
 
-    if ($Peer.TabTried) { return $Peer.Tab }
-    $Peer.TabTried = $true
+    if ($Peer.Tab) { return $Peer.Tab }
 
-    $port = 0
-    if ($Peer.Conn) { $port = [int]$Peer.Conn.PeerPort }
-    if ($port -le 0) { return $null }
+    if (-not $Peer.PidTried) {
+        $Peer.PidTried = $true
+        $port = 0
+        if ($Peer.Conn) { $port = [int]$Peer.Conn.PeerPort }
+        $owner = 0
+        if ($port -gt 0) { try { $owner = [int](& $OwnerOf $port) } catch { $owner = 0 } }
+        if ($owner -gt 0) {
+            try {
+                $tabPids = @{}
+                foreach ($tab in @(& $ReadTab)) { if ($tab -and $tab.Pid) { $tabPids[[int]$tab.Pid] = $tab } }
+                $Peer.Tab = Resolve-TabByPid -ProcessId $owner -TabPid $tabPids -Ancestors $Ancestors
+            } catch { }
+        }
+        if ($Peer.Tab) { return $Peer.Tab }
+    }
 
-    $owner = 0
-    try { $owner = [int](& $OwnerOf $port) } catch { $owner = 0 }
-    if ($owner -le 0) { return $null }
-
-    try {
-        $tabPids = @{}
-        foreach ($tab in @(& $ReadTab)) { if ($tab -and $tab.Pid) { $tabPids[[int]$tab.Pid] = $tab } }
-        $Peer.Tab = Resolve-TabByPid -ProcessId $owner -TabPid $tabPids -Ancestors $Ancestors
-    } catch { }
-    $Peer.Tab
+    if (-not $Peer.Machine) { return $null }
+    try { Resolve-MachineTab -Machine $Peer.Machine -ReadTab $ReadTab } catch { $null }
 }
 
 function Send-RemoteCommand {

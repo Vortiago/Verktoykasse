@@ -137,6 +137,13 @@ function Get-TabKey {
     "$($Tab.Hwnd):$($Tab.Element)"
 }
 
+function Resolve-MachineTab {
+    # A Konsole tab carries no title to read: the remote click is answered by the
+    # pid walk. -ReadTab is untouched, so this costs no D-Bus round trips.
+    param([Parameter(Mandatory)] [string] $Machine, [scriptblock] $ReadTab = $null)
+    $null
+}
+
 function Resolve-SessionTab {
     # Konsole tab titles do not carry Claude's glyph, so the Windows title scoring
     # has nothing to score. The tab process id is exact instead, and the match is

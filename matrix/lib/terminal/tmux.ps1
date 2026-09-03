@@ -166,6 +166,13 @@ function Get-TabKey {
     "$($Tab.Hwnd):$($Tab.Pane)"
 }
 
+function Resolve-MachineTab {
+    # The pane list carries no title to read: the remote click is answered by the
+    # pid walk. -ReadTab is untouched, so this runs no tmux process.
+    param([Parameter(Mandatory)] [string] $Machine, [scriptblock] $ReadTab = $null)
+    $null
+}
+
 function Resolve-SessionTab {
     # The tmux twin of Konsole's exact match: pane_pid is the pane's root process,
     # and the last hop of a claude pid's /proc walk inside a pane is exactly that

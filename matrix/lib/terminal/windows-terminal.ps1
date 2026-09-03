@@ -133,6 +133,60 @@ function Get-MatchToken {
     @(($Text.ToLowerInvariant() -split '[^a-z0-9]+') | Where-Object { $_.Length -ge 4 })
 }
 
+function Resolve-MachineTab {
+    <#
+    .SYNOPSIS
+        The tab holding an ssh session to a machine, or nothing. A guess.
+    .DESCRIPTION
+        Where a remote click lands here: no pid names a tab, so it matches the
+        title ssh leaves behind. @machine beats the machine as a bare word, and
+        ties go to the first. Never cached - a shell retitles every prompt.
+    .PARAMETER ReadTab
+        -> every tab of every window. The reader, not the tabs: a backend that
+        cannot answer must not pay the ~100 ms read to say so.
+    #>
+    param([Parameter(Mandatory)] [string] $Machine,
+          [scriptblock] $ReadTab = { Get-AllTerminalTab })
+
+    $best = $null; $bestScore = 0
+    foreach ($tab in @(& $ReadTab)) {
+        if ($null -eq $tab) { continue }
+        # Text, not Name: Get-TerminalTab has taken Claude's glyph off it.
+        $score = Get-MachineTitleScore -Title ([string]$tab.Text) -Machine $Machine
+        if ($score -gt $bestScore) { $best = $tab; $bestScore = $score }
+    }
+    $best
+}
+
+function Get-MachineTitleScore {
+    <#
+    .SYNOPSIS
+        2 when the title says @machine, 1 when it names the machine as a word, 0 otherwise.
+    .DESCRIPTION
+        Not Get-MatchToken: it drops the @, splits on the dot, and cuts words
+        under four characters, all of which this needs.
+
+        A word is cut at its first dot, so a short name matches a fully
+        qualified one. Nowhere else: lab1-old is not lab1, nor is lab10.
+    #>
+    param([AllowEmptyString()] [string] $Title, [Parameter(Mandatory)] [string] $Machine)
+    if (-not $Title) { return 0 }
+    $score = 0
+    foreach ($word in ($Title -split '[\s:;,()\[\]"''<>|]+')) {
+        if (-not $word) { continue }
+        # [char], not '@': the string overload of IndexOf compares by culture, and
+        # a title carrying an ignorable character would then answer an index the
+        # Substring below cuts at the wrong place. The char overload is ordinal.
+        $at = $word.IndexOf([char]'@')
+        $name = if ($at -ge 0) { $word.Substring($at + 1) } else { $word }
+        $name = ($name -split '\.')[0]
+        if ($name -ine $Machine) { continue }
+        if ($at -ge 0) { return 2 }
+        $score = 1
+    }
+    $score
+}
+
 function Get-TabKey {
     # A tab's identity within one pass. The window is part of it: two windows both have
     # a tab 3. Not an identity across passes, because closing a tab renumbers the rest.

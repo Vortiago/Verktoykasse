@@ -3,7 +3,7 @@
 #
 # The connection is dialled out, not listened for. With
 #
-#   ~/.ssh/config     RemoteForward 127.0.0.1:47777 127.0.0.1:47777
+#   ~/.ssh/config     RemoteForward 127.0.0.1:9999 127.0.0.1:9999
 #
 # sshd is already listening on this machine's loopback and forwards to the rain.
 # So this end connects to its own 127.0.0.1 and nothing here has to know that ssh
@@ -12,6 +12,9 @@
 # Refused is the normal state, not an error. The user starts the report before the
 # rain, or the ssh session goes and comes back, and the loop below keeps
 # trying. It never throws into the caller, because the caller is a frame loop.
+#
+# A connect proves only that sshd took it: it does the same with no rain behind
+# it. Connected means the rain answered the hello. Get-ExposeStatus says which.
 
 function New-ExposeState {
     <#
@@ -25,21 +28,50 @@ function New-ExposeState {
         block's business, and a port on this state would read as if the state
         machine used it.
     .PARAMETER RetryMs
-        How long to wait after a refused connect. One second: fast enough that
-        starting the rain second is not noticed, slow enough that a machine with
-        no rain at all is not dialling in a loop.
+        How long to wait after a refused connect. The caller raises it to its own
+        poll interval where that is longer: a dial only happens on a poll.
+    .PARAMETER RefusedMs
+        How long a refusal stays on the status. Five retries, not five seconds:
+        shorter than the redial and the reason blinks out between two refusals.
     #>
     param([Parameter(Mandatory)] [string] $Machine,
           [AllowEmptyString()] [string] $Token = '',
-          [int] $RetryMs = 1000)
+          [int] $RetryMs = 1000,
+          [int] $RefusedMs = 0)
+
+    if ($RefusedMs -le 0) { $RefusedMs = 5 * $RetryMs }
 
     @{
-        Machine = $Machine; Token = $Token; RetryMs = $RetryMs
+        Machine = $Machine; Token = $Token; RetryMs = $RetryMs; RefusedMs = $RefusedMs
         Conn = $null
-        Buffer = ''       # the partial control line held over from the last read
+        Dialled = $false   # the last dial was taken, whether or not it survived
+        Welcomed = $false  # the rain has answered the hello on this connection
+        RefusedWhy = ''    # why the rain last refused this machine
+        RefusedAt = 0      # when it said so; RefusedMs runs from here
+        Buffer = ''        # the partial control line held over from the last read
         Seq = 0
-        RetryAt = 0       # the next moment a connect is worth trying
+        RetryAt = 0        # the next moment a connect is worth trying
     }
+}
+
+function Get-ExposeStatus {
+    <#
+    .SYNOPSIS
+        Where the report stands with the host, in the words -Stats shows.
+    .DESCRIPTION
+        host waiting       nothing takes the connection: no forward, or wrong port
+        host connecting    taken, unanswered. A host with no rain holds here
+        host connected     the rain welcomed this machine
+        host refused: ...  the rain said no, and why
+
+        Read off the last DIAL, not the live connection: a host with no rain
+        accepts and drops every second, and that must not flap the status.
+    #>
+    param([Parameter(Mandatory)] [hashtable] $State)
+    if ($State.RefusedWhy)    { return "host refused: $($State.RefusedWhy)" }
+    if (-not $State.Dialled)  { return 'host waiting' }
+    if (-not $State.Welcomed) { return 'host connecting' }
+    'host connected'
 }
 
 function Get-ExposeMachineName {
@@ -82,12 +114,24 @@ function Update-Expose {
           [Parameter(Mandatory)] [scriptblock] $Close,
           [scriptblock] $Focus = $null)
 
+    # A refusing rain re-states it on every redial; a stopped one never will, and
+    # sshd keeps taking the connection either way.
+    if ($State.RefusedWhy -and ($Now - $State.RefusedAt) -gt $State.RefusedMs) {
+        $State.RefusedWhy = ''
+    }
+
     if (-not $State.Conn) {
         if ($Now -lt $State.RetryAt) { return }
         $State.RetryAt = $Now + $State.RetryMs
         $conn = $null
         try { $conn = & $Connect } catch { $conn = $null }
-        if (-not $conn) { return }
+        if (-not $conn) {
+            # Nothing takes the connection now: what the rain last said is stale.
+            $State.Dialled = $false
+            $State.RefusedWhy = ''
+            return
+        }
+        $State.Dialled = $true
 
         # The hello goes out on the same poll as the connect. A connection that
         # has not said which machine it is shows the rain a peer and no lanes.
@@ -111,12 +155,23 @@ function Update-Expose {
         $State.Buffer = $split.Rest
         foreach ($line in $split.Line) {
             $o = ConvertFrom-WireLine $line
-            if ($null -eq $o -or [string]$o.t -ne 'focus') { continue }
-            # The id is looked up, never trusted: an id this machine does not run
-            # finds no tab and the switch does not happen. The rain is trusted to
-            # ask, not to invent.
-            $want = [string]$o.id
-            if ($Focus -and $want) { try { & $Focus $want } catch { } }
+            if ($null -eq $o) { continue }
+            switch ([string]$o.t) {
+                'welcome' { $State.Welcomed = $true; $State.RefusedWhy = '' }
+                'refused' {
+                    # Filtered like every string from a peer: it reaches a screen.
+                    $why = ConvertTo-WireText $o.why 64
+                    $State.RefusedWhy = if ($why) { $why } else { 'no reason given' }
+                    $State.RefusedAt = $Now
+                }
+                'focus' {
+                    # The id is looked up, never trusted: an id this machine does
+                    # not run finds no tab and the switch does not happen. The
+                    # rain is trusted to ask, not to invent.
+                    $want = [string]$o.id
+                    if ($Focus -and $want) { try { & $Focus $want } catch { } }
+                }
+            }
         }
     }
 
@@ -134,6 +189,7 @@ function Reset-Expose {
     param([Parameter(Mandatory)] [hashtable] $State, [Parameter(Mandatory)] [scriptblock] $Close)
     if ($State.Conn) { try { & $Close $State.Conn } catch { } }
     $State.Conn = $null
+    $State.Welcomed = $false
     $State.Buffer = ''
 }
 
