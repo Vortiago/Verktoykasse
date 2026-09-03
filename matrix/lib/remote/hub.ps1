@@ -46,8 +46,7 @@ function New-RemotePeer {
         LastMs = $Now         # when this peer last said anything usable
         Hello = $false
         Welcomed = $false     # the answer to the hello has been written
-        Refused = $false      # failed the hello: hang up rather than keep reading
-        RefusedWhy = ''       # and what the peer is told before that
+        RefusedWhy = ''       # failed the hello: what it is told, then hang up
         Session = @()
         Tab = $null           # the local tab holding this peer's ssh, found on a click
         PidTried = $false     # the pid route has run; the title route runs every click
@@ -112,7 +111,7 @@ function Update-RemoteHub {
                 # proved it is not a reporting rain, and would re-read its lines
                 # to the same verdict. It is told why first, best effort: the
                 # socket is going anyway, so a failed write changes nothing.
-                if ($peer.Refused) {
+                if ($peer.RefusedWhy) {
                     try { & $Write $peer.Conn (ConvertTo-RefusedLine -Why $peer.RefusedWhy) } catch { }
                     $gone = $true; break
                 }
@@ -158,7 +157,8 @@ function Read-RemoteLine {
         $why = Test-RemoteHello $o -Token $Hub.Token
         if ($why) {
             $Hub.Note = "matrix: a machine was refused, $why"
-            $Peer.Refused = $true
+            # Test-RemoteHello answers a reason or nothing, so this doubles as
+            # the flag that the peer failed: one field, no pair to keep in step.
             $Peer.RefusedWhy = $why
             return $false
         }
@@ -241,15 +241,15 @@ function Resolve-RemoteTab {
         is cached per peer, miss included: the ssh client's pid does not change
         for the life of the connection, and ss is an external call.
 
-        Windows Terminal has no pid to match, so there the second route is the
-        only one: Resolve-TabByTitle, the tab whose title names the machine, the
-        way ssh leaves a shell's user@machine in it. Not cached. The shell
-        retitles the tab every prompt, and a click that misses now can hit next
-        time.
+        Where no pid names a tab, the backend's own Resolve-MachineTab answers
+        instead, by whatever its terminal gives it. It is asked on every click
+        rather than cached, because what it reads can change between two of them.
+        A backend with nothing to answer says so without reading anything, which
+        is why it is handed the reader and not the tabs.
 
         Resolved on the click, not on the poll. A tab read costs about 100 ms, and
         the frame loop must not pay it once a second for a click that may never
-        come.
+        come. Between the two routes it is paid at most once.
     .PARAMETER OwnerOf
         port -> the pid holding it. Injected, so this is testable with no socket.
     .PARAMETER Ancestors
@@ -262,9 +262,7 @@ function Resolve-RemoteTab {
           [scriptblock] $Ancestors = ${function:Get-ProcessAncestorId},
           [scriptblock] $ReadTab = { Get-AllTerminalTab })
 
-    # Read once, whichever routes run. A tab read is the expensive part of a
-    # click, and the two routes read the same list.
-    $tabList = $null
+    if ($Peer.Tab) { return $Peer.Tab }
 
     if (-not $Peer.PidTried) {
         $Peer.PidTried = $true
@@ -274,20 +272,16 @@ function Resolve-RemoteTab {
         if ($port -gt 0) { try { $owner = [int](& $OwnerOf $port) } catch { $owner = 0 } }
         if ($owner -gt 0) {
             try {
-                $tabList = @(& $ReadTab)
                 $tabPids = @{}
-                foreach ($tab in $tabList) { if ($tab -and $tab.Pid) { $tabPids[[int]$tab.Pid] = $tab } }
+                foreach ($tab in @(& $ReadTab)) { if ($tab -and $tab.Pid) { $tabPids[[int]$tab.Pid] = $tab } }
                 $Peer.Tab = Resolve-TabByPid -ProcessId $owner -TabPid $tabPids -Ancestors $Ancestors
             } catch { }
         }
+        if ($Peer.Tab) { return $Peer.Tab }
     }
-    if ($Peer.Tab) { return $Peer.Tab }
 
     if (-not $Peer.Machine) { return $null }
-    try {
-        if ($null -eq $tabList) { $tabList = @(& $ReadTab) }
-        Resolve-TabByTitle -Machine $Peer.Machine -Tab $tabList
-    } catch { $null }
+    try { Resolve-MachineTab -Machine $Peer.Machine -ReadTab $ReadTab } catch { $null }
 }
 
 function Send-RemoteCommand {

@@ -252,7 +252,7 @@ Describe 'expose: what the -Stats line reads' {
     It 'carries the reason the host refused it' {
         $s = New-ExposeState -Machine 'lab1'; $r = New-FakeRain
         Step-Expose $s $r 0
-        $r.Incoming = '{"v":1,"t":"refused","why":"wrong token"}' + "`n"
+        $r.Incoming = (ConvertTo-RefusedLine -Why 'wrong token') + "`n"
         Step-Expose $s $r 100
         Get-ExposeStatus $s | Should -Be 'host refused: wrong token'
     }
@@ -263,7 +263,7 @@ Describe 'expose: what the -Stats line reads' {
         # that names the fix.
         $s = New-ExposeState -Machine 'lab1' -RetryMs 1000 -RefusedMs 5000; $r = New-FakeRain
         Step-Expose $s $r 0
-        $r.Incoming = '{"v":1,"t":"refused","why":"wrong token"}' + "`n"
+        $r.Incoming = (ConvertTo-RefusedLine -Why 'wrong token') + "`n"
         Step-Expose $s $r 100
         $r.Shut = $true
         Step-Expose $s $r 200
@@ -276,7 +276,7 @@ Describe 'expose: what the -Stats line reads' {
     It 'lets a welcome clear the refusal' {
         $s = New-ExposeState -Machine 'lab1'; $r = New-FakeRain
         Step-Expose $s $r 0
-        $r.Incoming = '{"v":1,"t":"refused","why":"wrong token"}' + "`n"
+        $r.Incoming = (ConvertTo-RefusedLine -Why 'wrong token') + "`n"
         Step-Expose $s $r 100
         $r.Incoming = (ConvertTo-WelcomeLine) + "`n"
         Step-Expose $s $r 200
@@ -290,7 +290,7 @@ Describe 'expose: what the -Stats line reads' {
         # that is gone.
         $s = New-ExposeState -Machine 'lab1' -RefusedMs 5000; $r = New-FakeRain
         Step-Expose $s $r 0
-        $r.Incoming = '{"v":1,"t":"refused","why":"wrong token"}' + "`n"
+        $r.Incoming = (ConvertTo-RefusedLine -Why 'wrong token') + "`n"
         Step-Expose $s $r 100
         Step-Expose $s $r 5000
         Get-ExposeStatus $s | Should -Be 'host refused: wrong token'
@@ -302,7 +302,7 @@ Describe 'expose: what the -Stats line reads' {
         # No forward any more: what the rain last said is not the news.
         $s = New-ExposeState -Machine 'lab1' -RetryMs 1000; $r = New-FakeRain
         Step-Expose $s $r 0
-        $r.Incoming = '{"v":1,"t":"refused","why":"wrong token"}' + "`n"
+        $r.Incoming = (ConvertTo-RefusedLine -Why 'wrong token') + "`n"
         Step-Expose $s $r 100
         $r.Shut = $true; $r.Listening = $false
         Step-Expose $s $r 200

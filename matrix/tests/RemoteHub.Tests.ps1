@@ -7,8 +7,10 @@ BeforeAll {
     . (Join-Path $PSScriptRoot '../lib/sessions.ps1')
     . (Join-Path $PSScriptRoot '../lib/remote/wire.ps1')
     . (Join-Path $PSScriptRoot '../lib/remote/hub.ps1')
-    # For the click: Resolve-RemoteTab walks with tabmap.ps1, and the tabs it
-    # walks over are Fixtures' New-TestTab.
+    # For the click: Resolve-RemoteTab walks with tabmap.ps1 and falls back to
+    # the backend's own Resolve-MachineTab. Windows Terminal's is the backend
+    # that has one, and the one that runs on both CI legs.
+    . (Join-Path $PSScriptRoot '../lib/terminal/windows-terminal.ps1')
     . (Join-Path $PSScriptRoot '../lib/terminal/tabmap.ps1')
     . (Join-Path $PSScriptRoot 'Fixtures.ps1')
 
@@ -397,45 +399,46 @@ Describe 'hub: the local tab behind a remote lane' {
     }
 
     It 'walks from the ssh client to the pane holding it when a pid names one' {
-        $script:pane = [pscustomobject]@{ Hwnd = 1; Index = 0; Pid = 200; Text = 'atle@lab1' }
+        $script:pane = @((New-TestTab 1 0 'atle@lab1' 'none' 200))
         $tab = Resolve-RemoteTab -Peer $peer -OwnerOf { param($port) 300 } `
-                                 -Ancestors { param($p) @(300, 200, 1) } -ReadTab { @($script:pane) }
+                                 -Ancestors { param($p) @(300, 200, 1) } -ReadTab { $script:pane }
         $tab.Pid | Should -Be 200
     }
 
-    It 'asks who owns the port once per peer' {
-        # The ssh client's pid does not change for the life of the connection,
-        # and ss is an external call.
-        $script:pane = [pscustomobject]@{ Hwnd = 1; Index = 0; Pid = 200; Text = '' }
+    It 'asks who owns the port once per peer, and reads no tabs on a later click' {
+        # The ssh client's pid does not change for the life of the connection, ss
+        # is an external call, and a tab read is the expensive part of a click.
+        $script:pane = @((New-TestTab 1 0 '' 'none' 200))
+        $script:reads = 0
         $owner = { param($port) $script:owners++; 300 }
         $anc = { param($p) @(300, 200, 1) }
-        [void](Resolve-RemoteTab -Peer $peer -OwnerOf $owner -Ancestors $anc -ReadTab { @($script:pane) })
-        [void](Resolve-RemoteTab -Peer $peer -OwnerOf $owner -Ancestors $anc -ReadTab { @($script:pane) })
+        $reader = { $script:reads++; $script:pane }
+        [void](Resolve-RemoteTab -Peer $peer -OwnerOf $owner -Ancestors $anc -ReadTab $reader)
+        [void](Resolve-RemoteTab -Peer $peer -OwnerOf $owner -Ancestors $anc -ReadTab $reader)
         $owners | Should -Be 1
+        $reads  | Should -Be 1
     }
 
-    It 'reads the tabs once, however many routes run' {
-        # A tab read is the expensive part of a click. The pid route missing must
-        # not make the title route pay for a second one.
+    It 'does not go to the backend when the pid route already answered' {
+        # A tab read is the expensive part of a click. The exact answer ends it.
         $script:reads = 0
-        $reader = { $script:reads++
-                    @([pscustomobject]@{ Hwnd = 1; Index = 0; Pid = 99; Text = 'atle@lab1' }) }
+        $reader = { $script:reads++; @((New-TestTab 1 0 'atle@lab1' 'none' 200)) }
         [void](Resolve-RemoteTab -Peer $peer -OwnerOf { param($port) 300 } `
-                                 -Ancestors { param($p) @(300, 1) } -ReadTab $reader)
+                                 -Ancestors { param($p) @(300, 200, 1) } -ReadTab $reader)
         $reads | Should -Be 1
     }
 
-    It 'falls back to the tab whose title names the machine when no pid does' {
+    It 'falls back to the backend when no pid names a tab' {
         # Windows Terminal: no ss, and its tabs carry no pid to match, so
-        # Resolve-PeerProcessId answers 0 there. ssh titles the tab user@machine.
-        # $script:, like every other injected reader in this suite: a seam is run
-        # inside the function under test, and a plain local can be shadowed there.
+        # Resolve-PeerProcessId answers 0 there. Its Resolve-MachineTab reads the
+        # title ssh left behind. $script:, like every other injected reader in
+        # this suite: a seam runs inside the function under test.
         $script:tabs = @((New-TestTab 1 0 'PowerShell' 'none'), (New-TestTab 1 1 'atle@lab1' 'none'))
         (Resolve-RemoteTab -Peer $peer -OwnerOf { 0 } -ReadTab { $script:tabs }).Text |
             Should -Be 'atle@lab1'
     }
 
-    It 'reads the titles again on the next click, because titles change' {
+    It 'asks the backend again on the next click, because what it reads changes' {
         # A miss is not latched the way the pid answer is: the shell retitles the
         # tab every prompt, and the next click can find what this one did not.
         $script:tabs = @((New-TestTab 1 0 'PowerShell' 'none'))

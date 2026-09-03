@@ -366,11 +366,14 @@ could name its own ssh could steal a click.
 | Konsole | yes | yes, by pid |
 | Windows Terminal | yes | best effort, by title |
 
-Windows Terminal has no pid to match, so there the rain reads tab titles. ssh
-leaves the remote shell's title in the tab, and a shell titles itself
-`user@machine`, so a tab saying `atle@lab1` is taken for `lab1`. A tab that only
-has the machine as a word comes second, and nothing else counts. Titles change
-with every prompt, so this is looked up on each click and never cached.
+Where no pid names a tab, the backend answers for itself, through
+`Resolve-MachineTab`. Windows Terminal reads tab titles: ssh leaves the remote
+shell's title there, and a shell titles itself `user@machine`, so a tab saying
+`atle@lab1` is taken for `lab1`. A tab that only has the machine as a word comes
+second, and nothing else counts. Titles change with every prompt, so this is
+looked up on each click and never cached. Konsole and tmux answer nothing, and
+answer it without reading their tabs at all: they matched on the pid already, and
+a click must not spend a D-Bus round trip or a `tmux` process to be told so.
 
 The reporting side needs tmux for the switch, because the switch is a tmux
 command. Without it, sessions are still reported and the rain says so once at
@@ -417,9 +420,8 @@ lib/
   lanes.ps1             sessions to lanes
   sessions.ps1          Claude's session registry, and the /proc process-table readers
   terminal/
-    tabmap.ps1          session to tab, over time, the pid match both Linux
-                        backends answer with, and the title match a remote click
-                        falls back to. Knows no platform
+    tabmap.ps1          session to tab, over time, and the pid match both Linux
+                        backends answer with. Knows no platform
     windows-terminal.ps1  the UI Automation backend
     konsole.ps1           the D-Bus backend
     tmux.ps1              the backend that runs inside tmux: a session is the scope, a window the tab

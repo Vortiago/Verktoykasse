@@ -97,6 +97,38 @@ BeforeAll {
         $l.Start()
         try { $l.LocalEndpoint.Port } finally { $l.Stop() }
     }
+
+    # One -ExposeOnSSH run against a listener playing the rain, start to finish:
+    # take the report's connection, hand it to $Answer, and give back what the
+    # run drew once it has ended.
+    #
+    # Ended, not running. A redirected stdout cannot be opened for reading while
+    # the child still holds it, so a Get-Content mid-run answers nothing and a
+    # wait on one is only ever sitting out the run and calling that a pass.
+    #
+    # $Answer receives the accepted connection and does whatever that case needs
+    # said back down it, before the run ends.
+    function Invoke-ExposeRain ($claudeHome, [string[]] $argv, [scriptblock] $Answer) {
+        $port = Get-FreePort
+        $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, $port)
+        $listener.Start()
+        $run = $null; $conn = $null
+        try {
+            $run = Start-RainAsync $claudeHome (@('-Fps', '10', '-ExposeOnSSH',
+                                                  '-RemotePort', "$port") + $argv)
+            (Wait-Until -TimeoutMs 20000 -StepMs 20 -Condition { $listener.Pending() }) |
+                Should -BeTrue -Because 'the report should dial in'
+            $conn = $listener.AcceptTcpClient()
+            & $Answer $conn
+            (Wait-Until -TimeoutMs 20000 -StepMs 100 -Condition { $run.Process.HasExited }) |
+                Should -BeTrue -Because '-Seconds should stop the rain on its own'
+        } finally {
+            if ($conn) { try { $conn.Dispose() } catch { } }
+            $listener.Stop()
+            $r = if ($run) { Stop-RainAsync $run } else { $null }
+        }
+        $r
+    }
 }
 
 AfterAll {
@@ -207,17 +239,9 @@ Describe 'matrix.ps1 -Remote' {
 
 Describe 'matrix.ps1 -ExposeOnSSH' {
     It 'reports this machine to a listener while it draws' {
-        $port = Get-FreePort
-        $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, $port)
-        $listener.Start()
-        $run = $null; $conn = $null
-        try {
-            $run = Start-RainAsync $liveHome @('-Seconds', '10', '-Fps', '10', '-ExposeOnSSH',
-                                               '-RemotePort', "$port", '-RemoteName', 'orkanger')
-            (Wait-Until -TimeoutMs 15000 -StepMs 50 -Condition { $listener.Pending() }) | Should -BeTrue -Because 'the report should dial in'
-            $conn = $listener.AcceptTcpClient()
+        $r = Invoke-ExposeRain $liveHome @('-Seconds', '10', '-RemoteName', 'orkanger') {
+            param($conn)
             $stream = $conn.GetStream()
-
             $script:text = ''
             $buf = [byte[]]::new(8192)
             (Wait-Until -TimeoutMs 15000 -StepMs 50 -Condition {
@@ -235,17 +259,6 @@ Describe 'matrix.ps1 -ExposeOnSSH' {
             $frame = ConvertFrom-Json $lines[1]
             $frame.t | Should -Be 'frame'
             @($frame.sessions).Count | Should -BeGreaterThan 0
-
-            # Let the run end before reading what it drew. A redirected stdout
-            # cannot be opened for reading while the child still holds it, so a
-            # Get-Content here answers nothing however long it is given: the wait
-            # would be sitting out the run and calling that a pass.
-            (Wait-Until -TimeoutMs 20000 -StepMs 100 -Condition { $run.Process.HasExited }) |
-                Should -BeTrue -Because '-Seconds should stop the rain on its own'
-        } finally {
-            if ($conn) { try { $conn.Dispose() } catch { } }
-            $listener.Stop()
-            $r = if ($run) { Stop-RainAsync $run } else { $null }
         }
         # The other half of the flag: it draws the local session as well as
         # reporting it.
@@ -253,57 +266,29 @@ Describe 'matrix.ps1 -ExposeOnSSH' {
         $r.Stdout | Should -Match ([regex]::Escape("$([char]27)[?1049h"))
     }
 
-    BeforeAll {
-        # The -Stats line, end to end: run a rain that reports to $Answer's
-        # listener, and hand back what it drew.
-        #
-        # Two rules hold both cases below up. Read the output after the child has
-        # EXITED: a redirected stdout cannot be opened for reading while the
-        # child still holds it, so a Get-Content mid-run answers nothing and a
-        # wait on one only ever passes once the run ends anyway. And read the
-        # FIRST line the rain stamps: the screen is diffed, so a line that
-        # changes later arrives as the handful of cells that moved and cannot be
-        # grepped whole. -PollSeconds 0.2 is what puts an answer in before that
-        # first line falls due, one second in.
-        function Invoke-ExposeRain ([scriptblock] $Answer) {
-            $port = Get-FreePort
-            $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, $port)
-            $listener.Start()
-            $run = $null; $conn = $null
-            try {
-                $run = Start-RainAsync $emptyHome @('-Seconds', '5', '-Fps', '10', '-ExposeOnSSH',
-                                                    '-Stats', '-PollSeconds', '0.2', '-RemotePort', "$port")
-                (Wait-Until -TimeoutMs 20000 -StepMs 20 -Condition { $listener.Pending() }) |
-                    Should -BeTrue -Because 'the report should dial in'
-                $conn = $listener.AcceptTcpClient()
-                & $Answer $conn
-                (Wait-Until -TimeoutMs 20000 -StepMs 100 -Condition { $run.Process.HasExited }) |
-                    Should -BeTrue -Because '-Seconds should stop the rain on its own'
-            } finally {
-                if ($conn) { try { $conn.Dispose() } catch { } }
-                $listener.Stop()
-                $r = if ($run) { Stop-RainAsync $run } else { $null }
-            }
-            Remove-Sgr $r.Stdout
-        }
-    }
-
+    # The -Stats line. Each case reads the FIRST line its rain stamps: the screen
+    # is diffed, so a line that changes later arrives as the handful of cells
+    # that moved and cannot be grepped whole. -PollSeconds 0.2 is what puts an
+    # answer in before that first line falls due, one second in.
     It 'says it is connecting while the host has not answered' {
         # sshd accepts whether or not a rain is behind it, so this is exactly
         # what a host running no rain looks like, for as long as it lasts.
-        $text = Invoke-ExposeRain { param($conn) }
+        $r = Invoke-ExposeRain $emptyHome @('-Seconds', '5', '-Stats', '-PollSeconds', '0.2') {
+            param($conn)
+        }
+        $text = Remove-Sgr $r.Stdout
         $text | Should -Match 'host connecting'
         $text | Should -Not -Match 'host connected'
     }
 
     It 'says it is connected once the host welcomes it' {
-        $text = Invoke-ExposeRain {
+        $r = Invoke-ExposeRain $emptyHome @('-Seconds', '5', '-Stats', '-PollSeconds', '0.2') {
             param($conn)
             $stream = $conn.GetStream()
             $welcome = [System.Text.Encoding]::UTF8.GetBytes('{"v":1,"t":"welcome"}' + "`n")
             $stream.Write($welcome, 0, $welcome.Length); $stream.Flush()
         }
-        $text | Should -Match 'host connected'
+        (Remove-Sgr $r.Stdout) | Should -Match 'host connected'
     }
 }
 

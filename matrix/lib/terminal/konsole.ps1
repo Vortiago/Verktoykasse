@@ -137,6 +137,19 @@ function Get-TabKey {
     "$($Tab.Hwnd):$($Tab.Element)"
 }
 
+function Resolve-MachineTab {
+    # Nothing here to read a machine name out of: Get-AllTerminalTab leaves Name
+    # and Text empty, because the match on this backend is a pid walk. A remote
+    # click gets its answer from that walk, and this route exists for the backend
+    # that has no pid to walk.
+    #
+    # Answered without touching -ReadTab, which is why the caller hands over the
+    # reader rather than the tabs: a verdict this file already knows is not worth
+    # a D-Bus round trip per window and per tab to reach.
+    param([Parameter(Mandatory)] [string] $Machine, [scriptblock] $ReadTab = $null)
+    $null
+}
+
 function Resolve-SessionTab {
     # Konsole tab titles do not carry Claude's glyph, so the Windows title scoring
     # has nothing to score. The tab process id is exact instead, and the match is

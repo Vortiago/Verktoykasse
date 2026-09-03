@@ -11,6 +11,17 @@ BeforeAll {
     $script:T = [char]9
 }
 
+Describe 'Resolve-MachineTab' {
+    It 'answers nothing, and does not read the tabs to say so' {
+        # A remote click is answered here by the pid walk. This route is for the
+        # backend that has no pid, and the pane list carries no title to read, so
+        # running tmux for it would be a process per click for nothing.
+        $script:reads = 0
+        Resolve-MachineTab -Machine 'lab1' -ReadTab { $script:reads++; @() } | Should -BeNullOrEmpty
+        $reads | Should -Be 0
+    }
+}
+
 Describe 'ConvertTo-TmuxTab' {
     It 'shapes one list-panes row' {
         $row = @('$1', '@1', '2', '4242', '%1') -join $T

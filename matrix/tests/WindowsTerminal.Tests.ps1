@@ -116,3 +116,67 @@ Describe 'Resolve-SessionTab, one tab and one session' {
                             -Tab @((New-TestTab 1 0 'pwsh' 'none'))).Count | Should -Be 0
     }
 }
+
+Describe 'Resolve-MachineTab' {
+    # The route a click on a remote lane takes here, where no pid names a tab.
+    # ssh leaves the remote shell's title in it, and a shell titles itself
+    # user@machine. The reader is injected, the way every tab reader in the suite
+    # is, and $script: because a seam runs inside the function under test.
+    It 'finds the tab a shell titled user@machine' {
+        $script:tabs = @((New-TestTab 1 0 'PowerShell' 'none'), (New-TestTab 1 1 'atle@lab1' 'none'),
+                         (New-TestTab 1 2 'Matrix' 'none'))
+        (Resolve-MachineTab -Machine 'lab1' -ReadTab { $script:tabs }).Index | Should -Be 1
+    }
+
+    It 'takes the short name out of a fully qualified one, with whatever follows' {
+        # The hello carries the name cut at the first dot; a shell often writes
+        # the whole thing, and the working directory after a colon.
+        $script:tabs = @((New-TestTab 1 0 'atle@lab1.example.net: ~/repos' 'none'))
+        (Resolve-MachineTab -Machine 'lab1' -ReadTab { $script:tabs }).Index | Should -Be 0
+    }
+
+    It 'ignores case, the way a host name does' {
+        $script:tabs = @((New-TestTab 1 0 'atle@LAB1' 'none'))
+        (Resolve-MachineTab -Machine 'lab1' -ReadTab { $script:tabs }).Index | Should -Be 0
+    }
+
+    It 'does not take the name inside a longer word' {
+        $script:tabs = @((New-TestTab 1 0 'atle@lab10' 'none'), (New-TestTab 1 1 'lab1-old notes' 'none'))
+        Resolve-MachineTab -Machine 'lab1' -ReadTab { $script:tabs } | Should -BeNullOrEmpty
+    }
+
+    It 'prefers user@machine over a tab that merely mentions the machine' {
+        # A local Claude session can be working on that machine's code. Its tab
+        # names the machine; the ssh tab is the one whose title says @machine.
+        $script:tabs = @((New-TestTab 1 0 'lab1 deploy script' 'idle'),
+                         (New-TestTab 1 1 'atle@lab1' 'none'))
+        (Resolve-MachineTab -Machine 'lab1' -ReadTab { $script:tabs }).Index | Should -Be 1
+    }
+
+    It 'settles for a tab that names the machine as a word' {
+        $script:tabs = @((New-TestTab 1 0 'PowerShell' 'none'), (New-TestTab 1 1 'ssh lab1' 'none'))
+        (Resolve-MachineTab -Machine 'lab1' -ReadTab { $script:tabs }).Index | Should -Be 1
+    }
+
+    It 'takes the first of two equal matches, so a repeat click lands on the same tab' {
+        $script:tabs = @((New-TestTab 1 3 'atle@lab1' 'none'), (New-TestTab 2 0 'atle@lab1' 'none'))
+        (Resolve-MachineTab -Machine 'lab1' -ReadTab { $script:tabs }).Hwnd | Should -Be 1
+    }
+
+    It 'answers nothing when no title names the machine' {
+        $script:tabs = @((New-TestTab 1 0 'PowerShell' 'none'), (New-TestTab 1 1 'atle@lab2' 'none'))
+        Resolve-MachineTab -Machine 'lab1' -ReadTab { $script:tabs } | Should -BeNullOrEmpty
+    }
+
+    It 'answers nothing when there are no tabs at all' {
+        Resolve-MachineTab -Machine 'lab1' -ReadTab { @() } | Should -BeNullOrEmpty
+    }
+
+    It 'reads the tabs each time, because a shell retitles its tab every prompt' {
+        $script:reads = 0
+        $reader = { $script:reads++; @((New-TestTab 1 0 'atle@lab1' 'none')) }
+        [void](Resolve-MachineTab -Machine 'lab1' -ReadTab $reader)
+        [void](Resolve-MachineTab -Machine 'lab1' -ReadTab $reader)
+        $reads | Should -Be 2
+    }
+}

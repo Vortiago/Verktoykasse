@@ -166,6 +166,19 @@ function Get-TabKey {
     "$($Tab.Hwnd):$($Tab.Pane)"
 }
 
+function Resolve-MachineTab {
+    # Nothing here to read a machine name out of: a tab is a pane, the pane list
+    # carries no title, and the match on this backend is a pid walk. A remote
+    # click gets its answer from that walk, and this route exists for the backend
+    # that has no pid to walk.
+    #
+    # Answered without touching -ReadTab, which is why the caller hands over the
+    # reader rather than the tabs: running tmux to reach a verdict this file
+    # already knows would be a process per click for nothing.
+    param([Parameter(Mandatory)] [string] $Machine, [scriptblock] $ReadTab = $null)
+    $null
+}
+
 function Resolve-SessionTab {
     # The tmux twin of Konsole's exact match: pane_pid is the pane's root process,
     # and the last hop of a claude pid's /proc walk inside a pane is exactly that
