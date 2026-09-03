@@ -1,21 +1,23 @@
 # oclaude daemon -- probe, start and restart the ollama daemon.
 # Loaded by ../oclaude.ps1.
 #
-# Two platforms, two different daemons. On Windows the tray application or a plain
-# `ollama serve` owns it, and it reads its settings from whatever launched it, which is
-# why those live in User-scope OLLAMA_* variables. On Linux and macOS a service manager
-# usually owns it, under its OWN user account and so with its own model store. Starting
-# `ollama serve` by hand there gives a second daemon with an empty store, which is
-# exactly the wrong-daemon failure Test-OllamaIdentity exists to catch. So the Unix path
-# drives the service where there is one, and spawns a process only where there is not.
+# Windows and Unix (Linux and macOS) own the daemon differently.
 #
-# oclaude holds no daemon defaults of its own on either platform. Whatever starts the
-# daemon supplies them, and this file is the only one that knows which starter that is.
+# On Windows the tray application or a plain `ollama serve` owns it. The daemon reads
+# its settings from whatever launched it, so those live in User-scope OLLAMA_* settings.
+#
+# On Unix a service manager usually owns it, under its OWN user and so with its own
+# model store. `ollama serve` started by hand there is a second daemon with an empty
+# store, the wrong-daemon failure Test-OllamaIdentity exists to catch. So the Unix path
+# drives the service where there is one.
+#
+# oclaude holds no daemon settings of its own. Whatever starts the daemon supplies them,
+# and this file is the only one that knows which starter that is.
 
 function Test-OClaudeIsWindows {
-    # Windows PowerShell 5.1 does not define $IsWindows, where it reads as $null and
-    # would send every platform test down the Unix branch. 5.1 runs on Windows only, so
-    # an undefined answer IS Windows.
+    # Windows PowerShell 5.1 does not define $IsWindows. It reads as $null there and
+    # would send every test down the Unix branch. 5.1 runs on Windows only, so undefined
+    # IS Windows.
     if ($null -eq $IsWindows) { return $true }
     return [bool]$IsWindows
 }
@@ -41,20 +43,16 @@ function Wait-OllamaServer {
 }
 
 function Get-OllamaDaemonEnv {
-    # The OLLAMA_* settings to hand a daemon oclaude starts itself, as a name -> value
-    # map, skipping the ones that are not set. Both the lazy start and the explicit
-    # restart configure the daemon from this, so the two cannot disagree about what a
-    # daemon of ours looks like.
+    # The OLLAMA_* settings for a daemon oclaude starts itself. Both the lazy start and
+    # the explicit restart read this, so the two cannot disagree.
     #
-    # Where they come from is per platform. On Windows, User scope: the one place every
-    # starter reads, including the tray application and a login shell, and a shell opened
-    # before a change carries a stale copy in its own environment, hence reading the
-    # scope rather than trusting $env:. On Unix there is no second scope, so this shell's
-    # environment is what the child gets. A systemd unit reads neither, and
-    # Get-OllamaServiceEnv covers that case.
+    # Windows: User scope, which every starter reads. A shell opened before a change
+    # holds a stale copy, so read the scope, not $env:. Unix has no second scope, so the
+    # child inherits this shell. A systemd unit reads neither, and Get-OllamaServiceEnv
+    # covers that.
     #
-    # OLLAMA_HOST is the one that bites when missing: a daemon started without it binds
-    # loopback only, which breaks every container with no error anywhere.
+    # OLLAMA_HOST bites when missing: the daemon then binds loopback only, breaking
+    # every container with no error anywhere.
     $found = [ordered]@{}
     $scope = if (Test-OClaudeIsWindows) { 'User' } else { $null }
     $names = 'OLLAMA_HOST', 'OLLAMA_KEEP_ALIVE', 'OLLAMA_MAX_LOADED_MODELS',
@@ -69,13 +67,13 @@ function Get-OllamaDaemonEnv {
 }
 
 function Get-OllamaServiceUnit {
-    # 'system', 'user' or $null. Unix only, and the answer decides how to start the
-    # daemon, where its settings come from, and what to tell the reader about both.
+    # 'system', 'user' or $null. Unix only. The answer decides how to start the daemon
+    # and where its settings come from.
     if (Test-OClaudeIsWindows) { return $null }
     if (-not (Get-Command systemctl -ErrorAction SilentlyContinue)) { return $null }
 
     # list-unit-files, not is-active: a stopped unit is still the thing to start, and
-    # is-active answers 'inactive' both for an absent unit and for a stopped one.
+    # is-active answers 'inactive' for an absent unit and a stopped one alike.
     if (@(systemctl list-unit-files ollama.service 2>$null) -match 'ollama\.service') {
         return 'system'
     }
@@ -86,27 +84,26 @@ function Get-OllamaServiceUnit {
 }
 
 function Get-OllamaSystemctlArgument {
-    # The argument list that addresses this unit. Every systemctl invocation and every
-    # systemctl command this file PRINTS goes through here, so a third scope means
-    # editing one function rather than four.
+    # The argument list that addresses this unit. Every systemctl call and every
+    # systemctl command this file PRINTS comes through here, so a third scope means
+    # editing one function.
     param([Parameter(Mandatory)][string]$Unit, [Parameter(Mandatory)][string[]]$Arguments)
     if ($Unit -eq 'user') { return @('--user') + $Arguments }
     return $Arguments
 }
 
 function Get-OllamaServiceDropInPath {
-    # Where a systemd unit reads its environment from. This drop-in is the Unix
-    # equivalent of Windows User scope, and it is the answer both the restart report and
-    # the help text give.
+    # Where a systemd unit reads its environment. This drop-in is the Unix equivalent of
+    # Windows User scope. The restart report and the help text both name it.
     param([Parameter(Mandatory)][string]$Unit)
     if ($Unit -eq 'user') { '~/.config/systemd/user/ollama.service.d/override.conf' }
     else { '/etc/systemd/system/ollama.service.d/override.conf' }
 }
 
 function Get-OllamaSettingsHint {
-    # Where a changed OLLAMA_* actually takes on this box, in one line, for the help
-    # text. It lives here because this file is what discovers who owns the daemon, and a
-    # second answer written elsewhere would be the less informed of the two.
+    # Where a changed OLLAMA_* actually takes, in one line, for the help text. It lives
+    # here because this file discovers who owns the daemon. An answer written elsewhere
+    # would be the less informed of the two.
     $unit = Get-OllamaServiceUnit
     if ($unit) { return ('set OLLAMA_* in {0}' -f (Get-OllamaServiceDropInPath -Unit $unit)) }
     if (Test-OClaudeIsWindows) { return 'set User-scope OLLAMA_* variables' }
@@ -114,8 +111,8 @@ function Get-OllamaSettingsHint {
 }
 
 function Get-OllamaServiceEnv {
-    # The OLLAMA_* the service manager hands the daemon, as the same name -> value map
-    # Get-OllamaDaemonEnv returns, so one printer serves both owners.
+    # What the service manager hands the daemon, in the same shape Get-OllamaDaemonEnv
+    # returns, so one printer serves both owners.
     param([Parameter(Mandatory)][string]$Unit)
     $sc = Get-OllamaSystemctlArgument -Unit $Unit `
                                       -Arguments @('show', 'ollama', '--property=Environment')
@@ -130,12 +127,10 @@ function Get-OllamaServiceEnv {
 }
 
 function Show-OllamaServiceDropIn {
-    # What to do when the service passes nothing. Printed rather than applied: the
-    # drop-in needs root to write, so a knob oclaude set here would be one that never
-    # took.
+    # What to do when the service passes nothing. oclaude prints it rather than applying
+    # it: the drop-in needs root, so a setting written here would never take.
     param([Parameter(Mandatory)][string]$Unit)
-    # sudo is a privilege decision and stays here. The scope prefix is not, so it comes
-    # from the one function that owns it.
+    # sudo is a privilege decision and stays here. The scope prefix is not.
     $sc     = Get-OllamaSystemctlArgument -Unit $Unit -Arguments @('daemon-reload')
     $reload = if ($Unit -eq 'user') { 'systemctl {0}' -f ($sc -join ' ') }
               else { 'sudo systemctl {0}' -f ($sc -join ' ') }
@@ -147,14 +142,14 @@ function Show-OllamaServiceDropIn {
 }
 
 function Start-OllamaProcess {
-    # Spawns `ollama serve` detached. The last resort on Unix, and the usual path on
-    # Windows without the tray application.
+    # Spawns `ollama serve` detached. A last resort on Unix, the usual path on Windows
+    # without the tray application.
     if (Test-OClaudeIsWindows) {
         Start-Process -FilePath 'ollama' -ArgumentList 'serve' -WindowStyle Hidden | Out-Null
         return
     }
-    # -WindowStyle does not apply off Windows, and with no redirection the daemon writes
-    # its log over the prompt. Two files, because Start-Process refuses one for both.
+    # -WindowStyle is Windows-only, and unredirected the daemon writes its log over the
+    # prompt. Two files, because Start-Process refuses one for both.
     $tmp = [System.IO.Path]::GetTempPath()
     Start-Process -FilePath 'ollama' -ArgumentList 'serve' `
         -RedirectStandardOutput (Join-Path $tmp 'oclaude-ollama-serve.out') `
@@ -171,9 +166,9 @@ function Start-OllamaService {
         systemctl @sc
         return ($LASTEXITCODE -eq 0)
     }
-    # A system unit needs root. -n so that a box without a password rule fails at once
-    # rather than waiting for a password nobody is watching for. Absent sudo is the same
-    # answer as sudo refusing, so both land on the message below.
+    # A system unit needs root. -n so a machine with no password rule fails at once
+    # instead of waiting for a password nobody is watching for. No sudo and sudo refusing
+    # are the same answer, so both land on the message below.
     if (Get-Command sudo -ErrorAction SilentlyContinue) {
         sudo -n systemctl @sc 2>$null
         if ($LASTEXITCODE -eq 0) { return $true }
@@ -219,13 +214,11 @@ function Start-OllamaServer {
 }
 
 function Test-OllamaIdentity {
-    # A health check only proves SOMETHING answers on the port, not that it is YOUR
-    # daemon. On Windows this box has two profiles, and a stale ollama from the other one
-    # grabbed the port the moment a restart freed it: health check green, different model
-    # store, every cc-* tag gone, no error anywhere. On Unix the same thing happens when
-    # `ollama serve` runs as you while the service runs as the ollama user. The store
-    # check is the decisive one -- a wrong-store daemon cannot fake the tags, and they
-    # are exactly what breaks.
+    # A health check proves SOMETHING answers on the port, not that it is YOUR daemon.
+    # A second Windows profile, or a hand-started `ollama serve` beside a Unix service,
+    # can grab the port: health check green, different model store, every cc-* tag gone,
+    # no error anywhere. So the tags decide. A wrong-store daemon cannot fake them, and
+    # they are exactly what breaks.
     param($Cfg)
 
     try {
@@ -236,18 +229,17 @@ function Test-OllamaIdentity {
     }
     Write-Host ("  {0,-26} {1}" -f 'server version', $ver) -ForegroundColor Gray
 
-    # An all-cloud map has nothing local to check, and then the version above is all
-    # there is to report. Saying so beats reporting a pass that was never made.
+    # An all-cloud map has nothing local to check. Saying so beats reporting a pass
+    # that was never made.
     $expected = Get-OClaudeLocalModel -Cfg $Cfg
     if (-not $expected) {
         Write-Host ("  {0,-26} {1}" -f 'model store', 'no local tier, nothing to check') -ForegroundColor Gray
         return $true
     }
 
-    # Get-OllamaModel already reports each name in both its tagged and its bare form,
-    # which is exactly the question here: the derived tags are spelled bare in the map.
-    # The version call above has proved the daemon answers, so an empty list now is a
-    # real verdict rather than a transport failure.
+    # Get-OllamaModel reports each name tagged and bare, which is the question here:
+    # the map spells derived tags bare. The version call above proved the daemon answers,
+    # so an empty list now is a verdict rather than a transport failure.
     $have    = Get-OllamaModel -Endpoint $Cfg.Endpoint
     $missing = @($expected | Where-Object { $have -notcontains $_ })
     if (-not $missing) {
@@ -275,12 +267,11 @@ function Test-OllamaIdentity {
 }
 
 function oclaude-restart-daemon {
-    # Restarts the daemon so that a changed setting takes. What a changed setting means
-    # is per platform: a User-scope variable on Windows, a unit drop-in under systemd.
-    # Aborts any in-flight `ollama pull`.
+    # Restarts the daemon so a changed setting takes: a User-scope setting on Windows, a
+    # unit drop-in under systemd. Aborts any in-flight `ollama pull`.
     #
-    # Only the restart itself differs by owner. The wait, the report and the identity
-    # check below are shared, so a change to any of them lands once.
+    # Only the restart differs by owner. The wait, the report and the identity check are
+    # shared, so a change to any of them lands once.
     [void](Test-OClaudeStale)
     $cfg     = Get-OClaudeConfig
     $unit    = Get-OllamaServiceUnit
@@ -288,17 +279,17 @@ function oclaude-restart-daemon {
     $applied = [ordered]@{}
 
     if ($unit) {
-        # systemd owns the daemon's children through the unit's cgroup, so the manual
-        # llama-server sweep below would only race with it.
+        # systemd owns the children through the unit's cgroup, so the llama-server
+        # sweep below would only race with it.
         if (-not (Start-OllamaService -Unit $unit -Action 'restart')) { return }
     } else {
-        # No service manager. The daemon only sees the variables held by whatever
-        # launched it, so re-read them and relaunch.
+        # No service manager. The daemon sees only what its launcher held, so re-read
+        # and relaunch.
         $applied = Get-OllamaDaemonEnv
         foreach ($v in $applied.Keys) { Set-Item "Env:$v" $applied[$v] }
 
-        # llama-server runners are children the tray does not manage: killing only the
-        # parents orphans them, still holding tens of GiB and starving the scheduler
+        # llama-server runners are children the tray does not manage. Killing only the
+        # parents orphans them, still holding tens of GiB and starving the scheduler.
         Get-Process -Name 'ollama app', 'ollama', 'llama-server' -ErrorAction SilentlyContinue |
             Stop-Process -Force
         Start-Sleep -Seconds 3
@@ -325,8 +316,8 @@ function oclaude-restart-daemon {
                 $(if ($settings.Count) { 'these settings' } else { 'no OLLAMA_* set' })) `
         -ForegroundColor DarkGreen
     $settings.GetEnumerator() | Sort-Object Key | ForEach-Object {
-        # The tray forces its own OLLAMA_CONTEXT_LENGTH, so on that path reporting
-        # ours as applied would be a lie.
+        # The tray forces its own OLLAMA_CONTEXT_LENGTH, so reporting ours as applied
+        # would be a lie on that path.
         $note = if ($viaTray -and $_.Key -eq 'OLLAMA_CONTEXT_LENGTH') { '   (tray overrides this)' } else { '' }
         Write-Host ("  {0,-26} {1}{2}" -f $_.Key, $_.Value, $note) -ForegroundColor Gray
     }

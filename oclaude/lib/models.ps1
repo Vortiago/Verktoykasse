@@ -2,35 +2,32 @@
 # Loaded by ../oclaude.ps1.
 
 function Test-CloudModel {
-    # Cloud tags resolve server-side, so they are never "not pulled". Three call sites.
+    # Cloud tags resolve server-side, so they are never "not pulled".
     param([string]$Model)
     return [bool]($Model -match '(:|-)cloud$')
 }
 
 function Get-OClaudeLocalModel {
-    # The tags this map runs locally: every tier model that is not a cloud tag. A derived
-    # tag name is one of these, because a tier points at the TAG and not at its base
-    # model. One list therefore answers three questions -- what to pull, what to build,
-    # and what proves the daemon is serving your model store.
+    # The tags this map runs locally. A derived tag name is one of them, because a tier
+    # points at the TAG, not its base model. So one list answers what to pull, what to
+    # build, and what proves the daemon serves your store.
     param([Parameter(Mandatory)]$Cfg)
-    # Wrapped, because Sort-Object returns a scalar for a one-model map and every caller
-    # asks it for .Count or -contains.
+    # Wrapped: Sort-Object returns a scalar for a one-model map, and callers want .Count
+    # and -contains.
     @(@($Cfg.Models.Values | Where-Object { -not (Test-CloudModel $_) }) | Sort-Object -Unique)
 }
 
 function Get-OClaudeDerivedTagInUse {
-    # The derived tags some tier points at: what to build, and whose bases to pull. Both
-    # loops asked this question with their own copy of the filter, held in step by a
-    # comment. Widening what counts as in use now lands in one place.
+    # The derived tags some tier points at: what to build, and whose bases to pull.
+    # Widening what counts as in use lands here, for both loops at once.
     param([Parameter(Mandatory)]$Cfg)
     $local = Get-OClaudeLocalModel -Cfg $Cfg
     @($Cfg.Derived.Keys | Where-Object { $local -contains $_ })
 }
 
 function Get-OClaudeNumCtx {
-    # The num_ctx pinned behind a tag, or nothing when the tier names a base model
-    # directly and so has no pin. Three callers asked this with a Contains test and a
-    # double subscript.
+    # The num_ctx pinned behind a tag. Nothing when the tier names a base model
+    # directly and so has no pin.
     param([Parameter(Mandatory)]$Cfg, [string]$Model)
     if ($Model -and $Cfg.Derived.Contains($Model)) { $Cfg.Derived[$Model].NumCtx }
 }
@@ -66,22 +63,22 @@ function Test-OllamaCloudModel {
 }
 
 function oclaude-build-models {
-    # (Re)create the derived tags that pin num_ctx. Cheap: they reference the base
-    # model's existing blobs, so a tag costs a manifest, not a copy. The stale check
-    # matters most here -- this is what you run right after editing $derived.
+    # (Re)create the derived tags that pin num_ctx. Cheap: a tag references the base
+    # model's existing blobs, so it costs a manifest, not a copy. The stale check matters
+    # most here, since you run this right after editing Derived.
     [void](Test-OClaudeStale)
     Build-OClaudeDerivedTag -Cfg (Get-OClaudeConfig)
 }
 
 function Build-OClaudeDerivedTag {
-    # The body of oclaude-build-models, minus the entry-point work. oclaude-pull ends
-    # by building the tags too, and calling the entry point would re-run the stale
-    # check and rebuild the config it already holds.
+    # The body of oclaude-build-models without the entry-point work. oclaude-pull builds
+    # the tags too, and calling the entry point would re-run the stale check and rebuild
+    # a config it already holds.
     param([Parameter(Mandatory)]$cfg)
     if (-not (Start-OllamaServer -Endpoint $cfg.Endpoint)) { return }
 
-    # Only the tags a tier points at. A spec nothing runs costs nothing, so Derived can
-    # carry a model you are not using today without building or pulling its weights.
+    # Only the tags a tier points at, so Derived can carry a spec you are not running
+    # today without building or pulling its weights.
     $tags = Get-OClaudeDerivedTagInUse -Cfg $cfg
     if (-not $tags) { Write-Host 'no derived tag is in use' -ForegroundColor DarkGray }
 
@@ -100,19 +97,16 @@ function Build-OClaudeDerivedTag {
         Remove-Item $file -ErrorAction SilentlyContinue
     }
 
-    # Claude Code holds ONE context cap and applies it to every tier, so any tier whose
-    # pin sits below that cap can be handed more than it holds. Which matters how much
-    # depends on the tier, so this says two different things.
+    # Claude Code holds ONE context cap for every tier, so any tier pinned below the cap
+    # can be handed more than it holds. How much that matters splits in two.
     #
-    # The MAIN LOOP tier, the one DefaultAlias resolves to, holds the session itself.
-    # Overfilling it loses the conversation, so that is a warning. Warn only when the cap
-    # EXCEEDS the pin: below it is a valid choice.
+    # The MAIN LOOP tier holds the session, so overfilling it loses the conversation.
+    # That is a warning, and only when the cap EXCEEDS the pin.
     #
     # Every other tier reads a SLICE of a transcript that grows to the auto-compact
-    # window, so the window is the honest bound for them. Overflow there is not a crash,
-    # but a classifier that stops answering is one that stops gating tool calls, and a
-    # background call that truncates does so with no error anywhere. This used to name
-    # SONNET alone, which said nothing about a local HAIKU tier under a cloud main loop.
+    # window, so that window is their bound. A note, not a warning: a classifier that
+    # stops answering stops gating tool calls, and a truncated background call is
+    # silent.
     $mainTier = if ($cfg.DefaultAlias -match 'opus') { 'OPUS' } else { $cfg.DefaultAlias.ToUpper() }
     foreach ($tier in $cfg.Models.Keys) {
         $pin = Get-OClaudeNumCtx -Cfg $cfg -Model $cfg.Models[$tier]
@@ -146,7 +140,7 @@ function oclaude-pull {
     $missing = @(@($bases) + @($plain) | Sort-Object -Unique |
         Where-Object { $have -notcontains $_ })
 
-    # Report a failed pull here: oclaude-build-models would rediscover it as
+    # Report a failed pull here. oclaude-build-models would rediscover it as
     # "failed to build <tag>", which names the wrong culprit.
     $failed = @()
     foreach ($m in $missing) {

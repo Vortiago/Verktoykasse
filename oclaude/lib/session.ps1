@@ -3,7 +3,7 @@
 
 function Test-ArgFlag {
     # Is $Flag already in the caller's argv? -contains is an EXACT match and misses the
-    # `--flag=value` form, so oclaude used to prepend its default on top of the user's.
+    # `--flag=value` form, which made oclaude prepend its default over the caller's.
     param([string[]]$Arguments, [string]$Flag)
     $rx = '^' + [regex]::Escape($Flag) + '(=|$)'
     return [bool]@($Arguments | Where-Object { "$_" -match $rx })
@@ -74,12 +74,13 @@ function oclaude {
         else { Remove-Item Env:CLAUDE_CODE_DISABLE_1M_CONTEXT -ErrorAction SilentlyContinue }
         $env:CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = '1'
         # Background calls DISABLE_NONESSENTIAL_TRAFFIC does not cover. Both fork the whole
-        # conversation onto the MAIN LOOP model, so on Anthropic they are a cache hit and
-        # here they are a real 35B request holding the only runner slot. Both accept
-        # 0/false/no/off. prompt_suggestion fires after every turn and its gate is live for
-        # this account; away_summary defaults ON in code and is pinned off before a gate
-        # flip makes it fire. /recap is a slash command, so it is unaffected. Auto-memory
-        # extraction is the third of these and stays on deliberately.
+        # conversation onto the MAIN LOOP model. On Anthropic that is a cache hit. Here it
+        # is a real request holding the only runner slot. Both accept 0/false/no/off.
+        #
+        # prompt_suggestion fires after every turn and its gate is live for this account.
+        # away_summary defaults ON in code, and this pins it off before a gate flip makes
+        # it fire. /recap is a slash command, so it is unaffected. Auto-memory extraction
+        # is the third of these and stays on deliberately.
         $env:CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION     = '0'
         $env:CLAUDE_CODE_ENABLE_AWAY_SUMMARY          = '0'
         $env:API_TIMEOUT_MS                           = $cfg.TimeoutMs

@@ -9,7 +9,8 @@ function oclaude-status {
     Write-Host ("daemon   {0}  {1}" -f $cfg.Endpoint, $(if ($up) { 'up' } else { 'DOWN' })) `
         -ForegroundColor $(if ($up) { 'DarkGreen' } else { 'Red' })
 
-    # The first question when a tier is not the one you expected is which file was read.
+    # When a tier is not the one you expected, the first question is which file oclaude
+    # read.
     $cfgState = Get-OClaudeConfigState -Cfg $cfg
     Write-Host ("config   {0}" -f $cfgState.Summary) `
         -ForegroundColor $(if ($cfgState.Loaded) { 'DarkGray' } else { 'DarkYellow' })
@@ -18,8 +19,8 @@ function oclaude-status {
     }
     $have = if ($up) { Get-OllamaModel -Endpoint $cfg.Endpoint } else { @() }
     Write-Host ''
-    # Two tiers can share one cloud tag, and the access check is a real generation with a
-    # 120s timeout. Ask once per tag rather than once per tier.
+    # Two tiers can share a cloud tag, and this check is a real generation with a 120s
+    # timeout. Ask once per tag, not once per tier.
     $probed = @{}
     foreach ($tag in @($cfg.Models.Values | Where-Object { Test-CloudModel $_ } | Sort-Object -Unique)) {
         $probed[$tag] = if ($up) { Test-OllamaCloudModel -Model $tag -Endpoint $cfg.Endpoint }

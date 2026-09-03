@@ -2,12 +2,12 @@
 # Loaded by ../oclaude.ps1.
 #
 # This file is committed, so it holds one machine's map as a worked example. Do not
-# edit it to configure your own box: write ~/.config/oclaude/config.ps1 instead, which
-# is outside the repo and overrides any key here. Run `oclaude-init-config` to create
-# it from config.example.ps1, and see lib/machine.ps1 for how the two combine.
+# edit it to configure your own machine. Write ~/.config/oclaude/config.ps1 instead,
+# which sits outside the repo and overrides any key here. `oclaude-init-config` creates
+# it from config.example.ps1. lib/machine.ps1 explains how the two combine.
 #
 # The map below is a Ryzen APU with 128 GiB of shared memory, which is why every chat
-# tier is local. config.example.ps1 is the other worked example: an all-cloud map.
+# tier is local. config.example.ps1 is the other worked example: a mostly-cloud map.
 
 function Get-OClaudeDefaultConfig {
     # ---- model map ------------------------------------------------------------
@@ -27,14 +27,14 @@ function Get-OClaudeDefaultConfig {
                                              #   a subscription
     }
     # derived tag -> base model + pinned context. Rebuild with oclaude-build-models.
-    # Context is nearly free on this architecture (one KV layer, 40 recurrent), so the
-    # 35B's ~41 GiB resident is almost all weights. That is why a second runner of the
-    # same tag is expensive: anything else wanting this model should reuse the loaded
-    # one rather than load its own. Headroom still matters: the scheduler clamps its
-    # budget to free SYSTEM ram on this APU.
+    #
+    # Context is nearly free here (one KV layer, 40 recurrent), so the 35B's ~41 GiB
+    # resident is almost all weights. A second runner of the same tag is therefore
+    # expensive, and the scheduler clamps its budget to free SYSTEM RAM.
+    #
     # Params are Qwen's "precise coding" preset. Do not restore Ollama's default
-    # presence_penalty 1.5 -- it fights the exact repetition file paths need.
-    # use_mmap false was measured and is not worth it: same free memory, slower load.
+    # presence_penalty 1.5, which fights the exact repetition file paths need. Measured
+    # and rejected: use_mmap false gives the same free memory and a slower load.
     $derived = [ordered]@{
         'cc-chat-35b-q8' = @{
             From   = 'qwen3.6:35b-a3b-mtp-q8_0'
@@ -42,11 +42,11 @@ function Get-OClaudeDefaultConfig {
             Params = [ordered]@{ temperature = 0.6; top_p = 0.95; top_k = 20
                                  min_p = 0.0; presence_penalty = 0.0; repeat_penalty = 1.0 }
         }
-        # SONNET/HAIKU: LFM2.5-8B-A1B, picked on IFEval and non-hallucination rate rather
-        # than size. A dense 4B was rejected because 4B ACTIVE is MORE per-token work
-        # than the 35B-A3B's 3B active. num_ctx is the model maximum: the
-        # classifier's prompt grows with the transcript, and overflowing it stops it
-        # gating tool calls. Params are the vendor defaults from the model card.
+        # SONNET/HAIKU: LFM2.5-8B-A1B, chosen on IFEval and non-hallucination rate rather
+        # than size. A dense 4B loses, because 4B ACTIVE is MORE per-token work than the
+        # 35B-A3B's 3B active. num_ctx is the model maximum: the classifier's prompt grows
+        # with the transcript, and overflowing it stops it gating tool calls. Params are the
+        # vendor defaults from the model card.
         'cc-fast-8b'       = @{
             From   = 'lfm2.5:8b-a1b-q8_0'
             NumCtx = 128000
@@ -61,12 +61,12 @@ function Get-OClaudeDefaultConfig {
         HAIKU  = 'LFM2.5 8B-A1B q8 128k (local, background)'
         FABLE  = 'Nemotron 3 Ultra 550B (cloud)'
     }
-    # The advisor subagent's model. Override per shell with $env:OCLAUDE_ADVISOR.
-    # Use an ALIAS (fable / opus / sonnet / haiku), not a raw Ollama tag: an unresolvable
-    # subagent model silently falls back to the CALLER's, so a typo makes the advisor
-    # the very model that asked for advice.
-    # Get-OClaudeConfig applies $env:OCLAUDE_ADVISOR on top of this, so the per-shell
-    # variable outranks the machine file rather than the other way round.
+    # The advisor subagent's model. Get-OClaudeConfig applies $env:OCLAUDE_ADVISOR over
+    # this, so the per-shell variable outranks the machine file.
+    #
+    # Never use a raw Ollama tag. Use an ALIAS: fable, opus, sonnet or haiku. An
+    # unresolvable subagent model falls back to the CALLER's with no error, so a typo
+    # makes the advisor the very model that asked for advice.
     $advisor = 'fable'
     # --------------------------------------------------------------------------
 
@@ -77,18 +77,17 @@ function Get-OClaudeDefaultConfig {
         Derived         = $derived
         Advisor         = $advisor         # NOT CLAUDE_CODE_SUBAGENT_MODEL: that overrides
                                            #   every agent definition, so oclaude clears it
-        DefaultAlias    = 'opus'           # NOT 'opusplan' -- that runs execution on the
-                                           #   SONNET tier, i.e. the 8B classifier
+        DefaultAlias    = 'opus'           # NOT 'opusplan', which runs execution on the
+                                           #   SONNET tier, that is, the 8B classifier
 
-        # Daemon settings are NOT here. They only ever applied on the one path where
-        # oclaude starts the daemon itself, and the Ollama tray app, when installed,
-        # starts it first and ignores them. A knob that works sometimes is worse than
-        # none, so set the User-scope OLLAMA_* variables instead: those hold whoever
-        # starts the daemon. oclaude-restart-daemon re-reads them and reports what it
-        # applied. OLLAMA_KEEP_ALIVE, OLLAMA_MAX_LOADED_MODELS, OLLAMA_CONTEXT_LENGTH
-        # and OLLAMA_KV_CACHE_TYPE are the ones worth setting; note that
-        # OLLAMA_CONTEXT_LENGTH is why the per-tag num_ctx pins above exist, since one
-        # daemon-wide window sized for the largest model leaves room for only it.
+        # Daemon settings are NOT here. They only applied where oclaude started the
+        # daemon itself, and the tray application starts it first and ignores them. A
+        # setting that works sometimes is worse than none.
+        #
+        # Set the User-scope OLLAMA_* settings instead, which hold for whoever starts
+        # the daemon. oclaude-restart-daemon re-reads them and reports what it applied.
+        # OLLAMA_CONTEXT_LENGTH is why the per-tag num_ctx pins above exist: one
+        # daemon-wide window sized for the largest model leaves room for that one only.
 
         MaxContextTokens = 262144          # one global value, so at most the SMALLEST num_ctx
                                            #   among the TIERS, or Claude Code overfills that
@@ -98,11 +97,10 @@ function Get-OClaudeDefaultConfig {
         MaxOutputTokens = 32000
         Disable1MContext = $true           # drops the account's [1m] marker, which advertises
                                            #   a window a local model does not have. Set it
-                                           #   $false ONLY when every tier that receives the
-                                           #   transcript really has a window above 200K, and
-                                           #   then raise MaxContextTokens and
-                                           #   AutoCompactWindow together: leaving them at
-                                           #   200000 buys nothing
+                                           #   $false only when every tier that receives the
+                                           #   transcript holds more than 200000. Then raise
+                                           #   MaxContextTokens and AutoCompactWindow with
+                                           #   it, since leaving them buys nothing
         AutoCompactWindow = 200000         # where Claude Code COMPACTS, deliberately below
                                            #   num_ctx so the runner never context-shifts.
                                            #   200000 is the CEILING WHILE Disable1MContext
@@ -113,13 +111,13 @@ function Get-OClaudeDefaultConfig {
                                            #   which is what a cloud map wants
         StreamIdleMs    = 900000           # oclaude counts as 'firstParty', which hardcodes a
                                            #   3 min byte-idle timeout. A queued request emits
-                                           #   nothing, so that fires and the CLIENT hangs up.
+                                           #   nothing, so that fires and the CLIENT disconnects.
                                            #   Only CLAUDE_BYTE_STREAM_IDLE_TIMEOUT_MS overrides
                                            #   it (CLAUDE_STREAM_IDLE_TIMEOUT_MS is a different
-                                           #   branch); clamped by the CLI to 10s..30min
-        ToolConcurrency = 2                # ollama serves one request per model, so the default
-                                           #   10 just queue and risk the idle timeout. This
-                                           #   pool QUEUES rather than refusing; capping
+                                           #   branch). The CLI clamps it to 10s..30min
+        ToolConcurrency = 2                # ollama serves one request per LOCAL model, so the
+                                           #   default 10 queue and risk the idle timeout.
+                                           #   This pool QUEUES rather than refusing. Capping
                                            #   CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS instead
                                            #   would refuse the spawn outright
         TimeoutMs       = 600000           # local prefill on big prompts is slow

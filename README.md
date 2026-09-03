@@ -73,21 +73,23 @@ and don't belong here.
   for large PRDs. User-invocable as `/verify-prd-implemented`.
 
 - **[oclaude](oclaude/README.md)** — run Claude Code against local Ollama models.
-  Ollama 0.32 serves the Anthropic Messages API natively, so oclaude points
+  Ollama 0.32 serves the Anthropic Messages API natively. oclaude points
   `ANTHROPIC_BASE_URL` at localhost, sets `ANTHROPIC_AUTH_TOKEN=ollama`, and
-  sets the 20-odd `CLAUDE_CODE_*` knobs a local model needs (context cap,
-  auto-compact window, byte-idle timeout, tool concurrency) — set inside the
-  launching function and restored after, so the shell is left unchanged.
-  A tiered model map (OPUS runs the session, SONNET is the permission
-  classifier, HAIKU takes background traffic, FABLE is cloud), derived Ollama
-  tags that pin `num_ctx` so several models stay resident, daemon lifecycle
-  with a wrong-daemon-on-the-port check, and a per-launch advisor subagent.
-  The map is per machine: the repo holds commented defaults, and
+  sets the 20 or more `CLAUDE_CODE_*` tunables a non-Anthropic model needs:
+  context cap, auto-compact window, byte-idle timeout, tool concurrency. It
+  sets them inside the launching function and restores them after, so oclaude
+  leaves your shell unchanged.
+  A tiered model map runs the session on OPUS, the permission classifier on
+  SONNET, background traffic on HAIKU and the advisor on the cloud tier FABLE.
+  Derived Ollama tags pin `num_ctx`, so several models stay resident. oclaude
+  also manages the daemon, checks that the right daemon holds the port, and
+  injects an advisor subagent on each launch.
+  The map is per machine. The repo holds commented defaults, and
   `oclaude-init-config` writes `~/.config/oclaude/config.ps1`, which overrides
   them and stays out of the repo. Windows, Linux and macOS.
-  Not a skill but a launcher you run to *start* a session, so it ships no
-  `SKILL.md` and `install.sh` skips it — install with `oclaude/install.ps1`,
-  which dot-sources it into your `$PROFILE`.
+  oclaude is a launcher, not a skill: you run it to start a session. It ships
+  no `SKILL.md`, so `install.sh` skips it. Install it with
+  `oclaude/install.ps1`, which dot-sources it into your `$PROFILE`.
 
 ## Install
 
@@ -99,14 +101,15 @@ and don't belong here.
 Symlinks each skill into `~/.claude/skills/<name>`. Idempotent; a real
 directory already at a live path is backed up to `<path>.pre-verktoykasse`.
 
-A skill may ship its own `<skill>/install.sh` for extra wiring — e.g.
+A skill may ship its own `<skill>/install.sh` for extra wiring. For example,
 `worktrees` also symlinks its hook into `~/.claude/hooks/`, links the helper
-scripts into your repos root (it prompts for the path; override with
-`REPOS_ROOT=…`), and registers the `WorktreeCreate` hook in `settings.json`.
+scripts into your repos root (it prompts for the path, and `REPOS_ROOT=…`
+overrides it), and registers the `WorktreeCreate` hook in `settings.json`.
 
-A directory without a `SKILL.md` is not a skill and is skipped — `docs/` (the
-ADRs) and `oclaude/` both are. `oclaude` is a terminal launcher, so it belongs
-in your shell profile rather than in `~/.claude/skills/`:
+A directory without a `SKILL.md` is not a skill, so `install.sh` skips it.
+`docs/` (the ADRs) and `oclaude/` are both such directories. `oclaude` is a
+terminal launcher, so it belongs in your shell profile rather than in
+`~/.claude/skills/`:
 
 ```powershell
 pwsh -ExecutionPolicy Bypass -File .\oclaude\install.ps1

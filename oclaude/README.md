@@ -1,6 +1,6 @@
 # oclaude, Claude Code on local Ollama models
 
-Run Claude Code against models served locally by Ollama.
+Run Claude Code against models that Ollama serves.
 
 Requirements:
 
@@ -44,7 +44,7 @@ sets `ANTHROPIC_AUTH_TOKEN=ollama`, and sets more than 20 `CLAUDE_CODE_*`
 variables that make the CLI behave against a local model.
 
 oclaude sets those variables inside the launching function and restores them
-afterwards, so the shell you started from is unchanged. Nothing is exported to
+afterwards, so the shell you started from is unchanged. It exports nothing to
 your profile, and a normal `claude` in the same shell still reaches the
 Anthropic API.
 
@@ -139,8 +139,8 @@ afterwards. Run `oclaude-build-models` alone after editing only the pins.
 | `oclaude-restart-daemon` | Restart Ollama so a changed setting takes: the systemd unit where there is one, the process otherwise |
 | `oclaude-help` | The same summary, in the shell. Run `claude --help` for the CLI's own flags |
 
-An unrecognised argument is passed to `claude` untouched, so `oclaude --help`
-is the one exception: it prints oclaude's help rather than the CLI's.
+oclaude passes an unrecognised argument to `claude` untouched. `oclaude --help`
+is the one exception, and prints oclaude's help rather than the CLI's.
 
 ## Config
 
@@ -178,19 +178,19 @@ oclaude warns about the mistakes that rule makes possible: a tier left out of
 `Models`, a tier with no label in `Names`, and a key it does not recognise. All
 three are silent failures otherwise.
 
-One further check is not about the rule and so runs for either file:
-`AutoCompactWindow` must stay at or below 200000 while `Disable1MContext` is on,
-because that flag asserts the ceiling and a larger value trips the CLI's
+One further check is not about the rule, so it runs for either file.
+`AutoCompactWindow` must stay at or below 200000 while `Disable1MContext` is on.
+That flag asserts the ceiling, and a larger value trips the CLI's
 `window_above_boundary` path.
 
 `Derived` is a library of specs, not a list of things to build. `oclaude-pull`
 and `oclaude-build-models` only touch a tag some tier points at, so a spec left
 in place for a model you are not running today costs nothing.
 
-The machine file is read fresh on every command, so an edit takes effect on the
-next `oclaude` with no reload. Editing a file under `lib/` needs a reload, and
-oclaude warns when a shell is running code older than the disk. Run
-`oclaude-build-models` after editing `Derived` either way.
+oclaude reads the machine file fresh on every command, so an edit takes effect
+on the next run with no reload. A file under `lib/` needs a reload, and oclaude
+warns when a shell runs code older than the disk. Run `oclaude-build-models`
+after editing `Derived` either way.
 
 ### Daemon settings are in neither file
 
@@ -201,7 +201,7 @@ the daemon's real starter reads them. `OLLAMA_KEEP_ALIVE`,
 `OLLAMA_MAX_LOADED_MODELS`, `OLLAMA_CONTEXT_LENGTH` and `OLLAMA_KV_CACHE_TYPE`
 are the ones worth setting.
 
-On **Windows**, that is the User-scope environment variables. The tray
+On **Windows**, those are the User-scope environment variables. The tray
 application, a login shell and oclaude all read them.
 
 ```powershell
@@ -234,8 +234,8 @@ one.
 
 ### Context, which is three keys moving together
 
-Claude Code holds **one** context cap and applies it to every tier, so the three
-context keys have to be set as a group.
+Claude Code holds **one** context cap and applies it to every tier, so set the
+three context keys as a group.
 
 `MaxContextTokens` is that cap. The honest value is the smallest window among
 the tiers, because anything larger lets the CLI hand a tier more than it holds
@@ -255,10 +255,10 @@ So raising the window means all three: `Disable1MContext = $false`, then
 `MaxContextTokens` and `AutoCompactWindow` up to the smallest tier. Leave the
 flag on and the other two are pinned however large the models are.
 
-A tier can sit below the cap deliberately. `oclaude-build-models` prints a
-warning when the **main loop** tier's pin is below the cap, because overfilling
-that one loses the conversation, and a quieter note naming any other tier below
-the auto-compact window, because those read slices and degrade rather than
+A tier can sit below the cap deliberately. `oclaude-build-models` warns when the
+**main loop** tier's pin is below the cap, because overfilling that tier loses
+the conversation. It prints a quieter note for any other tier below the
+auto-compact window, because those tiers read slices and degrade rather than
 break. `config.example.ps1` does exactly this: a 262144 cap, the smallest cloud
 window, with the local background tier at 128000 and named in a note.
 
@@ -277,15 +277,16 @@ before changing one.
 ## The advisor subagent
 
 Each launch injects an `advisor` subagent through the `--agents` flag, so it
-exists only inside an oclaude session. Nothing is written to `~/.claude/agents`
-or to a repository.
+exists only inside an oclaude session. oclaude writes nothing to
+`~/.claude/agents` or to a repository.
 
 It runs on the `FABLE` tier, which is the cloud model, so advice comes from a
 model other than the one that asked. Override the tier for one shell with
-`$env:OCLAUDE_ADVISOR`. Use an alias (`fable`, `opus`, `sonnet` or `haiku`),
-never a raw Ollama tag: an unresolvable subagent model falls back to the
-caller's own model without an error, which makes the advisor the very model
-that asked for advice.
+`$env:OCLAUDE_ADVISOR`.
+
+Never use a raw Ollama tag. Use an alias: `fable`, `opus`, `sonnet` or `haiku`.
+An unresolvable subagent model falls back to the caller's own model with no
+error, which makes the advisor the very model that asked for advice.
 
 Pass your own `--agents` to replace the injected set.
 
@@ -297,11 +298,11 @@ Run `oclaude-config-path`. It prints the file this shell reads and whether it is
 there, which settles the two usual causes: `$env:OCLAUDE_CONFIG` set in one shell
 and not another, and a file written to the wrong path.
 
-A file that is read but changes nothing has one of two causes, and oclaude warns
-about both. Either it sets a key that is not a config key, which is a typo. Or it
-ends with something other than a hashtable, because a stray expression above the
-hashtable writes to the pipeline too, and then two values come back where one was
-expected.
+A file that oclaude reads but that changes nothing has one of two causes, and
+oclaude warns about both. Either it sets a key that is not a config key, which
+is a typo. Or it ends with something other than a hashtable. A stray expression
+above the hashtable writes to the pipeline too, and then two values come back
+where one was expected.
 
 ### Wrong daemon answered on the port
 
