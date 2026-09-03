@@ -28,9 +28,8 @@ if os.path.exists(settings):
     backup = settings + ".pre-verktoykasse"
     if not os.path.exists(backup):
         shutil.copy2(settings, backup)
-    # encoding= is not optional: the default is the locale codec, which is
-    # cp1252 on Windows. Reading a UTF-8 settings.json through it turns any
-    # non-ASCII character in the file into mojibake on the way back out.
+    # encoding= is not optional: the default is the locale codec, cp1252 on
+    # Windows, which corrupts any non-ASCII in a UTF-8 settings.json.
     with open(settings, encoding="utf-8") as f:
         data = json.load(f)
 data["statusLine"] = {"type": "command", "command": cmd}

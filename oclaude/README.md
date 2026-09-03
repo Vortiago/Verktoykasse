@@ -149,7 +149,7 @@ holds its own map, outside the repo, and overrides any of it.
 
 | File | Role |
 |------|------|
-| [`lib/config.ps1`](lib/config.ps1) | Committed defaults. One APU's map, and a comment on every value saying why it is that value |
+| [`lib/config.ps1`](lib/config.ps1) | Committed defaults: one worked map, and the constraint on each tunable |
 | `~/.config/oclaude/config.ps1` | Your machine. Outside the repo, so it survives an update and never lands in a commit |
 | [`config.example.ps1`](config.example.ps1) | The template `oclaude-init-config` copies. A second worked map: a laptop, cloud chat tiers, one small local tier |
 
@@ -271,8 +271,9 @@ The built-in idle timeout is three minutes, which a slow local prefill exceeds.
 **local** model at a time. A cloud tag has no such limit, so a cloud-heavy map
 can raise it.
 
-`lib/config.ps1` carries the reasoning for each value as comments. Read them
-before changing one.
+`lib/config.ps1` records the constraint on each tunable, not the reason its
+default is that number. The defaults are one machine's, and models change often
+enough that a justification would be stale before you read it.
 
 ## The advisor subagent
 

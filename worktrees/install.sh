@@ -29,18 +29,11 @@ link "$skill/clone-bare.sh"   "$REPOS_ROOT/.clone-bare.sh"
 
 # 5 + 6. register both hooks in settings.json (idempotent).
 #
-# The command is a single-quoted LITERAL: bash must not expand $HOME here. Two
-# reasons, and the second is the one that bites.
-#
-#   - A bare `.sh` path is executable on macOS and Linux but not on Windows,
-#     where it needs an explicit interpreter. `bash "..."` is right everywhere,
-#     so no per-OS branch: the hook's own shell expands $HOME when it runs.
-#   - Keeping the string pure ASCII is what stops the mojibake. Under Git Bash
-#     an expanded $HOME both becomes a Windows path AND carries whatever
-#     non-ASCII the user's name holds; python then reads settings.json back in
-#     the locale codec (cp1252 on Windows, not UTF-8), so an `ø` round-trips to
-#     `Ã¸`, then `ÃƒÂ¸`, gaining a layer per run. `statusline/install.sh` has
-#     always used this literal form, which is why it alone never duplicated.
+# The command is a single-quoted LITERAL: bash must not expand $HOME here. A bare
+# `.sh` path needs an interpreter on Windows, and `bash "..."` works everywhere, so
+# let the hook's own shell expand $HOME when it runs. Expanding it here would also
+# write the non-ASCII in a user's name into settings.json, which python re-reads in
+# the locale codec (cp1252 on Windows) and corrupts a layer deeper per run.
 settings="$HOME/.claude/settings.json"
 
 register_hook() { # $1 = event, $2 = script basename, $3 = command, $4 = matcher ('' for none)
