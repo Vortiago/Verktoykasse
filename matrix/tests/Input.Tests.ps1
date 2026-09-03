@@ -1,4 +1,5 @@
-# The Linux input classifier: which bytes mean "leave" and which mean "click".
+# The Linux input classifier: which bytes mean "exit", which carry a key, which
+# mean "click", and which the terminal owns.
 # Classify is pure - a byte array in, a verdict out - so every terminal quirk is
 # tested without a terminal. This file compiles ConsoleVT_Linux.cs standalone, so
 # Windows CI covers the parser too, even though matrix never runs it there.
@@ -12,9 +13,9 @@ BeforeAll {
     # Defined in BeforeAll, like every helper in the other suites: file-level
     # functions are not visible inside It blocks under Pester 5.
     function Test-Classify ([byte[]] $Bytes) {
-        $x = -1; $y = -1; $used = -1
-        $what = $VT::Classify($Bytes, $Bytes.Length, [ref]$x, [ref]$y, [ref]$used)
-        [pscustomobject]@{ What = $what; X = $x; Y = $y; Used = $used }
+        $x = -1; $y = -1; $key = -1; $used = -1
+        $what = $VT::Classify($Bytes, $Bytes.Length, [ref]$x, [ref]$y, [ref]$key, [ref]$used)
+        [pscustomobject]@{ What = $what; X = $x; Y = $y; Key = $key; Used = $used }
     }
 }
 
@@ -23,20 +24,51 @@ Describe 'ConsoleVT (Linux): plain keys' {
         (Test-Classify @()).What | Should -Be 0          # NONE
     }
 
-    It 'takes a printable key as an exit' {
-        (Test-Classify ([byte[]]@(0x71))).What | Should -Be 1     # 'q'
+    It 'reports a printable key, with the character' {
+        $r = Test-Classify ([byte[]]@(0x71))                     # 'q'
+        $r.What | Should -Be 3                                   # KEY
+        $r.Key  | Should -Be 0x71
     }
 
-    It 'takes Ctrl+C as an exit, with signal generation off' {
-        (Test-Classify ([byte[]]@(0x03))).What | Should -Be 1
+    It 'reports a printable key it has no binding for, rather than exiting' {
+        # The whole point of KEY: an unbound letter must reach the caller, so a
+        # later feature can claim it without touching this file.
+        $r = Test-Classify ([byte[]]@(0x70))                     # 'p'
+        $r.What | Should -Be 3
+        $r.Key  | Should -Be 0x70
     }
 
-    It 'takes a bare Escape as an exit' {
-        (Test-Classify ([byte[]]@(0x1b))).What | Should -Be 1
+    It 'takes Ctrl+C as the one exit' {
+        # With ISIG off there is no SIGINT, so this reader owns Ctrl+C. It is the
+        # only byte that exits: which letter quits is a binding, not a verdict.
+        $r = Test-Classify ([byte[]]@(0x03))
+        $r.What | Should -Be 1                                   # EXIT
+        $r.Key  | Should -Be 0
+    }
+
+    It 'reports a bare Escape as a key' {
+        $r = Test-Classify ([byte[]]@(0x1b))
+        $r.What | Should -Be 3
+        $r.Key  | Should -Be 0x1b
+    }
+
+    It 'reports Enter and Tab as keys' {
+        (Test-Classify ([byte[]]@(0x0d))).Key | Should -Be 0x0d
+        (Test-Classify ([byte[]]@(0x09))).Key | Should -Be 0x09
     }
 
     It 'ignores the other control bytes' {
-        (Test-Classify ([byte[]]@(0x01))).What | Should -Be 0     # Ctrl+A
+        $r = Test-Classify ([byte[]]@(0x01))                     # Ctrl+A
+        $r.What | Should -Be 0
+        $r.Used | Should -Be 1                                   # consumed, not left to re-read
+    }
+
+    It 'consumes a UTF-8 lead byte without inventing a key' {
+        # This reader does not assemble multi-byte characters. Handing on half of
+        # one as a key would let an accented letter fire a binding.
+        $r = Test-Classify ([byte[]]@(0xc3, 0xa5))               # U+00E5
+        $r.What | Should -Be 0
+        $r.Used | Should -Be 1
     }
 }
 
@@ -120,10 +152,13 @@ Describe 'ConsoleVT (Linux): keys that must not exit' {
         $r.Used | Should -Be 0
     }
 
-    It 'takes a second byte after ESC that is not a sequence start as an exit' {
-        # ESC followed by a printable: Alt+key. Konsole sends Alt+q as 1b 71.
+    It 'consumes Alt+key without reporting it' {
+        # ESC followed by a printable: Alt+key. Konsole sends Alt+q as 1b 71. A
+        # chord belongs to the terminal, and Alt+q must not quit a rain that
+        # quits on q.
         $r = Test-Classify ([byte[]]@(0x1b, 0x71))
-        $r.What | Should -Be 1
+        $r.What | Should -Be 0
+        $r.Key  | Should -Be 0
         $r.Used | Should -Be 2
     }
 }

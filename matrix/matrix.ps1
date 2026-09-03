@@ -3,7 +3,7 @@
     A live Matrix-rain view of every open Claude Code session.
 
 .DESCRIPTION
-    Runs in the alternate screen buffer: scrollback survives. Any key exits.
+    Runs in the alternate screen buffer: scrollback survives. Press q to exit.
 
     The screen splits into one vertical lane per open Claude Code session. Each
     lane is coloured and paced by that session's status. The header names the
@@ -51,16 +51,55 @@
 
     Fields are dropped from the right on a narrow terminal, never half-printed.
 
+.PARAMETER Remote
+    Also show the sessions of machines that are reporting to this one. Each
+    machine runs the same script with -ExposeOnSSH over an ssh session that
+    carries a reverse forward:
+
+        ~/.ssh/config     Host lab1 lab2
+                              RemoteForward 127.0.0.1:47777 127.0.0.1:47777
+
+    One port serves every machine. A remote lane is named "<machine>: <session>".
+    It never enters the tab map, because its process is not on this machine.
+
+.PARAMETER ExposeOnSSH
+    Report this machine's sessions to the rain on the machine you sit at. The
+    rain draws here as well.
+
+.PARAMETER RemotePort
+    The loopback port both sides use. Default 47777. It must match the one in the
+    RemoteForward line.
+
+.PARAMETER RemoteAddress
+    Where -ExposeOnSSH dials. Default 127.0.0.1, which is where sshd puts the
+    forward. -Remote always listens on loopback and ignores this.
+
+.PARAMETER RemoteToken
+    A shared secret both ends must agree on. Read from
+    ~/.claude/matrix-remote.token when the file exists. Without one, the rain
+    accepts any process that reaches the port, and says so once at startup.
+
+.PARAMETER RemoteName
+    The name -ExposeOnSSH reports this machine as. Default: the host name, cut at
+    the first dot.
+
 .EXAMPLE
     .\matrix.ps1
 
 .EXAMPLE
     .\matrix.ps1 -ThisWindow -Click    # this window's sessions, click to switch
 
+.EXAMPLE
+    .\matrix.ps1 -Remote -Click        # this machine's sessions, and every reporting machine's
+
+.EXAMPLE
+    .\matrix.ps1 -ExposeOnSSH          # on the remote machine, in a tmux window
+
 .NOTES
-    Press any key (or Ctrl+C) to exit. Mouse activity and terminal shortcuts do not
-    stop it: clicks, Ctrl+wheel zoom, scrolling, Alt+Enter and Ctrl+Shift+C are
-    ignored. Arrow and page keys count as scrolling, not as "any key".
+    Press q (or Ctrl+C) to exit. The rain reads every other key and ignores it,
+    which leaves the keyboard free for later bindings. Mouse activity and terminal
+    shortcuts do not stop it either: clicks, Ctrl+wheel zoom, scrolling, Alt+Enter,
+    Alt+q and Ctrl+Shift+C are all ignored.
 #>
 #requires -Version 7
 [CmdletBinding()]
@@ -70,7 +109,13 @@ param(
     [ValidateRange(0.2, 30)]  [double] $PollSeconds = 1.0,
     [ValidateRange(5, 240)]   [int]    $Fps         = 30,
     [ValidateRange(0, 86400)] [int]    $Seconds     = 0,
-    [switch] $Stats
+    [switch] $Stats,
+    [switch] $Remote,
+    [switch] $ExposeOnSSH,
+    [ValidateRange(1, 65535)] [int]    $RemotePort  = 47777,
+    [string] $RemoteAddress = '127.0.0.1',
+    [string] $RemoteToken,
+    [string] $RemoteName
 )
 
 $ErrorActionPreference = 'Stop'
@@ -97,6 +142,11 @@ $term = Join-Path $lib 'terminal'
 # tmux talks tmux, whether the outer terminal is Konsole, a plain xterm, or another
 # tmux - $TMUX names the innermost server. Windows never gets here with TMUX set: a
 # WSL tmux pane is a separate environment.
+
+# Who wants the tab map, spelled once: $hostHwnd and $needTabs both read it and
+# must not drift. -ExposeOnSSH is in it because a click on the other machine is
+# answered out of this machine's map.
+$wantTabs = [bool]($ThisWindow -or $Click -or $ExposeOnSSH)
 $backend = if ($IsWindows)    { 'windows-terminal.ps1' }
            elseif ($env:TMUX) { 'tmux.ps1' }
            else               { 'konsole.ps1' }
@@ -106,10 +156,63 @@ $load = @(
     }
     Join-Path $term 'tabmap.ps1'
     Join-Path $term $backend
+    if ($Remote -or $ExposeOnSSH) {
+        # After sessions.ps1 and the backend: wire.ps1 wants Get-SessionStyle, and
+        # the click path walks with Get-ProcessAncestorId.
+        foreach ($part in 'wire', 'tcp', 'hub', 'expose') { Join-Path $lib "remote/$part.ps1" }
+    }
 )
 foreach ($file in $load) {
     if (-not (Test-Path -LiteralPath $file)) { throw "matrix: cannot load $file" }
     . $file
+}
+
+# --- The machines, when there are any ----------------------------------------------
+
+# One epoch clock for everything remote. The tab map runs on a monotonic
+# stopwatch, and the two are never mixed: this one is compared against timestamps
+# another machine wrote, which is what forces the choice.
+function Get-EpochMs { [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() }
+
+if ($Remote -or $ExposeOnSSH) {
+    # A file, not a parameter, by default: a token on the command line is in the
+    # shell history and in every ps listing on the machine.
+    if (-not $PSBoundParameters.ContainsKey('RemoteToken')) {
+        $RemoteToken = ''
+        # sessions.ps1's own home, not a second copy of the rule: a copy would put
+        # the token and the session registry in different directories the moment
+        # either changed.
+        $tokenFile = Join-Path $script:ClaudeHome 'matrix-remote.token'
+        if (Test-Path -LiteralPath $tokenFile) {
+            try { $RemoteToken = ([System.IO.File]::ReadAllText($tokenFile)).Trim() } catch { }
+        }
+    }
+
+    $tcpSeam = @{
+        Connect = { Connect-RemoteEndpoint -Address $script:RemoteAddress -Port $script:RemotePort }
+        Read    = { param($c) Read-RemoteText $c }
+        Write   = { param($c, $line) Write-RemoteLine -Conn $c -Line $line }
+        Close   = { param($c) Close-RemoteConnection $c }
+    }
+
+    if (-not $RemoteToken) {
+        Write-Host 'matrix: no token file, so the rain accepts any process that reaches the port.' `
+                   -ForegroundColor DarkGray
+    }
+}
+
+# The tab map, owned here so both loops below share one. Update-SessionTabMap
+# keeps it current. Map is sessionId -> tab, and each tab carries its window.
+$tabState = New-TabState
+$tabClock = [System.Diagnostics.Stopwatch]::StartNew()
+
+# This machine reporting outward. It shares whichever loop runs, so a lane the
+# user sees here is the same lane the other machine sees.
+$expose = $null
+if ($ExposeOnSSH) {
+    $why = Test-ExposeSupport
+    if ($why) { Write-Host $why -ForegroundColor DarkGray }
+    $expose = New-ExposeState -Machine (Get-ExposeMachineName $RemoteName) -Token $RemoteToken
 }
 
 # What -ThisWindow scopes on: a terminal window, or the tmux session a pane runs
@@ -127,7 +230,7 @@ $scopeHint = if ($backend -eq 'windows-terminal.ps1') { " and leave that $scopeN
 # takes the foreground terminal, which is only reliably ours right after the user
 # typed the command. Konsole and tmux both read an exported variable and are exact
 # whenever this runs.
-$hostHwnd = if ($ThisWindow -or $Click) { Get-OwnTerminalWindow } else { 0 }
+$hostHwnd = if ($wantTabs) { Get-OwnTerminalWindow } else { 0 }
 
 # Enable ANSI escape processing (a no-op where it is already on).
 try {
@@ -157,7 +260,11 @@ $glyphs = Get-RainGlyph -Ascii:$useAscii
 # title matches it. Konsole is the same, one process for every window, but the
 # session-to-tab match there is a pid walk, not a title match. tmux scopes on its
 # own session and matches on pane_pid, so its tab objects carry that session id.
-$needTabs = [bool]($ThisWindow -or $Click)
+#
+# -ExposeOnSSH needs it too, for a different answer out of the same map: the
+# window id each session sits in, which travels in the frame so a click on the
+# other machine has somewhere to send.
+$needTabs = $wantTabs
 if ($needTabs) {
     $why = Test-TabSupport -Hwnd $hostHwnd
     if ($why) {
@@ -168,22 +275,42 @@ if ($needTabs) {
                    "Start it from the $scopeName you want scoped$scopeHint, " +
                    'or drop -ThisWindow to show every session.')
         }
-        Write-Host "matrix: -Click does nothing - $why." -ForegroundColor Yellow
-        $needTabs = $false; $Click = $false
+        $needTabs = $false
+        # Each flag loses a different thing, so each is told what it lost. A
+        # remote lane is switched down its own connection and never through the
+        # tab map, so -Click keeps that half.
+        if ($ExposeOnSSH) {
+            Write-Host ("matrix: sessions are reported, but a click from the other machine " +
+                        "cannot switch to one - $why.") -ForegroundColor Yellow
+        }
+        if ($Click -and $Remote) {
+            Write-Host "matrix: -Click reaches remote sessions only - $why." -ForegroundColor Yellow
+        } elseif ($Click) {
+            Write-Host "matrix: -Click does nothing - $why." -ForegroundColor Yellow
+            $Click = $false
+        }
     }
 }
 
-# Owned here; Update-SessionTabMap keeps it current. Map is sessionId -> tab.
-# Each tab carries the handle of its window.
-$tabState = New-TabState
-$tabClock = [System.Diagnostics.Stopwatch]::StartNew()
+# The machines reporting in, and the socket they arrive on. A port already in use
+# is said and survived: the local lanes are still worth drawing.
+$hub = $null
+$listener = $null
+if ($Remote) {
+    $hub = New-RemoteHub -Token $RemoteToken
+    $listener = Start-RemoteListener -Port $RemotePort
+    if ($listener.Reason) {
+        Write-Host "matrix: -Remote cannot listen on 127.0.0.1:$RemotePort - $($listener.Reason)." `
+                   -ForegroundColor Yellow
+    }
+}
 
 function Get-LiveSession {
     # The only registry read. The priming pass and the poll must agree, or the
     # first frame differs from every frame after it.
     $live = @(Get-ClaudeSession)
 
-    # Read the task once; carry it on the session. The tab matcher scores against it
+    # Read the task once and carry it on the session. The tab matcher scores on it
     # and the lane header prints it: the shape must not depend on which flags are set.
     foreach ($s in $live) {
         $s | Add-Member -NotePropertyName Task -NotePropertyValue (Get-SessionFact $s).Task -Force
@@ -200,6 +327,34 @@ function Get-LiveSession {
         }
     }
 
+    # Local sessions only, and before the machines are folded in: a rain that both
+    # reports and listens must not send back what it was sent.
+    if ($script:expose) {
+        Update-Expose -State $script:expose -Now (Get-EpochMs) -Session $live `
+                      -Connect $script:tcpSeam.Connect -Read $script:tcpSeam.Read `
+                      -Write $script:tcpSeam.Write -Close $script:tcpSeam.Close `
+                      -Focus {
+                          param($id)
+                          # The same lookup the local click does. An id this
+                          # machine does not run finds no tab, and nothing happens.
+                          $tab = $script:tabState.Map[$id]
+                          if ($tab) { [void](Select-TerminalTab $tab) }
+                      }
+    }
+
+    # After the tab map and after -ThisWindow. A remote session has no local pid,
+    # so it must not reach Resolve-SessionTabByPid: a remote pid that happens to
+    # exist here would claim a local tab and block the session that owns it.
+    # -ThisWindow does not drop these either. Asking for another machine's
+    # sessions and then filtering them by window would read as a broken flag.
+    if ($script:hub) {
+        $now = Get-EpochMs
+        Update-RemoteHub -Hub $script:hub -Now $now `
+                         -Accept { Receive-RemoteConnection -Listener $script:listener.Listener } `
+                         -Read $script:tcpSeam.Read -Close $script:tcpSeam.Close
+        $live = @($live) + @(Get-RemoteSession -Hub $script:hub -Now $now)
+    }
+
     # No comma-wrap: the caller's @() would nest the whole array into one element.
     $live
 }
@@ -210,6 +365,13 @@ function Get-SessionLanes {
     param([Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Live)
     if ($Live.Count -eq 0) {
         $where = if ($ThisWindow) { "none in this $scopeName" } else { 'waiting for one to start' }
+        # A note from the hub outranks both. "no machine reported the right token"
+        # is the answer to the question an empty screen raises, and the rain owns
+        # the whole terminal, so this is the only place it can be said.
+        if ($script:hub) {
+            if ($script:hub.Note)                { $where = $script:hub.Note }
+            elseif (-not $script:hub.Peer.Count) { $where = 'waiting for a machine to report' }
+        }
         $st = Get-SessionStyle 'none'
         return , @(New-Lane $st.Rgb $st.Speed $st.Density $st.Label $where $null)
     }
@@ -226,6 +388,34 @@ function Get-SessionLanes {
                  (Get-SessionTitle $s) (ConvertTo-CellText $status) $s.Task $s
     }
     , @($out)
+}
+
+function Select-ClickedSession {
+    <#
+    .SYNOPSIS
+        Bring the session behind a clicked lane to the front.
+    .DESCRIPTION
+        Both routes end in the same Select-TerminalTab. Only the lookup that
+        answers "which tab" differs, which is why this is one function and not two
+        arms in the frame loop.
+
+        A remote lane takes two moves, in this order. The far machine switches its
+        own window, and then the ssh session holding it is raised here. Switching
+        a window nobody is looking at is a click that visibly does nothing.
+    #>
+    param($Session)
+    if (-not $Session) { return }
+
+    if ($Session.RemoteHost) {
+        $peer = Get-RemotePeer -Hub $script:hub -Session $Session
+        if (-not $peer) { return }
+        [void](Send-RemoteCommand -Peer $peer -Line (ConvertTo-FocusLine $Session) `
+                                  -Write $script:tcpSeam.Write)
+        $tab = Resolve-RemoteTab -Peer $peer
+    } else {
+        $tab = $script:tabState.Map[$Session.SessionId]
+    }
+    if ($tab) { [void](Select-TerminalTab $tab) }
 }
 
 # --- Renderer and console setup -----------------------------------------------------
@@ -296,16 +486,19 @@ try {
     while ($true) {
         if ($frameStats.Show) { $frameStats.Frame.Restart() }
 
-        $cx = 0; $cy = 0
-        $what = $VT::PollInput([ref]$cx, [ref]$cy)
-        if ($what -eq $VT::EXIT) { break }
+        $cx = 0; $cy = 0; $ck = 0
+        $what = $VT::PollInput([ref]$cx, [ref]$cy, [ref]$ck)
+        if ($what -eq $VT::EXIT) { break }                  # Ctrl+C
+        # The bindings live here, not in the reader. The reader says which key was
+        # pressed and this block says what it does, so a second binding is a line
+        # in one place. Every unbound key falls through and the rain keeps running.
+        if ($what -eq $VT::KEY) {
+            $key = [string][char]$ck
+            if ($key -eq 'q') { break }        # -eq ignores case, so Q quits too
+        }
         if ($what -eq $VT::CLICK -and $Click -and $laneBounds) {
             $l = Get-LaneAtColumn -Bounds $laneBounds -X $cx
-            $s = if ($l -ge 0) { $lanes[$l].Session } else { $null }
-            if ($s) {
-                $tab = $tabState.Map[$s.SessionId]
-                if ($tab) { [void](Select-TerminalTab $tab) }
-            }
+            if ($l -ge 0) { Select-ClickedSession $lanes[$l].Session }
         }
         if ($Seconds -gt 0 -and $clock.Elapsed.TotalSeconds -ge $Seconds) { break }
 
@@ -387,4 +580,9 @@ try {
     Restore-ConsoleState -VT $VT -StdinMode $prevStdin
     if ($timerRaised) { try { [void]$VT::timeEndPeriod(1) } catch { } }
     if ($prevEncoding) { try { [Console]::OutputEncoding = $prevEncoding } catch { } }
+    # The screen first, the sockets after: a hang here must not leave the terminal
+    # in the alternate buffer with the cursor hidden.
+    if ($expose)   { Reset-Expose -State $expose -Close $tcpSeam.Close }
+    if ($hub)      { Stop-RemoteHub -Hub $hub -Close $tcpSeam.Close }
+    if ($listener) { Stop-RemoteListener $listener.Listener }
 }

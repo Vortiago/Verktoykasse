@@ -83,18 +83,43 @@ function Resolve-SessionTabByPid {
 
     $map = @{}
     foreach ($s in $Session) {
-        foreach ($ancestor in @(& $Ancestors ([int]$s.Pid))) {
-            # A seam is free to answer with holes, and [int]$null is 0: skip it
-            # rather than match a tab whose own pid failed to parse. The real walk
-            # never emits one - it only adds a pid it already proved is >= 1.
-            if (-not $ancestor) { continue }
-            if ($tabPids.ContainsKey([int]$ancestor)) {
-                $map[$s.SessionId] = $tabPids[[int]$ancestor]
-                break
-            }
-        }
+        $hit = Resolve-TabByPid -ProcessId ([int]$s.Pid) -TabPid $tabPids -Ancestors $Ancestors
+        if ($hit) { $map[$s.SessionId] = $hit }
     }
     $map
+}
+
+function Resolve-TabByPid {
+    <#
+    .SYNOPSIS
+        The tab whose process is the nearest ancestor of one pid, or nothing.
+    .DESCRIPTION
+        Split out of Resolve-SessionTabByPid so the remote click can walk from an
+        ssh client's pid to the pane holding it without carrying its own copy of
+        the walk. One pid in, one tab out.
+
+        The loop is over ANCESTORS, not over tabs, and that ordering is the whole
+        answer: a pid nested two panes deep has two tab pids in its line, and only
+        the nearest one is the pane it actually sits in.
+    .PARAMETER TabPid
+        pid -> tab. Built once by the caller, because the session matcher reuses it
+        across every session.
+    #>
+    param([Parameter(Mandatory)] [int] $ProcessId,
+          [Parameter(Mandatory)] [hashtable] $TabPid,
+          [scriptblock] $Ancestors)
+
+    if (-not $Ancestors) {
+        throw 'matrix: Get-ProcessAncestorId is not loaded - source lib/sessions.ps1 before the terminal backend'
+    }
+    foreach ($ancestor in @(& $Ancestors $ProcessId)) {
+        # A seam is free to answer with holes, and [int]$null is 0: skip it
+        # rather than match a tab whose own pid failed to parse. The real walk
+        # never emits one - it only adds a pid it already proved is >= 1.
+        if (-not $ancestor) { continue }
+        if ($TabPid.ContainsKey([int]$ancestor)) { return $TabPid[[int]$ancestor] }
+    }
+    $null
 }
 
 function Get-NextWait {

@@ -114,8 +114,10 @@ try {
     while ($true) {
         if ($frameStats.Show) { $frameStats.Frame.Restart() }
 
-        $cx = 0; $cy = 0
-        if ($VT::PollInput([ref]$cx, [ref]$cy) -eq $VT::EXIT) { break }
+        $cx = 0; $cy = 0; $ck = 0
+        $what = $VT::PollInput([ref]$cx, [ref]$cy, [ref]$ck)
+        if ($what -eq $VT::EXIT) { break }                                 # Ctrl+C
+        if ($what -eq $VT::KEY -and [string][char]$ck -eq 'q') { break }   # q, or Q
         if ($Seconds -gt 0 -and $clock.Elapsed.TotalSeconds -ge $Seconds) { break }
 
         if ($sizeTick -le 0) {
