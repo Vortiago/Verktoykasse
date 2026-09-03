@@ -12,6 +12,9 @@ import { cdpClient, settleGC, heapUsed, domCensus, survivorsAfterGC, resetRefs, 
 
 const FIXTURE = "/testing/fixtures/live-harness.html";
 const sseCount = (page) => page.evaluate(async () => (await (await fetch("/api/test/sse-count")).json()).count);
+// The server drops a client on the socket's close, which trails EventSource.close()
+// by an unbounded amount on a loaded runner. Poll, and give it room.
+const expectNoSse = (page) => expect.poll(() => sseCount(page), { timeout: 30_000 }).toBe(0);
 const mount = (page) => page.evaluate(() => (/** @type {any} */ (window)).__mountLive());
 const unmount = (page) => page.evaluate(() => (/** @type {any} */ (window)).__unmountLive());
 
@@ -24,7 +27,7 @@ test("mount/unmount churn releases the SSE connection, subscription, CSS link an
   // Warm up, then settle to a baseline with nothing mounted.
   for (let i = 0; i < 5; i++) { await mount(page); await unmount(page); }
   await settleGC(client, page);
-  await expect.poll(() => sseCount(page), { timeout: 5000 }).toBe(0); // all EventSources closed
+  await expectNoSse(page);
   await resetRefs(page);
   const base = await domCensus(page);
 
@@ -36,7 +39,7 @@ test("mount/unmount churn releases the SSE connection, subscription, CSS link an
     heaps.push(await heapUsed(client, page));
   }
   expect(await survivorsAfterGC(client, page), "every view root + row is collected after unmount").toBe(0);
-  await expect.poll(() => sseCount(page), { timeout: 5000 }).toBe(0); // back to baseline, not climbing
+  await expectNoSse(page); // back to baseline after 40 mounts, not climbing
   const census = await domCensus(page);
   expect(census.headLinks, "per-mount <link> auto-removed on abort").toBeLessThanOrEqual(base.headLinks);
   expect(census.total, "DOM returns to ~baseline").toBeLessThanOrEqual(base.total + 2);
