@@ -100,25 +100,35 @@ function Build-OClaudeDerivedTag {
         Remove-Item $file -ErrorAction SilentlyContinue
     }
 
-    # Bounded by the MAIN LOOP tier only, the one DefaultAlias resolves to. SONNET is a
-    # classifier that never sees the session's context, so including it fired a false
-    # warning. Warn only when the cap EXCEEDS the tier: below it is a valid choice.
+    # Claude Code holds ONE context cap and applies it to every tier, so any tier whose
+    # pin sits below that cap can be handed more than it holds. Which matters how much
+    # depends on the tier, so this says two different things.
+    #
+    # The MAIN LOOP tier, the one DefaultAlias resolves to, holds the session itself.
+    # Overfilling it loses the conversation, so that is a warning. Warn only when the cap
+    # EXCEEDS the pin: below it is a valid choice.
+    #
+    # Every other tier reads a SLICE of a transcript that grows to the auto-compact
+    # window, so the window is the honest bound for them. Overflow there is not a crash,
+    # but a classifier that stops answering is one that stops gating tool calls, and a
+    # background call that truncates does so with no error anywhere. This used to name
+    # SONNET alone, which said nothing about a local HAIKU tier under a cloud main loop.
     $mainTier = if ($cfg.DefaultAlias -match 'opus') { 'OPUS' } else { $cfg.DefaultAlias.ToUpper() }
-    $mainCtx  = Get-OClaudeNumCtx -Cfg $cfg -Model $cfg.Models[$mainTier]
-    if ($null -ne $mainCtx -and $cfg.MaxContextTokens -gt $mainCtx) {
-        Write-Host (("warn: MaxContextTokens is {0} but the {1} tier num_ctx is {2}; " +
-                     'Claude Code will overfill that tier') -f $cfg.MaxContextTokens, $mainTier, $mainCtx) `
-            -ForegroundColor DarkYellow
-    }
+    foreach ($tier in $cfg.Models.Keys) {
+        $pin = Get-OClaudeNumCtx -Cfg $cfg -Model $cfg.Models[$tier]
+        if ($null -eq $pin) { continue }
 
-    # Softer check: the classifier reads a slice of the transcript, so its num_ctx has
-    # to cover a session grown to the auto-compact window. Overflow is not a crash, but
-    # a classifier that stops answering is one that stops gating tool calls.
-    $fastCtx = Get-OClaudeNumCtx -Cfg $cfg -Model $cfg.Models['SONNET']
-    if ($null -ne $fastCtx -and $fastCtx -lt $cfg.AutoCompactWindow) {
-        Write-Host (("note: classifier tier num_ctx {0} is below the auto-compact window {1}; " +
-                     'long sessions will hit transcript_too_long') -f $fastCtx, $cfg.AutoCompactWindow) `
-            -ForegroundColor DarkGray
+        if ($tier -eq $mainTier) {
+            if ($cfg.MaxContextTokens -gt $pin) {
+                Write-Host (("warn: MaxContextTokens is {0} but the {1} tier num_ctx is {2}; " +
+                             'Claude Code will overfill that tier') -f $cfg.MaxContextTokens, $tier, $pin) `
+                    -ForegroundColor DarkYellow
+            }
+        } elseif ($pin -lt $cfg.AutoCompactWindow) {
+            Write-Host (("note: the {0} tier num_ctx {1} is below the auto-compact window {2}; " +
+                         'a long session can overfill it silently') -f $tier.ToLower(), $pin, $cfg.AutoCompactWindow) `
+                -ForegroundColor DarkGray
+        }
     }
 }
 

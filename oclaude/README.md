@@ -232,20 +232,44 @@ so exporting `OLLAMA_*` in your profile is enough.
 window for every model, so sizing it for the largest leaves room for only that
 one.
 
-### The tunables that matter most
+### Context, which is three keys moving together
 
-`MaxContextTokens` must stay at or below the smallest `num_ctx` among the
-tiers. Claude Code holds one global value, so a larger number lets it overfill
-the smallest tier, and Ollama then truncates with no error.
+Claude Code holds **one** context cap and applies it to every tier, so the three
+context keys have to be set as a group.
 
-`AutoCompactWindow` is where Claude Code compacts. Keep it below `num_ctx` so
-the runner never context-shifts and drops the oldest tokens silently.
+`MaxContextTokens` is that cap. The honest value is the smallest window among
+the tiers, because anything larger lets the CLI hand a tier more than it holds
+and Ollama then truncates with no error.
+
+`AutoCompactWindow` is where Claude Code compacts. Keep it below the cap so
+compaction has room to run, and below the main tier's `num_ctx` so the runner
+never context-shifts and drops the oldest tokens.
+
+`Disable1MContext` drops the account's `[1m]` marker. **While it is on, 200000
+is a hard ceiling on `AutoCompactWindow`**: a larger value trips the CLI's
+`window_above_boundary` path. That is the only reason the default is 200000, not
+a property of the models. Turn it off and the ceiling becomes whatever the tiers
+hold, which is what a cloud map wants.
+
+So raising the window means all three: `Disable1MContext = $false`, then
+`MaxContextTokens` and `AutoCompactWindow` up to the smallest tier. Leave the
+flag on and the other two are pinned however large the models are.
+
+A tier can sit below the cap deliberately. `oclaude-build-models` prints a
+warning when the **main loop** tier's pin is below the cap, because overfilling
+that one loses the conversation, and a quieter note naming any other tier below
+the auto-compact window, because those read slices and degrade rather than
+break. `config.example.ps1` does exactly this: a 262144 cap, the smallest cloud
+window, with the local background tier at 128000 and named in a note.
+
+### The other tunables
 
 `StreamIdleMs` covers a queued request, which emits no bytes while it waits.
 The built-in idle timeout is three minutes, which a slow local prefill exceeds.
 
-`ToolConcurrency` is 2 because Ollama serves one request per model at a time.
-A higher value only queues the calls and risks the idle timeout.
+`ToolConcurrency` is 2 in the defaults because Ollama serves one request per
+**local** model at a time. A cloud tag has no such limit, so a cloud-heavy map
+can raise it.
 
 `lib/config.ps1` carries the reasoning for each value as comments. Read them
 before changing one.

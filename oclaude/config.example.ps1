@@ -70,17 +70,25 @@
     # reasoning for each one. StreamIdleMs and TimeoutMs are deliberately left alone:
     # they are generous for a cloud tier and still needed by the local one.
 
-    # Both GLM tags report a 1M window, but Disable1MContext caps the session at 200K,
-    # so this is the whole of it. Raising the pair together is the only way to use more,
-    # and then the local HAIKU tier truncates a background call in silence.
-    MaxContextTokens  = 200000
-    AutoCompactWindow = 170000   # below the cap, so compaction has room to run before
+    # Claude Code holds ONE cap for every tier, so the honest ceiling is the SMALLEST
+    # window among them. Measured on the daemon: the two GLM tags hold 1048576, qwen3.5
+    # holds 262144, and the local lfm2.5 holds 128000. This is qwen3.5's, which is the
+    # smallest CLOUD window, so OPUS, SONNET and FABLE are all inside their real limit.
+    #
+    # The local HAIKU tier is the one left below the cap, deliberately. It takes small
+    # background calls rather than the session, and oclaude-build-models prints a note
+    # naming it. Move HAIKU to a cloud tag if you want nothing below the cap at all.
+    #
+    # To go higher, raise all three together: 1048576 here is what the GLM tiers hold,
+    # and it costs SONNET the same way HAIKU is costed now.
+    MaxContextTokens  = 262144
+    AutoCompactWindow = 240000   # below the cap, so compaction has room to run before
                                  #   the session reaches it
 
-    # Left ON even though every chat tier here has a 1M window. Turning it off asserts a
-    # window the local tier does not have, and buys nothing until MaxContextTokens and
-    # AutoCompactWindow rise with it.
-    Disable1MContext = $true
+    # OFF, because the 1M marker is honest for the cloud tiers here. It is what pins the
+    # session to 200K when on, so leaving it on would make the two values above unusable:
+    # the CLI trips its window_above_boundary path once AutoCompactWindow passes 200000.
+    Disable1MContext = $false
 
     # The default 2 exists because Ollama serves one request per LOCAL model at a time.
     # A cloud tag has no such limit, and three of the four tiers here are cloud.

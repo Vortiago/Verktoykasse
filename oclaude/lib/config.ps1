@@ -105,9 +105,12 @@ function Get-OClaudeDefaultConfig {
                                            #   200000 buys nothing
         AutoCompactWindow = 200000         # where Claude Code COMPACTS, deliberately below
                                            #   num_ctx so the runner never context-shifts.
-                                           #   Must be 200000 exactly: DISABLE_1M_CONTEXT
-                                           #   asserts a 200K ceiling, and 262144 trips the
-                                           #   CLI's "window_above_boundary" path
+                                           #   200000 is the CEILING WHILE Disable1MContext
+                                           #   is on, not a constant: that flag asserts 200K,
+                                           #   and a larger value then trips the CLI's
+                                           #   "window_above_boundary" path. Turn the flag off
+                                           #   and this rises to whatever the tiers hold,
+                                           #   which is what a cloud map wants
         StreamIdleMs    = 900000           # oclaude counts as 'firstParty', which hardcodes a
                                            #   3 min byte-idle timeout. A queued request emits
                                            #   nothing, so that fires and the CLIENT hangs up.
