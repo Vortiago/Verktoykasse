@@ -32,18 +32,24 @@ function New-ExposeState {
     .PARAMETER RetryMs
         How long to wait after a refused connect. One second: fast enough that
         starting the rain second is not noticed, slow enough that a machine with
-        no rain at all is not dialling in a loop.
+        no rain at all is not dialling in a loop. The caller raises it to its own
+        poll interval where that is longer, because a dial is only ever attempted
+        on a poll and a retry below that interval is one that never happens.
     .PARAMETER RefusedMs
         How long a refusal stays on the status after the rain last said it. It
         has to outlast the redial, or the reason would blink out between two
         refusals; and it has to expire, or a rain that has since been stopped
         would leave the report naming a fix for a problem that is gone. Five
-        retries' worth.
+        retries' worth, so it defaults off RetryMs rather than off the clock: the
+        two are one setting, and a slower retry with this left fixed would give
+        exactly the blinking it exists to prevent.
     #>
     param([Parameter(Mandatory)] [string] $Machine,
           [AllowEmptyString()] [string] $Token = '',
           [int] $RetryMs = 1000,
-          [int] $RefusedMs = 5000)
+          [int] $RefusedMs = 0)
+
+    if ($RefusedMs -le 0) { $RefusedMs = 5 * $RetryMs }
 
     @{
         Machine = $Machine; Token = $Token; RetryMs = $RetryMs; RefusedMs = $RefusedMs

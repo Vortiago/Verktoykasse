@@ -1,4 +1,4 @@
-# The host's view of connected machines, driven entirely through the three seams
+# The host's view of connected machines, driven entirely through the four seams
 # Update-RemoteHub takes. No socket is opened here and no clock is read: the
 # fake connections are strings in a queue and the time is a number the test moves.
 # That is what lets the stale, drop and reconnect timings be asserted exactly.
@@ -23,7 +23,7 @@ BeforeAll {
                            CloseCount = 0 }
     }
 
-    # The three seams, over a list of fake connections. Arriving holds the ones
+    # The four seams, over a list of fake connections. Arriving holds the ones
     # Accept has not handed over yet.
     function New-FakeWorld {
         $w = @{ Arriving = [System.Collections.Generic.List[object]]::new()
@@ -399,7 +399,9 @@ Describe 'hub: the local tab behind a remote lane' {
     }
 
     It 'walks from the ssh client to the pane holding it when a pid names one' {
-        $script:pane = @((New-TestTab 1 0 'atle@lab1' 'none' 200))
+        # Titled so the fallback cannot match it: otherwise both routes answer
+        # this tab and the assertion below would pass with the pid walk deleted.
+        $script:pane = @((New-TestTab 1 0 'PowerShell' 'none' 200))
         $tab = Resolve-RemoteTab -Peer $peer -OwnerOf { param($port) 300 } `
                                  -Ancestors { param($p) @(300, 200, 1) } -ReadTab { $script:pane }
         $tab.Pid | Should -Be 200

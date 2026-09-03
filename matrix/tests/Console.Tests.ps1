@@ -235,6 +235,17 @@ Describe 'Frame stats' {
         Get-StatsLine 10.0 8.0 | Should -Not -Match 'host'
     }
 
+    It 'drops a note too wide for the terminal without taking the timings with it' {
+        # The tail is dropped whole from the first field that does not fit. The
+        # note leads, so were it in that tail a long refusal would leave nothing
+        # but the frame rate - and the timings are what -Stats is for.
+        $stats = New-FrameStats -Show $true -TargetFps 30
+        $stats.Note = 'host refused: not JSON, or a version this build does not speak'
+        $narrow = Get-StatsLine 10.0 8.0 $stats 60
+        $narrow | Should -Match 'build 2\.00 write 8\.00'
+        $narrow | Should -Not -Match 'host'
+    }
+
     It 'says nothing until its window is up' {
         $stats = New-FrameStats -Show $true -TargetFps 30
         $stats.Frame  = New-FakeClock 10

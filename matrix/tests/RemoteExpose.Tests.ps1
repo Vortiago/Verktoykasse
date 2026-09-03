@@ -298,6 +298,22 @@ Describe 'expose: what the -Stats line reads' {
         Get-ExposeStatus $s | Should -Be 'host connecting'
     }
 
+    It 'keeps the refusal when the polls themselves are slow' {
+        # A redial only ever happens on a poll, so the refusal is counted in
+        # retries rather than seconds. Fixed at five seconds it would expire on
+        # the poll that redials a rain polled every ten, and the reason would be
+        # gone from the screen on every other one.
+        $s = New-ExposeState -Machine 'lab1' -RetryMs 10000; $r = New-FakeRain
+        Step-Expose $s $r 0
+        $r.Incoming = (ConvertTo-RefusedLine -Why 'wrong token') + "`n"
+        Step-Expose $s $r 10000
+        $r.Shut = $true
+        Step-Expose $s $r 20000
+        $r.Shut = $false
+        Step-Expose $s $r 30000
+        Get-ExposeStatus $s | Should -Be 'host refused: wrong token'
+    }
+
     It 'drops the refusal once the port itself stops answering' {
         # No forward any more: what the rain last said is not the news.
         $s = New-ExposeState -Machine 'lab1' -RetryMs 1000; $r = New-FakeRain

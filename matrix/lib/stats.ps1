@@ -73,7 +73,6 @@ function Format-StatsLine {
         $Width, $Height, $fpsNow, $(if ($Stats.Target) { "/$($Stats.Target)" } else { ' ' }),
         ($Stats.Late * 100.0 / $n))
     $rest = @()
-    if ($Stats.Note) { $rest += "  $($Stats.Note)" }
     $rest += [string]::Format($inv, '  build {0:N2} write {1:N2} ms', ($Stats.BuildMs / $n), ($Stats.WriteMs / $n))
     if ($Stats.PollMs -ge 0) { $rest += [string]::Format($inv, ' poll {0:N1} ms', $Stats.PollMs) }
     $rest += [string]::Format($inv, '  {0:N1}KB {1}runs{2}',
@@ -81,9 +80,17 @@ function Format-StatsLine {
         $(if ($Renderer.LastWrites -gt 1) { " $($Renderer.LastWrites)w" } else { '' }))
     if ($Stats.StartMs -gt 0) { $rest += [string]::Format($inv, '  start {0:N1}s', ($Stats.StartMs / 1000.0)) }
 
+    # The note leads, and is fitted on its own rather than at the head of the list
+    # below. That list drops its tail whole, so a note too wide for the terminal
+    # would take every timing with it - and the timings are what -Stats is for.
+    $line = $head
+    if ($Stats.Note) {
+        $note = "  $($Stats.Note)"
+        if ($line.Length + $note.Length + 1 -le $Width - 2) { $line += $note }
+    }
+
     # Least useful last, and dropped whole rather than clipped. StampOverlay takes
     # $Width - 2, and half of "start 0.45s" is a different number.
-    $line = $head
     foreach ($part in $rest) {
         if ($line.Length + $part.Length + 1 -gt $Width - 2) { break }
         $line += $part

@@ -332,7 +332,7 @@ ssh client on your machine finds nothing to connect to. Run the report with
 | `host waiting` | Nothing takes the connection. No ssh session carries the forward, or it is on another port |
 | `host connecting` | Something takes it and no rain has answered. A host running no rain holds here: sshd accepts, the far end drops the channel a moment later, and the report redials |
 | `host connected` | The rain welcomed this machine |
-| `host refused: wrong token` | The rain said no, and why. It outlasts the redial that follows, so the word that names the fix stays on screen, and expires a few seconds after the rain stops saying it |
+| `host refused: wrong token` | The rain said no, and why. It outlasts the redial that follows, so the word that names the fix stays on screen, and expires a few retries after the rain stops saying it - retries, not seconds, because a slow `-PollSeconds` is a slow redial |
 
 A remote session never enters the tab map, because it has no pid on this machine.
 A remote pid that happened to exist here would claim a local tab and block the
@@ -374,6 +374,16 @@ second, and nothing else counts. Titles change with every prompt, so this is
 looked up on each click and never cached. Konsole and tmux answer nothing, and
 answer it without reading their tabs at all: they matched on the pid already, and
 a click must not spend a D-Bus round trip or a `tmux` process to be told so.
+
+This route is the one exception to the rule above, and it is deliberate: the name
+it matches on is the one the peer put in its hello. A machine that lies about its
+name can therefore have a click raise a tab titled after some other machine. That
+is the whole of it - a tab is brought to the front and nothing is typed into it,
+no id is trusted, and no local session is touched. The exact route is preferred
+everywhere it exists, so this is only reachable on Windows Terminal, where no pid
+names a tab at all and the alternative is a click that visibly does nothing. Set
+a token if the loopback port is shared with anyone you would not hand the
+keyboard to.
 
 The reporting side needs tmux for the switch, because the switch is a tmux
 command. Without it, sessions are still reported and the rain says so once at

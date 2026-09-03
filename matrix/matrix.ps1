@@ -221,7 +221,12 @@ $expose = $null
 if ($ExposeOnSSH) {
     $why = Test-ExposeSupport
     if ($why) { Write-Host $why -ForegroundColor DarkGray }
-    $expose = New-ExposeState -Machine (Get-ExposeMachineName $RemoteName) -Token $RemoteToken
+    # A redial is only ever attempted on a poll, so a retry shorter than the poll
+    # interval is one that never happens - and RefusedMs, which is counted in
+    # retries, would then expire between two refusals and flap the reason off the
+    # -Stats line every other poll. Told the real cadence, both are honest.
+    $expose = New-ExposeState -Machine (Get-ExposeMachineName $RemoteName) -Token $RemoteToken `
+                              -RetryMs ([int][Math]::Max(1000.0, $PollSeconds * 1000.0))
 }
 
 # What -ThisWindow scopes on: a terminal window, or the tmux session a pane runs

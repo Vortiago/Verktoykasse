@@ -247,6 +247,13 @@ function Resolve-RemoteTab {
         A backend with nothing to answer says so without reading anything, which
         is why it is handed the reader and not the tabs.
 
+        That second route matches on Machine, which is a string the peer sent.
+        The pid route takes nothing from the wire on purpose, and this one cannot:
+        no terminal ties a tab to a socket. So a peer that lies about its name can
+        have a click raise a tab titled after another machine - a window brought
+        to the front, nothing typed, no id trusted. The exact route is tried first
+        everywhere it exists, so this is reachable only where no pid names a tab.
+
         Resolved on the click, not on the poll. A tab read costs about 100 ms, and
         the frame loop must not pay it once a second for a click that may never
         come. Between the two routes it is paid at most once.

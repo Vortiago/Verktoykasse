@@ -189,7 +189,10 @@ function Get-MachineTitleScore {
     $score = 0
     foreach ($word in ($Title -split '[\s:;,()\[\]"''<>|]+')) {
         if (-not $word) { continue }
-        $at = $word.IndexOf('@')
+        # [char], not '@': the string overload of IndexOf compares by culture, and
+        # a title carrying an ignorable character would then answer an index the
+        # Substring below cuts at the wrong place. The char overload is ordinal.
+        $at = $word.IndexOf([char]'@')
         $name = if ($at -ge 0) { $word.Substring($at + 1) } else { $word }
         $name = ($name -split '\.')[0]
         if ($name -ine $Machine) { continue }
