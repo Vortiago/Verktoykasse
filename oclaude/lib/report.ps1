@@ -83,9 +83,9 @@ function oclaude-help {
     Write-Host ("    context      Claude Code capped at {0}; must stay <= the smallest num_ctx" -f $cfg.MaxContextTokens) -ForegroundColor Gray
     Write-Host '    first turn   costs a full prefill; later turns extend the cache and are cheap' -ForegroundColor Gray
     Write-Host ('    config       {0}' -f (Get-OClaudeConfigState -Cfg $cfg).Description) -ForegroundColor Gray
-    Write-Host ('    daemon       {0}. Neither config file holds one' -f
+    Write-Host ('    daemon       not in either config file. {0}' -f
                 (Get-OllamaSettingsHint)) -ForegroundColor Gray
     Write-Host '    advisor      $env:OCLAUDE_ADVISOR overrides its model per shell (use an alias)' -ForegroundColor Gray
-    Write-Host ("    waits        {0}s byte-idle, {1} tool calls at once (ollama serves 1 per model)" -f ($cfg.StreamIdleMs / 1000), $cfg.ToolConcurrency) -ForegroundColor Gray
+    Write-Host ("    waits        {0}s byte-idle, {1} tool calls at once (ollama serves 1 per LOCAL model)" -f ($cfg.StreamIdleMs / 1000), $cfg.ToolConcurrency) -ForegroundColor Gray
     Write-Host ''
 }
