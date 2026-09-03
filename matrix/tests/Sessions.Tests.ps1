@@ -216,6 +216,9 @@ Describe 'Get-ClaudeSession' {
     }
 
     It 'fills in what a record leaves out' {
+        # A transcript, because a status-less record without one has never taken a
+        # turn and gets no lane at all.
+        Write-Transcript 'sid-a' (New-EndedTurn) | Out-Null
         Write-Registry 'a' (New-Record 'sid-a' $null @{ name = $null; cwd = $null; nameSource = $null })
         $s = @(Get-ClaudeSession)[0]
         $s.Status     | Should -Be 'idle'
@@ -520,9 +523,34 @@ Describe 'Get-ClaudeSession status without a registry status' {
         $s[0].UpdatedAt   | Should -BeGreaterThan 0     # aged off the transcript
     }
 
-    It 'stays idle when the transcript cannot answer either' {
-        Write-Registry 'r1' (New-Record 'reg-notranscript' $null)
+    It 'stays idle when the transcript is there but cannot answer' {
+        # An unreadable file is not evidence of anything. The lane keeps the
+        # registry's answer rather than being recoloured on a bad read.
+        $path = Join-Path $fakeHome 'projects/D--repos-matrix/reg-junk.jsonl'
+        'not json at all' | Set-Content -LiteralPath $path -Encoding utf8
+        Write-Registry 'r1' (New-Record 'reg-junk' $null)
         @(Get-ClaudeSession)[0].Status | Should -Be 'idle'
+    }
+
+    It 'drops a session that has no transcript at all: it has never taken a turn' {
+        # The empty session a VS Code window opens with, still registered and still
+        # alive after the user opened a past session in its place. It rained a
+        # second lane for the same window with nothing in it.
+        Write-Registry 'r1' (New-Record 'reg-notranscript' $null)
+        @(Get-ClaudeSession).Count | Should -Be 0
+    }
+
+    It 'keeps the used session when the unused one shares its window' {
+        # Both PIDs are alive and both records are real: only the transcript tells
+        # them apart.
+        $used = 'reg-resumed'
+        Write-Transcript $used (New-EndedTurn) | Out-Null
+        Write-Registry 'r1' (New-Record $used   $null @{ statusUpdatedAt = 0 })
+        Write-Registry 'r2' (New-Record 'reg-untouched' $null @{ statusUpdatedAt = 0 })
+
+        $s = @(Get-ClaudeSession)
+        $s.Count       | Should -Be 1
+        $s[0].SessionId | Should -Be $used
     }
 }
 

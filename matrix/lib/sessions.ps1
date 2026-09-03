@@ -138,8 +138,18 @@ function Get-ClaudeSession {
             # is waiting.
             $status    = 'idle'
             $updatedAt = [int64]$r.statusUpdatedAt
-            if     ($r.status)                              { $status = [string]$r.status }
-            elseif ($t = Get-TranscriptStatus $r.sessionId) { $status = $t.Status; $updatedAt = $t.UpdatedAt }
+            if ($r.status) { $status = [string]$r.status }
+            else {
+                # No transcript file at all, from a host that writes no status, is a
+                # session that has never taken a turn - and one of those is left
+                # behind every time a VS Code window opens its empty session and the
+                # user opens a past session in its place. The empty one stays
+                # registered and stays alive, so it rained a second lane for the
+                # same window with nothing in it. Nothing to show, so no lane. It
+                # appears the moment the session is used.
+                if (-not (Get-SessionTranscript $r.sessionId)) { continue }
+                if ($t = Get-TranscriptStatus $r.sessionId) { $status = $t.Status; $updatedAt = $t.UpdatedAt }
+            }
             [pscustomobject]@{
                 Pid        = [int]$r.pid
                 SessionId  = [string]$r.sessionId

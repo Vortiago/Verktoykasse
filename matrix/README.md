@@ -98,8 +98,12 @@ Red early is a nuisance, green forever is the bug. `BlockedSeconds` in
 A registry that does write a status is always believed - it knows the
 `waitingFor` reason a file cannot. The transcript is read only when the
 registry says nothing, and a lane it cannot answer for keeps the registry's
-answer. The header ages a status from the write that changed it, not the newest
-one.
+answer. No transcript at all is a session that has never taken a turn, and gets
+no lane: that is the empty session a VS Code window opens with, left registered
+and alive when you open a past session in its place. The lane appears when the
+session is used.
+
+The header ages a status from the write that changed it, not the newest one.
 
 The registry also names a per-session pipe, `\\.\pipe\LOCAL\cc-msg-<hash>`,
 which carries the peer message protocol and its `notify_idle` subscription.
