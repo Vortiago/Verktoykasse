@@ -202,18 +202,93 @@ Describe 'tcp: naming the local ssh process' {
     }
 
     It 'asks for the port it was given' -Skip:($IsWindows) {
+        # Both seams supplied, so this covers the wiring on either platform: the
+        # default pair is chosen by platform, and a test that swapped only the
+        # call would feed ss output to the lsof parse on a Mac.
         $script:seen = $null
-        $call = { param($p) $script:seen = $p; 'users:(("ssh",pid=4242,fd=3))' }
-        Resolve-PeerProcessId -Port 34234 -Call $call | Should -Be 4242
+        $call  = { param($p) $script:seen = $p; 'users:(("ssh",pid=4242,fd=3))' }
+        $parse = { param($text, $p) ConvertTo-SocketOwnerId $text }
+        Resolve-PeerProcessId -Port 34234 -Call $call -Parse $parse | Should -Be 4242
         $script:seen | Should -Be 34234
     }
 
-    It 'answers zero when ss knows nothing' -Skip:($IsWindows) {
-        Resolve-PeerProcessId -Port 34234 -Call { param($p) '' } | Should -Be 0
+    It 'answers zero when the tool knows nothing' -Skip:($IsWindows) {
+        Resolve-PeerProcessId -Port 34234 -Call { param($p) '' } `
+                              -Parse { param($text, $p) 0 } | Should -Be 0
+    }
+
+    It 'uses this platform default pair, end to end' -Skip:($IsWindows) {
+        # No seams at all: the platform picks both, and the pair has to agree.
+        # ss and lsof are each asked for the same fabricated port, one nothing is
+        # listening on, so the answer is zero either way. What this catches is a
+        # default $Call and $Parse that do not match, which returns zero too -
+        # so the point is that it does not throw and does not hang.
+        Resolve-PeerProcessId -Port 1 | Should -Be 0
     }
 
     It 'answers zero for a port that cannot be one' {
         Resolve-PeerProcessId -Port 0 -Call { param($p) throw 'never called' } | Should -Be 0
+    }
+
+    Context 'the lsof shape, which macOS reads instead of ss' {
+        # -F writes one field per line, tagged by its first character, and a
+        # process's rows follow its p line. Run on every platform: the parse is
+        # the part worth testing, and it needs no lsof to run.
+        BeforeAll {
+            # Copied from real lsof output, f rows and all: a process's sockets
+            # follow its p row as f/n pairs, and one process can hold several.
+            # Asking for the port returns both ends of it - the ssh client, whose
+            # local end is its own ephemeral port, and the rain's accepted socket,
+            # whose local end is 9999.
+            $script:bothEnds = @(
+                'p57446'                                # the ssh client
+                'f20'
+                'n10.10.50.41:58134->10.10.50.41:1234'  # another socket of its own
+                'f26'
+                'n127.0.0.1:56817->127.0.0.1:9999'
+                'p52242'                                # the rain
+                'f15'
+                'n127.0.0.1:9999->127.0.0.1:56817'
+            ) -join "`n"
+        }
+
+        It 'takes the process whose local end is the port, past the f rows' {
+            # The rule, and the reason the whole output is parsed at once: both
+            # ends of 9999 are here, and only one process holds it locally. The
+            # f rows are neither p nor n, and are ignored.
+            ConvertTo-LsofOwnerId -Text $bothEnds -Port 9999 | Should -Be 52242
+        }
+
+        It 'takes the other process for the other end, past its earlier socket' {
+            # The case the click actually asks: the ssh client, named by the
+            # ephemeral source port the rain read off its accepted socket. p57446
+            # holds two sockets, and only the second is the one asked about.
+            ConvertTo-LsofOwnerId -Text $bothEnds -Port 56817 | Should -Be 57446
+        }
+
+        It 'does not match a port the asked-for one is only a suffix of' {
+            # :9999 must not answer for :19999, which EndsWith on ":$Port" is
+            # what stops. A bare Contains would take either.
+            $text = "p1`nn127.0.0.1:19999->127.0.0.1:22"
+            ConvertTo-LsofOwnerId -Text $text -Port 9999 | Should -Be 0
+        }
+
+        It 'answers zero for a listener, which has no arrow' {
+            ConvertTo-LsofOwnerId -Text "p52242`nn127.0.0.1:9999" -Port 9999 | Should -Be 0
+        }
+
+        It 'ignores an n row that no p row precedes' {
+            ConvertTo-LsofOwnerId -Text 'n127.0.0.1:9999->127.0.0.1:1' -Port 9999 | Should -Be 0
+        }
+
+        It 'answers zero for no output at all' {
+            ConvertTo-LsofOwnerId -Text '' -Port 9999 | Should -Be 0
+        }
+
+        It 'survives a p row that is not a number' {
+            ConvertTo-LsofOwnerId -Text "pxyz`nn127.0.0.1:9999->127.0.0.1:1" -Port 9999 |
+                Should -Be 0
+        }
     }
 
     It 'answers zero on Windows without running anything' -Skip:(-not $IsWindows) {

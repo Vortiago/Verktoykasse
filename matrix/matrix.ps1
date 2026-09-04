@@ -153,6 +153,10 @@ $term = Join-Path $lib 'terminal'
 # tmux talks tmux, whether the outer terminal is Konsole, a plain xterm, or another
 # tmux - $TMUX names the innermost server. Windows never gets here with TMUX set: a
 # WSL tmux pane is a separate environment.
+#
+# On macOS tmux is the only backend there is: Terminal.app and iTerm2 name no tab
+# a script can raise. Outside tmux the rain still runs, and none.ps1 says which
+# flags it cannot serve rather than pretending to a map.
 
 # Who wants the tab map, spelled once: $hostHwnd and $needTabs both read it and
 # must not drift. -ExposeOnSSH is in it because a click on the other machine is
@@ -160,6 +164,7 @@ $term = Join-Path $lib 'terminal'
 $wantTabs = [bool]($ThisWindow -or $Click -or $ExposeOnSSH)
 $backend = if ($IsWindows)    { 'windows-terminal.ps1' }
            elseif ($env:TMUX) { 'tmux.ps1' }
+           elseif ($IsMacOS)  { 'none.ps1' }
            else               { 'konsole.ps1' }
 $load = @(
     foreach ($part in 'console', 'stats', 'types', 'palette', 'lanes', 'sessions') {

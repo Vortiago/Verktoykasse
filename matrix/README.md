@@ -6,13 +6,20 @@
 exits. The glyphs are half-width katakana. They render one cell wide, so the
 grid stays square.
 
-It runs on Windows and on Linux. Each platform brings its own console layer and
-its own terminal backend: the Windows console API with Windows Terminal, or
+It runs on Windows, Linux and macOS. Each platform brings its own console layer
+and its own terminal backend: the Windows console API with Windows Terminal, or
 termios with Konsole or tmux. The rain above them is the same code.
 
+macOS shares Linux's termios reader and answers two questions its own way. It
+has no `/proc`, so a session's liveness and a pid's parent come from
+`Process.StartTime` and one `ps` snapshot instead. And tmux is the only tab
+backend it has: Terminal.app and iTerm2 name no tab a script can raise, so
+outside tmux the rain draws every lane and says that `-ThisWindow` and `-Click`
+are the two flags it cannot serve.
+
 `Get-Help .\matrix.ps1 -Full` lists every flag. `Invoke-Pester ./tests` runs
-the test suite (Pester 5 or later). CI runs it on both platforms, because a
-green Windows job says nothing about code that only Linux executes.
+the test suite (Pester 5 or later). CI runs it on all three platforms, because a
+green Windows job says nothing about code only another platform executes.
 
 ## The Windows Terminal profile
 
@@ -214,12 +221,18 @@ Start the rain from the window you want scoped, and keep that window in front
 while it starts. When `-ThisWindow` finds nothing it stops with an explanation;
 a filter that silently does nothing reads as a bug.
 
-### tmux, on Linux
+### tmux, on Linux and macOS
 
 tmux nests in every terminal, so it wins the backend question: a rain inside
 tmux talks tmux, whether the outer terminal is Konsole, a plain xterm, or
 another tmux - `$TMUX` names the innermost server, and the client reaches it on
 its own. There is nothing to configure beyond that.
+
+On macOS it is also the only backend, and the reason to run the rain in tmux
+there. Nothing in this section is platform-specific: the scope comes from
+`$TMUX_PANE`, the tabs from `list-panes`, and the match from `pane_pid` against
+a session's ancestors, which is one `ps` snapshot on macOS and a `/proc` walk on
+Linux. Outside tmux, macOS gets `none.ps1`, which answers no tabs and says why.
 
 | Step | How |
 | --- | --- |
@@ -361,8 +374,10 @@ other end the tab it started from.
 
 Finding that ssh session takes nothing from the wire. The process that connected
 to the rain is the local ssh client. Its source port is already on the accepted
-socket, and `ss -Htnp` names the process. From there it is `Resolve-TabByPid`,
-the same walk both Linux backends answer with: up the ancestors, stopping at the
+socket, and one tool names the process that owns it: `ss -Htnp` on Linux,
+`lsof -Fpn` on macOS, which is asked for both ends of the port and answers for
+the row whose local end is the one we hold. From there it is `Resolve-TabByPid`,
+the same walk every Unix backend answers with: up the ancestors, stopping at the
 nearest tab. The rain never takes that number from a message, because a peer that
 could name its own ssh could steal a click.
 
@@ -371,6 +386,7 @@ could name its own ssh could steal a click.
 | tmux | yes | yes, by pid |
 | Konsole | yes | yes, by pid |
 | Windows Terminal | yes | best effort, by title |
+| macOS outside tmux | yes | no, there is no tab to raise |
 
 Where no pid names a tab, the backend answers through `Resolve-MachineTab`.
 Windows Terminal reads tab titles: ssh leaves the remote shell's title there and a
@@ -434,6 +450,7 @@ lib/
     windows-terminal.ps1  the UI Automation backend
     konsole.ps1           the D-Bus backend
     tmux.ps1              the backend that runs inside tmux: a session is the scope, a window the tab
+    none.ps1              macOS outside tmux: no tab a script can name, said once
   remote/
     wire.ps1            the line format both machines speak. Pure: no socket, no clock
     hub.ps1             the host's view of the machines reporting in. No socket either
@@ -441,7 +458,8 @@ lib/
     expose.ps1          the reporting side: connect, retry, send, obey a focus
   cs/
     Renderer.cs         simulate and encode a frame
-    ConsoleVT_Windows.cs, ConsoleVT_Linux.cs
+    ConsoleVT_Windows.cs, ConsoleVT_Unix.cs
+    Termios_Linux.cs, Termios_Darwin.cs   the ABI under the Unix reader
     Windows.cs          window lookup, UI Automation
     DBus.cs, DBusEncode.cs, DBusDecode.cs
 ```
@@ -451,7 +469,22 @@ know nothing about sockets, and the one that holds a socket knows nothing about
 the rules. That is why a stale machine, a wrong token and a line split across two
 reads are all tested without a peer.
 
-A `_Windows` or `_Linux` suffix in `cs/` means the platform picks one of them. A
-file with no suffix is shared. `matrix.ps1` loads `tabmap.ps1` and exactly one
-backend under it, so Windows never sources Konsole code and Linux never sources
-UI Automation. A third platform adds a backend and a C# pair, nothing else.
+A suffix in `cs/` means the platform picks one of them. A file with no suffix is
+shared. The split runs two deep: `_Windows` and `_Unix` divide the console
+reader, and `_Linux` and `_Darwin` divide the termios ABI under it. One reader
+over two ABIs, because the escape grammar belongs to the terminal and only the
+struct differs - `tcflag_t` is 8 bytes wide on Darwin against 4 on Linux, `NCCS`
+is 20 against 32, there is no `c_line`, and `ICANON`, `VMIN` and `VTIME` all
+move. Cross them and `tcgetattr` writes 12 bytes past the buffer while the mask
+leaves `ICANON` set, which is a reader that blocks until Enter.
+
+`matrix.ps1` loads `tabmap.ps1` and exactly one backend under it, so Windows
+never sources Konsole code and Linux never sources UI Automation. A run compiles
+one termios ABI, its own: two sources under one type-name list share a cache
+family, and `Add-TaggedTypes` keeps one live tag per family, so compiling both to
+prove both still build would make each run recompile both. The three CI runners
+cover the pair instead.
+
+A platform is a terminal backend, a C# pair, and its answers in `sessions.ps1`
+for liveness and the parent walk. `remote/tcp.ps1` names the tool that maps a
+socket to its owner, which is `ss` on Linux and `lsof` on macOS.

@@ -43,25 +43,26 @@ jobs:
         run: find . -name '*.sh' -not -path '*/node_modules/*' -print0 | xargs -0 -I{} bash -n {}
 
   pester:
-    # matrix/ is PowerShell with two platform halves: the Windows console API and
-    # UIA over Windows Terminal, or termios and a raw D-Bus client for Konsole.
-    # Each half only runs on its own platform, so each needs its own runner. A
-    # Windows-only job green-lights Linux code that was never executed.
-    # Same command a session runs locally.
+    # matrix/ is PowerShell with three platform halves: the Windows console API and
+    # UIA over Windows Terminal; termios and a raw D-Bus client for Konsole; and
+    # macOS, which shares the termios reader over its own struct layout and has
+    # tmux as its only tab backend. Each half only runs on its own platform, so
+    # each needs its own runner. A Windows-only job green-lights code that was
+    # never executed. Same command a session runs locally.
     strategy:
-      # Both answers, every time: one platform failing must not cancel the run
-      # that would have said whether the other one is broken too.
+      # Every answer, every time: one platform failing must not cancel the run
+      # that would have said whether the others are broken too.
       fail-fast: false
       matrix:
-        os: [windows-latest, ubuntu-latest]
+        os: [windows-latest, ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - name: install Pester
-        # The Windows image ships Pester 5; the Ubuntu image ships PowerShell
-        # without it. Pinned to the version the Windows image carries, so the two
-        # runners are not testing against different Pesters.
-        if: runner.os == 'Linux'
+        # The Windows image ships Pester 5; the Ubuntu and macOS images ship
+        # PowerShell without it. Pinned to the version the Windows image carries,
+        # so the runners are not testing against different Pesters.
+        if: runner.os != 'Windows'
         shell: pwsh
         run: Install-Module Pester -RequiredVersion 5.6.1 -Force -Scope CurrentUser -SkipPublisherCheck
       - name: gate — matrix

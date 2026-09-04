@@ -204,28 +204,85 @@ function ConvertTo-SocketOwnerId {
     [int]$m.Groups[1].Value
 }
 
+function ConvertTo-LsofOwnerId {
+    <#
+    .SYNOPSIS
+        The pid out of `lsof -Fpn` output, for the row whose local end is $Port.
+    .DESCRIPTION
+        macOS has no ss. lsof answers the same question in a different shape, and
+        this is the parse, split from the call the way ConvertTo-SocketOwnerId is.
+
+        -F writes one field per line, tagged by its first character, and the rows
+        for one process follow its p line:
+
+            p169854
+            n127.0.0.1:56817->127.0.0.1:9999
+
+        -iTCP:N matches either end of a connection, so the rain's own accepted
+        socket comes back alongside the ssh client's. The one we want has the port
+        on the LEFT of the arrow, which is the local end of that process's socket.
+    #>
+    param([AllowEmptyString()] [string] $Text, [Parameter(Mandatory)] [int] $Port)
+    if (-not $Text) { return 0 }
+    # if/elseif, not switch: `continue` inside a PowerShell switch acts on the
+    # switch and not on the foreach around it, which is a quiet way to read the
+    # wrong row.
+    $owner = 0
+    foreach ($line in $Text -split "`n") {
+        $row = $line.Trim()
+        if ($row.Length -lt 2) { continue }
+        $tag  = $row[0]
+        $rest = $row.Substring(1)
+        if ($tag -eq 'p') {
+            $n = 0
+            $owner = if ([int]::TryParse($rest, [ref] $n)) { $n } else { 0 }
+        }
+        elseif ($tag -eq 'n' -and $owner -gt 0) {
+            $arrow = $rest.IndexOf('->')
+            # No arrow is a listener, which owns no connection to anything.
+            if ($arrow -ge 0) {
+                # The local end only. EndsWith, so :9999 never matches :19999.
+                if ($rest.Substring(0, $arrow).EndsWith(":$Port")) { return $owner }
+            }
+        }
+    }
+    0
+}
+
+function Invoke-Lsof {
+    # The macOS twin of Invoke-Ss below, and the same shape for the same reasons.
+    param([string[]] $LsofArgs)
+    Invoke-Tool -FileName 'lsof' -ToolArgs $LsofArgs
+}
+
 function Invoke-Ss {
     # The external call, alone in its own function so the parse above can be
     # tested without one. Same shape as Invoke-Tmux.
     param([string[]] $SsArgs)
+    Invoke-Tool -FileName 'ss' -ToolArgs $SsArgs
+}
+
+function Invoke-Tool {
+    # What Invoke-Ss and Invoke-Lsof both are. Two lessons live here, and neither
+    # is worth carrying twice: drain both pipes at once, because reading one to
+    # the end first deadlocks when the other fills, and bound the wait, because
+    # this is reached from a click and a hung process would hang the rain.
+    param([Parameter(Mandatory)] [string] $FileName, [string[]] $ToolArgs)
     $psi = [System.Diagnostics.ProcessStartInfo]::new()
-    $psi.FileName = 'ss'
-    foreach ($a in $SsArgs) { $psi.ArgumentList.Add($a) }
+    $psi.FileName = $FileName
+    foreach ($a in $ToolArgs) { $psi.ArgumentList.Add($a) }
     $psi.RedirectStandardOutput = $true
     $psi.RedirectStandardError = $true
     $psi.UseShellExecute = $false
-    # $p exists only once Start answers, and a missing ss throws here. The finally
-    # must survive a failed start, the way Invoke-Tmux's does.
+    # $p exists only once Start answers, and a tool that is not on PATH throws
+    # here. The finally must survive a failed start, the way Invoke-Tmux's does.
     $p = $null
     try {
         $p = [System.Diagnostics.Process]::Start($psi)
-        # Both pipes drained at once: reading one to the end first deadlocks when
-        # the other fills. The lesson Invoke-Tmux carries.
         $out = $p.StandardOutput.ReadToEndAsync()
         $err = $p.StandardError.ReadToEndAsync()
         if (-not $p.WaitForExit(2000)) {
             # Kill it rather than read .Result, which waits with no bound at all.
-            # This is reached from a click, and a hung ss would hang the rain.
             try { $p.Kill() } catch { }
             return ''
         }
@@ -249,22 +306,53 @@ function Resolve-PeerProcessId {
         The caller reads that port off the accepted socket, never off anything the
         peer sent. A peer that could name its own ssh could steal a click.
     .PARAMETER Call
-        Test seam: port -> the `ss` output for it.
+        Test seam: port -> the output of whichever tool this platform asks.
+    .PARAMETER Parse
+        Test seam: that output -> a pid. Paired with $Call, because the two tools
+        answer in different shapes and a seam that swapped only one would test a
+        parse against output it never sees.
     #>
     param([Parameter(Mandatory)] [int] $Port,
-          [scriptblock] $Call = { param($p) Invoke-Ss @('-Htnp', 'state', 'established', "( sport = :$p )") })
+          [scriptblock] $Call = $null,
+          [scriptblock] $Parse = $null)
 
     if ($Port -le 0) { return 0 }
     if ($IsWindows) {
-        # No ss here, and the Windows backend matches tabs on title rather than on
-        # a pid, so there is nothing to feed. Answered as unknown, not guessed.
+        # Neither tool here, and the Windows backend matches tabs on title rather
+        # than on a pid, so there is nothing to feed. Answered as unknown, not
+        # guessed.
         return 0
     }
-    try {
-        foreach ($line in (& $Call $Port) -split "`n") {
-            $found = ConvertTo-SocketOwnerId $line
-            if ($found -gt 0) { return $found }
+    if (-not $Call) {
+        # lsof on macOS, ss on Linux. Not a fallback chain: each platform has one
+        # answer, and trying the other first would spend a click's budget on a
+        # process that is not installed.
+        $Call = if ($IsMacOS) {
+            { param($p) Invoke-Lsof @('-nP', "-iTCP:$p", '-sTCP:ESTABLISHED', '-Fpn') }
+        } else {
+            { param($p) Invoke-Ss @('-Htnp', 'state', 'established', "( sport = :$p )") }
         }
+    }
+    if (-not $Parse) {
+        # ss was asked for one port's rows, so any pid in them is the answer and
+        # the parse reads a line at a time. lsof was asked for both ends, so its
+        # parse needs the whole output and the port to tell them apart.
+        $Parse = if ($IsMacOS) {
+            { param($text, $p) ConvertTo-LsofOwnerId -Text $text -Port $p }
+        } else {
+            {
+                param($text, $p)
+                foreach ($line in $text -split "`n") {
+                    $found = ConvertTo-SocketOwnerId $line
+                    if ($found -gt 0) { return $found }
+                }
+                0
+            }
+        }
+    }
+    try {
+        $found = & $Parse (& $Call $Port) $Port
+        if ($found -gt 0) { return $found }
     } catch { }
     0
 }

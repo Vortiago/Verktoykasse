@@ -4,10 +4,16 @@ namespace MatrixVT__TAG__
     using System.Runtime.InteropServices;
     using System.Text;
 
-    // The Linux ConsoleVT: the surface matrix.ps1 already drives, over the ioctls
-    // and escape sequences a Unix terminal offers instead of the Windows console
-    // API. The script asks the same questions on both platforms; the answers here
-    // are what a real terminal gives.
+    // The Unix ConsoleVT: the surface matrix.ps1 already drives, over the termios
+    // calls and escape sequences a Unix terminal offers instead of the Windows
+    // console API. The script asks the same questions on every platform; the
+    // answers here are what a real terminal gives.
+    //
+    // One file for Linux and macOS, because none of the reading below differs:
+    // the escape grammar is the terminal's, and read, write and isatty are the
+    // same call. What does differ is the termios ABI, and that is the whole of
+    // Termios_Linux.cs and Termios_Darwin.cs. This file names Termios and Tty
+    // and never asks which platform answered.
     //
     //   GetConsoleMode / SetConsoleMode - escape processing is a Windows console
     //     flag. A terminal that runs pwsh has already enabled it, so mode reads
@@ -64,30 +70,16 @@ namespace MatrixVT__TAG__
 
         // --- stdin: termios and mouse reporting -----------------------------------
 
-        [DllImport("libc", SetLastError = true)]
-        private static extern int tcgetattr(int fd, ref Termios t);
-        [DllImport("libc", SetLastError = true)]
-        private static extern int tcsetattr(int fd, int action, ref Termios t);
+        // read, write and isatty are the same call on every Unix, so they live
+        // here. The termios struct is not: Termios and Tty come from
+        // Termios_Linux.cs or Termios_Darwin.cs, and types.ps1 compiles one of
+        // them next to this file.
         [DllImport("libc", SetLastError = true)]
         private static extern int read(int fd, byte[] buf, int count);
         [DllImport("libc", SetLastError = true)]
         private static extern int write(int fd, byte[] buf, int count);
         [DllImport("libc", SetLastError = true)]
         private static extern int isatty(int fd);
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct Termios
-        {
-            public uint c_iflag, c_oflag, c_cflag, c_lflag;
-            public byte c_line;
-            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 32)] public byte[] c_cc;
-            public uint c_ispeed, c_ospeed;
-        }
-
-        private const uint ICANON = 0x0002;
-        private const uint ECHO = 0x0008;
-        private const uint ISIG = 0x0001;
-        private const int VTIME = 5, VMIN = 6;
 
         // SGR mouse reporting on and off: mode 1000 reports presses, 1006 the
         // SGR encoding (the coordinates the parser below reads).
@@ -104,15 +96,8 @@ namespace MatrixVT__TAG__
         // per frame is allocated once, here.
         private static readonly byte[] readBuf = new byte[64];
         private static readonly byte[] noBytes = new byte[0];
-        private static readonly Termios probe = NewTermios();
+        private static readonly Termios probe = Tty.New();
         private static int stdinIsTty = -1;             // cached: fd 0 does not change under us
-
-        static Termios NewTermios()
-        {
-            Termios t = new Termios();
-            t.c_cc = new byte[32];
-            return t;
-        }
 
         static bool StdinIsTty()
         {
@@ -154,31 +139,27 @@ namespace MatrixVT__TAG__
         {
             if (!StdinIsTty()) return;
             Termios t = probe;                            // the one scratch, reused per frame
-            if (tcgetattr(0, ref t) != 0) return;
+            if (Tty.Get(ref t) != 0) return;
             if (!savedOk)
             {
-                savedTermios = t;                         // the state to restore: flags copy,
-                savedTermios.c_cc = (byte[])t.c_cc.Clone();   // the array must not, or the
-                savedOk = true;                            // raw write below would cook the save
+                savedTermios = Tty.Copy(t);               // the state to restore
+                savedOk = true;
             }
 
             // Do not trust that raw is still in effect. .NET's [Console] property
             // setters apply their own cached termios behind our back, and what they
             // put back is VMIN=1 - a read that waits for a byte. A frame loop that
             // polls between frames would then only move when something is typed.
-            if (rawOn && (t.c_lflag & (ICANON | ECHO | ISIG)) == 0 && t.c_cc[VMIN] == 0)
-                return;                                  // still raw: leave it be
+            if (rawOn && Tty.IsRaw(ref t)) return;        // still raw: leave it be
 
-            t.c_lflag &= ~(ICANON | ECHO | ISIG);        // byte at a time, unechoed, no signals
-            t.c_cc[VMIN] = 0;                             // and a read that returns at once
-            t.c_cc[VTIME] = 0;
-            if (tcsetattr(0, 0, ref t) == 0) rawOn = true;   // 0: TCSANOW
+            Tty.MakeRaw(ref t);
+            if (Tty.Set(ref t) == 0) rawOn = true;
         }
 
         private static void LeaveRaw()
         {
             if (!rawOn) return;
-            if (savedOk) tcsetattr(0, 0, ref savedTermios);
+            if (savedOk) Tty.Set(ref savedTermios);
             rawOn = false;
         }
 

@@ -82,12 +82,16 @@ A directory is a skill when it holds a `SKILL.md`.
 - **[matrix](matrix/README.md)**: every open Claude Code session as Matrix rain
   in a terminal. One lane per session, coloured by status (green working, amber
   idle, red waiting), under a header with the name, status age, and opening
-  prompt. It runs on Windows and on Linux, each platform bringing its own console
-  layer and terminal backend: the Windows console API with Windows Terminal, or
-  termios with Konsole or tmux. `-ThisWindow` scopes the lanes to the terminal
-  window the rain starts in, or to the tmux session under tmux. `-Click` raises
-  a session's tab on click. `install-terminal-profile.ps1` adds a Windows Terminal
-  profile for it. PowerShell 7, and Pester 5 or later for the tests.
+  prompt. It runs on Windows, Linux and macOS, each platform bringing its own
+  console layer and terminal backend: the Windows console API with Windows
+  Terminal, or termios with Konsole or tmux. On macOS tmux is the only tab
+  backend, and the rain still draws every lane without one. `-ThisWindow` scopes
+  the lanes to the terminal window the rain starts in, or to the tmux session
+  under tmux. `-Click` raises a session's tab on click. `-Remote` and
+  `-ExposeOnSSH` show the sessions on every machine you ssh to, over the
+  forward on the login you already typed. `install-terminal-profile.ps1` adds a
+  Windows Terminal profile for it. PowerShell 7, and Pester 5 or later for the
+  tests.
 
 - **[simplified-technical-english](simplified-technical-english/ste-rules.md)**:
   writing rules for documentation, based on ASD-STE100 Simplified Technical
