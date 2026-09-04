@@ -386,7 +386,7 @@ could name its own ssh could steal a click.
 | tmux | yes | yes, by pid |
 | Konsole | yes | yes, by pid |
 | Windows Terminal | yes | best effort, by title |
-| macOS outside tmux | yes | no, there is no tab to raise |
+| macOS outside tmux | no, there is no tab map to look the session up in | no, there is no tab to raise |
 
 Where no pid names a tab, the backend answers through `Resolve-MachineTab`.
 Windows Terminal reads tab titles: ssh leaves the remote shell's title there and a

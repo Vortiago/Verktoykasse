@@ -315,13 +315,18 @@ public static class TtyProbe {
             # the last write to win.
             try { [Console]::TreatControlCAsInput = $false } catch { }
             [void]$VT::SetStdinMode(0)               # give the terminal back
+            # Read the restored terminal ONCE, here, and assert on this reading.
+            # The net below writes a sane terminal, and sane is exactly what a
+            # script started from, so a second reading taken after it would
+            # compare the net's own work against $before and pass.
+            $after = $Tty::Look()
             # And if it did not come back, take it back by force. The restore
             # above replays the termios EnterRaw saved, so a bug in there hands
             # the shell that ran the suite a terminal with no line editing, which
             # a developer then has to know to fix with stty by hand. A test that
             # breaks the terminal it is run from is worse than a failing one, so
             # the net is here rather than in the advice.
-            if ($Tty::Look() -ne $before) {
+            if ($after -ne $before) {
                 & stty sane 2>$null
                 Write-Warning 'stdin did not come back from raw: reset with stty sane'
             }
@@ -329,8 +334,7 @@ public static class TtyProbe {
         # Back exactly as found, which is the contract: LeaveRaw replays what
         # EnterRaw saved. Not "cooked" - under an interactive PowerShell the
         # terminal was already non-canonical when the suite started, and handing
-        # THAT back is the correct answer. Asserting cooked here is what made this
-        # block fail on a Mac while passing from a script on the same machine.
-        $Tty::Look() | Should -Be $before
+        # THAT back is the correct answer.
+        $after | Should -Be $before
     }
 }

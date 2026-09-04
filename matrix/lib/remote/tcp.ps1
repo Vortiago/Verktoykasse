@@ -227,15 +227,17 @@ function ConvertTo-LsofOwnerId {
     # if/elseif, not switch: `continue` inside a PowerShell switch acts on the
     # switch and not on the foreach around it, which is a quiet way to read the
     # wrong row.
-    $owner = 0
+    [int] $owner = 0
     foreach ($line in $Text -split "`n") {
         $row = $line.Trim()
         if ($row.Length -lt 2) { continue }
         $tag  = $row[0]
         $rest = $row.Substring(1)
         if ($tag -eq 'p') {
-            $n = 0
-            $owner = if ([int]::TryParse($rest, [ref] $n)) { $n } else { 0 }
+            # TryParse leaves the target at 0 when it fails, which is the same
+            # "no owner yet" the n rows below already test for.
+            $owner = 0
+            [void][int]::TryParse($rest, [ref] $owner)
         }
         elseif ($tag -eq 'n' -and $owner -gt 0) {
             $arrow = $rest.IndexOf('->')

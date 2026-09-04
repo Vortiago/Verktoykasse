@@ -244,6 +244,13 @@ $scopeName = if ($backend -eq 'tmux.ps1') { 'tmux session' } else { 'terminal wi
 # advice only the Windows backend's user can act on - and it reads as a wrong
 # diagnosis anywhere else.
 $scopeHint = if ($backend -eq 'windows-terminal.ps1') { " and leave that $scopeName in front" } else { '' }
+# What the user can do about it. Every backend but none.ps1 has a scope to be
+# started from, so naming one is advice. none.ps1 has none at any time: its only
+# route is the one $why already gives, and "start it from the terminal window you
+# want scoped" would be an instruction that cannot work.
+$scopeFix = if ($backend -eq 'none.ps1') { 'Drop -ThisWindow to show every session.' }
+            else { "Start it from the $scopeName you want scoped$scopeHint, " +
+                   'or drop -ThisWindow to show every session.' }
 
 # Read before anything slow runs, because the Windows backend has to guess: it
 # takes the foreground terminal, which is only reliably ours right after the user
@@ -290,9 +297,7 @@ if ($needTabs) {
         # -ThisWindow asked for a smaller set. Quietly showing every session looks
         # like a broken filter: say so and stop.
         if ($ThisWindow) {
-            throw ("matrix: -ThisWindow needs to know which $scopeName this is, and $why. " +
-                   "Start it from the $scopeName you want scoped$scopeHint, " +
-                   'or drop -ThisWindow to show every session.')
+            throw "matrix: -ThisWindow needs to know which $scopeName this is, and $why. $scopeFix"
         }
         $needTabs = $false
         # Each flag loses a different thing, so each is told what it lost. A

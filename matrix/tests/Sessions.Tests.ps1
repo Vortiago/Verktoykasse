@@ -40,6 +40,10 @@ BeforeAll {
         $script:SessionFact     = @{}
         $script:SessionProbe    = @{}
         $script:TranscriptState = @{}
+        # The pid -> ppid snapshot and its clock, dropped together the way
+        # Get-ProcParentMap sets them: the clock alone says there is a map.
+        $script:ProcParentMap   = $null
+        $script:ProcParentAt    = $null
     }
 
     # The transcript is the only witness for a host that writes no status, so these
@@ -179,8 +183,7 @@ Describe 'Get-ClaudeSession' {
         # fixture, because the value has to be readable and wrong: a bare '1' is
         # a mismatch in clock ticks and in a FILETIME, but it is not an asctime
         # string at all, and an unreadable field verifies nothing and keeps the
-        # session. That would have passed here on two platforms and asserted the
-        # opposite of the feature on the third.
+        # session.
         Write-Registry 'a' (New-Record 'sid-a' 'busy' @{ procStart = (Get-TestProcStartMismatch) })
         @(Get-ClaudeSession) | Should -HaveCount 0
     }
@@ -602,9 +605,7 @@ Describe 'ConvertTo-ProcStartTicks' {
 }
 
 Describe 'Test-SessionAlive on an unreadable stat line' -Skip:(-not $IsLinux) {
-    # Linux only, and now spelled that way: only the /proc branch reads a stat
-    # line at all. -Skip:($IsWindows) used to mean the same thing and stopped
-    # meaning it the moment macOS became a platform this runs on.
+    # Linux only: the /proc branch is the one that reads a stat line at all.
     It 'keeps the session, the same answer an unreadable procStart gets' {
         # The rule sessions.ps1 already states for a procStart that will not
         # parse. The reading side has to answer the same way, or a live lane

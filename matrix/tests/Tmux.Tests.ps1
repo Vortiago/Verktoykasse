@@ -172,8 +172,7 @@ Describe 'Invoke-Tmux' {
         # unrolled to its element on the way out of a branch, and $pre + @(...)
         # then concatenates STRINGS rather than joining arrays: the dll and the
         # first flag arrive glued together as one argv entry. Only a machine
-        # whose pwsh is a dotnet tool runs this branch at all, which is why it
-        # sat here unexercised.
+        # whose pwsh is a dotnet tool runs this branch at all.
         $script:pre = @(
             if ([IO.Path]::GetFileNameWithoutExtension($exe) -eq 'dotnet') {
                 Join-Path $PSHOME 'pwsh.dll'
