@@ -11,7 +11,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { withTransition, renderRegion, markRegionStale, heldInside, selectionInside } from "./render.js";
-import { fakeEventTarget as fakeTarget, patchGlobal } from "./testing-util.mjs";
+import { fakeEventTarget as fakeTarget, makeFlush, patchGlobal } from "./testing-util.mjs";
+
+/** One microtask turn, which is the pass boundary render.js's selection memo
+ * clears on: the clearing microtask is queued when a pass first reads, so a
+ * single awaited turn lands after it. The doubles below dispatch
+ * `selectionchange` synchronously, where a browser queues it as its own task, so
+ * a test that re-asks mid-stack has to cross this boundary by hand. */
+const flush = makeFlush(1);
 
 /** @param {any} ret */
 const isThenableFinished = (ret) => ret != null && typeof ret.finished?.then === "function";
@@ -235,7 +242,7 @@ test("renderRegion: a swap deferred by an open popover/dialog flushes on 'toggle
   assert.equal(overlay.listenerCount("close"), 0, "the OTHER armed listener is detached too — shared AbortController");
 });
 
-test("renderRegion: a swap deferred by a text selection flushes on selectionchange only once the selection actually clears the host", (t) => {
+test("renderRegion: a swap deferred by a text selection flushes on selectionchange only once the selection actually clears the host", async (t) => {
   const host = fakeHost();
   const selection = fakeSelection({ crosses: [host] }); // a range touching the host
   const doc = fakeDocument({ selection });
@@ -250,6 +257,7 @@ test("renderRegion: a swap deferred by a text selection flushes on selectionchan
   assert.equal(doc.listenerCount("selectionchange"), 1, "stays armed (not once:true) until it actually clears");
 
   selection.isCollapsed = true; // the selection has now cleared
+  await flush(); // a real selectionchange arrives in its own task, so cross the pass boundary
   doc.dispatch("selectionchange");
 
   assert.equal(host.swaps, 1, "flushed once the selection cleared the host");
@@ -345,7 +353,7 @@ test("selectionInside: any range intersecting the host holds — spanning it or 
   assert.equal(selectionInside(host), true, "rebuilding a host the selection touches would destroy it mid-copy");
 });
 
-test("selectionInside: a selection that misses the host entirely does not hold, and every range is asked", (t) => {
+test("selectionInside: a selection that misses the host entirely does not hold, and every range is asked", async (t) => {
   const host = fakeHost();
   const other = {};
   // Swap the selection on the patched document rather than patching `document`
@@ -358,6 +366,7 @@ test("selectionInside: a selection that misses the host entirely does not hold, 
   // Selection exposes a LIST of ranges, so ask all of them rather than assuming
   // one: here the host is crossed by the SECOND, which a first-range-only check
   // would miss.
+  await flush(); // the ask above read the selection for that pass (#83); this is the next one
   doc.getSelection = () => fakeSelection({ ranges: [[other], [host]] });
   assert.equal(selectionInside(host), true, "every range is asked, not just the first");
 });
@@ -369,7 +378,7 @@ test("selectionInside: a selection that misses the host entirely does not hold, 
 // "held" renderRegion uses, or it ends up with two hold registries on one host
 // that drift apart. heldInside is that definition; renderRegion is wired onto it.
 
-test("heldInside: true for a focused control, an open overlay, and a live selection; false when the host is idle", (t) => {
+test("heldInside: true for a focused control, an open overlay, and a live selection; false when the host is idle", async (t) => {
   const doc = fakeDocument();
   patchGlobal(t, "document", doc);
   const host = fakeHost();
@@ -388,6 +397,9 @@ test("heldInside: true for a focused control, an open overlay, and a live select
   // No setInside() here on purpose: the selection guard asks the RANGE whether it
   // crosses the host, never whether the host contains an endpoint (#72).
   host._overlay = null;
+  // The idle ask at the top of this test already read the selection for that pass
+  // (#83), and the focus and overlay asks short-circuited before reaching it.
+  await flush();
   doc.getSelection = () => fakeSelection({ crosses: [host] });
   assert.equal(heldInside(host), true, "a text selection touching the host");
 });
@@ -571,4 +583,49 @@ test("renderRegion: a later direct swap clears any earlier pending flush for the
 
   focusoutTo(doc, host, null); // nothing armed — must be a no-op
   assert.equal(host.swaps, 1, "no extra swap fires — the stale pending build never runs");
+});
+
+// ── #83: the selection read is taken once per synchronous pass ───────────────
+//
+// Reading Selection state forces a style and layout flush in Blink, and the seam
+// mutates the DOM between hosts, so a fresh read per host paid a fresh flush per
+// host. Nothing is rebuilt, so no DOM-identity test sees it: the assertion has to
+// be a COUNT of the reads themselves.
+//
+// Run WITH a live selection. A memo of only "is there a selection at all" fast-
+// paths the idle case and still pays rangeCount + getRangeAt per host, and an
+// idle-only test stays green against exactly that wrong fix.
+
+/** `fakeSelection` behind counting accessors. `reads` counts hits on the three
+ * members a browser pays a forced layout for. @param {any} live */
+function countingSelection(live) {
+  const counter = { reads: 0 };
+  const sel = {
+    get isCollapsed() { counter.reads++; return live.isCollapsed; },
+    get rangeCount() { counter.reads++; return live.rangeCount; },
+    getRangeAt(/** @type {number} */ i) { counter.reads++; return live.getRangeAt(i); },
+  };
+  return { sel, counter };
+}
+
+test("renderRegion: one selection read serves every host in a synchronous pass, and the next pass re-asks (#83)", async (t) => {
+  const a = fakeHost(), b = fakeHost(), c = fakeHost();
+  // A live selection crossing a and c, so the HELD path is what gets counted. b
+  // swaps mid-pass, which is the seam mutating the DOM between the two held asks.
+  const { sel, counter } = countingSelection(fakeSelection({ ranges: [[a, c]] }));
+  const doc = fakeDocument({ selection: sel });
+  patchGlobal(t, "document", doc);
+
+  const held = [a, b, c].map((host) => renderRegion(host, () => ({ id: "x" })));
+  assert.deepEqual(held, [true, false, true], "a and c are held by the selection, b swaps");
+  assert.deepEqual([a.swaps, b.swaps, c.swaps], [0, 1, 0]);
+  assert.equal(doc.listenerCount("selectionchange"), 2, "each held host armed its own flush listener");
+
+  const perPass = counter.reads;
+  assert.ok(perPass <= 3, `the whole pass asks once per member, not once per host (got ${perPass})`);
+
+  await flush(); // the pass boundary: the memo clears on a microtask
+  assert.equal(selectionInside(b), false, "b is not crossed by the selection");
+  assert.ok(counter.reads > perPass, "a new pass asks again — a memo that never cleared would freeze every hold");
+  assert.ok(counter.reads <= perPass * 2, `the second pass also asks once per member (got ${counter.reads - perPass})`);
 });

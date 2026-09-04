@@ -12,10 +12,24 @@
 import { renderRegion } from "../../render.js";
 
 const region = /** @type {HTMLElement} */ (document.getElementById("region"));
+const region2 = /** @type {HTMLElement} */ (document.getElementById("region2"));
 const w = /** @type {any} */ (window);
 
 w.__builds = 0;
 w.__clicks = 0;
+w.__selectionReads = 0;
+
+// Count what a browser pays a forced style and layout update for (#83). Patched on
+// the prototype, once, so the count covers the REAL getters canon reads — the thing
+// no hand-written double can vouch for. getRangeAt is a method, so wrap its value;
+// the other two are accessors, so wrap their get.
+for (const name of ["isCollapsed", "rangeCount", "getRangeAt"]) {
+  const d = /** @type {PropertyDescriptor} */ (Object.getOwnPropertyDescriptor(Selection.prototype, name));
+  const patched = d.get
+    ? { ...d, get() { w.__selectionReads++; return d.get?.call(this); } }
+    : { ...d, value(/** @type {any[]} */ ...args) { w.__selectionReads++; return d.value.apply(this, args); } };
+  Object.defineProperty(Selection.prototype, name, patched);
+}
 
 /** @param {string} id @param {string} label */
 function control(id, label) {
@@ -50,6 +64,16 @@ function build(/** @type {string} */ label) {
   return wrap;
 }
 
+/** #region2's content: no ids and no data-slot, so it cannot collide with the ids
+ * `build` writes or with the `regionText` locator the other specs use.
+ * @param {string} label */
+function buildPlain(label) {
+  w.__builds++;
+  const p = document.createElement("p");
+  p.textContent = `build:${label}`;
+  return p;
+}
+
 // Delegated on the HOST, which survives a rebuild — so the only way this fails to
 // fire is the button node itself being swapped away mid-click, which is exactly
 // the bug under test rather than a lost listener.
@@ -61,6 +85,19 @@ region.addEventListener("click", (e) => {
  * (true = held), so the spec asserts the API contract, not just the DOM.
  * @param {string} label @param {{ defer?: boolean }} [opts] */
 w.__render = (label, opts = {}) => renderRegion(region, () => build(label), { sig: label, ...opts });
+
+/** One synchronous pass over BOTH regions, returning the reads that pass cost.
+ * #region2 sits outside the lead-to-tail span, so it swaps while #region is held:
+ * the seam mutates the DOM between the two asks, which is what used to re-dirty
+ * layout and buy a second forced flush. Zeroes the counter on entry, because the
+ * priming render at load and __selectSpanningRegion both hit the patched getters
+ * before any measured pass. @param {string} label */
+w.__renderPass = (label) => {
+  w.__selectionReads = 0;
+  const held2 = renderRegion(region2, () => buildPlain(`${label}-2`), { sig: `${label}-2` });
+  const held1 = renderRegion(region, () => build(label), { sig: label });
+  return { held: [held2, held1], reads: w.__selectionReads };
+};
 
 /** Mark the live text node, so a later rebuild is visible as a lost stamp. Writing
  * onto a node the spec can't reach needs page JS; READING it back doesn't — the

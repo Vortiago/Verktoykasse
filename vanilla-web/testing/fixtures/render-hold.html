@@ -12,6 +12,10 @@
   <p id="lead">lead text before the region</p>
   <section id="region"></section>
   <p id="tail">tail text after the region</p>
+  <!-- A second region OUTSIDE the lead-to-tail span, so one synchronous pass has
+       both a held host and a swapping one. That is what makes "one selection read
+       per pass" measurable: the seam mutates the DOM between the two (#83). -->
+  <section id="region2"></section>
   <input id="outside" aria-label="a control outside the region" />
   <script type="module" src="./render-hold.js"></script>
 </body>
