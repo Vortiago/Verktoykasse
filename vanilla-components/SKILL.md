@@ -169,12 +169,14 @@ registry on startup, and theme toggle exercises light/dark). The typecheck gate 
 
 ## Toolkit sync (maintainers)
 
-`serve.mjs`, `preview.{js,css}`, `preview-source.js`, `previews/{scan,new}.mjs`, and
-`lib/{templates,render,chrome}.js`
-are **vendored from the `vanilla-web` skill** (the canon): committed copies stamped
-`canonical source: vanilla-web/…`. Edit them in `vanilla-web`, then re-run
-`./sync-from-web.sh`. A repo-local pre-commit hook (`sync-from-web.sh --precommit`)
-blocks the commit if a copy drifts. See `docs/adr/0001-vendored-toolkit-not-symlink.md`.
+The files on `sync-from-web.sh`'s `PAIRS` allow-list are **vendored from the
+`vanilla-web` skill** (the canon): committed copies stamped
+`canonical source: vanilla-web/<path>@<rev> sha256:<hash>`. The hash is of the canon
+bytes the copy carries, so `vanilla-web/tools/check-vendored.mjs` tells stale from forked
+without trusting the rev. Edit them in `vanilla-web`, then re-run `./sync-from-web.sh`. A
+repo-local pre-commit hook (`sync-from-web.sh --precommit`) blocks the commit if a copy
+drifts. See `docs/adr/0001-vendored-toolkit-not-symlink.md` and
+`docs/adr/0004-vendored-copy-identified-by-content-hash.md`.
 
 ## Add a component
 

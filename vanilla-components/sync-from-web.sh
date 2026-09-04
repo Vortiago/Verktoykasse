@@ -5,7 +5,8 @@
 # See ../docs/adr/0001-vendored-toolkit-not-symlink.md.
 #
 #   ./sync-from-web.sh             re-vendor the toolkit files (stamps a provenance header)
-#   ./sync-from-web.sh --check     verify every copy matches canon; non-zero on drift
+#   ./sync-from-web.sh --check     verify every copy's body AND stamped sha256 against
+#                                  canon; non-zero on drift
 #   ./sync-from-web.sh --precommit --check, but only when a toolkit file is staged
 #                                  (used by the repo's git pre-commit hook)
 set -euo pipefail
@@ -35,17 +36,28 @@ PAIRS=(
 
 strip="canonical source: vanilla-web"   # must be a prefix of the sync-mode stamp text
 mode=${1:-sync}
+source "$COMP/lib-stamp.sh"             # sha256_of / stamped_sha256 / stamped_rev
 
 # Compares files in the WORKING TREE (not staged blobs) — a deliberate simplification
 # matching the edit-canon → sync → add → commit flow. Catches the main case (canon
 # edited, copy not re-synced); a contrived stage-then-restore can slip past --precommit.
+#
+# Two comparisons, not one. The body diff is the original check. The sha256 check is
+# what puts the stamp's own claim under CI: the body can match canon while the stamp
+# records a hash of something else, and nothing else in the gate reads that value.
 check() {
-  local drift=0 pair canon vend
+  local drift=0 pair canon vend want got
   for pair in "${PAIRS[@]}"; do
     canon=${pair%%|*}; vend=${pair##*|}
     # compare canon against the vendored copy with its stamp line stripped
     if [[ ! -f $COMP/$vend ]] || ! diff -q "$WEB/$canon" <(grep -v "$strip" "$COMP/$vend") >/dev/null; then
       echo "drift: vanilla-components/$vend is stale vs vanilla-web/$canon" >&2
+      drift=1
+      continue
+    fi
+    want=$(sha256_of "$WEB/$canon"); got=$(stamped_sha256 "$COMP/$vend")
+    if [[ $got != "$want" ]]; then
+      echo "stamp: vanilla-components/$vend records sha256:${got:-none}, canon is sha256:$want" >&2
       drift=1
     fi
   done
@@ -72,16 +84,24 @@ case $mode in
     done
     ;;
   sync)
-    source "$COMP/lib-stamp.sh"
-    rev=$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || echo unknown)
+    head_rev=$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || echo unknown)
     for pair in "${PAIRS[@]}"; do
       canon=${pair%%|*}; vend=${pair##*|}
+      sum=$(sha256_of "$WEB/$canon")
+      # Keep the recorded rev when the bytes have not moved. The rev is provenance
+      # for a human, and the hash is what classifies (docs/adr/0004), so re-stamping
+      # an unchanged copy with a new HEAD would churn every file on every sync.
+      if [[ $(stamped_sha256 "$COMP/$vend") == "$sum" ]]; then
+        rev=$(stamped_rev "$COMP/$vend"); rev=${rev:-$head_rev}
+      else
+        rev=$head_rev
+      fi
       mkdir -p "$(dirname "$COMP/$vend")"
       cp "$WEB/$canon" "$COMP/$vend"
       stamp_file "$COMP/$vend" \
-        "canonical source: vanilla-web/$canon@$rev — vendored copy, do not edit here" \
+        "canonical source: vanilla-web/$canon@$rev sha256:$sum - vendored copy, do not edit here" \
         "$strip"
-      echo "vendored $canon -> vanilla-components/$vend (@$rev)"
+      echo "vendored $canon -> vanilla-components/$vend (@$rev sha256:${sum:0:12})"
     done
     ;;
   *) echo "usage: sync-from-web.sh [--check|--precommit]" >&2; exit 2 ;;
