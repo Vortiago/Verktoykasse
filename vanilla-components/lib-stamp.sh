@@ -23,17 +23,22 @@ sha256_of() {
 # The sha256 recorded in <file>'s stamp, or empty when it carries none (a copy
 # stamped before ADR 0004, or no copy at all). Reads the first 3 lines only, the
 # same window check-vendored.mjs parses.
+#
+# `|| true`: grep exits 1 when the stamp carries no hash, and under the caller's
+# `set -o pipefail` that failure would propagate and kill the script before it can
+# report the copy. "No hash recorded" is an answer, not an error.
 stamped_sha256() {
   [[ -f $1 ]] || return 0
-  head -n 3 "$1" | grep -o 'sha256:[0-9a-f]\{64\}' | head -n 1 | cut -d: -f2
+  head -n 3 "$1" | grep -o 'sha256:[0-9a-f]\{64\}' | head -n 1 | cut -d: -f2 || true
 }
 
 # The rev recorded in <file>'s stamp, or empty when it carries none. sync-from-web.sh
 # keeps this rev when the bytes have not moved, so a re-sync touches only the copies
-# that actually changed instead of rewriting all 15 stamps.
+# that actually changed instead of rewriting all 15 stamps. `|| true` for the same
+# reason as above.
 stamped_rev() {
   [[ -f $1 ]] || return 0
-  head -n 3 "$1" | grep -o '@[0-9a-z]\{7,40\} sha256:' | head -n 1 | sed 's/^@//; s/ sha256:$//'
+  head -n 3 "$1" | grep -o '@[0-9a-z]\{7,40\} sha256:' | head -n 1 | sed 's/^@//; s/ sha256:$//' || true
 }
 
 stamp_file() {

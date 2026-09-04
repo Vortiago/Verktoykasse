@@ -44,6 +44,13 @@ const stampText = (path, rev, hash) =>
 /** @param {string} path @param {string} rev @param {string} [hash] */
 const jsStamp = (path, rev, hash) => `// ${stampText(path, rev, hash)}`;
 
+/** Drop any stamp line, matching what stripStamp removes. Assembled at run time
+ * for the same reason the stamp text is. @param {string} text */
+function unstamp(text) {
+  const line = new RegExp(`${["canonical", "source:"].join(" ")}\\s*[\\w-]+/\\S+@\\S+`);
+  return text.split("\n").filter((l) => !line.test(l)).join("\n");
+}
+
 /** @param {string[]} args @param {string} cwd */
 const git = (args, cwd) => spawnSync("git", args, {
   cwd, encoding: "utf8",
@@ -198,7 +205,10 @@ test("the checker and this test file survive being vendored into an app", (t) =>
   mkdirSync(join(tk, "vanilla-web", "tools"), { recursive: true });
   mkdirSync(join(dir, "tools"), { recursive: true });
   for (const name of ["check-vendored.mjs", "check-vendored.test.mjs"]) {
-    const body = readFileSync(join(HERE, name), "utf8");
+    // Strip first: run inside a scaffolded app, these two files already carry
+    // new-app.mjs's stamp, and stamping a stamped body would make the fixture's
+    // canon differ from what the checker strips back out.
+    const body = unstamp(readFileSync(join(HERE, name), "utf8"));
     writeFileSync(join(tk, "vanilla-web", "tools", name), body);
     const lines = body.split("\n");
     writeFileSync(join(dir, "tools", name),
@@ -239,6 +249,14 @@ test("sync-from-web.sh --check fails when a copy's recorded hash stops matching 
   const fail = spawnSync("bash", ["./sync-from-web.sh", "--check"], { cwd: comp, encoding: "utf8" });
   assert.equal(fail.status, 1, `${fail.stdout}${fail.stderr}`);
   assert.match(fail.stderr, /records sha256:0{64}/);
+
+  // A stamp carrying NO hash must report too, not die on the way. The reader
+  // returns empty there, and under `set -o pipefail` an unguarded grep miss would
+  // kill the script before it printed anything.
+  writeFileSync(copy, text.replace(/ sha256:[0-9a-f]{64}/, ""));
+  const none = spawnSync("bash", ["./sync-from-web.sh", "--check"], { cwd: comp, encoding: "utf8" });
+  assert.equal(none.status, 1, `${none.stdout}${none.stderr}`);
+  assert.match(none.stderr, /records sha256:none/);
 });
 
 test("the shell writer and node agree on the hash", (t) => {
