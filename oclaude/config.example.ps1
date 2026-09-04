@@ -1,8 +1,8 @@
 # oclaude machine config -- the template oclaude-init-config copies.
 #
-# Copy this to ~/.config/oclaude/config.ps1 and edit your copy. `oclaude-config-path`
-# says which file this shell reads. oclaude reads it fresh on every command, so an edit
-# needs no reload.
+# Copy this to ~/.config/oclaude/config.ps1 and edit your copy. `oclaude-status` says
+# which file this shell reads. oclaude reads it fresh on every command, so an edit needs
+# no reload.
 #
 # The file must END with a hashtable. Each key REPLACES that key in lib/config.ps1
 # outright, so Models must list all four tiers. oclaude warns about a tier left out, a

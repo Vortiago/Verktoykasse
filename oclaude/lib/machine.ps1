@@ -131,26 +131,20 @@ function Get-OClaudeConfigState {
     # Exists and Loaded differ for a file that is there but threw. Calling that "no
     # machine file" sends someone hunting for a file they are looking straight at.
     #
-    # Pass -Cfg when you hold one. The default resolves the config itself, which is what
-    # oclaude-config-path wants: that run is what emits the warning it points at.
+    # Pass -Cfg when you hold one. The default resolves the config itself, for a caller
+    # that has not already.
     param($Cfg = (Get-OClaudeConfig))
     $path   = Get-OClaudeMachineConfigPath
     $exists = [bool](Test-Path -LiteralPath $path)
     $loaded = [bool]$Cfg.MachineConfig
 
-    # Description never names the file. Summary is the one-line form for a printer whose
-    # subject is the path. Apart, they stop config-path printing the path twice.
-    $description = if ($loaded) { 'loaded' }
-                   elseif ($exists) { 'present, but it did not load (see the warning above)' }
-                   else { 'not present, so the defaults in lib/config.ps1 are in use' }
-
     [pscustomobject]@{
-        Path        = $path
-        Source      = if ($env:OCLAUDE_CONFIG) { '$env:OCLAUDE_CONFIG' } else { 'default path' }
-        Exists      = $exists
-        Loaded      = $loaded
-        Description = $description
-        Summary     = if ($loaded) { $path } else { '{0}  ({1})' -f $path, $description }
+        Path    = $path
+        Exists  = $exists
+        Loaded  = $loaded
+        Summary = if ($loaded) { $path }
+                  elseif ($exists) { "$path  (present, but it did not load: see the warning above)" }
+                  else { "$path  (not present, so lib/config.ps1 is in use)" }
     }
 }
 
@@ -161,7 +155,6 @@ function oclaude-init-config {
     $path = Get-OClaudeMachineConfigPath
     if (Test-Path -LiteralPath $path) {
         Write-Host "exists  $path" -ForegroundColor Green
-        Write-Host '        Edit it, then run oclaude-status. No reload is needed.' -ForegroundColor DarkGray
         return
     }
 
@@ -177,16 +170,6 @@ function oclaude-init-config {
     }
     Copy-Item -LiteralPath $example -Destination $path
     Write-Host "created $path" -ForegroundColor Green
-    Write-Host '        A copy, not a link, so updating the repo does not change it.' -ForegroundColor DarkGray
-    Write-Host '        Edit the model map in it, then run oclaude-status.' -ForegroundColor DarkGray
+    Write-Host '        A copy, not a link. Edit the map in it, then run oclaude-status.' -ForegroundColor DarkGray
 }
 
-function oclaude-config-path {
-    # Which file this shell reads, and what became of it. Not obvious once
-    # $env:OCLAUDE_CONFIG is set in one shell and not another. Resolving the config here
-    # is the point: a file that fails to load warns as it does so.
-    $state = Get-OClaudeConfigState
-    Write-Host ('{0}  ({1})' -f $state.Path, $state.Source)
-    Write-Host ('  {0}' -f $state.Description) `
-        -ForegroundColor $(if ($state.Loaded) { 'DarkGray' } else { 'DarkYellow' })
-}

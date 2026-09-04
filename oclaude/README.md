@@ -133,7 +133,6 @@ afterwards. Run `oclaude-build-models` alone after editing only the pins.
 | `oclaude [args]` | Launch Claude Code, defaulting to `--model opus`. Arguments pass straight through, so `-p`, `-c` and `--model` all work |
 | `oclaude-status` | Daemon state, the config file in use, per-tier model state, a live cloud access check, and the loaded models |
 | `oclaude-init-config` | Create `~/.config/oclaude/config.ps1` from `config.example.ps1`. Refuses to overwrite an existing one |
-| `oclaude-config-path` | The config file this shell reads, and whether it exists |
 | `oclaude-pull` | Pull the base models, then rebuild the derived tags |
 | `oclaude-build-models` | Recreate the derived tags, which pin `num_ctx` and the sampling parameters |
 | `oclaude-help` | The same summary, in the shell. Run `claude --help` for the CLI's own flags |
@@ -153,7 +152,7 @@ holds its own map, outside the repo, and overrides any of it.
 | [`config.example.ps1`](config.example.ps1) | The template `oclaude-init-config` copies. A second worked map: a laptop, cloud chat tiers, one small local tier |
 
 Set `$env:OCLAUDE_CONFIG` to read a different file, which is how to try a map
-without moving files. `oclaude-config-path` prints what this shell reads.
+without moving files. `oclaude-status` prints what this shell reads.
 
 Both files hold the same four parts.
 
@@ -299,9 +298,9 @@ Pass your own `--agents` to replace the injected set.
 
 ### The machine config looks ignored
 
-Run `oclaude-config-path`. It prints the file this shell reads and whether it is
-there, which settles the two usual causes: `$env:OCLAUDE_CONFIG` set in one shell
-and not another, and a file written to the wrong path.
+Run `oclaude-status`. Its `config` line names the file this shell reads and says
+whether it loaded, which settles the two usual causes: `$env:OCLAUDE_CONFIG` set
+in one shell and not another, and a file written to the wrong path.
 
 A file that oclaude reads but that changes nothing has one of two causes, and
 oclaude warns about both. Either it sets a key that is not a config key, which

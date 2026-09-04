@@ -69,8 +69,6 @@ function oclaude-help {
     Write-Host '             daemon state, per-tier model, live cloud access check'
     Write-Host '  oclaude-init-config' -ForegroundColor Cyan -NoNewline
     Write-Host '        create this machine''s config from config.example.ps1'
-    Write-Host '  oclaude-config-path' -ForegroundColor Cyan -NoNewline
-    Write-Host '        which config file this shell reads, and whether it exists'
     Write-Host '  oclaude-pull' -ForegroundColor Cyan -NoNewline
     Write-Host '               pull base models, then rebuild derived tags'
     Write-Host '  oclaude-build-models' -ForegroundColor Cyan -NoNewline
