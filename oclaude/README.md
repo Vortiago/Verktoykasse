@@ -136,7 +136,6 @@ afterwards. Run `oclaude-build-models` alone after editing only the pins.
 | `oclaude-config-path` | The config file this shell reads, and whether it exists |
 | `oclaude-pull` | Pull the base models, then rebuild the derived tags |
 | `oclaude-build-models` | Recreate the derived tags, which pin `num_ctx` and the sampling parameters |
-| `oclaude-restart-daemon` | Restart Ollama so a changed setting takes: the systemd unit where there is one, the process otherwise |
 | `oclaude-help` | The same summary, in the shell. Run `claude --help` for the CLI's own flags |
 
 oclaude passes an unrecognised argument to `claude` untouched. `oclaude --help`
@@ -206,8 +205,10 @@ application, a login shell and oclaude all read them.
 
 ```powershell
 [Environment]::SetEnvironmentVariable('OLLAMA_KEEP_ALIVE', '4h', 'User')
-oclaude-restart-daemon
 ```
+
+The daemon reads that block once, when it starts, so restart it before the change
+takes. Quit the tray application and start it again, or sign out and back in.
 
 On **Linux and macOS**, a service manager usually owns the daemon, and a systemd
 unit reads a drop-in file rather than your environment. That drop-in is the
@@ -222,11 +223,14 @@ Environment="OLLAMA_KEEP_ALIVE=4h"
 
 ```sh
 sudo systemctl daemon-reload
+sudo systemctl restart ollama
 ```
 
-Then run `oclaude-restart-daemon`, which restarts the unit and prints what the
-service passes. With no unit at all the daemon inherits the shell that starts it,
-so exporting `OLLAMA_*` in your profile is enough.
+With no unit at all, the daemon inherits the shell that starts it, so exporting
+`OLLAMA_*` in your profile is enough.
+
+`oclaude-help` prints the right place for the machine it runs on, so you do not
+have to work out which of these cases you are in.
 
 `OLLAMA_CONTEXT_LENGTH` is why the per-tag `num_ctx` pins exist: it is one
 window for every model, so sizing it for the largest leaves room for only that
@@ -328,8 +332,8 @@ ps -o pid,user,args -C ollama
 kill <pid>                # sudo if it belongs to another user
 ```
 
-Then run `oclaude-restart-daemon`. An all-cloud map has no local tag to check, and
-oclaude says so rather than reporting a pass it did not make.
+Then restart the daemon. An all-cloud map has no local tag to check, and oclaude
+says so rather than reporting a pass it did not make.
 
 ### Model not pulled
 
@@ -356,21 +360,18 @@ model needs a subscription or plan access. `oclaude-status` reports the real
 error, because it sends a one-token request rather than guessing. Remove the
 model from the map or put a local one in its place.
 
-### The daemon will not start
+### Restarting the daemon
 
-`oclaude-restart-daemon` exists because the daemon only holds the settings it was
-launched with. What it does depends on who owns the daemon.
+oclaude starts the daemon when it is down, but never restarts a running one. That
+is one command you already have, and it differs by who owns the daemon:
+`sudo systemctl restart ollama` under systemd, or quitting and reopening the tray
+application on Windows.
 
-Under **systemd**, it restarts the unit, which stops the runner children through
-the unit's cgroup, and then prints the `OLLAMA_*` the service passes. A system
-unit needs root, so it tries `sudo -n` and falls back to printing the command
-rather than waiting for a password nobody is watching for.
+Killing the daemon by hand on Windows leaves its `llama-server` children running,
+still holding tens of GiB. Stop those too.
 
-Everywhere else, it stops the daemon and its `llama-server` children, re-reads
-the `OLLAMA_*` variables, and starts it again. The children matter: stopping only
-the parent orphans them, and they keep holding memory. When the Ollama tray
-application is installed on Windows, it starts the daemon and forces its own
-`OLLAMA_CONTEXT_LENGTH`. The per-tag `num_ctx` pins are what work around that.
+The tray application also forces its own `OLLAMA_CONTEXT_LENGTH` when it starts
+the daemon. The per-tag `num_ctx` pins are what work around that.
 
 ## Platform
 

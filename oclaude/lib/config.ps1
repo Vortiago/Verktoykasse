@@ -66,8 +66,8 @@ function Get-OClaudeDefaultConfig {
         DefaultAlias    = 'opus'           # NOT 'opusplan', which runs execution on SONNET
 
         # Daemon settings are not here. Whatever starts the daemon supplies them, and
-        # that is not always oclaude, so set the User-scope OLLAMA_* settings instead.
-        # oclaude-restart-daemon re-reads them and reports what it applied.
+        # that is not always oclaude. oclaude-help names the right place per platform,
+        # and the daemon has to restart before a change takes.
 
         # The next three move together. Claude Code applies ONE cap to every tier, so
         # the cap belongs at the smallest tier window. Above it, the CLI overfills the

@@ -43,6 +43,13 @@ function oclaude-status {
             -ForegroundColor $(if ($ok) { 'Gray' } else { 'DarkYellow' })
     }
     Write-Host ("  {0,-7} {1,-30}" -f 'advisor', $cfg.Advisor) -ForegroundColor Gray
+
+    # Something answering on the port is not proof it is YOUR daemon. Reuse the model
+    # list above rather than asking for it again.
+    if ($up) {
+        Write-Host ''
+        [void](Test-OllamaIdentity -Cfg $cfg -Have $have)
+    }
     Write-Host ''
     if ($up) {
         Write-Host 'loaded:' -ForegroundColor DarkGray
@@ -68,8 +75,6 @@ function oclaude-help {
     Write-Host '               pull base models, then rebuild derived tags'
     Write-Host '  oclaude-build-models' -ForegroundColor Cyan -NoNewline
     Write-Host '       recreate derived tags (num_ctx + sampling params)'
-    Write-Host '  oclaude-restart-daemon' -ForegroundColor Cyan -NoNewline
-    Write-Host '     restart ollama so a changed setting takes'
     Write-Host '  oclaude-help' -ForegroundColor Cyan -NoNewline
     Write-Host "               this text; run 'claude --help' for the CLI's own flags"
     Write-Host ''
