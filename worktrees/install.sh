@@ -27,87 +27,83 @@ mkdir -p "$REPOS_ROOT"
 link "$skill/new-worktree.sh" "$REPOS_ROOT/.new-worktree.sh"
 link "$skill/clone-bare.sh"   "$REPOS_ROOT/.clone-bare.sh"
 
-# 5. register the WorktreeCreate hook, only if not already pointing at our path
-hook="$HOME/.claude/hooks/worktree-create.sh"
+# 5 + 6. register both hooks in settings.json (idempotent).
+#
+# The command is a single-quoted LITERAL: bash must not expand $HOME here. A bare
+# `.sh` path needs an interpreter on Windows, and `bash "..."` works everywhere, so
+# let the hook's own shell expand $HOME when it runs. Expanding it here would also
+# write the non-ASCII in a user's name into settings.json, which python re-reads in
+# the locale codec (cp1252 on Windows) and corrupts a layer deeper per run.
 settings="$HOME/.claude/settings.json"
-if [[ -f "$settings" ]] && grep -q '"WorktreeCreate"' "$settings" \
-   && grep -qF "$hook" "$settings"; then
-  echo "ok      WorktreeCreate already registered in settings.json"
-else
-  python3 - "$settings" "$hook" <<'PY'
-import json, os, shutil, sys
-settings, hook = sys.argv[1], sys.argv[2]
-data = {}
-if os.path.exists(settings):
-    shutil.copy2(settings, settings + ".pre-verktoykasse")
-    with open(settings) as f:
-        data = json.load(f)
-hooks = data.setdefault("hooks", {})
-entries = hooks.setdefault("WorktreeCreate", [])
-have = any(
-    h.get("command") == hook
-    for entry in entries
-    for h in entry.get("hooks", [])
-)
-if not have:
-    entries.append({"hooks": [{"type": "command", "command": hook}]})
-    os.makedirs(os.path.dirname(settings), exist_ok=True)
-    with open(settings, "w") as f:
-        json.dump(data, f, indent=2)
-        f.write("\n")
-    print(f"linked  WorktreeCreate -> {hook} in settings.json")
-else:
-    print("ok      WorktreeCreate already registered in settings.json")
-PY
-fi
 
-# 6. register the default-branch edit guard as a PreToolUse hook (idempotent).
-# One matcher covers the file-edit tools plus the two shell tools. The guard
-# itself dispatches and fails open outside the bare+sibling layout.
-guard="$HOME/.claude/hooks/guard-default-branch.sh"
-python3 - "$settings" "$guard" <<'PY'
+register_hook() { # $1 = event, $2 = script basename, $3 = command, $4 = matcher ('' for none)
+  python3 - "$settings" "$1" "$2" "$3" "$4" <<'PY'
 import json, os, shutil, sys
-settings, hook = sys.argv[1], sys.argv[2]
+
+settings, event, marker, cmd, matcher = sys.argv[1:6]
+
 data = {}
 if os.path.exists(settings):
-    with open(settings) as f:
-        data = json.load(f)
-hooks = data.setdefault("hooks", {})
-entries = hooks.setdefault("PreToolUse", [])
-MATCHER = "Edit|Write|NotebookEdit|Bash|PowerShell"
-# An existing registration keeps whatever matcher it was written with, so a
-# re-run must rewrite it. Otherwise a tool added here (or a dead one pruned)
-# never reaches a machine that installed an earlier version.
-stale = [
-    entry
-    for entry in entries
-    if any(h.get("command") == hook for h in entry.get("hooks", []))
-    and entry.get("matcher") != MATCHER
-]
-if stale:
-    for entry in stale:
-        entry["matcher"] = MATCHER
-    with open(settings, "w") as f:
-        json.dump(data, f, indent=2)
-        f.write("\n")
-    print(f"update  PreToolUse default-branch guard matcher -> {MATCHER}")
-elif any(
-    h.get("command") == hook
-    for entry in entries
-    for h in entry.get("hooks", [])
-):
-    print("ok      PreToolUse default-branch guard already registered")
-else:
-    # Do not clobber an earlier (more pristine) backup. Step 5 or a prior run may
-    # have already snapshotted the original settings.json to this path.
+    # Don't clobber an earlier (more pristine) backup: a prior step or run may
+    # already have snapshotted the original.
     backup = settings + ".pre-verktoykasse"
-    if os.path.exists(settings) and not os.path.exists(backup):
+    if not os.path.exists(backup):
         shutil.copy2(settings, backup)
-    entries.append({"matcher": MATCHER,
-                    "hooks": [{"type": "command", "command": hook}]})
+    with open(settings, encoding="utf-8") as f:
+        data = json.load(f)
+
+entries = data.setdefault("hooks", {}).setdefault(event, [])
+
+# Match on the script BASENAME, not the whole command. Only the $HOME segment
+# ever got rewritten or mangled, so the basename is the one part every historical
+# spelling shares. That makes an old entry findable, and therefore fixable in
+# place rather than joined by another duplicate.
+changed = seen = False
+for entry in entries:
+    kept = []
+    for h in entry.get("hooks", []):
+        if marker not in (h.get("command") or ""):
+            kept.append(h)          # somebody else's hook, leave it alone
+        elif not seen:              # first of ours wins, corrected if need be
+            seen = True
+            if h.get("command") != cmd:
+                h["command"] = cmd
+                changed = True
+            # The matcher sits on the ENTRY, and an entry written by an earlier
+            # version keeps the matcher it was written with. Rewrite it, or a tool
+            # added here never reaches a machine that installed before.
+            if matcher and entry.get("matcher") != matcher:
+                entry["matcher"] = matcher
+                changed = True
+            kept.append(h)
+        else:
+            changed = True          # a duplicate from an earlier run, drop it
+    entry["hooks"] = kept
+entries[:] = [e for e in entries if e.get("hooks")]
+
+if not seen:
+    entry = {"hooks": [{"type": "command", "command": cmd}]}
+    if matcher:
+        entry["matcher"] = matcher
+    entries.append(entry)
+    changed = True
+
+if changed:
     os.makedirs(os.path.dirname(settings), exist_ok=True)
-    with open(settings, "w") as f:
+    with open(settings, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
         f.write("\n")
-    print(f"linked  PreToolUse default-branch guard -> {hook} in settings.json")
+    print(f"linked  {event} -> {marker} in settings.json")
+else:
+    print(f"ok      {event} -> {marker} already registered")
 PY
+}
+
+register_hook WorktreeCreate worktree-create.sh \
+  'bash "$HOME/.claude/hooks/worktree-create.sh"' ''
+
+# One matcher covers the file-edit tools plus the two shell tools. The guard itself
+# dispatches and fails open outside the bare+sibling layout.
+register_hook PreToolUse guard-default-branch.sh \
+  'bash "$HOME/.claude/hooks/guard-default-branch.sh"' \
+  'Edit|Write|NotebookEdit|Bash|PowerShell'

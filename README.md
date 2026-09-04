@@ -103,6 +103,21 @@ A directory is a skill when it holds a `SKILL.md`.
   adopt from the standard, and why, live in
   [ADR 0003](docs/adr/0003-ste-rules-adopt-a-subset.md).
 
+- **[oclaude](oclaude/README.md)**: run Claude Code against models Ollama serves,
+  local or cloud, instead of the Anthropic API. Ollama 0.32 serves the Anthropic
+  Messages API natively, so oclaude points `ANTHROPIC_BASE_URL` at localhost, sets
+  `ANTHROPIC_AUTH_TOKEN=ollama`, and sets the 20 or more `CLAUDE_CODE_*` tunables a
+  non-Anthropic model needs: context cap, auto-compact window, byte-idle timeout,
+  tool concurrency. It sets them inside the launching function and restores them
+  after, so oclaude leaves your shell unchanged. A tiered model map runs the session
+  on OPUS, the permission classifier on SONNET, background traffic on HAIKU and the
+  advisor on FABLE. Derived Ollama tags pin `num_ctx`, so several models stay
+  resident. oclaude also manages the daemon and checks that the right daemon holds
+  the port. The map is per machine: the repo holds defaults, and
+  `oclaude-init-config` writes `~/.config/oclaude/config.ps1`, which overrides them
+  and stays out of the repo. A launcher, not a skill, so it ships no `SKILL.md` and
+  `install.sh` skips it. PowerShell on Windows, Linux and macOS.
+
 ## Install
 
 ```sh
@@ -120,3 +135,12 @@ A skill may ship its own `<skill>/install.sh` for extra wiring. For example
 `worktrees` also symlinks its hook into `~/.claude/hooks/`, links the helper
 scripts into your repos root (it prompts for the path, and you override with
 `REPOS_ROOT=…`), and registers the `WorktreeCreate` hook in `settings.json`.
+
+A directory without a `SKILL.md` is not a skill, so `install.sh` skips it.
+`docs/` (the ADRs) and `oclaude/` are both such directories. `oclaude` is a
+terminal launcher, so it belongs in your shell profile rather than in
+`~/.claude/skills/`:
+
+```powershell
+pwsh -ExecutionPolicy Bypass -File .\oclaude\install.ps1
+```
