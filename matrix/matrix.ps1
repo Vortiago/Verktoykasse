@@ -167,7 +167,7 @@ $backend = if ($IsWindows)    { 'windows-terminal.ps1' }
            elseif ($IsMacOS)  { 'none.ps1' }
            else               { 'konsole.ps1' }
 $load = @(
-    foreach ($part in 'console', 'stats', 'types', 'palette', 'lanes', 'sessions') {
+    foreach ($part in 'proc', 'console', 'stats', 'types', 'palette', 'lanes', 'sessions') {
         Join-Path $lib "$part.ps1"
     }
     Join-Path $term 'tabmap.ps1'

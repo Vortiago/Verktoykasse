@@ -10,6 +10,7 @@ BeforeAll {
     New-Item -ItemType Directory -Path (Join-Path $fakeHome 'sessions') -Force | Out-Null
     New-Item -ItemType Directory -Path (Join-Path $fakeHome 'projects/D--repos-matrix') -Force | Out-Null
 
+    . (Join-Path $PSScriptRoot '../lib/proc.ps1')
     . (Join-Path $PSScriptRoot '../lib/console.ps1')
     . (Join-Path $PSScriptRoot '../lib/sessions.ps1')
 

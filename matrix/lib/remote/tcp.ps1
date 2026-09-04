@@ -249,50 +249,26 @@ function ConvertTo-LsofOwnerId {
     0
 }
 
-function Invoke-Lsof {
-    # The macOS twin of Invoke-Ss below, and the same shape for the same reasons.
-    param([string[]] $LsofArgs)
-    Invoke-Tool -FileName 'lsof' -ToolArgs $LsofArgs
-}
+function ConvertTo-SsOwnerId {
+    <#
+    .SYNOPSIS
+        The pid out of `ss -Htnp` output, for the row whose source port is $Port.
+    .DESCRIPTION
+        The twin of ConvertTo-LsofOwnerId, and named for the same reason: the two
+        parses are what Resolve-PeerProcessId picks between, so both should be
+        callable, and testable, by name.
 
-function Invoke-Ss {
-    # The external call, alone in its own function so the parse above can be
-    # tested without one. Same shape as Invoke-Tmux.
-    param([string[]] $SsArgs)
-    Invoke-Tool -FileName 'ss' -ToolArgs $SsArgs
-}
-
-function Invoke-Tool {
-    # What Invoke-Ss and Invoke-Lsof both are. Two lessons live here, and neither
-    # is worth carrying twice: drain both pipes at once, because reading one to
-    # the end first deadlocks when the other fills, and bound the wait, because
-    # this is reached from a click and a hung process would hang the rain.
-    param([Parameter(Mandatory)] [string] $FileName, [string[]] $ToolArgs)
-    $psi = [System.Diagnostics.ProcessStartInfo]::new()
-    $psi.FileName = $FileName
-    foreach ($a in $ToolArgs) { $psi.ArgumentList.Add($a) }
-    $psi.RedirectStandardOutput = $true
-    $psi.RedirectStandardError = $true
-    $psi.UseShellExecute = $false
-    # $p exists only once Start answers, and a tool that is not on PATH throws
-    # here. The finally must survive a failed start, the way Invoke-Tmux's does.
-    $p = $null
-    try {
-        $p = [System.Diagnostics.Process]::Start($psi)
-        $out = $p.StandardOutput.ReadToEndAsync()
-        $err = $p.StandardError.ReadToEndAsync()
-        if (-not $p.WaitForExit(2000)) {
-            # Kill it rather than read .Result, which waits with no bound at all.
-            try { $p.Kill() } catch { }
-            return ''
-        }
-        [void]$err.Result
-        $out.Result
-    } catch {
-        ''
-    } finally {
-        if ($p) { $p.Dispose() }
+        ss was asked for one port's rows, so any pid in them answers. $Port is
+        taken for symmetry with the lsof parse and to keep the two seams
+        interchangeable.
+    #>
+    param([AllowEmptyString()] [string] $Text, [Parameter(Mandatory)] [int] $Port)
+    if (-not $Text) { return 0 }
+    foreach ($line in $Text -split "`n") {
+        $found = ConvertTo-SocketOwnerId $line
+        if ($found -gt 0) { return $found }
     }
+    0
 }
 
 function Resolve-PeerProcessId {
@@ -328,27 +304,19 @@ function Resolve-PeerProcessId {
         # answer, and trying the other first would spend a click's budget on a
         # process that is not installed.
         $Call = if ($IsMacOS) {
-            { param($p) Invoke-Lsof @('-nP', "-iTCP:$p", '-sTCP:ESTABLISHED', '-Fpn') }
+            { param($p) Invoke-Tool -FileName 'lsof' `
+                                    -ToolArgs @('-nP', "-iTCP:$p", '-sTCP:ESTABLISHED', '-Fpn') }
         } else {
-            { param($p) Invoke-Ss @('-Htnp', 'state', 'established', "( sport = :$p )") }
+            { param($p) Invoke-Tool -FileName 'ss' `
+                                    -ToolArgs @('-Htnp', 'state', 'established', "( sport = :$p )") }
         }
     }
     if (-not $Parse) {
-        # ss was asked for one port's rows, so any pid in them is the answer and
-        # the parse reads a line at a time. lsof was asked for both ends, so its
-        # parse needs the whole output and the port to tell them apart.
-        $Parse = if ($IsMacOS) {
-            { param($text, $p) ConvertTo-LsofOwnerId -Text $text -Port $p }
-        } else {
-            {
-                param($text, $p)
-                foreach ($line in $text -split "`n") {
-                    $found = ConvertTo-SocketOwnerId $line
-                    if ($found -gt 0) { return $found }
-                }
-                0
-            }
-        }
+        # Paired with the call above. lsof is asked for both ends of the port, so
+        # its parse needs the whole output and the port to tell them apart; ss is
+        # asked for one port's rows, so any pid in them answers.
+        $Parse = if ($IsMacOS) { ${function:ConvertTo-LsofOwnerId} }
+                 else          { ${function:ConvertTo-SsOwnerId} }
     }
     try {
         $found = & $Parse (& $Call $Port) $Port

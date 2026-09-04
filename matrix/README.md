@@ -438,6 +438,7 @@ login that fails.
 matrix.ps1              the rain
 preview-matrix.ps1      one lane per state, for checking styles.psd1
 lib/
+  proc.ps1              run a tool, hand back its stdout. Depends on nothing
   console.ps1           the screen: escape sequences, text filtering, compilation
   stats.ps1             the -Stats overlay
   types.ps1             which C# sources this platform compiles

@@ -5,6 +5,7 @@ BeforeAll {
     # For Get-TestProcStart: the fake registry's live record must carry the same
     # procStart this platform's Claude writes. Fixtures reads it through
     # sessions.ps1, so both are sourced.
+    . (Join-Path $PSScriptRoot '../lib/proc.ps1')
     . (Join-Path $PSScriptRoot '../lib/console.ps1')
     . (Join-Path $PSScriptRoot '../lib/sessions.ps1')
     . (Join-Path $PSScriptRoot 'Fixtures.ps1')

@@ -56,6 +56,18 @@ function Wait-Until ([scriptblock] $Condition, [int] $TimeoutMs = 2000, [int] $S
 # sessions.ps1 reads back, so both come from here. The caller dot-sources
 # ../lib/sessions.ps1 for Get-ProcessStartTicks, the way Import-TestCsType below
 # relies on console.ps1.
+function Format-TestAsctime ([datetime] $Utc) {
+    # asctime, and the day is space padded to two columns: "Sep  4", not "Sep 4".
+    # No .NET date specifier emits that padding, so it is done by hand here and
+    # cannot be shared with sessions.ps1's parse format.
+    #
+    # The invariant culture, because -f and ToString would otherwise spell the
+    # month in whatever the box is set to, and sessions.ps1 parses it as invariant.
+    $inv = [System.Globalization.CultureInfo]::InvariantCulture
+    '{0} {1,2} {2}' -f $Utc.ToString('ddd MMM', $inv), $Utc.Day,
+                       $Utc.ToString('HH:mm:ss yyyy', $inv)
+}
+
 function Get-TestProcStart ([int] $ProcessId = $PID) {
     if ($IsLinux) { return Get-ProcessStartTicks -ProcessId $ProcessId }
     # Dispose: StartTime opens a kernel handle, the reason sessions.ps1
@@ -63,14 +75,7 @@ function Get-TestProcStart ([int] $ProcessId = $PID) {
     $p = [System.Diagnostics.Process]::GetProcessById($ProcessId)
     try {
         if ($IsWindows) { return $p.StartTime.ToFileTimeUtc() }
-        # asctime, and the day is space padded to two columns: "Sep  4", not
-        # "Sep 4". Built with the invariant culture, because -f and ToString
-        # would otherwise spell the month in whatever the box is set to, and
-        # sessions.ps1 parses it as invariant.
-        $utc = $p.StartTime.ToUniversalTime()
-        $inv = [System.Globalization.CultureInfo]::InvariantCulture
-        return '{0} {1,2} {2}' -f $utc.ToString('ddd MMM', $inv), $utc.Day,
-                                  $utc.ToString('HH:mm:ss yyyy', $inv)
+        return Format-TestAsctime $p.StartTime.ToUniversalTime()
     } finally { $p.Dispose() }
 }
 
@@ -82,16 +87,15 @@ function Get-TestProcStart ([int] $ProcessId = $PID) {
 # unreadable field verifies nothing. So a test that wants a drop has to hand over
 # something readable and wrong, and only this knows what that is.
 function Get-TestProcStartMismatch ([int] $ProcessId = $PID) {
-    $mine = Get-TestProcStart -ProcessId $ProcessId
-    if ($IsLinux)   { return [string]([long]$mine + 1000) }      # clock ticks
-    if ($IsWindows) { return [string]([int64]$mine + 1000000000) }  # FILETIME, 100 ns units
-    # asctime: the same process, a day earlier. Parses, and matches nothing.
+    if ($IsLinux) {
+        return [string]([long](Get-TestProcStart -ProcessId $ProcessId) + 1000)   # clock ticks
+    }
     $p = [System.Diagnostics.Process]::GetProcessById($ProcessId)
     try {
-        $utc = $p.StartTime.ToUniversalTime().AddDays(-1)
-        $inv = [System.Globalization.CultureInfo]::InvariantCulture
-        '{0} {1,2} {2}' -f $utc.ToString('ddd MMM', $inv), $utc.Day,
-                           $utc.ToString('HH:mm:ss yyyy', $inv)
+        # FILETIME, in 100 ns units, so this is 100 s off.
+        if ($IsWindows) { return [string]($p.StartTime.ToFileTimeUtc() + 1000000000) }
+        # asctime: the same process, a day earlier. Parses, and matches nothing.
+        return Format-TestAsctime $p.StartTime.ToUniversalTime().AddDays(-1)
     } finally { $p.Dispose() }
 }
 

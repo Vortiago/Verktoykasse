@@ -5,6 +5,7 @@
 # Port 0 throughout: the operating system hands out a free one and the test reads
 # it back. A fixed port would fight a real rain running on the same machine.
 BeforeAll {
+    . (Join-Path $PSScriptRoot '../lib/proc.ps1')   # Invoke-Tool
     . (Join-Path $PSScriptRoot '../lib/remote/tcp.ps1')
     . (Join-Path $PSScriptRoot 'Fixtures.ps1')   # Wait-Until
 
@@ -204,11 +205,12 @@ Describe 'tcp: naming the local ssh process' {
     It 'asks for the port it was given' -Skip:($IsWindows) {
         # Both seams supplied, so this covers the wiring on either platform: the
         # default pair is chosen by platform, and a test that swapped only the
-        # call would feed ss output to the lsof parse on a Mac.
+        # call would feed ss output to the lsof parse on a Mac. The parse handed
+        # in is the real one, not a stand-in that happens to agree.
         $script:seen = $null
-        $call  = { param($p) $script:seen = $p; 'users:(("ssh",pid=4242,fd=3))' }
-        $parse = { param($text, $p) ConvertTo-SocketOwnerId $text }
-        Resolve-PeerProcessId -Port 34234 -Call $call -Parse $parse | Should -Be 4242
+        $call = { param($p) $script:seen = $p; 'users:(("ssh",pid=4242,fd=3))' }
+        Resolve-PeerProcessId -Port 34234 -Call $call `
+                              -Parse ${function:ConvertTo-SsOwnerId} | Should -Be 4242
         $script:seen | Should -Be 34234
     }
 
