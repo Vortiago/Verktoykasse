@@ -8,13 +8,14 @@
 // Copies the canonical set verbatim (shell.js, templates.js → lib/templates.js,
 // render.js → lib/render.js, chrome.js → lib/chrome.js,
 // api-client.js → lib/api-client.js, serve.mjs, tsconfig.json, tools/*.mjs),
-// stamping each copy `canonical source: vanilla-web/<path>@<rev>` so
-// tools/check-vendored.mjs can report drift later — and writes the per-app,
+// stamping each copy `canonical source: vanilla-web/<path>@<rev> sha256:<hash>`
+// so tools/check-vendored.mjs can report drift later — and writes the per-app,
 // shape-fixed boilerplate: index.html (nav, #stage, errbar, theme button,
 // modulepreload set), shell.css skeleton, views/registry.js with one contract-
 // correct `overview` view. One-time only: refuses to overwrite ANY existing
 // file (all targets are checked up front). No flags, no prompts, zero-dep.
 import { existsSync, globSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { basename, dirname, extname, join, resolve } from "node:path";
@@ -50,16 +51,27 @@ const canon = [
 /** Port of lib-stamp.sh's stamp_file: prepend a one-line provenance comment in
  * the file's own comment syntax, below a shebang when one leads (a shebang must
  * stay on line 1 or `node <file>` throws). Unknown syntax → no stamp.
- * @param {string} content @param {string} destName @param {string} srcPath */
-function stamped(content, destName, srcPath) {
-  const text = `canonical source: vanilla-web/${srcPath}@${rev} — re-copy to update, don't fork`;
+ *
+ * Takes the canon BYTES and hashes them from the Buffer rather than from a
+ * decoded string: this set is wider than sync-from-web.sh's, and the guarantee
+ * must not rest on every future canon file being valid UTF-8. That hash, not the
+ * rev beside it, is what tools/check-vendored.mjs classifies on (docs/adr/0005).
+ * Splices on the Buffer for the same reason, and returns one: a decoded round
+ * trip would replace any byte outside UTF-8, and the copy would then hash to
+ * something the stamp does not name — a `forked` verdict on an untouched file.
+ * @param {Buffer} buf @param {string} destName @param {string} srcPath
+ * @returns {Buffer} */
+function stamped(buf, destName, srcPath) {
+  const sha256 = createHash("sha256").update(buf).digest("hex");
+  const text = `canonical source: vanilla-web/${srcPath}@${rev} sha256:${sha256} - re-copy to update, don't fork`;
   const line = { ".js": `// ${text}`, ".mjs": `// ${text}`, ".css": `/* ${text} */`, ".html": `<!-- ${text} -->` }[extname(destName)];
-  if (!line) return content;
-  if (content.startsWith("#!")) {
-    const nl = content.indexOf("\n");
-    return `${content.slice(0, nl + 1)}${line}\n${content.slice(nl + 1)}`;
-  }
-  return `${line}\n${content}`;
+  if (!line) return buf; // unknown syntax (.json) — copied byte for byte, unstamped
+  const banner = Buffer.from(`${line}\n`, "utf8");
+  // A shebang MUST stay on line 1 (else `node <file>` throws), so slot the banner
+  // just below it. 0x23 0x21 is "#!" and 0x0a is "\n"; indexOf gives -1 on a file
+  // with no newline at all, which puts the banner on top, where it belongs.
+  const nl = buf[0] === 0x23 && buf[1] === 0x21 ? buf.indexOf(0x0a) + 1 : 0;
+  return Buffer.concat([buf.subarray(0, nl), banner, buf.subarray(nl)]);
 }
 
 // ── Per-app boilerplate — string literals, contract-correct per SKILL.md ─────
@@ -206,7 +218,7 @@ if (conflicts.length) {
 
 for (const [src, dest] of canon) {
   mkdirSync(join(target, dirname(dest)), { recursive: true });
-  writeFileSync(join(target, dest), stamped(readFileSync(join(SRC, src), "utf8"), dest, src));
+  writeFileSync(join(target, dest), stamped(readFileSync(join(SRC, src)), dest, src));
 }
 for (const [dest, content] of boilerplate) {
   mkdirSync(join(target, dirname(dest)), { recursive: true });
