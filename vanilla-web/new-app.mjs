@@ -52,13 +52,14 @@ const canon = [
  * the file's own comment syntax, below a shebang when one leads (a shebang must
  * stay on line 1 or `node <file>` throws). Unknown syntax → no stamp.
  *
- * `sha256` is of the canon BYTES, hashed from the Buffer rather than a decoded
- * string: this set is wider than sync-from-web.sh's, and the guarantee must not
- * rest on every future canon file being valid UTF-8. That hash, not the rev
- * beside it, is what tools/check-vendored.mjs classifies on (docs/adr/0004).
- * @param {string} content @param {string} destName @param {string} srcPath
- * @param {string} sha256 */
-function stamped(content, destName, srcPath, sha256) {
+ * Takes the canon BYTES and hashes them from the Buffer rather than from a
+ * decoded string: this set is wider than sync-from-web.sh's, and the guarantee
+ * must not rest on every future canon file being valid UTF-8. That hash, not the
+ * rev beside it, is what tools/check-vendored.mjs classifies on (docs/adr/0004).
+ * @param {Buffer} buf @param {string} destName @param {string} srcPath */
+function stamped(buf, destName, srcPath) {
+  const content = buf.toString("utf8");
+  const sha256 = createHash("sha256").update(buf).digest("hex");
   const text = `canonical source: vanilla-web/${srcPath}@${rev} sha256:${sha256} - re-copy to update, don't fork`;
   const line = { ".js": `// ${text}`, ".mjs": `// ${text}`, ".css": `/* ${text} */`, ".html": `<!-- ${text} -->` }[extname(destName)];
   if (!line) return content;
@@ -213,9 +214,7 @@ if (conflicts.length) {
 
 for (const [src, dest] of canon) {
   mkdirSync(join(target, dirname(dest)), { recursive: true });
-  const buf = readFileSync(join(SRC, src));
-  const sha256 = createHash("sha256").update(buf).digest("hex");
-  writeFileSync(join(target, dest), stamped(buf.toString("utf8"), dest, src, sha256));
+  writeFileSync(join(target, dest), stamped(readFileSync(join(SRC, src)), dest, src));
 }
 for (const [dest, content] of boilerplate) {
   mkdirSync(join(target, dirname(dest)), { recursive: true });

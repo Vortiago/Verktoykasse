@@ -45,12 +45,18 @@ source "$COMP/lib-stamp.sh"             # sha256_of / stamped_sha256 / stamped_r
 # Two comparisons, not one. The body diff is the original check. The sha256 check is
 # what puts the stamp's own claim under CI: the body can match canon while the stamp
 # records a hash of something else, and nothing else in the gate reads that value.
+# True when the vendored copy's body, stamp line stripped, matches canon.
+# Shared by --check and by sync mode's skip, so the two cannot disagree about
+# what "unchanged" means. <canon-path> <vendored-path>, both relative.
+body_matches() {
+  [[ -f $COMP/$2 ]] && diff -q "$WEB/$1" <(grep -v "$strip" "$COMP/$2") >/dev/null
+}
+
 check() {
   local drift=0 pair canon vend want got
   for pair in "${PAIRS[@]}"; do
     canon=${pair%%|*}; vend=${pair##*|}
-    # compare canon against the vendored copy with its stamp line stripped
-    if [[ ! -f $COMP/$vend ]] || ! diff -q "$WEB/$canon" <(grep -v "$strip" "$COMP/$vend") >/dev/null; then
+    if ! body_matches "$canon" "$vend"; then
       echo "drift: vanilla-components/$vend is stale vs vanilla-web/$canon" >&2
       drift=1
       continue
@@ -84,17 +90,17 @@ case $mode in
     done
     ;;
   sync)
-    head_rev=$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || echo unknown)
+    rev=$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || echo unknown)
     for pair in "${PAIRS[@]}"; do
       canon=${pair%%|*}; vend=${pair##*|}
       sum=$(sha256_of "$WEB/$canon")
-      # Keep the recorded rev when the bytes have not moved. The rev is provenance
-      # for a human, and the hash is what classifies (docs/adr/0004), so re-stamping
-      # an unchanged copy with a new HEAD would churn every file on every sync.
-      if [[ $(stamped_sha256 "$COMP/$vend") == "$sum" ]]; then
-        rev=$(stamped_rev "$COMP/$vend"); rev=${rev:-$head_rev}
-      else
-        rev=$head_rev
+      # Leave a copy that already carries these bytes alone. Re-stamping it would
+      # write a new HEAD over a rev that still describes the same bytes, so a
+      # one-file canon change would land as a 15-file diff in which 14 files change
+      # only a rev that no longer classifies anything (docs/adr/0004). Both halves
+      # are needed: a hand-edited body can still carry a correct stamp.
+      if [[ $(stamped_sha256 "$COMP/$vend") == "$sum" ]] && body_matches "$canon" "$vend"; then
+        continue
       fi
       mkdir -p "$(dirname "$COMP/$vend")"
       cp "$WEB/$canon" "$COMP/$vend"

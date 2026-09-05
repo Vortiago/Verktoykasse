@@ -37,21 +37,21 @@ source "$HERE/lib-stamp.sh"
 # so check-vendored.mjs can classify a copy without content heuristics and without
 # trusting the rev (docs/adr/0004):
 #   from vanilla-components/<path>@<rev> sha256:<hex> - re-copy to update, don't fork
-# Takes the path to record and the source file to hash.
-stamp_for() { echo "from vanilla-components/$1@$rev sha256:$(sha256_of "$2") - re-copy to update, don't fork"; }
+# The path is relative to $HERE, which is also where the bytes to hash live.
+stamp_for() { echo "from vanilla-components/$1@$rev sha256:$(sha256_of "$HERE/$1") - re-copy to update, don't fork"; }
 
 mkdir -p "$dest"
 
 if [ "$what" = tokens ]; then
   cp "$HERE/tokens.css" "$dest/tokens.css"
-  stamp_file "$dest/tokens.css" "$(stamp_for tokens.css "$HERE/tokens.css")" "$strip"
+  stamp_file "$dest/tokens.css" "$(stamp_for tokens.css)" "$strip"
   echo "vendored tokens.css -> $dest/tokens.css (@$rev)"
   exit 0
 fi
 
 if [ "$what" = tones ]; then
   cp "$HERE/tones.css" "$dest/tones.css"
-  stamp_file "$dest/tones.css" "$(stamp_for tones.css "$HERE/tones.css")" "$strip"
+  stamp_file "$dest/tones.css" "$(stamp_for tones.css)" "$strip"
   echo "vendored tones.css -> $dest/tones.css (@$rev)"
   exit 0
 fi
@@ -62,8 +62,5 @@ out="$dest/$what"
 rm -rf "$out"
 cp -R "$src" "$out"
 rm -f "$out"/*.preview.js "$out"/*.test.mjs "$out"/*.bridge.mjs
-for f in "$out"/*; do
-  b=$(basename "$f")
-  stamp_file "$f" "$(stamp_for "components/$what/$b" "$src/$b")" "$strip"
-done
+for f in "$out"/*; do stamp_file "$f" "$(stamp_for "components/$what/$(basename "$f")")" "$strip"; done
 echo "vendored $what -> $out (@$rev)"

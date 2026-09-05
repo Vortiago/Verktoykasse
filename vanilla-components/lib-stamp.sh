@@ -8,37 +8,32 @@
 #
 # The stamp text carries sha256:<hex> of the canon bytes being copied. That hash,
 # not the rev beside it, is what tools/check-vendored.mjs classifies on (docs/adr/
-# 0004). Callers build it with sha256_of, and read a copy's recorded values back
-# with stamped_sha256 / stamped_rev. The stamp is ONE line: every stripper here and
-# in check-vendored.mjs filters on a substring, so a second line would survive the
+# 0004). Callers build it with sha256_of, and read a copy's recorded hash back with
+# stamped_sha256. The stamp is ONE line: every stripper here and in
+# check-vendored.mjs filters on a substring, so a second line would survive the
 # strip and break the body comparison.
 
 # sha256 of a file's bytes, as bare hex. sha256sum is GNU; stock macOS ships only
-# shasum. Both print "<hex>  <path>", so cut the first field.
+# shasum. Both print "<hex>  <path>", so keep everything before the first space.
 sha256_of() {
-  if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | cut -d' ' -f1
-  else shasum -a 256 "$1" | cut -d' ' -f1; fi
+  local out
+  if command -v sha256sum >/dev/null 2>&1; then out=$(sha256sum "$1"); else out=$(shasum -a 256 "$1"); fi
+  echo "${out%% *}"
 }
 
 # The sha256 recorded in <file>'s stamp, or empty when it carries none (a copy
 # stamped before ADR 0004, or no copy at all). Reads the first 3 lines only, the
-# same window check-vendored.mjs parses.
-#
-# `|| true`: grep exits 1 when the stamp carries no hash, and under the caller's
-# `set -o pipefail` that failure would propagate and kill the script before it can
+# same window check-vendored.mjs parses, with no forks.
+# The trailing `return 0` is load-bearing: the loop ends on `read`'s non-zero at
+# EOF, and under the caller's `set -e` that would kill the script before it could
 # report the copy. "No hash recorded" is an answer, not an error.
 stamped_sha256() {
   [[ -f $1 ]] || return 0
-  head -n 3 "$1" | grep -o 'sha256:[0-9a-f]\{64\}' | head -n 1 | cut -d: -f2 || true
-}
-
-# The rev recorded in <file>'s stamp, or empty when it carries none. sync-from-web.sh
-# keeps this rev when the bytes have not moved, so a re-sync touches only the copies
-# that actually changed instead of rewriting all 15 stamps. `|| true` for the same
-# reason as above.
-stamped_rev() {
-  [[ -f $1 ]] || return 0
-  head -n 3 "$1" | grep -o '@[0-9a-z]\{7,40\} sha256:' | head -n 1 | sed 's/^@//; s/ sha256:$//' || true
+  local line
+  while IFS= read -r line; do
+    [[ $line =~ sha256:([0-9a-f]{64}) ]] && { echo "${BASH_REMATCH[1]}"; return 0; }
+  done < <(head -n 3 "$1")
+  return 0
 }
 
 stamp_file() {

@@ -44,10 +44,13 @@ const stampText = (path, rev, hash) =>
 /** @param {string} path @param {string} rev @param {string} [hash] */
 const jsStamp = (path, rev, hash) => `// ${stampText(path, rev, hash)}`;
 
-/** Drop any stamp line, matching what stripStamp removes. Assembled at run time
- * for the same reason the stamp text is. @param {string} text */
+/** Drop any stamp line, both dialects, matching what stripStamp removes.
+ * Assembled at run time for the same reason the stamp text is.
+ * @param {string} text */
 function unstamp(text) {
-  const line = new RegExp(`${["canonical", "source:"].join(" ")}\\s*[\\w-]+/\\S+@\\S+`);
+  const sync = `${["canonical", "source:"].join(" ")}\\s*[\\w-]+/\\S+@\\S+`;
+  const vendor = `${["from", "vanilla-components"].join(" ")}(/\\S+)?@\\w+`;
+  const line = new RegExp(`${sync}|${vendor}`);
   return text.split("\n").filter((l) => !line.test(l)).join("\n");
 }
 
@@ -57,27 +60,39 @@ const git = (args, cwd) => spawnSync("git", args, {
   env: { ...process.env, GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "t", GIT_COMMITTER_EMAIL: "t@t" },
 });
 
-/** A throwaway toolkit checkout holding one canon file, committed so
- * `git show <rev>:<path>` resolves. Returns its path, the canon text and the rev.
- * @param {import("node:test").TestContext} t @param {string} body */
-function toolkit(t, body) {
-  const tk = mkdtempSync(join(tmpdir(), "cv-tk-"));
-  t.after(() => rmSync(tk, { recursive: true, force: true }));
-  git(["init", "-q", "-b", "main"], tk);
-  mkdirSync(join(tk, "vanilla-web"), { recursive: true });
-  writeFileSync(join(tk, "vanilla-web", "x.js"), body);
-  git(["add", "-A"], tk);
-  git(["commit", "-qm", "chore: canon"], tk);
-  const rev = git(["rev-parse", "--short", "HEAD"], tk).stdout.trim();
-  return { tk, rev };
+/** A temp directory that cleans itself up when the test ends.
+ * @param {import("node:test").TestContext} t @param {string} prefix */
+function tmp(t, prefix) {
+  const dir = mkdtempSync(join(tmpdir(), prefix));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  return dir;
 }
 
-/** An app directory holding one stamped copy. @param {import("node:test").TestContext} t
- * @param {string} content */
-function app(t, content) {
-  const dir = mkdtempSync(join(tmpdir(), "cv-app-"));
-  t.after(() => rmSync(dir, { recursive: true, force: true }));
-  writeFileSync(join(dir, "x.js"), content);
+/** A throwaway toolkit checkout holding `files` ({path: body}, relative to the
+ * checkout root), committed so `git show <rev>:<path>` resolves.
+ * @param {import("node:test").TestContext} t @param {Record<string, string>} files */
+function toolkit(t, files) {
+  const tk = tmp(t, "cv-tk-");
+  git(["init", "-q", "-b", "main"], tk);
+  for (const [rel, body] of Object.entries(files)) {
+    mkdirSync(dirname(join(tk, rel)), { recursive: true });
+    writeFileSync(join(tk, rel), body);
+  }
+  git(["add", "-A"], tk);
+  git(["commit", "-qm", "chore: canon"], tk);
+  return { tk, rev: git(["rev-parse", "--short", "HEAD"], tk).stdout.trim() };
+}
+
+/** A toolkit holding the single canon file the simple cases use.
+ * @param {import("node:test").TestContext} t @param {string} body */
+const canonToolkit = (t, body) => toolkit(t, { "vanilla-web/x.js": body });
+
+/** An app directory holding one stamped copy.
+ * @param {import("node:test").TestContext} t @param {string} content
+ * @param {string} [name] */
+function app(t, content, name = "x.js") {
+  const dir = tmp(t, "cv-app-");
+  writeFileSync(join(dir, name), content);
   return dir;
 }
 
@@ -96,7 +111,7 @@ test("untouched copy stamped one commit behind its own bytes is stale, not forke
   // The reported shape, end to end. Canon is edited, THEN synced (so the stamp
   // takes the rev of the commit before the edit), THEN committed. Later canon
   // moves again, so the content-first path no longer answers.
-  const { tk, rev: revBefore } = toolkit(t, BODY);
+  const { tk, rev: revBefore } = canonToolkit(t, BODY);
   const synced = `${BODY}const c = 3;\n`;
   writeFileSync(join(tk, "vanilla-web", "x.js"), synced);       // edit canon
   const dir = app(t, `${jsStamp("vanilla-web/x.js", revBefore, sha256(synced))}\n${synced}`); // sync
@@ -112,7 +127,7 @@ test("untouched copy stamped one commit behind its own bytes is stale, not forke
 });
 
 test("a wrong rev in the stamp does not change the verdict — the hash decides", (t) => {
-  const { tk } = toolkit(t, BODY);
+  const { tk } = canonToolkit(t, BODY);
   const dir = app(t, `${jsStamp("vanilla-web/x.js", "deadbee", sha256(BODY))}\n${BODY}`);
   writeFileSync(join(tk, "vanilla-web", "x.js"), `${BODY}const c = 3;\n`);
 
@@ -122,7 +137,7 @@ test("a wrong rev in the stamp does not change the verdict — the hash decides"
 });
 
 test("an edited copy is forked and exits 1", (t) => {
-  const { tk, rev } = toolkit(t, BODY);
+  const { tk, rev } = canonToolkit(t, BODY);
   const edited = BODY.replace("const b = 2;", "const b = 22; // local edit");
   const dir = app(t, `${jsStamp("vanilla-web/x.js", rev, sha256(BODY))}\n${edited}`);
 
@@ -133,7 +148,7 @@ test("an edited copy is forked and exits 1", (t) => {
 });
 
 test("an edited copy with an untrustworthy rev names current canon as the basis", (t) => {
-  const { tk } = toolkit(t, BODY);
+  const { tk } = canonToolkit(t, BODY);
   const edited = BODY.replace("const b = 2;", "const b = 22;");
   const dir = app(t, `${jsStamp("vanilla-web/x.js", "deadbee", sha256(BODY))}\n${edited}`);
 
@@ -143,7 +158,7 @@ test("an edited copy with an untrustworthy rev names current canon as the basis"
 });
 
 test("a stamp with no hash still classifies through the rev", (t) => {
-  const { tk, rev } = toolkit(t, BODY);
+  const { tk, rev } = canonToolkit(t, BODY);
   const dir = app(t, `${jsStamp("vanilla-web/x.js", rev)}\n${BODY}`);
   writeFileSync(join(tk, "vanilla-web", "x.js"), `${BODY}const c = 3;\n`);
 
@@ -156,7 +171,7 @@ test("the documented off-by-one on a hash-less stamp is forked — why the migra
   // v1 committed, then v2 committed. The copy carries v2's bytes but the stamp
   // names v1, which is what stamping at sync time produced. Then canon moves
   // again, so the content-first path cannot save it.
-  const { tk, rev: rev1 } = toolkit(t, BODY);
+  const { tk, rev: rev1 } = canonToolkit(t, BODY);
   const v2 = `${BODY}const c = 3;\n`;
   writeFileSync(join(tk, "vanilla-web", "x.js"), v2);
   git(["commit", "-qam", "chore: v2"], tk);
@@ -170,7 +185,7 @@ test("the documented off-by-one on a hash-less stamp is forked — why the migra
 
 test("a shebang file stamps on line 2 and still parses", (t) => {
   const shebang = `#!/usr/bin/env node\n${BODY}`;
-  const { tk, rev } = toolkit(t, shebang);
+  const { tk, rev } = canonToolkit(t, shebang);
   const lines = shebang.split("\n");
   const dir = app(t, [lines[0], jsStamp("vanilla-web/x.js", rev, sha256(shebang)), ...lines.slice(1)].join("\n"));
 
@@ -181,11 +196,9 @@ test("a shebang file stamps on line 2 and still parses", (t) => {
 
 test("a .css copy parses its own comment syntax", (t) => {
   const css = ":root { --a: 1; }\n";
-  const { tk, rev } = toolkit(t, css);
-  const dir = mkdtempSync(join(tmpdir(), "cv-app-"));
-  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const { tk, rev } = canonToolkit(t, css);
   // The checker resolves canon by the stamped path, so the copy may sit anywhere.
-  writeFileSync(join(dir, "x.css"), `/* ${stampText("vanilla-web/x.js", rev, sha256(css))} */\n${css}`);
+  const dir = app(t, `/* ${stampText("vanilla-web/x.js", rev, sha256(css))} */\n${css}`, "x.css");
 
   const { code, out } = run(dir, tk);
   assert.equal(code, 0, out);
@@ -196,26 +209,20 @@ test("the checker and this test file survive being vendored into an app", (t) =>
   // new-app.mjs copies tools/*.mjs into a scaffolded app and stamps each one. If
   // either file carried a literal stamp line in its body, stripStamp would delete
   // it from the copy and the copy would classify as forked.
-  const tk = mkdtempSync(join(tmpdir(), "cv-tk-"));
-  t.after(() => rmSync(tk, { recursive: true, force: true }));
-  const dir = mkdtempSync(join(tmpdir(), "cv-app-"));
-  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const names = ["check-vendored.mjs", "check-vendored.test.mjs"];
+  // Strip first: run inside a scaffolded app, these two files already carry
+  // new-app.mjs's stamp, and stamping a stamped body would make the fixture's
+  // canon differ from what the checker strips back out.
+  const bodies = Object.fromEntries(names.map((n) => [n, unstamp(readFileSync(join(HERE, n), "utf8"))]));
+  const { tk } = toolkit(t, Object.fromEntries(names.map((n) => [`vanilla-web/tools/${n}`, bodies[n]])));
 
-  git(["init", "-q", "-b", "main"], tk);
-  mkdirSync(join(tk, "vanilla-web", "tools"), { recursive: true });
+  const dir = tmp(t, "cv-app-");
   mkdirSync(join(dir, "tools"), { recursive: true });
-  for (const name of ["check-vendored.mjs", "check-vendored.test.mjs"]) {
-    // Strip first: run inside a scaffolded app, these two files already carry
-    // new-app.mjs's stamp, and stamping a stamped body would make the fixture's
-    // canon differ from what the checker strips back out.
-    const body = unstamp(readFileSync(join(HERE, name), "utf8"));
-    writeFileSync(join(tk, "vanilla-web", "tools", name), body);
-    const lines = body.split("\n");
+  for (const name of names) {
+    const lines = bodies[name].split("\n");
     writeFileSync(join(dir, "tools", name),
-      [lines[0], jsStamp(`vanilla-web/tools/${name}`, "0000000", sha256(body)), ...lines.slice(1)].join("\n"));
+      [lines[0], jsStamp(`vanilla-web/tools/${name}`, "0000000", sha256(bodies[name])), ...lines.slice(1)].join("\n"));
   }
-  git(["add", "-A"], tk);
-  git(["commit", "-qm", "chore: canon"], tk);
 
   const { code, out } = run(dir, tk);
   assert.equal(code, 0, out);
@@ -227,8 +234,7 @@ test("sync-from-web.sh --check fails when a copy's recorded hash stops matching 
   if (!existsSync(sync)) return t.skip("vanilla-components is not installed beside this skill");
 
   // Work on a copy of the repo, so the real tree is never touched.
-  const clone = mkdtempSync(join(tmpdir(), "cv-repo-"));
-  t.after(() => rmSync(clone, { recursive: true, force: true }));
+  const clone = tmp(t, "cv-repo-");
   for (const d of ["vanilla-web", "vanilla-components"]) {
     cpSync(join(REPO, d), join(clone, d), { recursive: true, filter: (s) => !s.includes("node_modules") });
   }
@@ -237,36 +243,31 @@ test("sync-from-web.sh --check fails when a copy's recorded hash stops matching 
   git(["commit", "-qm", "chore: seed"], clone);
 
   const comp = join(clone, "vanilla-components");
-  const pass = spawnSync("bash", ["./sync-from-web.sh", "--check"], { cwd: comp, encoding: "utf8" });
+  const check = () => spawnSync("bash", ["./sync-from-web.sh", "--check"], { cwd: comp, encoding: "utf8" });
+  const pass = check();
   assert.equal(pass.status, 0, `${pass.stdout}${pass.stderr}`);
 
-  // Body still matches canon, but the recorded hash does not. Only the sha256
-  // check catches this: the body diff sees nothing wrong.
-  const copy = join(comp, "lib", "render.js");
-  const text = readFileSync(copy, "utf8");
-  writeFileSync(copy, text.replace(/sha256:[0-9a-f]{64}/, `sha256:${"0".repeat(64)}`));
+  // Both stamp faults in one run, because each is reported per file and the run
+  // costs ~120 forks over the 15 pairs. Bodies still match canon in both cases:
+  // only the sha256 check catches either, since the body diff sees nothing wrong.
+  const wrongHash = join(comp, "lib", "render.js");   // records a hash that is not canon's
+  const noHash = join(comp, "lib", "chrome.js");      // records no hash at all, and must
+  //   report rather than die: the reader returns empty there, and under
+  //   `set -o pipefail` an unguarded grep miss would kill the script first.
+  writeFileSync(wrongHash, readFileSync(wrongHash, "utf8").replace(/sha256:[0-9a-f]{64}/, `sha256:${"0".repeat(64)}`));
+  writeFileSync(noHash, readFileSync(noHash, "utf8").replace(/ sha256:[0-9a-f]{64}/, ""));
 
-  const fail = spawnSync("bash", ["./sync-from-web.sh", "--check"], { cwd: comp, encoding: "utf8" });
+  const fail = check();
   assert.equal(fail.status, 1, `${fail.stdout}${fail.stderr}`);
-  assert.match(fail.stderr, /records sha256:0{64}/);
-
-  // A stamp carrying NO hash must report too, not die on the way. The reader
-  // returns empty there, and under `set -o pipefail` an unguarded grep miss would
-  // kill the script before it printed anything.
-  writeFileSync(copy, text.replace(/ sha256:[0-9a-f]{64}/, ""));
-  const none = spawnSync("bash", ["./sync-from-web.sh", "--check"], { cwd: comp, encoding: "utf8" });
-  assert.equal(none.status, 1, `${none.stdout}${none.stderr}`);
-  assert.match(none.stderr, /records sha256:none/);
+  assert.match(fail.stderr, /lib\/render\.js records sha256:0{64}/);
+  assert.match(fail.stderr, /lib\/chrome\.js records sha256:none/);
 });
 
 test("the shell writer and node agree on the hash", (t) => {
   const lib = join(REPO, "vanilla-components", "lib-stamp.sh");
   if (!existsSync(lib)) return t.skip("vanilla-components is not installed beside this skill");
 
-  const dir = mkdtempSync(join(tmpdir(), "cv-hash-"));
-  t.after(() => rmSync(dir, { recursive: true, force: true }));
-  const f = join(dir, "x.js");
-  writeFileSync(f, BODY);
+  const f = join(app(t, BODY), "x.js");
 
   const r = spawnSync("bash", ["-c", `source "$1"; sha256_of "$2"`, "_", lib, f], { encoding: "utf8" });
   assert.equal(r.status, 0, r.stderr);

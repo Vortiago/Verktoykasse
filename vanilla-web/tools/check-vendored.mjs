@@ -59,7 +59,7 @@ const sha256 = (text) => createHash("sha256").update(text, "utf8").digest("hex")
  * @param {string} head @param {string} rel
  * @returns {{repoPath: string, rev: string, sha256?: string, dialect: "sync"|"vendor"} | null} */
 function parseStamp(head, rel) {
-  let m = head.match(/canonical source:\s*([\w-]+)\/(\S+?)@(\S+?)(?:\s+sha256:([0-9a-f]{64}))?(?:\s|$)/);
+  let m = head.match(/canonical source:\s*([\w-]+)\/(\S+?)@(\S+)(?:\s+sha256:([0-9a-f]{64}))?/);
   if (m) return { repoPath: `${m[1]}/${m[2]}`, rev: m[3], sha256: m[4], dialect: "sync" };
   m = head.match(/from vanilla-components\/(\S+?)@(\w+)(?:\s+sha256:([0-9a-f]{64}))?/);
   if (m) return { repoPath: `vanilla-components/${m[1]}`, rev: m[2], sha256: m[3], dialect: "vendor" };
@@ -117,15 +117,15 @@ for (const rel of files) {
     continue;
   }
 
-  const shown = git(["show", `${stamp.rev}:${stamp.repoPath}`]);
-  const original = shown.status === 0 ? shown.stdout : null;
-  // The hash decides when the stamp carries one. The rev path stays for a stamp
-  // written before ADR 0004, and it is exactly the path this issue proves
-  // unreliable: it reads an untouched copy as forked as soon as canon moves.
-  const untouched = stamp.sha256 ? sha256(stripped) === stamp.sha256 : original !== null && stripped === original;
-  // A rev only names the copy's bytes when the bytes at that rev hash to the
-  // stamp. Anything else is a diff basis we must not call "the stamped original".
-  const originalTrusted = original !== null && (!stamp.sha256 || sha256(original) === stamp.sha256);
+  // The hash decides when the stamp carries one, and it decides from the copy
+  // alone — no git read at all. The rev path below stays for a stamp written
+  // before ADR 0004, and it is exactly the path this issue proves unreliable: it
+  // reads an untouched copy as forked as soon as canon moves.
+  const original = () => {
+    const shown = git(["show", `${stamp.rev}:${stamp.repoPath}`]);
+    return shown.status === 0 ? shown.stdout : null;
+  };
+  const untouched = stamp.sha256 ? sha256(stripped) === stamp.sha256 : stripped === original();
   if (untouched) {
     if (canon === null) {
       // Untouched copy, but canon is gone from the toolkit's working tree —
@@ -137,9 +137,13 @@ for (const rel of files) {
     continue;
   }
 
-  // Local edits: diffstat against the stamped original (only when its bytes match
-  // the stamp), else against current canon.
-  const baseText = originalTrusted ? original : canon;
+  // Only a forked copy needs a diff basis, so the git read waits until here: the
+  // stale path above is the common one after a canon bump, and it now costs no
+  // subprocess. A rev only names the copy's bytes when the bytes at that rev hash
+  // to the stamp — anything else must not be called "the stamped original".
+  const stampedOriginal = original();
+  const originalTrusted = stampedOriginal !== null && (!stamp.sha256 || sha256(stampedOriginal) === stamp.sha256);
+  const baseText = originalTrusted ? stampedOriginal : canon;
   let stat = "";
   if (baseText !== null) {
     const a = join(tmp, "stamped-original"), b = join(tmp, "local-copy");
