@@ -36,10 +36,18 @@ function _isInteractive(el) {
   );
 }
 
+/** The shared "asked, and there is no selection" answer. Still truthy, so it
+ * memoises like any other, and never mutated — the common idle pass allocates
+ * nothing. @type {Range[]} */
+const _NO_RANGES = [];
+
 /** The live selection's ranges for the current synchronous pass, or undefined
- * before the pass has asked. An empty array is a real answer: asked, and there is
- * no selection. @type {Range[] | undefined} */
+ * before the pass has asked. @type {Range[] | undefined} */
 let _passRanges;
+
+/** Hoisted so the pass schedules the same function object every time rather than
+ * building a fresh closure per pass. */
+const _clearPass = () => { _passRanges = undefined; };
 
 /** The selection's ranges, read ONCE per synchronous pass (#83).
  *
@@ -61,14 +69,15 @@ let _passRanges;
 function _selectionRanges() {
   if (_passRanges) return _passRanges;
   const sel = document.getSelection();
-  /** @type {Range[]} */ const ranges = [];
   // `!isCollapsed` implies rangeCount >= 1 per spec, so no separate zero check;
   // rangeCount is read once into `n` because every read is a forced flush.
+  /** @type {Range[]} */ let ranges = _NO_RANGES;
   if (sel && !sel.isCollapsed) {
+    ranges = [];
     for (let i = 0, n = sel.rangeCount; i < n; i++) ranges.push(sel.getRangeAt(i));
   }
   _passRanges = ranges;
-  queueMicrotask(() => { _passRanges = undefined; });
+  queueMicrotask(_clearPass);
   return ranges;
 }
 
@@ -92,7 +101,13 @@ function _selectionRanges() {
  * stack unwinds.
  * @param {Element} host */
 export function selectionInside(host) {
-  return _selectionRanges().some((range) => range.intersectsNode(host));
+  // Indexed rather than `.some`, which would allocate a closure per host per
+  // pass, including on the idle pass where there is nothing to walk.
+  const ranges = _selectionRanges();
+  for (let i = 0; i < ranges.length; i++) {
+    if (ranges[i].intersectsNode(host)) return true;
+  }
+  return false;
 }
 
 /** @typedef {{ kind: "focus" } | { kind: "overlay", overlay: Element } | { kind: "selection" }} HoldCause */

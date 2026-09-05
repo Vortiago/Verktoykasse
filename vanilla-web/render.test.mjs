@@ -599,20 +599,19 @@ test("renderRegion: a later direct swap clears any earlier pending flush for the
 /** `fakeSelection` behind counting accessors. `reads` counts hits on the three
  * members a browser pays a forced layout for. @param {any} live */
 function countingSelection(live) {
-  const counter = { reads: 0 };
-  const sel = {
-    get isCollapsed() { counter.reads++; return live.isCollapsed; },
-    get rangeCount() { counter.reads++; return live.rangeCount; },
-    getRangeAt(/** @type {number} */ i) { counter.reads++; return live.getRangeAt(i); },
+  return {
+    reads: 0,
+    get isCollapsed() { this.reads++; return live.isCollapsed; },
+    get rangeCount() { this.reads++; return live.rangeCount; },
+    getRangeAt(/** @type {number} */ i) { this.reads++; return live.getRangeAt(i); },
   };
-  return { sel, counter };
 }
 
 test("renderRegion: one selection read serves every host in a synchronous pass, and the next pass re-asks (#83)", async (t) => {
   const a = fakeHost(), b = fakeHost(), c = fakeHost();
   // A live selection crossing a and c, so the HELD path is what gets counted. b
   // swaps mid-pass, which is the seam mutating the DOM between the two held asks.
-  const { sel, counter } = countingSelection(fakeSelection({ ranges: [[a, c]] }));
+  const sel = countingSelection(fakeSelection({ ranges: [[a, c]] }));
   const doc = fakeDocument({ selection: sel });
   patchGlobal(t, "document", doc);
 
@@ -621,11 +620,11 @@ test("renderRegion: one selection read serves every host in a synchronous pass, 
   assert.deepEqual([a.swaps, b.swaps, c.swaps], [0, 1, 0]);
   assert.equal(doc.listenerCount("selectionchange"), 2, "each held host armed its own flush listener");
 
-  const perPass = counter.reads;
+  const perPass = sel.reads;
   assert.ok(perPass <= 3, `the whole pass asks once per member, not once per host (got ${perPass})`);
 
   await flush(); // the pass boundary: the memo clears on a microtask
   assert.equal(selectionInside(b), false, "b is not crossed by the selection");
-  assert.ok(counter.reads > perPass, "a new pass asks again — a memo that never cleared would freeze every hold");
-  assert.ok(counter.reads <= perPass * 2, `the second pass also asks once per member (got ${counter.reads - perPass})`);
+  assert.ok(sel.reads > perPass, "a new pass asks again — a memo that never cleared would freeze every hold");
+  assert.ok(sel.reads <= perPass * 2, `the second pass also asks once per member (got ${sel.reads - perPass})`);
 });
