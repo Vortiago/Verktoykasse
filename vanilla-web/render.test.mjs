@@ -252,6 +252,7 @@ test("renderRegion: a swap deferred by a text selection flushes on selectionchan
   assert.equal(host.swaps, 0, "skipped while the selection touches host");
   assert.equal(doc.listenerCount("selectionchange"), 1, "one document-level listener armed while pending");
 
+  await flush(); // its own task in a browser, so cross the pass boundary here too
   doc.dispatch("selectionchange"); // selection changed but is STILL inside host
   assert.equal(host.swaps, 0, "must not flush prematurely — selectionInside is re-checked, not assumed clear");
   assert.equal(doc.listenerCount("selectionchange"), 1, "stays armed (not once:true) until it actually clears");

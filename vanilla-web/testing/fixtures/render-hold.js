@@ -88,8 +88,8 @@ w.__render = (label, opts = {}) => renderRegion(region, () => build(label), { si
 
 /** One synchronous pass over BOTH regions, returning the reads that pass cost.
  * #region2 sits outside the lead-to-tail span, so it swaps while #region is held:
- * the seam mutates the DOM between the two asks, which is what used to re-dirty
- * layout and buy a second forced flush. Zeroes the counter on entry, because the
+ * the seam mutates the DOM between the two asks, which re-dirties layout, so a
+ * per-host read buys a second forced flush. Zeroes the counter on entry, because the
  * priming render at load and __selectSpanningRegion both hit the patched getters
  * before any measured pass. @param {string} label */
 w.__renderPass = (label) => {
