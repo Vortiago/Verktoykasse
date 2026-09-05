@@ -370,19 +370,48 @@ could name its own ssh could steal a click.
 | --- | --- | --- |
 | tmux | yes | yes, by pid |
 | Konsole | yes | yes, by pid |
-| Windows Terminal | yes | best effort, by title |
+| Windows Terminal | yes | yes, by the title the reporting side wrote |
 
-Where no pid names a tab, the backend answers through `Resolve-MachineTab`.
-Windows Terminal reads tab titles: ssh leaves the remote shell's title there and a
-shell titles itself `user@machine`, so `atle@lab1` is taken for `lab1`. A tab that
-only has the machine as a word comes second, and nothing else counts. Looked up on
-each click, never cached, because titles change every prompt. Konsole and tmux
-answer nothing without reading their tabs at all.
+Where no pid names a tab, the backend answers through `Resolve-MachineTab`, which
+reads tab titles. `user@machine` scores 2 and is taken for `machine`. A tab that
+only has the machine as a word scores 1 and comes second. Nothing else counts.
+Looked up on each click and never cached, because a title changes every prompt.
+Konsole and tmux answer nothing without reading their tabs at all.
 
 That route matches on the name the peer sent in its hello, so a machine that lies
 about its name can have a click raise a tab titled after another machine. A window
 is brought to the front, nothing is typed, no id is trusted. Set a token if the
 loopback port is shared.
+
+### The title on the ssh tab
+
+ssh writes no title. The remote SHELL does, and only some of them. Debian and
+Ubuntu do it from the stock `~/.bashrc`. macOS does not, because `/etc/zshrc`
+gates its title hook on `TERM_PROGRAM` being `Apple_Terminal` and sshd sets no
+such thing. tmux does not forward one either, with `set-titles` off by default.
+So on Windows Terminal a click found nothing, and the tab kept the profile name.
+
+`-ExposeOnSSH` writes the title itself, in `remote/title.ps1`. A lane for a
+machine exists only because the report is running on it, inside the very ssh
+session the click wants raised, which makes it the one process that can always
+name that tab. Nothing has to be set up on either machine, and it does not
+matter how the ssh session was started.
+
+| Where it runs | Where the sequence goes |
+| --- | --- |
+| a tmux pane | the attached client's tty, from `#{client_tty}`: under tmux, out through ssh |
+| anywhere else | stdout, which over ssh already is that stream |
+| neither answers | nothing is written, and the guess above stands |
+
+An OSC written to stdout inside tmux goes no further than the pane, so that case
+writes one layer down instead. No tmux option is read or changed. The tty is
+asked for fresh every time, because tmux outlives the login that started it and
+`$SSH_TTY` in an old pane names a pty that is gone.
+
+It is written on the edge into welcomed, and only there. A welcome is the first
+proof that a rain is reading, and a second welcome means a second connection,
+which means a different ssh session and so a different tab. `-NoTabTitle` turns
+it off and leaves the tab whatever name the shell gave it.
 
 The reporting side needs tmux for the switch, because the switch is a tmux
 command. Without it, sessions are still reported and the rain says so once at
@@ -439,6 +468,7 @@ lib/
     hub.ps1             the host's view of the machines reporting in. No socket either
     tcp.ps1             the only file that opens one
     expose.ps1          the reporting side: connect, retry, send, obey a focus
+    title.ps1           the title the reporting side puts on its own ssh tab
   cs/
     Renderer.cs         simulate and encode a frame
     ConsoleVT_Windows.cs, ConsoleVT_Linux.cs

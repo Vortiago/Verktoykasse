@@ -77,6 +77,9 @@
     rain draws here as well. Add -Stats to see whether the host has answered:
     its line leads with host waiting, connecting, connected or refused.
 
+    Once the host answers, this titles the tab holding the ssh session
+    user@machine, so a click over there can find it again. See -NoTabTitle.
+
 .PARAMETER RemotePort
     The loopback port both sides use. Default 9999. It must match the one in the
     RemoteForward line.
@@ -93,6 +96,12 @@
 .PARAMETER RemoteName
     The name -ExposeOnSSH reports this machine as. Default: the host name, cut at
     the first dot.
+
+.PARAMETER NoTabTitle
+    Leave the tab title alone. -ExposeOnSSH titles the tab its ssh session runs
+    in, because on Windows Terminal a title is the only thing a click on the
+    other machine can find a tab by. The cost is a tab that no longer says what
+    the shell called it.
 
 .EXAMPLE
     .\matrix.ps1
@@ -126,7 +135,8 @@ param(
     [ValidateRange(1, 65535)] [int]    $RemotePort  = 9999,
     [string] $RemoteAddress = '127.0.0.1',
     [string] $RemoteToken,
-    [string] $RemoteName
+    [string] $RemoteName,
+    [switch] $NoTabTitle
 )
 
 $ErrorActionPreference = 'Stop'
@@ -170,7 +180,7 @@ $load = @(
     if ($Remote -or $ExposeOnSSH) {
         # After sessions.ps1 and the backend: wire.ps1 wants Get-SessionStyle, and
         # the click path walks with Get-ProcessAncestorId.
-        foreach ($part in 'wire', 'tcp', 'hub', 'expose') { Join-Path $lib "remote/$part.ps1" }
+        foreach ($part in 'wire', 'tcp', 'hub', 'expose', 'title') { Join-Path $lib "remote/$part.ps1" }
     }
 )
 foreach ($file in $load) {
@@ -227,6 +237,23 @@ if ($ExposeOnSSH) {
     # and RefusedMs, counted in retries, would expire between two refusals.
     $expose = New-ExposeState -Machine (Get-ExposeMachineName $RemoteName) -Token $RemoteToken `
                               -RetryMs ([int][Math]::Max(1000.0, $PollSeconds * 1000.0))
+}
+
+# The tab this ssh session runs in, named so a click on the other machine can find
+# it. Windows Terminal reads a tab title and nothing else, and no shell reliably
+# writes one over ssh: macOS titles nothing without Terminal.app, and tmux
+# forwards nothing with set-titles off. So this end writes its own.
+#
+# Written on the welcome, which is why it is a block and not a line at startup: a
+# welcome is the first proof a rain is reading, and a second one means a second
+# ssh session and so a second tab.
+$titleTab = $null
+if ($expose -and -not $NoTabTitle) {
+    $titleTab = {
+        # Write-Raw is the console handle this script owns; Set-RemoteTabTitle
+        # only reaches for it outside tmux, where stdout IS the ssh stream.
+        [void](Set-RemoteTabTitle -Machine $script:expose.Machine -Write { param($t) Write-Raw $t })
+    }
 }
 
 # What -ThisWindow scopes on: a terminal window, or the tmux session a pane runs
@@ -353,7 +380,8 @@ function Get-LiveSession {
                           # machine does not run finds no tab, and nothing happens.
                           $tab = $script:tabState.Map[$id]
                           if ($tab) { [void](Select-TerminalTab $tab) }
-                      }
+                      } `
+                      -Title $script:titleTab
     }
 
     # After the tab map and after -ThisWindow. A remote session has no local pid,

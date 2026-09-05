@@ -104,6 +104,11 @@ function Update-Expose {
         conn, line -> writes it. Throwing is how it reports a broken pipe.
     .PARAMETER Focus
         session id -> switches to it. The one thing the rain can ask for.
+    .PARAMETER Title
+        -> titles the tab this ssh session runs in. Called on the edge into
+        welcomed, and only there: a welcome is the first proof a rain is
+        reading, and a second one means a second connection, which means a
+        different ssh session and so a different tab.
     #>
     param([Parameter(Mandatory)] [hashtable] $State,
           [Parameter(Mandatory)] [long] $Now,
@@ -112,7 +117,8 @@ function Update-Expose {
           [Parameter(Mandatory)] [scriptblock] $Read,
           [Parameter(Mandatory)] [scriptblock] $Write,
           [Parameter(Mandatory)] [scriptblock] $Close,
-          [scriptblock] $Focus = $null)
+          [scriptblock] $Focus = $null,
+          [scriptblock] $Title = $null)
 
     # A refusing rain re-states it on every redial; a stopped one never will, and
     # sshd keeps taking the connection either way.
@@ -157,7 +163,14 @@ function Update-Expose {
             $o = ConvertFrom-WireLine $line
             if ($null -eq $o) { continue }
             switch ([string]$o.t) {
-                'welcome' { $State.Welcomed = $true; $State.RefusedWhy = '' }
+                'welcome' {
+                    $first = -not $State.Welcomed
+                    $State.Welcomed = $true
+                    $State.RefusedWhy = ''
+                    # Swallowed like the focus below: a tab that keeps its old
+                    # name costs a click, and a throw here costs the frame loop.
+                    if ($first -and $Title) { try { & $Title } catch { } }
+                }
                 'refused' {
                     # Filtered like every string from a peer: it reaches a screen.
                     $why = ConvertTo-WireText $o.why 64

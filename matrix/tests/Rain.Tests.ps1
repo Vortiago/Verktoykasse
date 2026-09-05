@@ -284,6 +284,46 @@ Describe 'matrix.ps1 -ExposeOnSSH' {
         }
         (Remove-Sgr $r.Stdout) | Should -Match 'host connected'
     }
+
+    # The tab the rain on the other machine has to find. Windows Terminal matches
+    # a click on the title and on nothing else, and no shell reliably writes one
+    # over ssh, so the welcome is answered with an OSC 0 of this end's own.
+    #
+    # TMUX is cleared for the child: inside a pane the sequence goes to the tmux
+    # client's tty instead, which is right in life and unreadable from here. The
+    # choice between the two is covered in RemoteTitle.Tests.ps1.
+    It 'titles the tab it runs in once the host welcomes it' {
+        $snap = Get-EnvSnapshot 'TMUX'
+        $env:TMUX = ''
+        try {
+            $r = Invoke-ExposeRain $emptyHome @('-Seconds', '5', '-PollSeconds', '0.2',
+                                               '-RemoteName', 'orkanger') {
+                param($conn)
+                $stream = $conn.GetStream()
+                $welcome = [System.Text.Encoding]::UTF8.GetBytes('{"v":1,"t":"welcome"}' + "`n")
+                $stream.Write($welcome, 0, $welcome.Length); $stream.Flush()
+            }
+        } finally { Restore-EnvSnapshot $snap }
+        # Not Remove-Sgr: it strips CSI, and this is an OSC. The login name in
+        # the middle is whatever the runner has.
+        $r.Stdout | Should -Match ([regex]::Escape("$([char]27)]0;") + '[^]+' +
+                                   [regex]::Escape("@orkanger$([char]7)"))
+    }
+
+    It 'leaves the tab title alone with -NoTabTitle' {
+        $snap = Get-EnvSnapshot 'TMUX'
+        $env:TMUX = ''
+        try {
+            $r = Invoke-ExposeRain $emptyHome @('-Seconds', '5', '-PollSeconds', '0.2',
+                                               '-RemoteName', 'orkanger', '-NoTabTitle') {
+                param($conn)
+                $stream = $conn.GetStream()
+                $welcome = [System.Text.Encoding]::UTF8.GetBytes('{"v":1,"t":"welcome"}' + "`n")
+                $stream.Write($welcome, 0, $welcome.Length); $stream.Flush()
+            }
+        } finally { Restore-EnvSnapshot $snap }
+        $r.Stdout | Should -Not -Match ([regex]::Escape("@orkanger$([char]7)"))
+    }
 }
 
 Describe 'preview-matrix.ps1' {
