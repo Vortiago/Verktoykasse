@@ -30,7 +30,8 @@ function Get-TabTitleSequence {
         that merely has the name in it.
     .PARAMETER User
         Empty becomes 'matrix', which keeps the @ form on a machine that exports
-        no user name at all, and says what put the title there.
+        no user name at all, and says what put the title there. An @ of its own
+        is replaced, so the one this builds is the only one in the title.
     #>
     param([Parameter(Mandatory)] [string] $Machine,
           [AllowEmptyString()] [string] $User = '')
@@ -39,7 +40,11 @@ function Get-TabTitleSequence {
     # here for one character in particular: an ESC inside a user name would end
     # this sequence and leave the rest of the name to be read as commands. The
     # caps are the ones a tab has room for, not the wire's.
-    $name = (ConvertTo-WireText $User 32).Trim()
+    #
+    # The @ goes for the reader on the other side. Get-MachineTitleScore cuts a
+    # word at its FIRST @ and reads the machine off what follows, so a login
+    # that carries one of its own (a@b) would offer it 'b@lab1' and score 0.
+    $name = ((ConvertTo-WireText $User 32) -replace '@', '-').Trim()
     if (-not $name) { $name = 'matrix' }
 
     "$script:ESC]0;$name@$((ConvertTo-WireText $Machine 64).Trim())$([char]7)"
@@ -107,6 +112,13 @@ function Write-TtyText {
     $done = $false
     try {
         $done = $fs.WriteAsync($bytes, 0, $bytes.Length).Wait($TimeoutMs)
+    } catch {
+        # A write that failed is a write nothing is waiting on any more, so the
+        # handle goes back at once and the caller still hears about it. The tty
+        # that went away between the lookup and the open lands here, and it is
+        # the common failure: leaving the stream would leak one per redial.
+        $fs.Dispose()
+        throw
     } finally {
         # Dispose waits for a write that has not landed, which is the wait the
         # bound above exists to avoid. A stream left behind is closed when the

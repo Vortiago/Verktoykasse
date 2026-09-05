@@ -39,6 +39,14 @@ Describe 'title: the sequence' {
             Should -Be "$script:ESC]0;at le@lab1$script:BEL"
     }
 
+    It 'replaces an @ the login name carries of its own' {
+        # Get-MachineTitleScore cuts a word at its FIRST @ and reads the machine
+        # off the rest. Left in, 'a@b' would offer it 'b@lab1' and score 0, and
+        # the click would find nothing on a tab this end had just titled.
+        Get-TabTitleSequence -Machine 'lab1' -User 'a@b' |
+            Should -Be "$script:ESC]0;a-b@lab1$script:BEL"
+    }
+
     It 'caps the user name' {
         Get-TabTitleSequence -Machine 'lab1' -User ('a' * 100) |
             Should -Be "$script:ESC]0;$('a' * 32)@lab1$script:BEL"
@@ -54,11 +62,16 @@ Describe 'title: the sequence' {
         # different files, and nothing else crosses them: the producer runs on
         # the reporting side, the scorer on Windows. Tighten Get-MachineTitleScore
         # without this and every remote click breaks with the suite still green.
-        $title = Get-TabTitleSequence -Machine 'lab1' -User 'atle'
-        # As the tab carries it: Get-TerminalTab hands Resolve-MachineTab the
-        # name alone, without the sequence around it.
-        $shown = $title.Trim($script:ESC, $script:BEL) -replace '^\]0;', ''
-        Get-MachineTitleScore -Title $shown -Machine 'lab1' | Should -Be 2
+        # The awkward login is in here too: it is the one the scorer cannot read
+        # unless the producer has already taken the @ out.
+        foreach ($user in 'atle', 'a@b', '', '  atle  ') {
+            $title = Get-TabTitleSequence -Machine 'lab1' -User $user
+            # As the tab carries it: Get-TerminalTab hands Resolve-MachineTab the
+            # name alone, without the sequence around it.
+            $shown = $title.Trim($script:ESC, $script:BEL) -replace '^\]0;', ''
+            Get-MachineTitleScore -Title $shown -Machine 'lab1' |
+                Should -Be 2 -Because "the title for '$user' is $shown"
+        }
     }
 }
 
@@ -88,8 +101,12 @@ Describe 'title: finding the tty under tmux' {
 
     It 'answers nothing when no tmux backend is loaded' {
         # The seam defaults to ${function:Invoke-Tmux}, which resolves to $null
-        # wherever tmux.ps1 was not sourced. That is Windows and Konsole.
+        # wherever tmux.ps1 was not sourced. That is Windows and Konsole, and a
+        # stale $TMUX on Windows is how the default gets reached for real.
         Get-TmuxClientTty -Call $null | Should -Be ''
+        # No -Call at all: this file never sources tmux.ps1, so the default is
+        # resolved here rather than stood in for.
+        Get-TmuxClientTty | Should -Be ''
     }
 }
 

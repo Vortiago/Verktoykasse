@@ -107,8 +107,10 @@ function Update-Expose {
     .PARAMETER Title
         -> titles the tab this ssh session runs in. Called on the edge into
         welcomed, and only there: a welcome is the first proof a rain is
-        reading, and a second one means a second connection, which means a
-        different ssh session and so a different tab.
+        reading, and every later welcome starts a connection this end has not
+        titled for. A redial after the ssh session came back is a new tab; a
+        redial after the rain restarted is the same tab and the same title, so
+        writing on every edge costs one sequence and can never miss one.
     #>
     param([Parameter(Mandatory)] [hashtable] $State,
           [Parameter(Mandatory)] [long] $Now,

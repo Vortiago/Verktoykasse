@@ -311,9 +311,12 @@ Describe 'matrix.ps1 -ExposeOnSSH' {
     }
 
     It 'leaves the tab title alone with -NoTabTitle' {
-        $r = Invoke-ExposeRain $emptyHome @('-Seconds', '5', '-PollSeconds', '0.2',
+        $r = Invoke-ExposeRain $emptyHome @('-Seconds', '5', '-Stats', '-PollSeconds', '0.2',
                                             '-RemoteName', 'orkanger', '-NoTabTitle') `
                                { param($conn) Send-Welcome $conn }
+        # -Stats first, and asserted first. Without it a run that never reached
+        # the welcome would pass this case by drawing nothing at all.
+        (Remove-Sgr $r.Stdout) | Should -Match 'host connected'
         $r.Stdout | Should -Not -Match ([regex]::Escape("@orkanger$([char]7)"))
     }
 }

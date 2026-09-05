@@ -370,7 +370,7 @@ could name its own ssh could steal a click.
 | --- | --- | --- |
 | tmux | yes | yes, by pid |
 | Konsole | yes | yes, by pid |
-| Windows Terminal | yes | by title, which -ExposeOnSSH now writes |
+| Windows Terminal | yes | by title, which -ExposeOnSSH writes |
 
 Where no pid names a tab, the backend answers through `Resolve-MachineTab`, which
 reads tab titles. `user@machine` scores 2 and is taken for `machine`. A tab that
@@ -382,6 +382,10 @@ That route matches on the name the peer sent in its hello, so a machine that lie
 about its name can have a click raise a tab titled after another machine. A window
 is brought to the front, nothing is typed, no id is trusted. Set a token if the
 loopback port is shared.
+
+The reporting side needs tmux for the switch, because the switch is a tmux
+command. Without it, sessions are still reported and the rain says so once at
+startup rather than letting a click do nothing quietly.
 
 ### The title on the ssh tab
 
@@ -409,13 +413,12 @@ asked for fresh every time, because tmux outlives the login that started it and
 `$SSH_TTY` in an old pane names a pty that is gone.
 
 It is written on the edge into welcomed, and only there. A welcome is the first
-proof that a rain is reading, and a second welcome means a second connection,
-which means a different ssh session and so a different tab. `-NoTabTitle` turns
-it off and leaves the tab whatever name the shell gave it.
-
-The reporting side needs tmux for the switch, because the switch is a tmux
-command. Without it, sessions are still reported and the rain says so once at
-startup rather than letting a click do nothing quietly.
+proof that a rain is reading, and every later welcome starts a connection this
+end has not titled for: a redial after the ssh session came back is a new tab,
+and a redial after the rain restarted rewrites the same title onto the same one.
+The login name loses an `@` of its own to a `-`, because the scorer on the other
+side reads the machine off the first `@` in the word. `-NoTabTitle` turns the
+whole thing off and leaves the tab whatever name the shell gave it.
 
 ### The token
 
