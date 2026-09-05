@@ -53,8 +53,23 @@ if (git(["rev-parse", "--git-dir"]).status !== 0) {
 }
 const headRev = git(["rev-parse", "--short", "HEAD"]).stdout?.trim() || "unknown";
 
+/** LF-normalised, which is what both the hash and the body comparison below run
+ * on. Git checks the same blob out as CRLF wherever `core.autocrlf` is true, so
+ * the bytes on disk are a property of the CHECKOUT, not of canon: hashing them
+ * raw makes a stamp written on Linux disagree with the same bytes read on
+ * Windows, in both directions, and every copy reads `stale` forever with a
+ * re-copy command that changes nothing. The committed blob is LF either way, so
+ * LF is the one spelling every checkout can agree on.
+ *
+ * Strips every CR, not just the ones before an LF, to be exactly `tr -d '\r'` —
+ * what `lib-stamp.sh`'s `sha256_of` does, since the two must agree digit for
+ * digit or a stamp the shell writes reads as drift the moment node checks it. A
+ * lone CR in source text is not a thing worth splitting the two definitions
+ * over. @param {string} text */
+const lf = (text) => text.replace(/\r/g, "");
+
 /** @param {string} text */
-const sha256 = (text) => createHash("sha256").update(text, "utf8").digest("hex");
+const sha256 = (text) => createHash("sha256").update(lf(text), "utf8").digest("hex");
 
 /** Parse a stamp out of a file's first lines. Dialect order matters: the
  * pathful vendor.sh form must win over the pathless one. `sha256` is absent on a
@@ -114,9 +129,12 @@ for (const rel of files) {
   const stamp = parseStamp(text.split("\n").slice(0, 3).join("\n"), rel);
   if (!stamp) continue;
 
-  const stripped = stripStamp(text);
+  // Both sides LF-normalised, for the reason `lf` gives: the copy and the canon
+  // it is compared against sit in two different checkouts, which are free to
+  // disagree about line endings while carrying identical blobs.
+  const stripped = lf(stripStamp(text));
   const canon = (() => {
-    try { return readFileSync(join(TK, stamp.repoPath), "utf8"); } catch { return null; }
+    try { return lf(readFileSync(join(TK, stamp.repoPath), "utf8")); } catch { return null; }
   })();
   if (stripped === canon) {
     // Matching bytes are not a clean bill of health. The stamp is the only record

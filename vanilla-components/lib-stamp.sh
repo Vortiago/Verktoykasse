@@ -13,11 +13,24 @@
 # check-vendored.mjs filters on a substring, so a second line would survive the
 # strip and break the body comparison.
 
-# sha256 of a file's bytes, as bare hex. sha256sum is GNU; stock macOS ships only
+# sha256 of a file's TEXT, as bare hex. sha256sum is GNU; stock macOS ships only
 # shasum. Both print "<hex>  <path>", so keep everything before the first space.
+#
+# Fed on STDIN, never by name, for two reasons. GNU coreutils escapes its output
+# line with a leading backslash when the path contains one, so passing a Windows
+# path yields "\<hex>" and every stamp written there carries a 65-character hash
+# that matches nothing. And `tr -d '\r'` has to sit in front anyway: git checks
+# the same blob out as CRLF wherever core.autocrlf is true, so hashing the bytes
+# on disk would make the hash a property of the checkout rather than of canon.
+# `check-vendored.mjs`'s `lf` is the same strip, and the two must agree digit for
+# digit — a test in vanilla-web/tools/check-vendored.test.mjs pins that.
 sha256_of() {
   local out
-  if command -v sha256sum >/dev/null 2>&1; then out=$(sha256sum "$1"); else out=$(shasum -a 256 "$1"); fi
+  if command -v sha256sum >/dev/null 2>&1; then
+    out=$(tr -d '\r' < "$1" | sha256sum)
+  else
+    out=$(tr -d '\r' < "$1" | shasum -a 256)
+  fi
   echo "${out%% *}"
 }
 
