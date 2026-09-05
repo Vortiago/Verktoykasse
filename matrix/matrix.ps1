@@ -153,6 +153,8 @@ $term = Join-Path $lib 'terminal'
 # tmux talks tmux, whether the outer terminal is Konsole, a plain xterm, or another
 # tmux - $TMUX names the innermost server. Windows never gets here with TMUX set: a
 # WSL tmux pane is a separate environment.
+#
+# On macOS outside tmux there is no nameable tab, so none.ps1 serves no map.
 
 # Who wants the tab map, spelled once: $hostHwnd and $needTabs both read it and
 # must not drift. -ExposeOnSSH is in it because a click on the other machine is
@@ -160,9 +162,10 @@ $term = Join-Path $lib 'terminal'
 $wantTabs = [bool]($ThisWindow -or $Click -or $ExposeOnSSH)
 $backend = if ($IsWindows)    { 'windows-terminal.ps1' }
            elseif ($env:TMUX) { 'tmux.ps1' }
+           elseif ($IsMacOS)  { 'none.ps1' }
            else               { 'konsole.ps1' }
 $load = @(
-    foreach ($part in 'console', 'stats', 'types', 'palette', 'lanes', 'sessions') {
+    foreach ($part in 'proc', 'console', 'stats', 'types', 'palette', 'lanes', 'sessions') {
         Join-Path $lib "$part.ps1"
     }
     Join-Path $term 'tabmap.ps1'
@@ -239,6 +242,12 @@ $scopeName = if ($backend -eq 'tmux.ps1') { 'tmux session' } else { 'terminal wi
 # advice only the Windows backend's user can act on - and it reads as a wrong
 # diagnosis anywhere else.
 $scopeHint = if ($backend -eq 'windows-terminal.ps1') { " and leave that $scopeName in front" } else { '' }
+# What the user can do about it. Every backend but none.ps1 has a scope to start
+# from, so naming one is advice. none.ps1 has none, so its only route is the one
+# $why already gives.
+$scopeFix = if ($backend -eq 'none.ps1') { 'Drop -ThisWindow to show every session.' }
+            else { "Start it from the $scopeName you want scoped$scopeHint, " +
+                   'or drop -ThisWindow to show every session.' }
 
 # Read before anything slow runs, because the Windows backend has to guess: it
 # takes the foreground terminal, which is only reliably ours right after the user
@@ -285,9 +294,7 @@ if ($needTabs) {
         # -ThisWindow asked for a smaller set. Quietly showing every session looks
         # like a broken filter: say so and stop.
         if ($ThisWindow) {
-            throw ("matrix: -ThisWindow needs to know which $scopeName this is, and $why. " +
-                   "Start it from the $scopeName you want scoped$scopeHint, " +
-                   'or drop -ThisWindow to show every session.')
+            throw "matrix: -ThisWindow needs to know which $scopeName this is, and $why. $scopeFix"
         }
         $needTabs = $false
         # Each flag loses a different thing, so each is told what it lost. A

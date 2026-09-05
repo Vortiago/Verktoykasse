@@ -1,0 +1,2 @@
+# Invoke-Pester -CI writes this next to the suite it ran.
+testResults.xml

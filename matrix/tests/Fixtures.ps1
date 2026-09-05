@@ -50,19 +50,53 @@ function Wait-Until ([scriptblock] $Condition, [int] $TimeoutMs = 2000, [int] $S
     $false
 }
 
+function Format-TestAsctime ([datetime] $Utc) {
+    # asctime, and the day is space padded to two columns: "Sep  4", not "Sep 4".
+    # No .NET date specifier emits that padding, so this builds the string by
+    # hand, and it cannot share sessions.ps1's parse format.
+    #
+    # The invariant culture, because -f and ToString would otherwise spell the
+    # month in whatever the box is set to, and sessions.ps1 parses it as invariant.
+    $inv = [System.Globalization.CultureInfo]::InvariantCulture
+    '{0} {1,2} {2}' -f $Utc.ToString('ddd MMM', $inv), $Utc.Day,
+                       $Utc.ToString('HH:mm:ss yyyy', $inv)
+}
+
 # What Claude writes as "procStart" for a live process on this platform: a
-# FILETIME on Windows, /proc clock ticks on Linux. The fake registries a test
-# writes have to carry the same shape sessions.ps1 reads back, so both come from
-# here. The caller dot-sources ../lib/sessions.ps1 for Get-ProcessStartTicks, the
-# way Import-TestCsType below relies on console.ps1.
+# FILETIME on Windows, /proc clock ticks on Linux, an asctime string in UTC on
+# macOS. The fake registries a test writes have to carry the same shape
+# sessions.ps1 reads back, so both come from here. The caller dot-sources
+# ../lib/sessions.ps1 for Get-ProcessStartTicks, the way Import-TestCsType below
+# relies on console.ps1.
 function Get-TestProcStart ([int] $ProcessId = $PID) {
-    if ($IsWindows) {
-        # Dispose: StartTime opens a kernel handle, the reason sessions.ps1
-        # wraps its own copy of this call the same way.
-        $p = [System.Diagnostics.Process]::GetProcessById($ProcessId)
-        try { $p.StartTime.ToFileTimeUtc() } finally { $p.Dispose() }
+    if ($IsLinux) { return Get-ProcessStartTicks -ProcessId $ProcessId }
+    # Dispose: StartTime opens a kernel handle, the reason sessions.ps1
+    # wraps its own copy of this call the same way.
+    $p = [System.Diagnostics.Process]::GetProcessById($ProcessId)
+    try {
+        if ($IsWindows) { return $p.StartTime.ToFileTimeUtc() }
+        return Format-TestAsctime $p.StartTime.ToUniversalTime()
+    } finally { $p.Dispose() }
+}
+
+# A procStart in this platform's shape that belongs to no live process: what a
+# recycled PID looks like, and what has to be dropped.
+#
+# The shape is the point. A value the platform cannot read at all is not a
+# mismatch - sessions.ps1 keeps the session then, deliberately, because an
+# unreadable field verifies nothing. So a test that wants a drop has to hand over
+# something readable and wrong, and only this knows what that is.
+function Get-TestProcStartMismatch ([int] $ProcessId = $PID) {
+    if ($IsLinux) {
+        return [string]([long](Get-TestProcStart -ProcessId $ProcessId) + 1000)   # clock ticks
     }
-    else { Get-ProcessStartTicks -ProcessId $ProcessId }
+    $p = [System.Diagnostics.Process]::GetProcessById($ProcessId)
+    try {
+        # FILETIME, in 100 ns units, so this is 100 s off.
+        if ($IsWindows) { return [string]($p.StartTime.ToFileTimeUtc() + 1000000000) }
+        # asctime: the same process, a day earlier. Parses, and matches nothing.
+        return Format-TestAsctime $p.StartTime.ToUniversalTime().AddDays(-1)
+    } finally { $p.Dispose() }
 }
 
 # Snapshot and restore a set of environment variables around a test.

@@ -1,14 +1,34 @@
-# The Linux input classifier: which bytes mean "exit", which carry a key, which
+# The Unix input classifier: which bytes mean "exit", which carry a key, which
 # mean "click", and which the terminal owns.
 # Classify is pure - a byte array in, a verdict out - so every terminal quirk is
-# tested without a terminal. This file compiles ConsoleVT_Linux.cs standalone, so
+# tested without a terminal. This file compiles ConsoleVT_Unix.cs standalone, so
 # Windows CI covers the parser too, even though matrix never runs it there.
 BeforeAll {
     . (Join-Path $PSScriptRoot '../lib/console.ps1')
     . (Join-Path $PSScriptRoot 'Fixtures.ps1')
 
-    $script:VT = @(Import-TestCsType @((Join-Path $PSScriptRoot '../lib/cs/ConsoleVT_Linux.cs')) `
-                                        @('MatrixVT{0}.ConsoleVT'))[0]
+    $script:Cs = Join-Path $PSScriptRoot '../lib/cs'
+
+    # Which ABI this platform runs, decided once, and every reader below takes it
+    # from here. The live raw-mode block at the bottom builds its own probe
+    # against the same struct, and two evaluations of one condition could
+    # disagree. The first It in that block guards against it. $script:, because
+    # the repo's Pester 5 note applies here too.
+    $script:Abi = if ($IsMacOS) { 'Darwin' } else { 'Linux' }
+
+    # One pair, this platform's. Not both.
+    #
+    # Two sources under one $TypeNames list share a cache family, and
+    # Add-TaggedTypes keeps one live tag per family. Each compile deletes the
+    # other's cached DLL, so both recompile on every run, for about a second
+    # each. See the same collision in console.ps1.
+    #
+    # The three CI runners cover both files instead: Windows and Linux build
+    # Termios_Linux.cs, macOS builds Termios_Darwin.cs, so neither can rot
+    # without a job going red.
+    $script:VT = @(Import-TestCsType @((Join-Path $script:Cs 'ConsoleVT_Unix.cs'),
+                                       (Join-Path $script:Cs "Termios_$($script:Abi).cs")) `
+                                     @('MatrixVT{0}.ConsoleVT'))[0]
 
     # Defined in BeforeAll, like every helper in the other suites: file-level
     # functions are not visible inside It blocks under Pester 5.
@@ -19,7 +39,7 @@ BeforeAll {
     }
 }
 
-Describe 'ConsoleVT (Linux): plain keys' {
+Describe 'ConsoleVT (Unix): plain keys' {
     It 'eats an empty buffer' {
         (Test-Classify @()).What | Should -Be 0          # NONE
     }
@@ -72,7 +92,7 @@ Describe 'ConsoleVT (Linux): plain keys' {
     }
 }
 
-Describe 'ConsoleVT (Linux): SGR mouse' {
+Describe 'ConsoleVT (Unix): SGR mouse' {
     # Konsole with 1006-mode on reports ESC [ < button ; column ; row M, where
     # columns and rows are 1-based, M is a press and m is a release.
     BeforeAll {
@@ -119,7 +139,7 @@ Describe 'ConsoleVT (Linux): SGR mouse' {
     }
 }
 
-Describe 'ConsoleVT (Linux): keys that must not exit' {
+Describe 'ConsoleVT (Unix): keys that must not exit' {
     # Scrolling in Konsole sends cursor keys. A rain that exits on the scroll
     # wheel is a rain that ends the moment anyone looks back at its history.
     It 'consumes a cursor key' {
@@ -163,7 +183,7 @@ Describe 'ConsoleVT (Linux): keys that must not exit' {
     }
 }
 
-Describe 'ConsoleVT (Linux): mode surface' {
+Describe 'ConsoleVT (Unix): mode surface' {
     # matrix.ps1 drives the same call sequence on both platforms. The stub answers
     # what the script needs, whatever the underlying OS actually offers.
     It 'reports the VT bit already on, because a terminal that runs this has one' {
@@ -186,7 +206,7 @@ Describe 'ConsoleVT (Linux): mode surface' {
     }
 }
 
-Describe 'ConsoleVT (Linux): raw mode against a real terminal' `
+Describe 'ConsoleVT (Unix): raw mode against a real terminal' `
         -Skip:($IsWindows -or [Console]::IsInputRedirected) {
     # The freeze class the rain hit live, twice: something else rewrites stdin
     # termios after we went raw - .NET's [Console] property setters apply their
@@ -196,34 +216,87 @@ Describe 'ConsoleVT (Linux): raw mode against a real terminal' `
     BeforeAll {
         # A termios reader of our own, to see what is really set: the lflag's
         # ICANON|ECHO bits and VMIN, as "flags|VMIN".
+        #
+        # A second copy of the ABI, deliberately. The production one lives in
+        # Termios_*.cs and is internal. A probe that asked the code under test
+        # what it set would agree with itself on a wrong layout. The four values
+        # that differ are spelled out here, next to the assertion that reads them.
+        #
+        # Keyed off $script:Abi, not a second reading of the platform. The first
+        # It below guards against a mismatch.
+        $spec = @{
+            # tcflag_t is unsigned int, NCCS 32, a c_line byte, VMIN at 6,
+            # ICANON 0x2 | ECHO 0x8.
+            Linux  = @{ Flag = 'uint';  Line = 'public byte c_line;'
+                        Nccs = 32; VMin = 6;  Mask = '0xA' }
+            # tcflag_t is unsigned long, NCCS 20, no c_line, VMIN at 16,
+            # ICANON 0x100 | ECHO 0x8.
+            Darwin = @{ Flag = 'ulong'; Line = ''
+                        Nccs = 20; VMin = 16; Mask = '0x108' }
+        }
+        $abi = $spec[$script:Abi]
+
         # Through Add-TaggedTypes, like every other compiled type in the suite: a
         # plain Add-Type binds the name for the session, so a second Invoke-Pester
         # in the same shell fails the whole block on "the type already exists".
-        $script:Tty = @(Add-TaggedTypes @'
+        # The tag hashes the source, so the two platforms' probes never collide.
+        $script:Tty = @(Add-TaggedTypes (@'
 namespace MatrixTty__TAG__ {
 using System;
 using System.Runtime.InteropServices;
 public static class TtyProbe {
     [StructLayout(LayoutKind.Sequential)]
     public struct Termios {
-        public uint c_iflag, c_oflag, c_cflag, c_lflag;
-        public byte c_line;
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 32)] public byte[] c_cc;
-        public uint c_ispeed, c_ospeed;
+        public {FLAG} c_iflag, c_oflag, c_cflag, c_lflag;
+        {LINE}
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = {NCCS})] public byte[] c_cc;
+        public {FLAG} c_ispeed, c_ospeed;
     }
     [DllImport("libc")]
     private static extern int tcgetattr(int fd, ref Termios t);
     public static string Look() {
-        Termios t = new Termios(); t.c_cc = new byte[32];
+        Termios t = new Termios(); t.c_cc = new byte[{NCCS}];
         if (tcgetattr(0, ref t) != 0) return "gone";
-        return (t.c_lflag & 0xA) + "|" + t.c_cc[6];
+        return (t.c_lflag & {MASK}) + "|" + t.c_cc[{VMIN}];
     }
 }
 }
-'@ 'MatrixTty{0}.TtyProbe')[0]
+'@ -replace '\{FLAG\}', $abi.Flag -replace '\{LINE\}', $abi.Line `
+   -replace '\{NCCS\}', $abi.Nccs -replace '\{VMIN\}', $abi.VMin `
+   -replace '\{MASK\}', $abi.Mask) 'MatrixTty{0}.TtyProbe')[0]
+    }
+
+    It 'reads real termios bits rather than zeros off a mismatched struct' {
+        # Run first, and the reason the rest can be trusted. A probe built on the
+        # wrong struct reads every field at the wrong offset and answers zero for
+        # all of them. "0|0" is exactly what raw mode looks like, so a wrong
+        # layout passes the raw assertion below by accident and fails only the
+        # restore.
+        #
+        # Do not assume a cooked terminal. Under an interactive PowerShell,
+        # PSReadLine has already taken ICANON and ECHO off for its line editing.
+        # ICANON reads 0 here, and that is correct. VMIN is 1 until something
+        # goes raw, whatever else is set. A reading of "0|0" before any write is
+        # the struct failing, not the terminal.
+        $look = $Tty::Look()
+        $look | Should -Not -Be 'gone' -Because 'tcgetattr must answer for a real tty'
+        $look | Should -Not -Be '0|0' -Because (
+            "the $($script:Abi) probe must read this platform's termios, not zeros")
     }
 
     It 'takes raw back after a Console property setter walked over it' {
+        # What the terminal is before anything touches it, and what it has to be
+        # again afterwards. Not a constant: cooked from a script, and already
+        # non-canonical under an interactive PowerShell.
+        $before = $Tty::Look()
+
+        # Re-checked here, before the first write, because Pester runs on past a
+        # failure. This block mangles a real terminal on purpose. Through a
+        # struct that does not match the platform, it leaves the shell that ran
+        # the suite with no line editing.
+        $before | Should -Not -Be '0|0' -Because (
+            'this block only writes termios it can read back')
+
         try {
             [void]$VT::SetStdinMode(0x0090)          # MOUSE_ON: raw, and the mouse reported
             [Console]::TreatControlCAsInput = $true  # the write that once undid it
@@ -235,8 +308,23 @@ public static class TtyProbe {
             # the last write to win.
             try { [Console]::TreatControlCAsInput = $false } catch { }
             [void]$VT::SetStdinMode(0)               # give the terminal back
+            # Read the restored terminal once, here. The net below writes a sane
+            # terminal, and sane is what a script starts from. A second reading
+            # taken after it would compare the net's own work against $before and
+            # pass.
+            $after = $Tty::Look()
+            # And if it did not come back, take it back by force. The restore
+            # above replays the termios EnterRaw saved. A bug there hands the
+            # shell that ran the suite a terminal with no line editing, which a
+            # developer then has to know to fix with stty by hand. A test that
+            # breaks the terminal it runs from is worse than a failing one. The
+            # net belongs here rather than in the advice.
+            if ($after -ne $before) {
+                & stty sane 2>$null
+                Write-Warning 'stdin did not come back from raw: reset with stty sane'
+            }
         }
-        # The restore puts line editing and echo back, whatever VMIN it lands on.
-        ($Tty::Look() -notmatch '^0\|') | Should -BeTrue
+        # Back exactly as found: LeaveRaw replays what EnterRaw saved.
+        $after | Should -Be $before
     }
 }

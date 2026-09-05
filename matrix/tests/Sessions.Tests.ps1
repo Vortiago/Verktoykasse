@@ -10,6 +10,7 @@ BeforeAll {
     New-Item -ItemType Directory -Path (Join-Path $fakeHome 'sessions') -Force | Out-Null
     New-Item -ItemType Directory -Path (Join-Path $fakeHome 'projects/D--repos-matrix') -Force | Out-Null
 
+    . (Join-Path $PSScriptRoot '../lib/proc.ps1')
     . (Join-Path $PSScriptRoot '../lib/console.ps1')
     . (Join-Path $PSScriptRoot '../lib/sessions.ps1')
 
@@ -39,6 +40,10 @@ BeforeAll {
         $script:SessionFact     = @{}
         $script:SessionProbe    = @{}
         $script:TranscriptState = @{}
+        # The pid -> ppid table and its clock, dropped together the way
+        # Get-ProcParentMap sets them: the clock alone says there is a map.
+        $script:ProcParentMap   = $null
+        $script:ProcParentAt    = $null
     }
 
     # The transcript is the only witness for a host that writes no status, so these
@@ -174,14 +179,24 @@ Describe 'Get-ClaudeSession' {
     }
 
     It 'drops a recycled PID, which is what procStart is for' {
-        # Same live PID, a start time that is not this process's.
-        Write-Registry 'a' (New-Record 'sid-a' 'busy' @{ procStart = '1' })
+        # Same live PID, a start time that is not this process's. Through the
+        # fixture, because the value has to be readable and wrong.
+        Write-Registry 'a' (New-Record 'sid-a' 'busy' @{ procStart = (Get-TestProcStartMismatch) })
         @(Get-ClaudeSession) | Should -HaveCount 0
     }
 
+    It 'keeps a session whose procStart it cannot read at all' {
+        # The other half of the rule above, and the reason the fixture exists.
+        # Unreadable is not mismatched: dropping a live lane over a field shape
+        # this platform does not recognise is the worse failure.
+        Write-Registry 'a' (New-Record 'sid-a' 'busy' @{ procStart = 'not a start time' })
+        @(Get-ClaudeSession) | Should -HaveCount 1
+    }
+
     It 'accepts the start time Claude writes on this platform' {
-        # The registry holds a FILETIME on Windows and /proc clock ticks on Linux.
-        # A check that reads one as the other finds every session dead.
+        # The registry holds a FILETIME on Windows, /proc clock ticks on Linux,
+        # and an asctime string in UTC on macOS. A check that reads one as
+        # another finds every session dead.
         Write-Registry 'a' (New-Record 'sid-a' 'busy')
         @(Get-ClaudeSession) | Should -HaveCount 1
     }
@@ -586,13 +601,107 @@ Describe 'ConvertTo-ProcStartTicks' {
     }
 }
 
-Describe 'Test-SessionAlive on an unreadable stat line' -Skip:($IsWindows) {
+Describe 'Test-SessionAlive on an unreadable stat line' -Skip:(-not $IsLinux) {
+    # Linux only: the /proc branch is the one that reads a stat line at all.
     It 'keeps the session, the same answer an unreadable procStart gets' {
         # The rule sessions.ps1 already states for a procStart that will not
         # parse. The reading side has to answer the same way, or a live lane
         # vanishes for the rest of the run over an unreadable stat line.
         Mock Get-ProcessStartTicks { $null }
         Test-SessionAlive -ProcessId $PID -ProcStart '12345' | Should -BeTrue
+    }
+}
+
+Describe 'ConvertTo-ProcStartUtc' {
+    # What Claude writes as procStart on macOS: asctime, in UTC. A pure parse, so
+    # every platform runs it. The value below is a real record off macOS.
+    It 'reads an asctime string as UTC' {
+        $t = ConvertTo-ProcStartUtc 'Fri Sep  4 12:03:56 2026'
+        $t | Should -Not -BeNullOrEmpty
+        $t.Kind   | Should -Be ([System.DateTimeKind]::Utc)
+        $t.Year   | Should -Be 2026
+        $t.Month  | Should -Be 9
+        $t.Day    | Should -Be 4
+        $t.Hour   | Should -Be 12
+        $t.Minute | Should -Be 3
+        $t.Second | Should -Be 56
+    }
+
+    It 'reads a two-digit day, which is padded with one space less' {
+        # "Sep  4" and "Sep 14" differ in width. A format that only fits one of
+        # them drops every session started on the other half of the month.
+        $t = ConvertTo-ProcStartUtc 'Mon Sep 14 12:03:56 2026'
+        $t.Day | Should -Be 14
+    }
+
+    It 'does not read it as local time' {
+        # The bug this guards: procStart is UTC, and StartTime is local. Comparing
+        # the two without converting drops every session on a box that is not on
+        # UTC, which is most of them.
+        $t = ConvertTo-ProcStartUtc 'Fri Sep  4 12:03:56 2026'
+        $t.ToUniversalTime().Hour | Should -Be 12
+    }
+
+    It 'answers nothing for a string it cannot read, so the session is kept' {
+        ConvertTo-ProcStartUtc ''              | Should -BeNullOrEmpty
+        ConvertTo-ProcStartUtc '12345'         | Should -BeNullOrEmpty
+        ConvertTo-ProcStartUtc 'not a date'    | Should -BeNullOrEmpty
+        # A FILETIME, which is what the same field holds on Windows.
+        ConvertTo-ProcStartUtc '133012345678'  | Should -BeNullOrEmpty
+    }
+}
+
+Describe 'ConvertTo-ProcParentMap' {
+    # `ps -Ao pid=,ppid=` is how a platform with no /proc answers the parent
+    # question. The parse is split from the call, so it runs on every platform.
+    It 'reads the pid and ppid columns' {
+        $map = ConvertTo-ProcParentMap "    1     0`n   93     1`n  456    93`n"
+        $map[1]   | Should -Be 0
+        $map[93]  | Should -Be 1
+        $map[456] | Should -Be 93
+    }
+
+    It 'drops a row that does not hold two numbers' {
+        # The blank last line, and anything ps prints that is not a row.
+        $map = ConvertTo-ProcParentMap "  1  0`n`n  PID PPID`n  2  1`n"
+        $map.Count | Should -Be 2
+        $map[1] | Should -Be 0
+        $map[2] | Should -Be 1
+    }
+
+    It 'answers an empty map for no output' {
+        (ConvertTo-ProcParentMap '').Count   | Should -Be 0
+        (ConvertTo-ProcParentMap $null).Count | Should -Be 0
+    }
+}
+
+Describe 'Get-ProcessAncestorId without /proc' {
+    # The branch macOS takes. Driven through the seam, so every platform runs it
+    # rather than only the platforms where ps exists.
+    It 'walks a table it was handed' {
+        $table = { @{ 500 = 400; 400 = 300; 300 = 1; 1 = 0 } }
+        $chain = @(Get-ProcessAncestorId -ProcessId 500 -Parents $table)
+        $chain | Should -Be @(500, 400, 300, 1)
+    }
+
+    It 'stops at a pid the table does not name, rather than looping' {
+        $chain = @(Get-ProcessAncestorId -ProcessId 500 -Parents { @{ 500 = 400 } })
+        $chain | Should -Be @(500, 400)
+    }
+
+    It 'answers with just the pid when the table is empty' {
+        # What Windows gets: there is no ps to run, so the walk stops at once.
+        $chain = @(Get-ProcessAncestorId -ProcessId 500 -Parents { @{} })
+        $chain | Should -Be @(500)
+    }
+
+    It "walks this shell's own chain for real" -Skip:($IsWindows -or (Test-Path '/proc')) {
+        # macOS only: the one place the default seam runs a real ps. Its chain
+        # contains itself and reaches launchd at pid 1.
+        $chain = @(Get-ProcessAncestorId -ProcessId $PID)
+        $chain.Count | Should -BeGreaterThan 1
+        $chain[0]    | Should -Be $PID
+        $chain       | Should -Contain 1
     }
 }
 

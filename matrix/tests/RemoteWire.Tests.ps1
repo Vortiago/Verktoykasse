@@ -1,7 +1,8 @@
 # The wire format a remote machine speaks. Every function here is pure, so a
 # peer, a socket and a second machine are all out of the picture: a string goes
-# in and a session or a verdict comes out. Both CI runners run all of it.
+# in and a session or a verdict comes out. All three CI runners run all of it.
 BeforeAll {
+    . (Join-Path $PSScriptRoot '../lib/proc.ps1')
     . (Join-Path $PSScriptRoot '../lib/console.ps1')
     . (Join-Path $PSScriptRoot '../lib/sessions.ps1')
     . (Join-Path $PSScriptRoot '../lib/remote/wire.ps1')

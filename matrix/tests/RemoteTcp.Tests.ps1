@@ -5,6 +5,7 @@
 # Port 0 throughout: the operating system hands out a free one and the test reads
 # it back. A fixed port would fight a real rain running on the same machine.
 BeforeAll {
+    . (Join-Path $PSScriptRoot '../lib/proc.ps1')   # Invoke-Tool
     . (Join-Path $PSScriptRoot '../lib/remote/tcp.ps1')
     . (Join-Path $PSScriptRoot 'Fixtures.ps1')   # Wait-Until
 
@@ -201,24 +202,111 @@ Describe 'tcp: naming the local ssh process' {
         ConvertTo-SocketOwnerId 'users:(("ssh",pid=11,fd=3),("ssh",pid=22,fd=4))' | Should -Be 11
     }
 
-    It 'asks for the port it was given' -Skip:($IsWindows) {
+    It 'asks the seam for the port it was given' -Skip:($IsWindows) {
+        # The seam is the whole lookup, a port in and a pid out, so this covers
+        # the wiring on either platform.
         $script:seen = $null
-        $call = { param($p) $script:seen = $p; 'users:(("ssh",pid=4242,fd=3))' }
-        Resolve-PeerProcessId -Port 34234 -Call $call | Should -Be 4242
+        Resolve-PeerProcessId -Port 34234 -Owner { param($p) $script:seen = $p; 4242 } |
+            Should -Be 4242
         $script:seen | Should -Be 34234
     }
 
-    It 'answers zero when ss knows nothing' -Skip:($IsWindows) {
-        Resolve-PeerProcessId -Port 34234 -Call { param($p) '' } | Should -Be 0
+    It 'answers zero when the tool knows nothing' -Skip:($IsWindows) {
+        # Empty output is what Invoke-Tool answers for a tool that is missing or
+        # will not stop. The real parse turns that into an unknown owner.
+        Resolve-PeerProcessId -Port 34234 -Owner { param($p) ConvertTo-SsOwnerId -Text '' } |
+            Should -Be 0
     }
 
     It 'answers zero for a port that cannot be one' {
-        Resolve-PeerProcessId -Port 0 -Call { param($p) throw 'never called' } | Should -Be 0
+        # The seam answers a pid for every port, so a zero back is proof that
+        # the guard ran and the seam did not.
+        Resolve-PeerProcessId -Port 0 -Owner { param($p) 4242 } | Should -Be 0
+    }
+
+    It 'has a default seam, so a click is answered without one being passed' {
+        # The only test that looks at $script:PeerOwner itself, and the reason it
+        # exists: every other case here hands in an -Owner. A default that did not
+        # resolve would leave $Owner null, the invoke would throw, and the catch in
+        # Resolve-PeerProcessId would read that as a zero. The remote click would
+        # then stop working for good, and every test here would still pass.
+        $script:PeerOwner | Should -Not -BeNullOrEmpty
+        $script:PeerOwner | Should -BeOfType [scriptblock]
+    }
+
+    It 'runs the default seam without throwing' -Skip:($IsWindows) {
+        # Port 1 holds no established connection, so the real tool answers nothing
+        # and the real parse answers zero. What this covers is the wiring: the
+        # default resolves, the tool runs or is absent, and neither costs the rain
+        # more than the pid.
+        Resolve-PeerProcessId -Port 1 | Should -Be 0
+    }
+
+    Context 'the lsof shape, which macOS reads instead of ss' {
+        # -F writes one field per line, tagged by its first character, and a
+        # process's rows follow its p line. Run on every platform: the parse is
+        # the part worth testing, and it needs no lsof to run.
+        BeforeAll {
+            # Copied from real lsof output, f rows and all: a process's sockets
+            # follow its p row as f/n pairs, and one process can hold several.
+            # Asking for the port returns both ends of it - the ssh client, whose
+            # local end is its own ephemeral port, and the rain's accepted socket,
+            # whose local end is 9999.
+            $script:bothEnds = @(
+                'p57446'                                # the ssh client
+                'f20'
+                'n10.10.50.41:58134->10.10.50.41:1234'  # another socket of its own
+                'f26'
+                'n127.0.0.1:56817->127.0.0.1:9999'
+                'p52242'                                # the rain
+                'f15'
+                'n127.0.0.1:9999->127.0.0.1:56817'
+            ) -join "`n"
+        }
+
+        It 'takes the process whose local end is the port, past the f rows' {
+            # The rule, and the reason the whole output is parsed at once: both
+            # ends of 9999 are here, and only one process holds it locally. The
+            # f rows are neither p nor n, and are ignored.
+            ConvertTo-LsofOwnerId -Text $bothEnds -Port 9999 | Should -Be 52242
+        }
+
+        It 'takes the other process for the other end, past its earlier socket' {
+            # The case the click actually asks: the ssh client, named by the
+            # ephemeral source port the rain read off its accepted socket. p57446
+            # holds two sockets, and only the second is the one asked about.
+            ConvertTo-LsofOwnerId -Text $bothEnds -Port 56817 | Should -Be 57446
+        }
+
+        It 'does not match a port the asked-for one is only a suffix of' {
+            # :9999 must not answer for :19999, which EndsWith on ":$Port" is
+            # what stops. A bare Contains would take either.
+            $text = "p1`nn127.0.0.1:19999->127.0.0.1:22"
+            ConvertTo-LsofOwnerId -Text $text -Port 9999 | Should -Be 0
+        }
+
+        It 'answers zero for a listener, which has no arrow' {
+            ConvertTo-LsofOwnerId -Text "p52242`nn127.0.0.1:9999" -Port 9999 | Should -Be 0
+        }
+
+        It 'ignores an n row that no p row precedes' {
+            ConvertTo-LsofOwnerId -Text 'n127.0.0.1:9999->127.0.0.1:1' -Port 9999 | Should -Be 0
+        }
+
+        It 'answers zero for no output at all' {
+            ConvertTo-LsofOwnerId -Text '' -Port 9999 | Should -Be 0
+        }
+
+        It 'survives a p row that is not a number' {
+            ConvertTo-LsofOwnerId -Text "pxyz`nn127.0.0.1:9999->127.0.0.1:1" -Port 9999 |
+                Should -Be 0
+        }
     }
 
     It 'answers zero on Windows without running anything' -Skip:(-not $IsWindows) {
         # No ss there, and the Windows backend matches tabs on title rather than
-        # on a pid, so there is nothing to feed.
-        Resolve-PeerProcessId -Port 34234 -Call { param($p) throw 'never called' } | Should -Be 0
+        # on a pid, so there is nothing to feed. The seam answers a pid, so a
+        # zero back is proof that it never ran.
+        Resolve-PeerProcessId -Port 34234 -Owner { param($p) 4242 } | Should -Be 0
     }
 }

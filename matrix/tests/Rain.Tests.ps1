@@ -5,6 +5,7 @@ BeforeAll {
     # For Get-TestProcStart: the fake registry's live record must carry the same
     # procStart this platform's Claude writes. Fixtures reads it through
     # sessions.ps1, so both are sourced.
+    . (Join-Path $PSScriptRoot '../lib/proc.ps1')
     . (Join-Path $PSScriptRoot '../lib/console.ps1')
     . (Join-Path $PSScriptRoot '../lib/sessions.ps1')
     . (Join-Path $PSScriptRoot 'Fixtures.ps1')
@@ -194,9 +195,17 @@ Describe 'matrix.ps1 -Remote' {
             $n = $stream.Read($buf, 0, $buf.Length)
             $answer = ConvertFrom-Json (([System.Text.Encoding]::UTF8.GetString($buf, 0, $n) -split "`n")[0])
             $answer.t | Should -Be 'welcome'
-            # Frames stop after this one, so the lane goes offline five seconds
-            # later. Give the rain a moment to draw it before that.
-            Start-Sleep -Milliseconds 1500
+            # Let -Seconds stop the rain, and read after it has. Stop-RainAsync
+            # kills a rain that is still running, and a kill loses whatever sits
+            # in the block buffer behind a redirected stdout. A fixed sleep here
+            # raced the first flush and lost it on a loaded machine.
+            #
+            # Waiting on the text instead would not do: a redirected stdout
+            # cannot be opened while the child holds it, so a mid-run read
+            # answers nothing. Invoke-ExposeRain above waits the same way, and
+            # its header states the same reason.
+            (Wait-Until -TimeoutMs 20000 -StepMs 100 -Condition { $run.Process.HasExited }) |
+                Should -BeTrue -Because '-Seconds should stop the rain on its own'
         } finally {
             if ($client) { try { $client.Dispose() } catch { } }
             $r = Stop-RainAsync $run

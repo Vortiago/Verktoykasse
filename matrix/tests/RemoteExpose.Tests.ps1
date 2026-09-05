@@ -5,6 +5,7 @@
 # -ExposeOnSSH is wired up end to end in Rain.Tests.ps1, where the harness that
 # starts the script as a child already lives.
 BeforeAll {
+    . (Join-Path $PSScriptRoot '../lib/proc.ps1')
     . (Join-Path $PSScriptRoot '../lib/console.ps1')
     . (Join-Path $PSScriptRoot '../lib/sessions.ps1')
     . (Join-Path $PSScriptRoot '../lib/remote/wire.ps1')

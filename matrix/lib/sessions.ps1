@@ -6,7 +6,8 @@
 #   status       busy | waiting | idle           the three states we colour by
 #   waitingFor   reason, only set on waiting      "input needed", "sandbox request", ...
 #   procStart    the process start, platform-shaped  guards against PID reuse
-#                (a FILETIME on Windows, /proc clock ticks on Linux)
+#                (a FILETIME on Windows, /proc clock ticks on Linux, and an
+#                 asctime string in UTC on macOS: "Fri Sep  4 12:03:56 2026")
 #
 # The file also names a peer pipe carrying notify_idle. That pipe rejects subscribers
 # that are not registered sessions, so read status from the files. See README.md.
@@ -53,10 +54,34 @@ function Get-ProcessStartTicks {
     ConvertTo-ProcStartTicks ([System.IO.File]::ReadAllText("/proc/$ProcessId/stat"))
 }
 
+# macOS has no /proc, so Claude writes procStart as an asctime string there:
+# "Fri Sep  4 12:03:56 2026". AllowWhiteSpaces is what reads the day, which is
+# space padded to two columns. AssumeUniversal says the string is UTC, and
+# AdjustToUniversal keeps the result so.
+#
+# Split from its caller like ConvertTo-ProcStartTicks above. The parse is the
+# part worth testing, and it runs on any platform.
+$script:ProcStartFormat = 'ddd MMM d HH:mm:ss yyyy'
+$script:ProcStartStyles = [System.Globalization.DateTimeStyles]::AllowWhiteSpaces -bor
+                          [System.Globalization.DateTimeStyles]::AssumeUniversal -bor
+                          [System.Globalization.DateTimeStyles]::AdjustToUniversal
+
+function ConvertTo-ProcStartUtc {
+    # Nothing, not a zero date, for a string this cannot read. The caller treats
+    # $null as "verifies nothing" and keeps the session.
+    param([AllowEmptyString()] [string] $ProcStart)
+    if (-not $ProcStart) { return $null }
+    [datetime] $utc = [datetime]::MinValue
+    if (-not [datetime]::TryParseExact($ProcStart.Trim(), $script:ProcStartFormat,
+                                       [System.Globalization.CultureInfo]::InvariantCulture,
+                                       $script:ProcStartStyles, [ref] $utc)) { return $null }
+    $utc
+}
+
 function Test-SessionAlive {
     # PID alive, and started when the file says. A recycled PID fails the second test.
     param([int] $ProcessId, [string] $ProcStart)
-    if (-not $IsWindows) {
+    if ($IsLinux) {
         # One /proc read answers both questions here: no stat file, no process.
         # GetProcessById would read the same /proc entry a second time.
         try { $start = Get-ProcessStartTicks -ProcessId $ProcessId }
@@ -77,33 +102,117 @@ function Test-SessionAlive {
     # Dispose: StartTime opens a kernel handle. This runs per session per poll.
     try {
         if (-not $ProcStart) { return $true }
-        # Claude writes a FILETIME on Windows. 2 s of slop: the file holds the
-        # value Claude read, not our conversion of it. No StartTime rights, or a
-        # procStart that does not cast, verifies nothing. Keep the session
-        # rather than kill the poll under EAP=Stop.
-        try { return [Math]::Abs($p.StartTime.ToFileTimeUtc() - [int64]$ProcStart) -lt 20000000 }
+        # 2 s of slop, because the file holds the value Claude read and not this
+        # conversion of it. No StartTime rights, or a procStart that does not read
+        # back, verifies nothing: keep the session rather than kill the poll under
+        # ErrorActionPreference = Stop.
+        try {
+            $want = if ($IsWindows) { [datetime]::FromFileTimeUtc([int64]$ProcStart) }
+                    else            { ConvertTo-ProcStartUtc $ProcStart }
+            if ($null -eq $want) { return $true }
+            return ([Math]::Abs(($p.StartTime.ToUniversalTime() - $want).TotalSeconds) -lt 2)
+        }
         catch { return $true }
     } finally { $p.Dispose() }
 }
 
+function ConvertTo-ProcParentMap {
+    <#
+    .SYNOPSIS
+        pid -> ppid, out of `ps -Ao pid=,ppid=` output.
+    .DESCRIPTION
+        Split from the call below the way ConvertTo-TmuxTab is split from
+        Invoke-Tmux, so a platform that never runs ps still covers this parse.
+
+        Both columns are right aligned and padded to their widest row, so a row
+        is split on whitespace rather than cut at a column. A row that does not
+        hold two numbers drops itself: the header ps omits, and the blank last
+        line, both arrive here.
+    #>
+    param([AllowEmptyString()] [string] $Text)
+    $map = @{}
+    if (-not $Text) { return $map }
+    # String.Split, not -split: -split is a regex split, and this walks every
+    # process on the machine (700 or so on a busy macOS box).
+    $rows = $Text.Split([char]10, [StringSplitOptions]::RemoveEmptyEntries)
+    foreach ($row in $rows) {
+        $f = $row.Split([char[]]@(' ', "`t", "`r"), [StringSplitOptions]::RemoveEmptyEntries)
+        if ($f.Count -lt 2) { continue }
+        [int] $child = 0
+        [int] $parent = 0
+        if (-not [int]::TryParse($f[0], [ref] $child))  { continue }
+        if (-not [int]::TryParse($f[1], [ref] $parent)) { continue }
+        $map[$child] = $parent
+    }
+    $map
+}
+
+# The table, and how long it is trusted. A tab-map rebuild walks every session in
+# a burst, and one ps costs 40-120 ms on a machine with 700 processes. Per hop,
+# per session, that is a visible stutter, so Get-ProcParentMap reads the table
+# once and holds it for the burst. The window spans one burst rather than the gap
+# between two polls.
+#
+# Windows has no ps on PATH. The name is a Get-Process alias, which
+# Process.Start does not see, so Invoke-Tool answers '' and the table comes back
+# empty. Nothing there asks: no Windows backend matches a session on a process
+# tree.
+$script:ProcParentMap = $null
+$script:ProcParentAt  = $null
+
+function Get-ProcParentMap {
+    # The table and the clock are always set together, so the clock alone says
+    # whether there is a usable table.
+    if ($script:ProcParentAt -and $script:ProcParentAt.ElapsedMilliseconds -lt 1000) {
+        return $script:ProcParentMap
+    }
+    $script:ProcParentMap = ConvertTo-ProcParentMap (Invoke-Tool -FileName 'ps' `
+                                                                 -ToolArgs @('-Ao', 'pid=,ppid='))
+    $script:ProcParentAt  = [System.Diagnostics.Stopwatch]::StartNew()
+    $script:ProcParentMap
+}
+
 function Get-ProcessAncestorId {
-    # A pid and every pid above it, from /proc. The chain is short, and the walk
-    # runs once per session per tab-map rebuild, not per poll.
+    # A pid and every pid above it. The chain is short, and the walk runs once
+    # per session per tab-map rebuild, not per poll.
     #
     # Lives here, next to the other process-table readers, because both tab
     # backends that match a session on a process tree - Konsole's tab shell and
     # tmux's pane_pid - walk the same one.
-    param([Parameter(Mandatory)] [int] $ProcessId)
+    #
+    # One hop, chosen once. Linux reads one /proc entry per hop. Every other
+    # platform indexes the whole table, read once. Neither choice can change
+    # inside the walk, so the walk does not ask, and a hop that answers -1 is the
+    # only way to stop.
+    #
+    # Handing in $Parents selects the table hop on any platform, which is how the
+    # Linux run of the suite tests it. Without that, /proc answers there and the
+    # suite never exercises the seam.
+    param([Parameter(Mandatory)] [int] $ProcessId,
+          # test seam: the pid -> ppid table, for the platforms that read one
+          [scriptblock] $Parents = ${function:Get-ProcParentMap})
+
+    $hop = if ($IsLinux -and -not $PSBoundParameters.ContainsKey('Parents')) {
+        {
+            param($child)
+            try {
+                $m = [regex]::Match([System.IO.File]::ReadAllText("/proc/$child/status"),
+                                    '(?m)^PPid:\s+(\d+)')
+                if ($m.Success) { [int]$m.Groups[1].Value } else { -1 }
+            } catch { -1 }
+        }
+    }
+    else {
+        $map = & $Parents
+        { param($child) if ($map.ContainsKey($child)) { [int]$map[$child] } else { -1 } }
+    }
+
     $out = [System.Collections.Generic.List[int]]::new()
     $p = $ProcessId
     for ($i = 0; $i -lt 64 -and $p -ge 1; $i++) {
         $out.Add($p)
-        try {
-            $m = [regex]::Match([System.IO.File]::ReadAllText("/proc/$p/status"),
-                                '(?m)^PPid:\s+(\d+)')
-            if (-not $m.Success) { break }
-            $p = [int]$m.Groups[1].Value
-        } catch { break }
+        $p = & $hop $p
+        if ($p -lt 0) { break }
     }
     $out
 }

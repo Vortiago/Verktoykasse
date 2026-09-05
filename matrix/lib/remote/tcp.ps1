@@ -204,38 +204,84 @@ function ConvertTo-SocketOwnerId {
     [int]$m.Groups[1].Value
 }
 
-function Invoke-Ss {
-    # The external call, alone in its own function so the parse above can be
-    # tested without one. Same shape as Invoke-Tmux.
-    param([string[]] $SsArgs)
-    $psi = [System.Diagnostics.ProcessStartInfo]::new()
-    $psi.FileName = 'ss'
-    foreach ($a in $SsArgs) { $psi.ArgumentList.Add($a) }
-    $psi.RedirectStandardOutput = $true
-    $psi.RedirectStandardError = $true
-    $psi.UseShellExecute = $false
-    # $p exists only once Start answers, and a missing ss throws here. The finally
-    # must survive a failed start, the way Invoke-Tmux's does.
-    $p = $null
-    try {
-        $p = [System.Diagnostics.Process]::Start($psi)
-        # Both pipes drained at once: reading one to the end first deadlocks when
-        # the other fills. The lesson Invoke-Tmux carries.
-        $out = $p.StandardOutput.ReadToEndAsync()
-        $err = $p.StandardError.ReadToEndAsync()
-        if (-not $p.WaitForExit(2000)) {
-            # Kill it rather than read .Result, which waits with no bound at all.
-            # This is reached from a click, and a hung ss would hang the rain.
-            try { $p.Kill() } catch { }
-            return ''
+function ConvertTo-LsofOwnerId {
+    <#
+    .SYNOPSIS
+        The pid out of `lsof -Fpn` output, for the row whose local end is $Port.
+    .DESCRIPTION
+        macOS has no ss. lsof answers the same question in a different shape, and
+        this is the parse, split from the call the way ConvertTo-SocketOwnerId is.
+
+        -F writes one field per line, tagged by its first character, and the rows
+        for one process follow its p line:
+
+            p169854
+            n127.0.0.1:56817->127.0.0.1:9999
+
+        -iTCP:N matches either end of a connection, so the rain's own accepted
+        socket comes back alongside the ssh client's. The one we want has the port
+        on the LEFT of the arrow, which is the local end of that process's socket.
+    #>
+    param([AllowEmptyString()] [string] $Text, [Parameter(Mandatory)] [int] $Port)
+    if (-not $Text) { return 0 }
+    # if/elseif, not switch: `continue` inside a PowerShell switch acts on the
+    # switch and not on the foreach around it, which is a quiet way to read the
+    # wrong row.
+    [int] $owner = 0
+    foreach ($line in $Text -split "`n") {
+        $row = $line.Trim()
+        if ($row.Length -lt 2) { continue }
+        $tag  = $row[0]
+        $rest = $row.Substring(1)
+        if ($tag -eq 'p') {
+            # TryParse leaves the target at 0 when it fails, which is the same
+            # "no owner yet" the n rows below already test for.
+            $owner = 0
+            [void][int]::TryParse($rest, [ref] $owner)
         }
-        [void]$err.Result
-        $out.Result
-    } catch {
-        ''
-    } finally {
-        if ($p) { $p.Dispose() }
+        elseif ($tag -eq 'n' -and $owner -gt 0) {
+            $arrow = $rest.IndexOf('->')
+            # No arrow is a listener, which owns no connection to anything.
+            if ($arrow -ge 0) {
+                # The local end only. EndsWith, so :9999 never matches :19999.
+                if ($rest.Substring(0, $arrow).EndsWith(":$Port")) { return $owner }
+            }
+        }
     }
+    0
+}
+
+function ConvertTo-SsOwnerId {
+    <#
+    .SYNOPSIS
+        The pid out of `ss -Htnp` output, for the row whose source port is $Port.
+    .DESCRIPTION
+        The twin of ConvertTo-LsofOwnerId. Both parses are what the platform
+        picks between, so both are callable, and testable, by name.
+
+        $script:PeerOwner asks ss for one port's rows, so any pid in them answers.
+    #>
+    param([AllowEmptyString()] [string] $Text)
+    if (-not $Text) { return 0 }
+    foreach ($line in $Text -split "`n") {
+        $found = ConvertTo-SocketOwnerId $line
+        if ($found -gt 0) { return $found }
+    }
+    0
+}
+
+# lsof on macOS, ss on Linux, chosen once as this file loads. Not a fallback
+# chain: each platform has one answer, and trying the other first spends a
+# click's budget on a process that is not installed. Windows takes the ss branch
+# and never runs it, because Resolve-PeerProcessId answers 0 first.
+$script:PeerOwner = if ($IsMacOS) {
+    { param([int] $p)
+      ConvertTo-LsofOwnerId -Port $p -Text (Invoke-Tool -FileName 'lsof' `
+          -ToolArgs @('-nP', "-iTCP:$p", '-sTCP:ESTABLISHED', '-Fpn')) }
+} else {
+    { param([int] $p)
+      ConvertTo-SsOwnerId -Text (Invoke-Tool -FileName 'ss' `
+          -ToolArgs @('-Htnp', 'state', 'established', "( sport = :$p )")) }
 }
 
 function Resolve-PeerProcessId {
@@ -248,23 +294,27 @@ function Resolve-PeerProcessId {
 
         The caller reads that port off the accepted socket, never off anything the
         peer sent. A peer that could name its own ssh could steal a click.
-    .PARAMETER Call
-        Test seam: port -> the `ss` output for it.
+    .PARAMETER Owner
+        The one test seam: port -> pid. It holds the tool call and the parse of
+        that tool's output together, because only the pair answers the question.
     #>
     param([Parameter(Mandatory)] [int] $Port,
-          [scriptblock] $Call = { param($p) Invoke-Ss @('-Htnp', 'state', 'established', "( sport = :$p )") })
+          [scriptblock] $Owner = $script:PeerOwner)
 
     if ($Port -le 0) { return 0 }
     if ($IsWindows) {
-        # No ss here, and the Windows backend matches tabs on title rather than on
-        # a pid, so there is nothing to feed. Answered as unknown, not guessed.
+        # Neither tool here, and the Windows backend matches tabs on title rather
+        # than on a pid, so there is nothing to feed. Answered as unknown, not
+        # guessed.
         return 0
     }
     try {
-        foreach ($line in (& $Call $Port) -split "`n") {
-            $found = ConvertTo-SocketOwnerId $line
-            if ($found -gt 0) { return $found }
-        }
-    } catch { }
+        $found = & $Owner $Port
+        if ($found -gt 0) { return $found }
+    } catch {
+        # Only a caller's own seam throws here. Invoke-Tool answers '' for a tool
+        # it cannot run, and both parses answer 0 on empty text. A throw costs
+        # the pid and not the click, and reads as the 0 below.
+    }
     0
 }
