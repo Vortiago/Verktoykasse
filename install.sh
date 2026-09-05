@@ -12,7 +12,8 @@
 #
 # Targets: claude (default) | opencode.
 # A skill's own <skill>/install.sh (hooks / extra setup) is Claude-specific, so it is
-# sourced ONLY for the claude target. Every other target gets a plain symlink of the dir.
+# sourced ONLY for the claude target. Every other target gets a plain symlink of the
+# dir, except a rules dir, which has no skill dir to link (see is_rules_dir).
 set -euo pipefail
 
 HERE=$(dirname "$(readlink -f "$0")")
@@ -56,12 +57,21 @@ link() { # $1 = repo path (a dir or a file), $2 = live path
   fi
 }
 
+is_rules_dir() { # $1 = dir. A rules dir wires Claude-only files: an install.sh, no SKILL.md
+  [[ -f "$1/install.sh" && ! -f "$1/SKILL.md" ]]
+}
+
 install_skill() { # $1 = skill name. Installed for the current $TARGET
   # NOTE: skills are keyed by DIRECTORY name here; a skill's invocation name comes
   # from its SKILL.md `name:` frontmatter and may differ. For example the `statusline/`
   # dir is invoked as `/expand-statusline`.
   local name=$1
   [[ -d "$HERE/$name" ]] || { echo "error: no skill '$name' in $HERE" >&2; return 1; }
+  # Returns 0: the caller loop runs under `set -e`.
+  if [[ $TARGET != claude ]] && is_rules_dir "$HERE/$name"; then
+    echo "skip    $name (claude-only, not a skill)"
+    return 0
+  fi
   if [[ $TARGET == claude && -f "$HERE/$name/install.sh" ]]; then
     # Claude-specific hooks / extra setup, only for the claude target.
     # shellcheck source=/dev/null
@@ -84,9 +94,11 @@ done
 
 if [[ ${#skills[@]} -eq 0 ]]; then
   for d in "$HERE"/*/; do
-    # Only dirs with a SKILL.md are skills. Plain tools (matrix/) and docs/ are not.
-    [[ -f "$d/SKILL.md" ]] || continue
-    skills+=("$(basename "$d")")
+    # A skill has a SKILL.md, a rules dir an install.sh. matrix/ and docs/ have
+    # neither. install_skill owns the target policy, so this stays target-free.
+    [[ -f "$d/SKILL.md" ]] || is_rules_dir "$d" || continue
+    d=${d%/}
+    skills+=("${d##*/}")
   done
 fi
 
