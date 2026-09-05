@@ -3,7 +3,7 @@
 // runs under `node --test` instead).
 //
 // Guards check-vendored's classification. The stamp carries a sha256 of the canon
-// bytes, and that hash decides (docs/adr/0004). A rev cannot: the documented flow
+// bytes, and that hash decides (docs/adr/0005). A rev cannot: the documented flow
 // is edit canon → sync → add → commit, so no command run at sync time can name the
 // commit whose bytes the copy receives, and a rev-based checker reads an untouched
 // copy as `forked` the moment canon moves. `forked` is the one classification that

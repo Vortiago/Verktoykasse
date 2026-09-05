@@ -1,4 +1,4 @@
-# 0004: A vendored copy is identified by a hash of its bytes, not by a commit
+# 0005: A vendored copy is identified by a hash of its bytes, not by a commit
 
 - Status: Accepted
 - Date: 2026-09-04

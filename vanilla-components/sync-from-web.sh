@@ -97,7 +97,7 @@ case $mode in
       # Leave a copy that already carries these bytes alone. Re-stamping it would
       # write a new HEAD over a rev that still describes the same bytes, so a
       # one-file canon change would land as a 15-file diff in which 14 files change
-      # only a rev that no longer classifies anything (docs/adr/0004). Both halves
+      # only a rev that no longer classifies anything (docs/adr/0005). Both halves
       # are needed: a hand-edited body can still carry a correct stamp.
       if [[ $(stamped_sha256 "$COMP/$vend") == "$sum" ]] && body_matches "$canon" "$vend"; then
         continue

@@ -16,7 +16,7 @@
 //     tokens.css / tones.css at the skill root, else components/<dir>/<file>)
 //
 // The hash is of the canon bytes the copy carries, and it is what decides
-// (docs/adr/0004): no command run at sync time can name the commit the bytes end
+// (docs/adr/0005): no command run at sync time can name the commit the bytes end
 // up in, because it does not exist yet, so the rev is provenance for a human and
 // a fallback for a stamp written before the hash existed.
 //
@@ -57,7 +57,7 @@ const sha256 = (text) => createHash("sha256").update(text, "utf8").digest("hex")
 
 /** Parse a stamp out of a file's first lines. Dialect order matters: the
  * pathful vendor.sh form must win over the pathless one. `sha256` is absent on a
- * stamp written before ADR 0004, and those classify through `rev` instead.
+ * stamp written before ADR 0005, and those classify through `rev` instead.
  * @param {string} head @param {string} rel
  * @returns {{repoPath: string, rev: string, sha256?: string, dialect: "sync"|"vendor"} | null} */
 function parseStamp(head, rel) {
@@ -129,7 +129,7 @@ for (const rel of files) {
 
   // The hash decides when the stamp carries one, and it decides from the copy
   // alone — no git read at all. The rev path below stays for a stamp written
-  // before ADR 0004, and it is exactly the path this issue proves unreliable: it
+  // before ADR 0005, and it is exactly the path this issue proves unreliable: it
   // reads an untouched copy as forked as soon as canon moves. Run at most once
   // per file: the hash-less path asks twice, first to classify and again for a
   // diff basis.

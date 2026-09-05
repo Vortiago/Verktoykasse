@@ -176,7 +176,7 @@ bytes the copy carries, so `vanilla-web/tools/check-vendored.mjs` tells stale fr
 without trusting the rev. Edit them in `vanilla-web`, then re-run `./sync-from-web.sh`. A
 repo-local pre-commit hook (`sync-from-web.sh --precommit`) blocks the commit if a copy
 drifts. See `docs/adr/0001-vendored-toolkit-not-symlink.md` and
-`docs/adr/0004-vendored-copy-identified-by-content-hash.md`.
+`docs/adr/0005-vendored-copy-identified-by-content-hash.md`.
 
 ## Add a component
 

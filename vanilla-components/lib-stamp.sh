@@ -8,7 +8,7 @@
 #
 # The stamp text carries sha256:<hex> of the canon bytes being copied. That hash,
 # not the rev beside it, is what tools/check-vendored.mjs classifies on (docs/adr/
-# 0004). Callers build it with sha256_of, and read a copy's recorded hash back with
+# 0005). Callers build it with sha256_of, and read a copy's recorded hash back with
 # stamped_sha256. The stamp is ONE line: every stripper here and in
 # check-vendored.mjs filters on a substring, so a second line would survive the
 # strip and break the body comparison.
@@ -22,7 +22,7 @@ sha256_of() {
 }
 
 # The sha256 recorded in <file>'s stamp, or empty when it carries none (a copy
-# stamped before ADR 0004, or no copy at all). Reads the first 3 lines only, the
+# stamped before ADR 0005, or no copy at all). Reads the first 3 lines only, the
 # same window check-vendored.mjs parses, with no forks.
 # The hash is anchored to the `@<rev> ` that precedes it, the same shape
 # check-vendored.mjs parses, so a bare sha256: token elsewhere in the window

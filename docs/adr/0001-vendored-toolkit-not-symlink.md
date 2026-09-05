@@ -38,7 +38,7 @@ category as the committed, generated `previews/registry.js`), produced by
 
 - Each copy carries an app-safe provenance header
   (`// canonical source: vanilla-web/<file>@<rev> sha256:<hash> - vendored copy, do not
-  edit here`). You edit canon in `vanilla-web`, and you never edit the copy. ADR 0004 says
+  edit here`). You edit canon in `vanilla-web`, and you never edit the copy. ADR 0005 says
   why the hash, and not the rev beside it, identifies the copy.
 - A **repo-local** git config-based `pre-commit` hook runs `sync-from-web.sh --precommit`,
   which is `--check` guarded to fire only when a canon or vendored path is staged. The
@@ -100,6 +100,6 @@ The drift check compares the working tree, not staged blobs, a deliberate simpli
 matching the edit-canon → `sync-from-web.sh` → `git add` → commit flow. It catches the
 primary "forgot to re-sync" case. It does not guard a contrived stage-then-restore.
 
-Extended by 0004: a copy is identified by a sha256 of the canon bytes it carries. The rev
+Extended by 0005: a copy is identified by a sha256 of the canon bytes it carries. The rev
 in the stamp is provenance for a human, and a fallback for a stamp written before that
 record.

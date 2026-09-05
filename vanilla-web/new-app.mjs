@@ -55,7 +55,7 @@ const canon = [
  * Takes the canon BYTES and hashes them from the Buffer rather than from a
  * decoded string: this set is wider than sync-from-web.sh's, and the guarantee
  * must not rest on every future canon file being valid UTF-8. That hash, not the
- * rev beside it, is what tools/check-vendored.mjs classifies on (docs/adr/0004).
+ * rev beside it, is what tools/check-vendored.mjs classifies on (docs/adr/0005).
  * Splices on the Buffer for the same reason, and returns one: a decoded round
  * trip would replace any byte outside UTF-8, and the copy would then hash to
  * something the stamp does not name — a `forked` verdict on an untouched file.

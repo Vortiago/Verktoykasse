@@ -35,7 +35,7 @@ source "$HERE/lib-stamp.sh"
 
 # Stamp carries the source path within this skill and a sha256 of the bytes copied,
 # so check-vendored.mjs can classify a copy without content heuristics and without
-# trusting the rev (docs/adr/0004):
+# trusting the rev (docs/adr/0005):
 #   from vanilla-components/<path>@<rev> sha256:<hex> - re-copy to update, don't fork
 # The path is relative to $HERE, which is also where the bytes to hash live.
 stamp_for() { echo "from vanilla-components/$1@$rev sha256:$(sha256_of "$HERE/$1") - re-copy to update, don't fork"; }
