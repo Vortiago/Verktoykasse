@@ -103,18 +103,35 @@ A directory is a skill when it holds a `SKILL.md`.
   adopt from the standard, and why, live in
   [ADR 0003](docs/adr/0003-ste-rules-adopt-a-subset.md).
 
+- **[clean-code](clean-code/clean-code-rules.md)**: writing rules for code, based
+  on Clean Code. Guidance, not enforcement, and not a skill: one file, symlinked
+  to `~/.claude/rules/`, where its `paths:` frontmatter loads it on a code-file
+  touch. It covers the comment that earns its place, the name that removes the
+  need for one, the shape of a function, dead code and an error message. Every
+  rule names an action to take. The rules it does not adopt from the book, and
+  why, live in [ADR 0004](docs/adr/0004-clean-code-rules-adopt-a-subset.md).
+
 ## Install
 
 ```sh
-./install.sh              # all skills
+./install.sh              # every skill, and both rules directories
 ./install.sh worktrees    # just one skill
 ```
 
 Symlinks each skill into `~/.claude/skills/<name>`. Idempotent, and a real
-directory already at a live path is backed up to `<path>.pre-verktoykasse`.
+directory already at a live path is backed up to `<path>.pre-verktoykasse`. With
+no arguments it also installs the two rules directories,
+`simplified-technical-english` and `clean-code`, whose files go to
+`~/.claude/rules/` and `~/.claude/agents/` instead.
 
 `--target opencode` installs into `~/.config/opencode/skills` instead, as plain
-symlinks with no hook wiring.
+symlinks with no hook wiring. A *rules directory* (an `install.sh` and no
+`SKILL.md`) is skipped there: it wires Claude-only files, so it has no skill
+directory to link.
+
+A rules file reaches a session as a symlink under `~/.claude/rules/`. Cowork
+desktop sessions skip a symlinked rules file that points outside the working
+directory, so the pattern is inert there.
 
 A skill may ship its own `<skill>/install.sh` for extra wiring. For example
 `worktrees` also symlinks its hook into `~/.claude/hooks/`, links the helper
