@@ -1,4 +1,4 @@
-# 0005: The selection read is taken once per synchronous pass
+# 0006: The selection read is taken once per synchronous pass
 
 - Status: Accepted
 - Date: 2026-09-04

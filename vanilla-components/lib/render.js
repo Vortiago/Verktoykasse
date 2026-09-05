@@ -1,4 +1,4 @@
-// canonical source: vanilla-web/render.js@d6a5fd6 sha256:b97aadb1f14bf267b86f7d6e566b24ec7e41041807595accec13ee216c71766a - vendored copy, do not edit here
+// canonical source: vanilla-web/render.js@04db416 sha256:aeae2737cf4449c362db12d75312e28a1d69585721f97a47dd6cf023aa69138e - vendored copy, do not edit here
 // @ts-check
 // Canonical interaction-safe re-rendering for the vanilla-web conventions (see
 // SKILL.md). Copy into <app>/web/lib/render.js; extend, don't fork. Identity:
@@ -65,7 +65,7 @@ const _clearPass = () => { _passRanges = undefined; };
  * cost, so handing it back would only move the flush to the caller. A Range is a
  * DOM-tree object, `intersectsNode` forces no layout, and its boundary points
  * follow the mutation the seam performs, so a memoised Range still answers
- * correctly for a host rendered later in the pass. See docs/adr/0005.
+ * correctly for a host rendered later in the pass. See docs/adr/0006.
  * @returns {Range[]} */
 function _selectionRanges() {
   if (_passRanges) return _passRanges;

@@ -64,7 +64,7 @@ const _clearPass = () => { _passRanges = undefined; };
  * cost, so handing it back would only move the flush to the caller. A Range is a
  * DOM-tree object, `intersectsNode` forces no layout, and its boundary points
  * follow the mutation the seam performs, so a memoised Range still answers
- * correctly for a host rendered later in the pass. See docs/adr/0005.
+ * correctly for a host rendered later in the pass. See docs/adr/0006.
  * @returns {Range[]} */
 function _selectionRanges() {
   if (_passRanges) return _passRanges;
