@@ -36,6 +36,51 @@ function _isInteractive(el) {
   );
 }
 
+/** The shared "asked, and there is no selection" answer. Still truthy, so it
+ * memoises like any other, and never mutated — the common idle pass allocates
+ * nothing. @type {Range[]} */
+const _NO_RANGES = [];
+
+/** The live selection's ranges for the current synchronous pass, or undefined
+ * before the pass has asked. @type {Range[] | undefined} */
+let _passRanges;
+
+/** Hoisted so the pass schedules the same function object every time rather than
+ * building a fresh closure per pass. */
+const _clearPass = () => { _passRanges = undefined; };
+
+/** The selection's ranges, read ONCE per synchronous pass (#83).
+ *
+ * Reading `isCollapsed`, `rangeCount` or `getRangeAt` forces a synchronous style
+ * and layout update in Blink, because selection state depends on layout. A render
+ * pass asks per host, and the seam mutates the DOM between hosts, so each host
+ * re-dirties layout and pays a fresh flush. Asking once per pass is the fix.
+ *
+ * A microtask is the pass boundary: microtasks drain only once the stack unwinds,
+ * so every host asked in one pass shares this answer and the next pass re-asks.
+ * `selectionchange` is queued as a task, so its listener always reads fresh.
+ *
+ * Holds the Range objects, not the live Selection: reading the Selection IS the
+ * cost, so handing it back would only move the flush to the caller. A Range is a
+ * DOM-tree object, `intersectsNode` forces no layout, and its boundary points
+ * follow the mutation the seam performs, so a memoised Range still answers
+ * correctly for a host rendered later in the pass. See docs/adr/0006.
+ * @returns {Range[]} */
+function _selectionRanges() {
+  if (_passRanges) return _passRanges;
+  const sel = document.getSelection();
+  // `!isCollapsed` implies rangeCount >= 1 per spec, so no separate zero check;
+  // rangeCount is read once into `n` because every read is a forced flush.
+  /** @type {Range[]} */ let ranges = _NO_RANGES;
+  if (sel && !sel.isCollapsed) {
+    ranges = [];
+    for (let i = 0, n = sel.rangeCount; i < n; i++) ranges.push(sel.getRangeAt(i));
+  }
+  _passRanges = ranges;
+  queueMicrotask(_clearPass);
+  return ranges;
+}
+
 /** True while a non-collapsed text selection TOUCHES `host` — starts in it, ends
  * in it, lies within it, or merely spans it. Rebuilding (or rewriting textContent
  * of) a node the selection touches destroys the selection mid-copy. Exported for
@@ -49,12 +94,18 @@ function _isInteractive(el) {
  * starts BEFORE `host` and ends AFTER it — ⌘A over a panel — where neither
  * endpoint is inside and the endpoint test reported false. Every range is asked,
  * since a multi-range selection can cross `host` with any of them.
+ *
+ * Answers from one selection read per synchronous pass, shared with every other
+ * host asked in that pass (see _selectionRanges). A pass that changes the
+ * selection itself, after its own first ask, keeps the earlier answer until the
+ * stack unwinds.
  * @param {Element} host */
 export function selectionInside(host) {
-  const sel = document.getSelection();
-  if (!sel || sel.isCollapsed || sel.rangeCount === 0) return false;
-  for (let i = 0; i < sel.rangeCount; i++) {
-    if (sel.getRangeAt(i).intersectsNode(host)) return true;
+  // Indexed rather than `.some`, which would allocate a closure per host per
+  // pass, including on the idle pass where there is nothing to walk.
+  const ranges = _selectionRanges();
+  for (let i = 0; i < ranges.length; i++) {
+    if (ranges[i].intersectsNode(host)) return true;
   }
   return false;
 }
@@ -87,14 +138,18 @@ function _holdCause(host) {
  * replay a captured build), or an in-place updater that rewrites text every tick
  * (no build closure exists to replay).
  *
- * It is a strict superset of `selectionInside`, and costs more: the overlay guard
- * is a `querySelector` over the host's subtree, where `selectionInside`
- * short-circuits on a collapsed selection and otherwise does one boundary
- * comparison per range. On a per-tick guard in front of a big host, ask the narrow
- * question when it's the only one that applies — a text-only in-place updater,
- * with no focusable control and no popover/`<dialog>` inside it, wants
- * `selectionInside`. Use `heldInside` wherever the host can hold focus or an
- * overlay, which is most hosts.
+ * It is a strict superset of `selectionInside`, and it is not the more expensive
+ * one. The selection read is the expensive part of both: reading `Selection` state
+ * forces a synchronous style and layout update in Blink, so the collapsed
+ * short-circuit costs a full layout, while the focus and overlay guards force
+ * none. That read is taken once per synchronous pass and shared by every host
+ * asked in it (`_selectionRanges`), so ask many hosts in ONE pass — an `await`
+ * between them starts a new pass and a new read.
+ *
+ * So `selectionInside` is the narrower question, not the cheaper one: reach for it
+ * only where it is the only one that applies — a text-only in-place updater, with
+ * no focusable control and no popover/`<dialog>` inside it. Use `heldInside`
+ * wherever the host can hold focus or an overlay, which is most hosts.
  *
  *   if (heldInside(listHost)) { retryNextTick = true; return; }
  *   reconcileList(listHost, items, keyOf, create, update);

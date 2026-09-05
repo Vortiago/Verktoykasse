@@ -49,14 +49,17 @@ and text selections when they swap DOM. The rule set, in order of preference:
    the overlay branch's MutationObserver fallback for an overlay removed without
    `close`/`toggle`.
 
-   `selectionInside(host)` remains exported as its narrower selection-only face,
-   and it is the cheaper one: `heldInside`'s overlay guard is a `querySelector`
-   over the host's subtree, where `selectionInside` short-circuits on a collapsed
-   selection and otherwise does one boundary comparison per range. For a per-tick
-   guard in front of a big host, ask the narrow question when it's the only one
-   that applies — a text-only in-place updater with no focusable control and no
-   popover/`<dialog>` inside it wants `selectionInside`. Reach for `heldInside`
-   wherever the host can hold focus or an overlay, which is most hosts.
+   `selectionInside(host)` remains exported as its narrower selection-only face.
+   It is the narrower question, not the cheaper one. Reading `Selection` state
+   forces a synchronous style and layout update in Blink, so a collapsed
+   short-circuit still costs a layout, while `heldInside`'s focus and overlay
+   guards force none. Canon takes that read once per synchronous pass and shares
+   it with every host asked in that pass, so ask many hosts in one pass: an
+   `await` between them starts a new pass and a new read. Pick `selectionInside`
+   only where it is the only question that applies, such as a text-only in-place
+   updater with no focusable control and no popover/`<dialog>` inside it. Reach
+   for `heldInside` wherever the host can hold focus or an overlay, which is most
+   hosts.
 
    Which shape you use depends on whether `renderRegion` renders that host at all:
 
