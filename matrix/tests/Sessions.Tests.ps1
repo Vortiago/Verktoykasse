@@ -40,7 +40,7 @@ BeforeAll {
         $script:SessionFact     = @{}
         $script:SessionProbe    = @{}
         $script:TranscriptState = @{}
-        # The pid -> ppid snapshot and its clock, dropped together the way
+        # The pid -> ppid table and its clock, dropped together the way
         # Get-ProcParentMap sets them: the clock alone says there is a map.
         $script:ProcParentMap   = $null
         $script:ProcParentAt    = $null
@@ -180,10 +180,7 @@ Describe 'Get-ClaudeSession' {
 
     It 'drops a recycled PID, which is what procStart is for' {
         # Same live PID, a start time that is not this process's. Through the
-        # fixture, because the value has to be readable and wrong: a bare '1' is
-        # a mismatch in clock ticks and in a FILETIME, but it is not an asctime
-        # string at all, and an unreadable field verifies nothing and keeps the
-        # session.
+        # fixture, because the value has to be readable and wrong.
         Write-Registry 'a' (New-Record 'sid-a' 'busy' @{ procStart = (Get-TestProcStartMismatch) })
         @(Get-ClaudeSession) | Should -HaveCount 0
     }
@@ -617,7 +614,7 @@ Describe 'Test-SessionAlive on an unreadable stat line' -Skip:(-not $IsLinux) {
 
 Describe 'ConvertTo-ProcStartUtc' {
     # What Claude writes as procStart on macOS: asctime, in UTC. A pure parse, so
-    # it is read on every platform. The value below is a real record off a Mac.
+    # every platform runs it. The value below is a real record off macOS.
     It 'reads an asctime string as UTC' {
         $t = ConvertTo-ProcStartUtc 'Fri Sep  4 12:03:56 2026'
         $t | Should -Not -BeNullOrEmpty
@@ -679,8 +676,8 @@ Describe 'ConvertTo-ProcParentMap' {
 }
 
 Describe 'Get-ProcessAncestorId without /proc' {
-    # The branch macOS takes. Driven through the seam, so it is read on every
-    # platform rather than only where ps exists.
+    # The branch macOS takes. Driven through the seam, so every platform runs it
+    # rather than only the platforms where ps exists.
     It 'walks a table it was handed' {
         $table = { @{ 500 = 400; 400 = 300; 300 = 1; 1 = 0 } }
         $chain = @(Get-ProcessAncestorId -ProcessId 500 -Parents $table)

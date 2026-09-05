@@ -13,9 +13,9 @@
 # because there is no Konsole to ask. Each platform names only the types it has,
 # and binds only the variables it uses.
 #
-# A suffix in cs/ means the platform picks one of them; a file without a suffix is
-# shared. _Windows and _Unix split the console reader, and _Linux and _Darwin split
-# the termios ABI under it - Unix is one reader over two ABIs, because the escape
+# A suffix in cs/ means the platform picks one of them. A file without a suffix
+# is shared. _Windows and _Unix split the console reader. _Linux and _Darwin
+# split the termios ABI under it. One reader over two ABIs, because the escape
 # grammar is the terminal's and only the struct differs.
 
 if ($IsWindows) {

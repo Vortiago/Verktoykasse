@@ -1,16 +1,15 @@
 namespace MatrixVT__TAG__
 {
-    using System;
     using System.Runtime.InteropServices;
 
     // The Linux termios ABI, and the only file that carries it.
     //
-    // ConsoleVT_Unix.cs holds the reader: the same POSIX code on every Unix. This
-    // holds the part that is not portable, and its Darwin twin holds the other
-    // answer to the same four questions - the struct layout, the local flag
-    // values, the c_cc indices, and the two calls that take the struct by
-    // reference. Both files name the type Termios and the helper Tty, so the
-    // reader names neither platform.
+    // ConsoleVT_Unix.cs holds the reader: the same POSIX code on every Unix.
+    // This file holds the part that is not portable. Its Darwin twin holds the
+    // other answer to the same four questions. Those are the struct layout, the
+    // local flag values, the c_cc indices, and the two calls that take the
+    // struct by reference. Both files name the type Termios and the helper Tty,
+    // so the reader names neither platform.
     //
     // struct termios on Linux: four 32-bit flag words, a c_line byte, NCCS of 32
     // control characters, then two speeds. tcgetattr writes 60 bytes.
@@ -45,7 +44,7 @@ namespace MatrixVT__TAG__
             return t;
         }
 
-        // The state to restore. The flags copy with the struct; the array must
+        // The state to restore. The flags copy with the struct. The array must
         // not, or the raw write would cook the save.
         internal static Termios Copy(Termios t)
         {

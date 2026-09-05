@@ -6,12 +6,12 @@ namespace MatrixVT__TAG__
 
     // The Unix ConsoleVT: the surface matrix.ps1 already drives, over the termios
     // calls and escape sequences a Unix terminal offers instead of the Windows
-    // console API. The script asks the same questions on every platform; the
+    // console API. The script asks the same questions on every platform. The
     // answers here are what a real terminal gives.
     //
-    // One file for Linux and macOS, because none of the reading below differs:
-    // the escape grammar is the terminal's, and read, write and isatty are the
-    // same call. What does differ is the termios ABI, and that is the whole of
+    // One file for Linux and macOS, because none of the reading below differs.
+    // The escape grammar is the terminal's, and read, write and isatty are the
+    // same call. The termios ABI does differ, and that is the whole of
     // Termios_Linux.cs and Termios_Darwin.cs. This file names Termios and Tty
     // and never asks which platform answered.
     //
@@ -70,10 +70,9 @@ namespace MatrixVT__TAG__
 
         // --- stdin: termios and mouse reporting -----------------------------------
 
-        // read, write and isatty are the same call on every Unix, so they live
-        // here. The termios struct is not: Termios and Tty come from
-        // Termios_Linux.cs or Termios_Darwin.cs, and types.ps1 compiles one of
-        // them next to this file.
+        // read, write and isatty are the same call on every Unix. The termios
+        // struct is not: types.ps1 compiles Termios_Linux.cs or
+        // Termios_Darwin.cs next to this file.
         [DllImport("libc", SetLastError = true)]
         private static extern int read(int fd, byte[] buf, int count);
         [DllImport("libc", SetLastError = true)]

@@ -154,9 +154,7 @@ $term = Join-Path $lib 'terminal'
 # tmux - $TMUX names the innermost server. Windows never gets here with TMUX set: a
 # WSL tmux pane is a separate environment.
 #
-# On macOS tmux is the only backend there is: Terminal.app and iTerm2 name no tab
-# a script can raise. Outside tmux the rain still runs, and none.ps1 says which
-# flags it cannot serve rather than pretending to a map.
+# On macOS outside tmux there is no nameable tab, so none.ps1 serves no map.
 
 # Who wants the tab map, spelled once: $hostHwnd and $needTabs both read it and
 # must not drift. -ExposeOnSSH is in it because a click on the other machine is
@@ -244,10 +242,9 @@ $scopeName = if ($backend -eq 'tmux.ps1') { 'tmux session' } else { 'terminal wi
 # advice only the Windows backend's user can act on - and it reads as a wrong
 # diagnosis anywhere else.
 $scopeHint = if ($backend -eq 'windows-terminal.ps1') { " and leave that $scopeName in front" } else { '' }
-# What the user can do about it. Every backend but none.ps1 has a scope to be
-# started from, so naming one is advice. none.ps1 has none at any time: its only
-# route is the one $why already gives, and "start it from the terminal window you
-# want scoped" would be an instruction that cannot work.
+# What the user can do about it. Every backend but none.ps1 has a scope to start
+# from, so naming one is advice. none.ps1 has none, so its only route is the one
+# $why already gives.
 $scopeFix = if ($backend -eq 'none.ps1') { 'Drop -ThisWindow to show every session.' }
             else { "Start it from the $scopeName you want scoped$scopeHint, " +
                    'or drop -ThisWindow to show every session.' }

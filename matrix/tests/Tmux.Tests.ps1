@@ -170,7 +170,7 @@ Describe 'Invoke-Tmux' {
         $script:exe = [Environment]::ProcessPath
         # @() around the whole if, not inside the branch. A one-element array is
         # unrolled to its element on the way out of a branch, and $pre + @(...)
-        # then concatenates STRINGS rather than joining arrays: the dll and the
+        # then concatenates strings rather than joining arrays, and the dll and the
         # first flag arrive glued together as one argv entry. Only a machine
         # whose pwsh is a dotnet tool runs this branch at all.
         $script:pre = @(

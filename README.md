@@ -82,10 +82,10 @@ A directory is a skill when it holds a `SKILL.md`.
 - **[matrix](matrix/README.md)**: every open Claude Code session as Matrix rain
   in a terminal. One lane per session, coloured by status (green working, amber
   idle, red waiting), under a header with the name, status age, and opening
-  prompt. It runs on Windows, Linux and macOS, each platform bringing its own
+  prompt. It runs on Windows, Linux and macOS. Each platform brings its own
   console layer and terminal backend: the Windows console API with Windows
-  Terminal, or termios with Konsole or tmux. On macOS tmux is the only tab
-  backend, and the rain still draws every lane without one. `-ThisWindow` scopes
+  Terminal, or termios with Konsole or tmux. On macOS tmux is the only terminal
+  backend, and the rain still draws every lane outside tmux. `-ThisWindow` scopes
   the lanes to the terminal window the rain starts in, or to the tmux session
   under tmux. `-Click` raises a session's tab on click. `-Remote` and
   `-ExposeOnSSH` show the sessions on every machine you ssh to, over the

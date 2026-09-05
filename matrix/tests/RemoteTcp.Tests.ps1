@@ -214,7 +214,7 @@ Describe 'tcp: naming the local ssh process' {
     It 'answers zero when the tool knows nothing' -Skip:($IsWindows) {
         # Empty output is what Invoke-Tool answers for a tool that is missing or
         # will not stop. The real parse turns that into an unknown owner.
-        Resolve-PeerProcessId -Port 34234 -Owner { param($p) ConvertTo-SsOwnerId -Text '' -Port $p } |
+        Resolve-PeerProcessId -Port 34234 -Owner { param($p) ConvertTo-SsOwnerId -Text '' } |
             Should -Be 0
     }
 

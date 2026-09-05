@@ -1,26 +1,25 @@
-# The backend for a terminal that answers nothing: macOS outside tmux.
+# The terminal backend that answers nothing: macOS outside tmux.
 #
-# Terminal.app and iTerm2 expose no tab a script can name and none it can raise
-# from another process, so there is no map to build. This is not a stub waiting
-# to be filled in - it is the honest answer, and it exists so the rain still
-# runs. Every session gets a lane; only -ThisWindow and -Click are unavailable,
-# and Test-TabSupport below is what tells the user which and why.
+# Terminal.app and iTerm2 expose no tab a script can name, and none it can raise
+# from another process. There is no map to build.
 #
-# Run the rain inside tmux on a Mac and tmux.ps1 answers instead, with the exact
-# pane match every other Unix backend gets. That is what the reason says to do.
+# The rain still runs: every session gets a lane, and only -ThisWindow and -Click
+# are unavailable. Test-TabSupport below tells the user which and why.
+#
+# Inside tmux on macOS, tmux.ps1 answers instead, with the exact pane match every
+# other Unix backend gets.
 #
 # Same seven functions as the other backends, because tabmap.ps1 calls them by
 # name and knows no platform.
 
 function Get-OwnTerminalWindow {
-    # Nothing identifies this window, which is the whole point of this file.
-    # Falsy, so Test-TabSupport below is reached with the answer it expects.
+    # Nothing identifies this window. Falsy, so tabmap.ps1 reaches
+    # Test-TabSupport below with the answer it expects.
     0
 }
 
 function Test-TabSupport {
-    # The one function here that says something. Read at startup, and matrix.ps1
-    # turns it into the message each flag deserves.
+    # Read at startup. matrix.ps1 turns it into the message each flag deserves.
     param([object] $Hwnd)
     'macOS has no tab a script can name outside tmux, so start the rain in tmux'
 }
@@ -36,8 +35,8 @@ function Select-TerminalTab {
 }
 
 function Get-TabKey {
-    # Never reached with a real tab, since there are none. Answered anyway, so a
-    # caller that keys an empty map does not fall over.
+    # Never reached: there are no tabs. Answered anyway, so a caller that keys an
+    # empty map does not fall over.
     param($Tab)
     ''
 }

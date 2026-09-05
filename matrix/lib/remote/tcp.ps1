@@ -256,15 +256,12 @@ function ConvertTo-SsOwnerId {
     .SYNOPSIS
         The pid out of `ss -Htnp` output, for the row whose source port is $Port.
     .DESCRIPTION
-        The twin of ConvertTo-LsofOwnerId, and named for the same reason: the two
-        parses are what the platform seam picks between, so both should be
-        callable, and testable, by name.
+        The twin of ConvertTo-LsofOwnerId. Both parses are what the platform
+        picks between, so both are callable, and testable, by name.
 
-        ss was asked for one port's rows, so any pid in them answers. $Port is
-        taken for symmetry with the lsof parse, which lets the seam call either
-        one with the same arguments.
+        $script:PeerOwner asks ss for one port's rows, so any pid in them answers.
     #>
-    param([AllowEmptyString()] [string] $Text, [Parameter(Mandatory)] [int] $Port)
+    param([AllowEmptyString()] [string] $Text)
     if (-not $Text) { return 0 }
     foreach ($line in $Text -split "`n") {
         $found = ConvertTo-SocketOwnerId $line
@@ -273,21 +270,17 @@ function ConvertTo-SsOwnerId {
     0
 }
 
-# lsof on macOS, ss on Linux, chosen once as this file loads. One scriptblock
-# carries the call and the parse together. That leaves a single thing to swap and
-# no way to pair a tool with the wrong reader.
-#
-# Not a fallback chain: each platform has one answer, and trying the other first
-# spends a click's budget on a process that is not installed. Windows takes the
-# ss branch and never runs it, because Resolve-PeerProcessId answers 0 before it
-# reaches the seam.
+# lsof on macOS, ss on Linux, chosen once as this file loads. Not a fallback
+# chain: each platform has one answer, and trying the other first spends a
+# click's budget on a process that is not installed. Windows takes the ss branch
+# and never runs it, because Resolve-PeerProcessId answers 0 first.
 $script:PeerOwner = if ($IsMacOS) {
     { param([int] $p)
       ConvertTo-LsofOwnerId -Port $p -Text (Invoke-Tool -FileName 'lsof' `
           -ToolArgs @('-nP', "-iTCP:$p", '-sTCP:ESTABLISHED', '-Fpn')) }
 } else {
     { param([int] $p)
-      ConvertTo-SsOwnerId -Port $p -Text (Invoke-Tool -FileName 'ss' `
+      ConvertTo-SsOwnerId -Text (Invoke-Tool -FileName 'ss' `
           -ToolArgs @('-Htnp', 'state', 'established', "( sport = :$p )")) }
 }
 

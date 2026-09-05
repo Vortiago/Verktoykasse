@@ -9,26 +9,22 @@ BeforeAll {
 
     $script:Cs = Join-Path $PSScriptRoot '../lib/cs'
 
-    # Which ABI this platform runs, decided ONCE and read wherever it is needed.
-    # The live raw-mode block at the bottom builds its own probe against the same
-    # struct, and the two must not be chosen by two evaluations of one condition:
-    # a probe on the wrong layout reads every field at the wrong offset, answers
-    # zeros for all of them, and so passes the raw assertion by accident while
-    # failing only the restore. That is a false pass, which is worse than a
-    # failure. $script:, because the repo's Pester 5 note applies here too.
+    # Which ABI this platform runs, decided once, and every reader below takes it
+    # from here. The live raw-mode block at the bottom builds its own probe
+    # against the same struct, and two evaluations of one condition could
+    # disagree. The first It in that block guards against it. $script:, because
+    # the repo's Pester 5 note applies here too.
     $script:Abi = if ($IsMacOS) { 'Darwin' } else { 'Linux' }
 
-    # ONE pair, this platform's. Not both.
+    # One pair, this platform's. Not both.
     #
-    # Compiling the other layout here as well would catch a Termios_*.cs that has
-    # stopped compiling, which is tempting - but two sources under one $TypeNames
-    # list share a cache family, and Add-TaggedTypes keeps one live tag per
-    # family: each compile deletes the other's cached DLL, so both recompile on
-    # every run, for about a second each. That is the exact collision the comment
-    # in console.ps1 exists to record.
+    # Two sources under one $TypeNames list share a cache family, and
+    # Add-TaggedTypes keeps one live tag per family. Each compile deletes the
+    # other's cached DLL, so both recompile on every run, for about a second
+    # each. See the same collision in console.ps1.
     #
     # The three CI runners cover both files instead: Windows and Linux build
-    # Termios_Linux.cs, macOS builds Termios_Darwin.cs, and neither can rot
+    # Termios_Linux.cs, macOS builds Termios_Darwin.cs, so neither can rot
     # without a job going red.
     $script:VT = @(Import-TestCsType @((Join-Path $script:Cs 'ConsoleVT_Unix.cs'),
                                        (Join-Path $script:Cs "Termios_$($script:Abi).cs")) `
@@ -222,15 +218,12 @@ Describe 'ConsoleVT (Unix): raw mode against a real terminal' `
         # ICANON|ECHO bits and VMIN, as "flags|VMIN".
         #
         # A second copy of the ABI, deliberately. The production one lives in
-        # Termios_*.cs and is internal, and a probe that asked the code under test
-        # what it set would agree with itself on a wrong layout. So the four values
+        # Termios_*.cs and is internal. A probe that asked the code under test
+        # what it set would agree with itself on a wrong layout. The four values
         # that differ are spelled out here, next to the assertion that reads them.
         #
-        # Keyed off $script:Abi, the one decision made above. Choosing the probe
-        # by a second reading of the platform is how the probe and the reader come
-        # to disagree, and a disagreement here is invisible: every field is read
-        # at the wrong offset, everything answers zero, and "raw" is what zero
-        # looks like. The first It below is the guard against that.
+        # Keyed off $script:Abi, not a second reading of the platform. The first
+        # It below guards against a mismatch.
         $spec = @{
             # tcflag_t is unsigned int, NCCS 32, a c_line byte, VMIN at 6,
             # ICANON 0x2 | ECHO 0x8.
@@ -276,15 +269,15 @@ public static class TtyProbe {
     It 'reads real termios bits rather than zeros off a mismatched struct' {
         # Run first, and the reason the rest can be trusted. A probe built on the
         # wrong struct reads every field at the wrong offset and answers zero for
-        # all of them - and "0|0" is exactly what raw mode looks like, so a wrong
+        # all of them. "0|0" is exactly what raw mode looks like, so a wrong
         # layout passes the raw assertion below by accident and fails only the
         # restore.
         #
-        # What this must NOT assume is a cooked terminal. Run from an interactive
-        # PowerShell, PSReadLine has already taken ICANON and ECHO off for its own
-        # line editing, so ICANON reads 0 here and that is correct. VMIN is 1
-        # until something goes raw, whatever else is set, so a reading of "0|0"
-        # before any write is the struct failing, not the terminal.
+        # Do not assume a cooked terminal. Under an interactive PowerShell,
+        # PSReadLine has already taken ICANON and ECHO off for its line editing.
+        # ICANON reads 0 here, and that is correct. VMIN is 1 until something
+        # goes raw, whatever else is set. A reading of "0|0" before any write is
+        # the struct failing, not the terminal.
         $look = $Tty::Look()
         $look | Should -Not -Be 'gone' -Because 'tcgetattr must answer for a real tty'
         $look | Should -Not -Be '0|0' -Because (
@@ -297,10 +290,10 @@ public static class TtyProbe {
         # non-canonical under an interactive PowerShell.
         $before = $Tty::Look()
 
-        # Re-checked here, before the first write and not only in the It above,
-        # because Pester runs on past a failure: this block mangles a real
-        # terminal on purpose, and doing that through a struct that does not match
-        # the platform leaves the shell that ran the suite with no line editing.
+        # Re-checked here, before the first write, because Pester runs on past a
+        # failure. This block mangles a real terminal on purpose. Through a
+        # struct that does not match the platform, it leaves the shell that ran
+        # the suite with no line editing.
         $before | Should -Not -Be '0|0' -Because (
             'this block only writes termios it can read back')
 
@@ -315,26 +308,23 @@ public static class TtyProbe {
             # the last write to win.
             try { [Console]::TreatControlCAsInput = $false } catch { }
             [void]$VT::SetStdinMode(0)               # give the terminal back
-            # Read the restored terminal ONCE, here, and assert on this reading.
-            # The net below writes a sane terminal, and sane is exactly what a
-            # script started from, so a second reading taken after it would
-            # compare the net's own work against $before and pass.
+            # Read the restored terminal once, here. The net below writes a sane
+            # terminal, and sane is what a script starts from. A second reading
+            # taken after it would compare the net's own work against $before and
+            # pass.
             $after = $Tty::Look()
             # And if it did not come back, take it back by force. The restore
-            # above replays the termios EnterRaw saved, so a bug in there hands
-            # the shell that ran the suite a terminal with no line editing, which
-            # a developer then has to know to fix with stty by hand. A test that
-            # breaks the terminal it is run from is worse than a failing one, so
-            # the net is here rather than in the advice.
+            # above replays the termios EnterRaw saved. A bug there hands the
+            # shell that ran the suite a terminal with no line editing, which a
+            # developer then has to know to fix with stty by hand. A test that
+            # breaks the terminal it runs from is worse than a failing one. The
+            # net belongs here rather than in the advice.
             if ($after -ne $before) {
                 & stty sane 2>$null
                 Write-Warning 'stdin did not come back from raw: reset with stty sane'
             }
         }
-        # Back exactly as found, which is the contract: LeaveRaw replays what
-        # EnterRaw saved. Not "cooked" - under an interactive PowerShell the
-        # terminal was already non-canonical when the suite started, and handing
-        # THAT back is the correct answer.
+        # Back exactly as found: LeaveRaw replays what EnterRaw saved.
         $after | Should -Be $before
     }
 }

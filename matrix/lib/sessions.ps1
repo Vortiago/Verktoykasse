@@ -55,15 +55,13 @@ function Get-ProcessStartTicks {
 }
 
 # macOS has no /proc, so Claude writes procStart as an asctime string there:
-# "Fri Sep  4 12:03:56 2026". It is UTC, not local time, and the day is space
-# padded to two columns, which is why AllowWhiteSpaces is not optional.
+# "Fri Sep  4 12:03:56 2026". AllowWhiteSpaces is what reads the day, which is
+# space padded to two columns. AssumeUniversal says the string is UTC, and
+# AdjustToUniversal keeps the result so.
 #
-# Sibling of ConvertTo-ProcStartTicks above, and split from its caller for the
-# same reason: the parse is the part worth testing, and it runs on any platform.
+# Split from its caller like ConvertTo-ProcStartTicks above. The parse is the
+# part worth testing, and it runs on any platform.
 $script:ProcStartFormat = 'ddd MMM d HH:mm:ss yyyy'
-# Hoisted for the same reason the format above is: this runs per session per
-# poll, and the value never changes. AllowWhiteSpaces is what reads the padded
-# day, AssumeUniversal says the string is UTC, and AdjustToUniversal keeps it so.
 $script:ProcStartStyles = [System.Globalization.DateTimeStyles]::AllowWhiteSpaces -bor
                           [System.Globalization.DateTimeStyles]::AssumeUniversal -bor
                           [System.Globalization.DateTimeStyles]::AdjustToUniversal
@@ -82,10 +80,6 @@ function ConvertTo-ProcStartUtc {
 
 function Test-SessionAlive {
     # PID alive, and started when the file says. A recycled PID fails the second test.
-    #
-    # Two branches, not three: Linux reads /proc, and every other platform takes
-    # the GetProcessById path below. Windows and macOS differ only in how they
-    # read procStart back, which is one line inside it.
     param([int] $ProcessId, [string] $ProcStart)
     if ($IsLinux) {
         # One /proc read answers both questions here: no stat file, no process.
@@ -108,14 +102,10 @@ function Test-SessionAlive {
     # Dispose: StartTime opens a kernel handle. This runs per session per poll.
     try {
         if (-not $ProcStart) { return $true }
-        # Only the READ of procStart is per platform: a FILETIME in 100 ns units
-        # on Windows, an asctime string in UTC on macOS. The comparison is one
-        # rule with one constant, so the slop cannot drift between the two.
-        #
-        # 2 s of it, because the file holds the value Claude read and not our
+        # 2 s of slop, because the file holds the value Claude read and not this
         # conversion of it. No StartTime rights, or a procStart that does not read
         # back, verifies nothing: keep the session rather than kill the poll under
-        # EAP=Stop.
+        # ErrorActionPreference = Stop.
         try {
             $want = if ($IsWindows) { [datetime]::FromFileTimeUtc([int64]$ProcStart) }
                     else            { ConvertTo-ProcStartUtc $ProcStart }
@@ -142,9 +132,8 @@ function ConvertTo-ProcParentMap {
     param([AllowEmptyString()] [string] $Text)
     $map = @{}
     if (-not $Text) { return $map }
-    # String.Split, not -split: both of those are regex splits, and this walks
-    # every process on the machine (700 or so on a busy Mac). RemoveEmptyEntries
-    # does the work .Trim() and '\s+' were doing.
+    # String.Split, not -split: -split is a regex split, and this walks every
+    # process on the machine (700 or so on a busy macOS box).
     $rows = $Text.Split([char]10, [StringSplitOptions]::RemoveEmptyEntries)
     foreach ($row in $rows) {
         $f = $row.Split([char[]]@(' ', "`t", "`r"), [StringSplitOptions]::RemoveEmptyEntries)
@@ -158,22 +147,22 @@ function ConvertTo-ProcParentMap {
     $map
 }
 
-# The snapshot, and how long it is trusted. A tab-map rebuild walks every session
-# in a burst, and one ps costs 40-120 ms on a machine with 700 processes: per hop,
-# per session, that is a visible stutter, so the table is read once and held for
-# the burst. The window spans one burst rather than the gap between two polls.
+# The table, and how long it is trusted. A tab-map rebuild walks every session in
+# a burst, and one ps costs 40-120 ms on a machine with 700 processes. Per hop,
+# per session, that is a visible stutter, so Get-ProcParentMap reads the table
+# once and holds it for the burst. The window spans one burst rather than the gap
+# between two polls.
 #
-# Windows has no ps on PATH - the name is a Get-Process alias, which
-# Process.Start does not see - so Invoke-Tool answers '' and the table comes back
-# empty. That is the right answer there: no Windows backend matches a session on
-# a process tree, so nothing asks.
+# Windows has no ps on PATH. The name is a Get-Process alias, which
+# Process.Start does not see, so Invoke-Tool answers '' and the table comes back
+# empty. Nothing there asks: no Windows backend matches a session on a process
+# tree.
 $script:ProcParentMap = $null
 $script:ProcParentAt  = $null
 
 function Get-ProcParentMap {
-    # The cached pid -> ppid table, re-read when it has gone stale. The map and
-    # the clock are always set together, so the clock alone says whether there is
-    # a usable map.
+    # The table and the clock are always set together, so the clock alone says
+    # whether there is a usable table.
     if ($script:ProcParentAt -and $script:ProcParentAt.ElapsedMilliseconds -lt 1000) {
         return $script:ProcParentMap
     }
@@ -191,14 +180,14 @@ function Get-ProcessAncestorId {
     # backends that match a session on a process tree - Konsole's tab shell and
     # tmux's pane_pid - walk the same one.
     #
-    # One hop, chosen once. Linux reads one /proc entry per hop, and everywhere
-    # else indexes the whole table read once. Which of the two cannot change
-    # inside the walk, so it is not asked inside the walk, and a hop that answers
-    # -1 is the only way to stop.
+    # One hop, chosen once. Linux reads one /proc entry per hop. Every other
+    # platform indexes the whole table, read once. Neither choice can change
+    # inside the walk, so the walk does not ask, and a hop that answers -1 is the
+    # only way to stop.
     #
     # Handing in $Parents selects the table hop on any platform, which is how the
-    # Linux run of the suite tests it. Without that the seam would be ignored
-    # there in favour of /proc.
+    # Linux run of the suite tests it. Without that, /proc answers there and the
+    # suite never exercises the seam.
     param([Parameter(Mandatory)] [int] $ProcessId,
           # test seam: the pid -> ppid table, for the platforms that read one
           [scriptblock] $Parents = ${function:Get-ProcParentMap})

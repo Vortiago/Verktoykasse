@@ -10,12 +10,12 @@ It runs on Windows, Linux and macOS. Each platform brings its own console layer
 and its own terminal backend: the Windows console API with Windows Terminal, or
 termios with Konsole or tmux. The rain above them is the same code.
 
-macOS shares Linux's termios reader and answers two questions its own way. It
+macOS shares the Unix termios reader and answers two questions its own way. It
 has no `/proc`, so a session's liveness and a pid's parent come from
-`Process.StartTime` and one `ps` snapshot instead. And tmux is the only tab
-backend it has: Terminal.app and iTerm2 name no tab a script can raise, so
-outside tmux the rain draws every lane and says that `-ThisWindow` and `-Click`
-are the two flags it cannot serve.
+`Process.StartTime` and one `ps` snapshot instead. tmux is its only terminal
+backend, because Terminal.app and iTerm2 name no tab a script can raise. Outside
+tmux the rain draws every lane and names `-ThisWindow` and `-Click` as the two
+flags it cannot serve.
 
 `Get-Help .\matrix.ps1 -Full` lists every flag. `Invoke-Pester ./tests` runs
 the test suite (Pester 5 or later). CI runs it on all three platforms, because a
@@ -228,10 +228,10 @@ tmux talks tmux, whether the outer terminal is Konsole, a plain xterm, or
 another tmux - `$TMUX` names the innermost server, and the client reaches it on
 its own. There is nothing to configure beyond that.
 
-On macOS it is also the only backend, and the reason to run the rain in tmux
-there. Nothing in this section is platform-specific: the scope comes from
-`$TMUX_PANE`, the tabs from `list-panes`, and the match from `pane_pid` against
-a session's ancestors, which is one `ps` snapshot on macOS and a `/proc` walk on
+On macOS tmux is also the only terminal backend, which is the reason to run the
+rain in tmux there. The scope comes from `$TMUX_PANE`, the tabs from
+`list-panes`, and the match from `pane_pid` against a session's ancestors. Only
+that last step differs by platform: one `ps` snapshot on macOS, a `/proc` walk on
 Linux. Outside tmux, macOS gets `none.ps1`, which answers no tabs and says why.
 
 | Step | How |
@@ -375,8 +375,8 @@ other end the tab it started from.
 Finding that ssh session takes nothing from the wire. The process that connected
 to the rain is the local ssh client. Its source port is already on the accepted
 socket, and one tool names the process that owns it: `ss -Htnp` on Linux,
-`lsof -Fpn` on macOS, which is asked for both ends of the port and answers for
-the row whose local end is the one we hold. From there it is `Resolve-TabByPid`,
+`lsof -Fpn` on macOS. The rain asks `lsof` for both ends of the port and takes
+the row whose local end is the port it holds. From there it is `Resolve-TabByPid`,
 the same walk every Unix backend answers with: up the ancestors, stopping at the
 nearest tab. The rain never takes that number from a message, because a peer that
 could name its own ssh could steal a click.
@@ -472,19 +472,20 @@ reads are all tested without a peer.
 
 A suffix in `cs/` means the platform picks one of them. A file with no suffix is
 shared. The split runs two deep: `_Windows` and `_Unix` divide the console
-reader, and `_Linux` and `_Darwin` divide the termios ABI under it. One reader
-over two ABIs, because the escape grammar belongs to the terminal and only the
-struct differs - `tcflag_t` is 8 bytes wide on Darwin against 4 on Linux, `NCCS`
-is 20 against 32, there is no `c_line`, and `ICANON`, `VMIN` and `VTIME` all
-move. Cross them and `tcgetattr` writes 12 bytes past the buffer while the mask
-leaves `ICANON` set, which is a reader that blocks until Enter.
+reader, `_Linux` and `_Darwin` divide the termios ABI under it. One reader over
+two ABIs, because the escape grammar belongs to the terminal and only the struct
+differs.
+
+`tcflag_t` is 8 bytes wide on Darwin against 4 on Linux. `NCCS` is 20 against
+32, there is no `c_line`, and `ICANON`, `VMIN` and `VTIME` all move. Cross them
+and `tcgetattr` writes 12 bytes past the buffer while the mask leaves `ICANON`
+set, which is a reader that blocks until Enter.
 
 `matrix.ps1` loads `tabmap.ps1` and exactly one backend under it, so Windows
 never sources Konsole code and Linux never sources UI Automation. A run compiles
-one termios ABI, its own: two sources under one type-name list share a cache
-family, and `Add-TaggedTypes` keeps one live tag per family, so compiling both to
-prove both still build would make each run recompile both. The three CI runners
-cover the pair instead.
+one termios ABI, its own. Two sources under one type-name list share a cache
+family, and `Add-TaggedTypes` keeps one live tag per family. Compiling both would
+make each run recompile both. The three CI runners cover the pair instead.
 
 A platform is a terminal backend, a C# pair, and its answers in `sessions.ps1`
 for liveness and the parent walk. `remote/tcp.ps1` names the tool that maps a

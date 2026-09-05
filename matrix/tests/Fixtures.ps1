@@ -50,16 +50,10 @@ function Wait-Until ([scriptblock] $Condition, [int] $TimeoutMs = 2000, [int] $S
     $false
 }
 
-# What Claude writes as "procStart" for a live process on this platform: a
-# FILETIME on Windows, /proc clock ticks on Linux, an asctime string in UTC on
-# macOS. The fake registries a test writes have to carry the same shape
-# sessions.ps1 reads back, so both come from here. The caller dot-sources
-# ../lib/sessions.ps1 for Get-ProcessStartTicks, the way Import-TestCsType below
-# relies on console.ps1.
 function Format-TestAsctime ([datetime] $Utc) {
     # asctime, and the day is space padded to two columns: "Sep  4", not "Sep 4".
-    # No .NET date specifier emits that padding, so it is done by hand here and
-    # cannot be shared with sessions.ps1's parse format.
+    # No .NET date specifier emits that padding, so this builds the string by
+    # hand, and it cannot share sessions.ps1's parse format.
     #
     # The invariant culture, because -f and ToString would otherwise spell the
     # month in whatever the box is set to, and sessions.ps1 parses it as invariant.
@@ -68,6 +62,12 @@ function Format-TestAsctime ([datetime] $Utc) {
                        $Utc.ToString('HH:mm:ss yyyy', $inv)
 }
 
+# What Claude writes as "procStart" for a live process on this platform: a
+# FILETIME on Windows, /proc clock ticks on Linux, an asctime string in UTC on
+# macOS. The fake registries a test writes have to carry the same shape
+# sessions.ps1 reads back, so both come from here. The caller dot-sources
+# ../lib/sessions.ps1 for Get-ProcessStartTicks, the way Import-TestCsType below
+# relies on console.ps1.
 function Get-TestProcStart ([int] $ProcessId = $PID) {
     if ($IsLinux) { return Get-ProcessStartTicks -ProcessId $ProcessId }
     # Dispose: StartTime opens a kernel handle, the reason sessions.ps1
@@ -82,7 +82,7 @@ function Get-TestProcStart ([int] $ProcessId = $PID) {
 # A procStart in this platform's shape that belongs to no live process: what a
 # recycled PID looks like, and what has to be dropped.
 #
-# The shape is the whole point. A value the platform cannot read at all is not a
+# The shape is the point. A value the platform cannot read at all is not a
 # mismatch - sessions.ps1 keeps the session then, deliberately, because an
 # unreadable field verifies nothing. So a test that wants a drop has to hand over
 # something readable and wrong, and only this knows what that is.

@@ -1,22 +1,19 @@
 namespace MatrixVT__TAG__
 {
-    using System;
     using System.Runtime.InteropServices;
 
-    // The Darwin termios ABI, the twin of Termios_Linux.cs. Same four questions,
-    // different answers, and not one of them is cosmetic:
+    // The Darwin termios ABI, the twin of Termios_Linux.cs. What differs:
     //
     //   tcflag_t is unsigned long, so the flag words are 8 bytes here and 4 on
     //     Linux. NCCS is 20, not 32, and there is no c_line. The struct is 72
-    //     bytes; the Linux one is 60. Handing a 60-byte buffer to a tcgetattr
+    //     bytes against 60 on Linux. Handing a 60-byte buffer to a tcgetattr
     //     that writes 72 corrupts the 12 bytes after it.
     //   ICANON is 0x100 and ISIG is 0x80. The Linux mask, 0x000B, clears ECHO
-    //     and two echo bits here and leaves ICANON set, so read would block
-    //     until Enter and the frame loop would only move when something was
-    //     typed.
+    //     and two echo bits here and leaves ICANON set. read would then block
+    //     until Enter, and the frame loop would move only on a keypress.
     //   VMIN and VTIME are at 16 and 17, not 6 and 5.
     //
-    // Verified against sys/termios.h in the macOS SDK, not inferred.
+    // Values from sys/termios.h in the macOS SDK.
     [StructLayout(LayoutKind.Sequential)]
     internal struct Termios
     {
@@ -47,7 +44,7 @@ namespace MatrixVT__TAG__
             return t;
         }
 
-        // The state to restore. The flags copy with the struct; the array must
+        // The state to restore. The flags copy with the struct. The array must
         // not, or the raw write would cook the save.
         internal static Termios Copy(Termios t)
         {
