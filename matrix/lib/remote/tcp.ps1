@@ -257,12 +257,12 @@ function ConvertTo-SsOwnerId {
         The pid out of `ss -Htnp` output, for the row whose source port is $Port.
     .DESCRIPTION
         The twin of ConvertTo-LsofOwnerId, and named for the same reason: the two
-        parses are what Resolve-PeerProcessId picks between, so both should be
+        parses are what the platform seam picks between, so both should be
         callable, and testable, by name.
 
         ss was asked for one port's rows, so any pid in them answers. $Port is
-        taken for symmetry with the lsof parse and to keep the two seams
-        interchangeable.
+        taken for symmetry with the lsof parse, which lets the seam call either
+        one with the same arguments.
     #>
     param([AllowEmptyString()] [string] $Text, [Parameter(Mandatory)] [int] $Port)
     if (-not $Text) { return 0 }
@@ -271,6 +271,24 @@ function ConvertTo-SsOwnerId {
         if ($found -gt 0) { return $found }
     }
     0
+}
+
+# lsof on macOS, ss on Linux, chosen once as this file loads. One scriptblock
+# carries the call and the parse together. That leaves a single thing to swap and
+# no way to pair a tool with the wrong reader.
+#
+# Not a fallback chain: each platform has one answer, and trying the other first
+# spends a click's budget on a process that is not installed. Windows takes the
+# ss branch and never runs it, because Resolve-PeerProcessId answers 0 before it
+# reaches the seam.
+$script:PeerOwner = if ($IsMacOS) {
+    { param([int] $p)
+      ConvertTo-LsofOwnerId -Port $p -Text (Invoke-Tool -FileName 'lsof' `
+          -ToolArgs @('-nP', "-iTCP:$p", '-sTCP:ESTABLISHED', '-Fpn')) }
+} else {
+    { param([int] $p)
+      ConvertTo-SsOwnerId -Port $p -Text (Invoke-Tool -FileName 'ss' `
+          -ToolArgs @('-Htnp', 'state', 'established', "( sport = :$p )")) }
 }
 
 function Resolve-PeerProcessId {
@@ -283,16 +301,12 @@ function Resolve-PeerProcessId {
 
         The caller reads that port off the accepted socket, never off anything the
         peer sent. A peer that could name its own ssh could steal a click.
-    .PARAMETER Call
-        Test seam: port -> the output of whichever tool this platform asks.
-    .PARAMETER Parse
-        Test seam: that output -> a pid. Paired with $Call, because the two tools
-        answer in different shapes and a seam that swapped only one would test a
-        parse against output it never sees.
+    .PARAMETER Owner
+        The one test seam: port -> pid. It holds the tool call and the parse of
+        that tool's output together, because only the pair answers the question.
     #>
     param([Parameter(Mandatory)] [int] $Port,
-          [scriptblock] $Call = $null,
-          [scriptblock] $Parse = $null)
+          [scriptblock] $Owner = $script:PeerOwner)
 
     if ($Port -le 0) { return 0 }
     if ($IsWindows) {
@@ -301,28 +315,13 @@ function Resolve-PeerProcessId {
         # guessed.
         return 0
     }
-    if (-not $Call) {
-        # lsof on macOS, ss on Linux. Not a fallback chain: each platform has one
-        # answer, and trying the other first would spend a click's budget on a
-        # process that is not installed.
-        $Call = if ($IsMacOS) {
-            { param($p) Invoke-Tool -FileName 'lsof' `
-                                    -ToolArgs @('-nP', "-iTCP:$p", '-sTCP:ESTABLISHED', '-Fpn') }
-        } else {
-            { param($p) Invoke-Tool -FileName 'ss' `
-                                    -ToolArgs @('-Htnp', 'state', 'established', "( sport = :$p )") }
-        }
-    }
-    if (-not $Parse) {
-        # Paired with the call above. lsof is asked for both ends of the port, so
-        # its parse needs the whole output and the port to tell them apart; ss is
-        # asked for one port's rows, so any pid in them answers.
-        $Parse = if ($IsMacOS) { ${function:ConvertTo-LsofOwnerId} }
-                 else          { ${function:ConvertTo-SsOwnerId} }
-    }
     try {
-        $found = & $Parse (& $Call $Port) $Port
+        $found = & $Owner $Port
         if ($found -gt 0) { return $found }
-    } catch { }
+    } catch {
+        # Only a caller's own seam throws here. Invoke-Tool answers '' for a tool
+        # it cannot run, and both parses answer 0 on empty text. A throw costs
+        # the pid and not the click, and reads as the 0 below.
+    }
     0
 }

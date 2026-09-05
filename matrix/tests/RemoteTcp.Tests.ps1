@@ -202,34 +202,44 @@ Describe 'tcp: naming the local ssh process' {
         ConvertTo-SocketOwnerId 'users:(("ssh",pid=11,fd=3),("ssh",pid=22,fd=4))' | Should -Be 11
     }
 
-    It 'asks for the port it was given' -Skip:($IsWindows) {
-        # Both seams supplied, so this covers the wiring on either platform: the
-        # default pair is chosen by platform, and a test that swapped only the
-        # call would feed ss output to the lsof parse on a Mac. The parse handed
-        # in is the real one, not a stand-in that happens to agree.
+    It 'asks the seam for the port it was given' -Skip:($IsWindows) {
+        # The seam is the whole lookup, a port in and a pid out, so this covers
+        # the wiring on either platform.
         $script:seen = $null
-        $call = { param($p) $script:seen = $p; 'users:(("ssh",pid=4242,fd=3))' }
-        Resolve-PeerProcessId -Port 34234 -Call $call `
-                              -Parse ${function:ConvertTo-SsOwnerId} | Should -Be 4242
+        Resolve-PeerProcessId -Port 34234 -Owner { param($p) $script:seen = $p; 4242 } |
+            Should -Be 4242
         $script:seen | Should -Be 34234
     }
 
     It 'answers zero when the tool knows nothing' -Skip:($IsWindows) {
-        Resolve-PeerProcessId -Port 34234 -Call { param($p) '' } `
-                              -Parse { param($text, $p) 0 } | Should -Be 0
-    }
-
-    It 'uses this platform default pair, end to end' -Skip:($IsWindows) {
-        # No seams at all: the platform picks both, and the pair has to agree.
-        # ss and lsof are each asked for the same fabricated port, one nothing is
-        # listening on, so the answer is zero either way. What this catches is a
-        # default $Call and $Parse that do not match, which returns zero too -
-        # so the point is that it does not throw and does not hang.
-        Resolve-PeerProcessId -Port 1 | Should -Be 0
+        # Empty output is what Invoke-Tool answers for a tool that is missing or
+        # will not stop. The real parse turns that into an unknown owner.
+        Resolve-PeerProcessId -Port 34234 -Owner { param($p) ConvertTo-SsOwnerId -Text '' -Port $p } |
+            Should -Be 0
     }
 
     It 'answers zero for a port that cannot be one' {
-        Resolve-PeerProcessId -Port 0 -Call { param($p) throw 'never called' } | Should -Be 0
+        # The seam answers a pid for every port, so a zero back is proof that
+        # the guard ran and the seam did not.
+        Resolve-PeerProcessId -Port 0 -Owner { param($p) 4242 } | Should -Be 0
+    }
+
+    It 'has a default seam, so a click is answered without one being passed' {
+        # The only test that looks at $script:PeerOwner itself, and the reason it
+        # exists: every other case here hands in an -Owner. A default that did not
+        # resolve would leave $Owner null, the invoke would throw, and the catch in
+        # Resolve-PeerProcessId would read that as a zero. The remote click would
+        # then stop working for good, and every test here would still pass.
+        $script:PeerOwner | Should -Not -BeNullOrEmpty
+        $script:PeerOwner | Should -BeOfType [scriptblock]
+    }
+
+    It 'runs the default seam without throwing' -Skip:($IsWindows) {
+        # Port 1 holds no established connection, so the real tool answers nothing
+        # and the real parse answers zero. What this covers is the wiring: the
+        # default resolves, the tool runs or is absent, and neither costs the rain
+        # more than the pid.
+        Resolve-PeerProcessId -Port 1 | Should -Be 0
     }
 
     Context 'the lsof shape, which macOS reads instead of ss' {
@@ -295,7 +305,8 @@ Describe 'tcp: naming the local ssh process' {
 
     It 'answers zero on Windows without running anything' -Skip:(-not $IsWindows) {
         # No ss there, and the Windows backend matches tabs on title rather than
-        # on a pid, so there is nothing to feed.
-        Resolve-PeerProcessId -Port 34234 -Call { param($p) throw 'never called' } | Should -Be 0
+        # on a pid, so there is nothing to feed. The seam answers a pid, so a
+        # zero back is proof that it never ran.
+        Resolve-PeerProcessId -Port 34234 -Owner { param($p) 4242 } | Should -Be 0
     }
 }
