@@ -31,8 +31,9 @@
 //
 // Exit non-zero on forked only, so an app can gate on this without staleness
 // blocking commits. Zero-dep (git does the history reads).
-import { globSync, readFileSync, writeFileSync, mkdtempSync, rmSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdtempSync, rmSync } from "node:fs";
 import { createHash } from "node:crypto";
+import { scanPaths } from "./js-scan.mjs";
 import { spawnSync } from "node:child_process";
 import { basename, dirname, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
@@ -102,8 +103,11 @@ function recopyCmd(rel, s, canon) {
 /** @type {string[]} */ const forked = [];
 const tmp = mkdtempSync(join(tmpdir(), "check-vendored-"));
 
+// scanPaths rather than a raw glob: this runs from the CONSUMER repo's root,
+// where node_modules/ is usually present, and the skip below is `/`-shaped
+// while globSync answers native separators (js-scan.mjs says why).
 const files = ["**/*.js", "**/*.mjs", "**/*.css", "**/*.html"]
-  .flatMap((p) => globSync(p)).filter((p) => !/(^|\/)node_modules\//.test(p));
+  .flatMap((p) => scanPaths(p, process.cwd())).filter((p) => !/(^|\/)node_modules\//.test(p));
 
 for (const rel of files) {
   const text = readFileSync(rel, "utf8");

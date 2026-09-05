@@ -8,7 +8,10 @@
 // `// gate-allow:` inside a string literal must not count as a comment.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { stripComments, argSpan, splitTop, commentMatch, lineOf } from "./js-scan.mjs";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { SKIP, scanPaths, stripComments, argSpan, splitTop, commentMatch, lineOf } from "./js-scan.mjs";
 
 /** argSpan().args of `src` from its first `(`. @param {string} src */
 const args = (src) => argSpan(src, src.indexOf("("))?.args ?? null;
@@ -108,4 +111,51 @@ test("commentMatch: static-render in a string does not suppress; in a comment it
   assert.equal(commentMatch(inString, stripComments(inString), SR), null);
   const inComment = "host.replaceChildren(frag); // static-render";
   assert.ok(commentMatch(inComment, stripComments(inComment), SR));
+});
+
+// scanPaths — the one door every checker's file set comes through, and the
+// whole job is the separator. fs.globSync answers NATIVE separators, while
+// every path predicate downstream (SKIP here, each checker's extra-skip, the
+// basename split in check-conventions) is spelled with `/`. On Windows a raw
+// glob matched none of them, so the gate scanned the lib/ and tools/ files the
+// exemptions exist to spare and then failed on canon. These assert the SHAPE
+// rather than the platform, so they run everywhere and hold trivially on POSIX.
+/** Build a throwaway tree and hand its root to `fn`. @param {(root: string) => void} fn */
+function inFixture(fn) {
+  const root = mkdtempSync(join(tmpdir(), "js-scan-"));
+  try {
+    mkdirSync(join(root, "js", "lib"), { recursive: true });
+    mkdirSync(join(root, "node_modules", "dep"), { recursive: true });
+    writeFileSync(join(root, "top.js"), "");
+    writeFileSync(join(root, "js", "lib", "render.js"), "");
+    writeFileSync(join(root, "node_modules", "dep", "index.js"), "");
+    fn(root);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
+test("scanPaths: a nested path comes back POSIX-separated", () => {
+  inFixture((root) => {
+    const found = scanPaths("**/*.js", root);
+    assert.ok(found.includes("js/lib/render.js"), `got ${JSON.stringify(found)}`);
+    assert.ok(!found.some((p) => p.includes("\\")), "no result may carry a backslash");
+  });
+});
+
+test("scanPaths: SKIP drops what it names", () => {
+  inFixture((root) => {
+    const kept = scanPaths("**/*.js", root).filter((p) => !SKIP.test(p + "/"));
+    assert.ok(!kept.some((p) => p.includes("node_modules")), `got ${JSON.stringify(kept)}`);
+    assert.ok(kept.includes("top.js") && kept.includes("js/lib/render.js"));
+  });
+});
+
+test("scanPaths: a `/`-shaped dir regex matches a nested result", () => {
+  // check-conventions' own exemption predicate — the one that silently matched
+  // nothing on Windows, so the sanctioned helpers were scanned after all.
+  inFixture((root) => {
+    const skipDirs = /(^|\/)(tools|previews|lib)\//;
+    assert.ok(scanPaths("**/*.js", root).some((p) => skipDirs.test(p + "/")), "lib/ must be recognised");
+  });
 });
