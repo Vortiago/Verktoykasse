@@ -21,9 +21,11 @@
 // a fallback for a stamp written before the hash existed.
 //
 // Each stamped file (stamp-stripped) is compared against the toolkit checkout:
-//   up-to-date  identical to current canon
-//   stale       canon moved, copy untouched (its bytes hash to the stamp) —
-//               safe to re-copy (the exact command is printed); never an error
+//   up-to-date  identical to current canon, under a stamp recording those bytes
+//   stale       canon moved and the copy is untouched (its bytes hash to the
+//               stamp), or the body is current under a stamp naming other bytes
+//               — safe to re-copy or re-stamp (the exact command is printed);
+//               never an error
 //   forked      copy differs from what its stamp says it carries — the
 //               extend-don't-fork violation, loud, with a diffstat
 //
@@ -113,16 +115,27 @@ for (const rel of files) {
     try { return readFileSync(join(TK, stamp.repoPath), "utf8"); } catch { return null; }
   })();
   if (stripped === canon) {
-    upToDate.push(`${rel}  (${stamp.repoPath}@${stamp.rev})`);
+    // Matching bytes are not a clean bill of health. The stamp is the only record
+    // the NEXT run classifies on, and a re-copy that left the stamp line alone
+    // records other bytes than the ones it now carries. Report it here or the
+    // copy passes today and reads as `forked` the first time canon moves, which
+    // is exactly the failure the hash replaced the rev to end. The remedy is the
+    // stamp alone, so this is stale, never an error.
+    const own = sha256(canon);
+    if (stamp.sha256 === own) upToDate.push(`${rel}  (${stamp.repoPath}@${stamp.rev})`);
+    else stale.push(`${rel}  ${stamp.repoPath} body is current, stamp records sha256:${stamp.sha256 ?? "none"} for bytes that hash to sha256:${own}\n      ${recopyCmd(rel, stamp, canon)}`);
     continue;
   }
 
   // The hash decides when the stamp carries one, and it decides from the copy
   // alone — no git read at all. The rev path below stays for a stamp written
   // before ADR 0004, and it is exactly the path this issue proves unreliable: it
-  // reads an untouched copy as forked as soon as canon moves.
+  // reads an untouched copy as forked as soon as canon moves. Run at most once
+  // per file: the hash-less path asks twice, first to classify and again for a
+  // diff basis.
+  /** @type {ReturnType<typeof git> | null} */ let shown = null;
   const original = () => {
-    const shown = git(["show", `${stamp.rev}:${stamp.repoPath}`]);
+    shown ??= git(["show", `${stamp.rev}:${stamp.repoPath}`]);
     return shown.status === 0 ? shown.stdout : null;
   };
   const untouched = stamp.sha256 ? sha256(stripped) === stamp.sha256 : stripped === original();
@@ -165,7 +178,7 @@ if (upToDate.length) {
   for (const l of upToDate) console.log(`    ${l}`);
 }
 if (stale.length) {
-  console.log(`~ stale (${stale.length}) — canon moved, copy untouched; re-copy:`);
+  console.log(`~ stale (${stale.length}) — canon moved, or the stamp names other bytes; re-copy:`);
   for (const l of stale) console.log(`    ${l}`);
 }
 if (forked.length) {

@@ -47,6 +47,11 @@ not apply.
   the recomputed hash differs from the recorded one. Without this rule every sync rewrites
   all 15 stamps, so a one-file canon change lands as a 15-file diff in which 14 files
   change only a rev that no longer decides anything.
+- **A current body under a stamp that names other bytes is `stale`.** A re-copy that
+  leaves the stamp line alone matches canon today, so a content-first verdict calls it
+  up-to-date and says nothing. It reads as `forked` the moment canon moves next, which is
+  this record's own failure with the hash in the rev's place. The remedy is the stamp
+  alone, so the verdict is `stale` and the exit stays zero.
 - **`sync-from-web.sh --check` verifies the hash as well as the body.** The checker that
   classifies is `gate: off` and runs nowhere in CI, so without this the stamp's own claim
   would never be tested. A body can match canon while the stamp records a hash of

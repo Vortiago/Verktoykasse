@@ -2,13 +2,12 @@
 // gate: off — a test, not a gate half (check.mjs globs tools/check-*.mjs; this
 // runs under `node --test` instead).
 //
-// Guards check-vendored's classification, the thing #74 got wrong. The stamp used
-// to name the commit BEFORE the one whose bytes the copy carries, because the
-// documented flow is edit canon → sync → add → commit and no command run at sync
-// time can name a commit that does not exist yet. The rev-based checker then read
-// an untouched copy as `forked` the moment canon moved, which is the one
-// classification that exits non-zero. The stamp now carries a sha256 of the canon
-// bytes, and that hash decides.
+// Guards check-vendored's classification. The stamp carries a sha256 of the canon
+// bytes, and that hash decides (docs/adr/0004). A rev cannot: the documented flow
+// is edit canon → sync → add → commit, so no command run at sync time can name the
+// commit whose bytes the copy receives, and a rev-based checker reads an untouched
+// copy as `forked` the moment canon moves. `forked` is the one classification that
+// exits non-zero.
 //
 // Every case runs the real checker against a throwaway git checkout, because the
 // stale/forked split is made of `git show <rev>:<path>` reads that no double can
@@ -54,8 +53,21 @@ function unstamp(text) {
   return text.split("\n").filter((l) => !line.test(l)).join("\n");
 }
 
-/** @param {string[]} args @param {string} cwd */
-const git = (args, cwd) => spawnSync("git", args, {
+/** A throwaway repo inherits the developer's git setup, and this file ships into
+ * every scaffolded app through new-app.mjs's `tools/*.mjs` glob, so it runs under
+ * configs nobody here chose. Three of them break a commit here:
+ *   - a commit hook. `--no-verify` is the only lever that covers both kinds: git
+ *     also takes hooks from config (`hook.<name>.event = commit-msg`), which is
+ *     global to every repository and which `core.hooksPath` does not reach. A
+ *     conventional-commits hook rejects these subjects, and one whose script has
+ *     moved fails every commit outright.
+ *   - a signature. `commit.gpgsign` prompts for a passphrase or fails.
+ *   - an identity. `user.email` may be unset, hence the env below.
+ * @param {string[]} args @param {string} cwd */
+const git = (args, cwd) => spawnSync("git", [
+  "-c", "commit.gpgsign=false",
+  ...(args[0] === "commit" ? ["commit", "--no-verify", ...args.slice(1)] : args),
+], {
   cwd, encoding: "utf8",
   env: { ...process.env, GIT_AUTHOR_NAME: "t", GIT_AUTHOR_EMAIL: "t@t", GIT_COMMITTER_NAME: "t", GIT_COMMITTER_EMAIL: "t@t" },
 });
@@ -167,6 +179,32 @@ test("a stamp with no hash still classifies through the rev", (t) => {
   assert.match(out, /stale \(1\)/);
 });
 
+test("a current body under a stamp naming other bytes is stale, not silently up-to-date", (t) => {
+  // The `cp` half of a re-copy, without the stamp half: the body is canon's, so
+  // nothing is forked, while the stamp still records the bytes canon carried
+  // before. Reported here or the copy passes today and classifies as `forked`
+  // the moment canon moves, which is the verdict the hash exists to prevent.
+  const { tk, rev } = canonToolkit(t, BODY);
+  const older = `${BODY}const c = 3;\n`;
+  const dir = app(t, `${jsStamp("vanilla-web/x.js", rev, sha256(older))}\n${BODY}`);
+
+  const { code, out } = run(dir, tk);
+  assert.equal(code, 0, out);
+  assert.match(out, /stale \(1\)/);
+  assert.doesNotMatch(out, /up-to-date \(/);
+  assert.match(out, new RegExp(`sha256:${sha256(BODY)}`)); // the value the stamp needs
+});
+
+test("a hash-less stamp on a current body is reported, so the migration cannot stall", (t) => {
+  const { tk, rev } = canonToolkit(t, BODY);
+  const dir = app(t, `${jsStamp("vanilla-web/x.js", rev)}\n${BODY}`);
+
+  const { code, out } = run(dir, tk);
+  assert.equal(code, 0, out);
+  assert.match(out, /stale \(1\)/);
+  assert.match(out, /records sha256:none/);
+});
+
 test("the documented off-by-one on a hash-less stamp is forked — why the migration exists", (t) => {
   // v1 committed, then v2 committed. The copy carries v2's bytes but the stamp
   // names v1, which is what stamping at sync time produced. Then canon moves
@@ -252,8 +290,8 @@ test("sync-from-web.sh --check fails when a copy's recorded hash stops matching 
   // only the sha256 check catches either, since the body diff sees nothing wrong.
   const wrongHash = join(comp, "lib", "render.js");   // records a hash that is not canon's
   const noHash = join(comp, "lib", "chrome.js");      // records no hash at all, and must
-  //   report rather than die: the reader returns empty there, and under
-  //   `set -o pipefail` an unguarded grep miss would kill the script first.
+  //   report rather than die: the reader returns empty there, and under the
+  //   script's `set -e` an unguarded no-match would kill the run first.
   writeFileSync(wrongHash, readFileSync(wrongHash, "utf8").replace(/sha256:[0-9a-f]{64}/, `sha256:${"0".repeat(64)}`));
   writeFileSync(noHash, readFileSync(noHash, "utf8").replace(/ sha256:[0-9a-f]{64}/, ""));
 
@@ -272,4 +310,27 @@ test("the shell writer and node agree on the hash", (t) => {
   const r = spawnSync("bash", ["-c", `source "$1"; sha256_of "$2"`, "_", lib, f], { encoding: "utf8" });
   assert.equal(r.status, 0, r.stderr);
   assert.equal(r.stdout.trim(), sha256(BODY));
+});
+
+test("the shell reader takes the hash from the stamp, not from a lookalike token", (t) => {
+  const lib = join(REPO, "vanilla-components", "lib-stamp.sh");
+  if (!existsSync(lib)) return t.skip("vanilla-components is not installed beside this skill");
+
+  /** @param {string} content */
+  const read = (content) => {
+    const f = join(app(t, content), "x.js");
+    const r = spawnSync("bash", ["-c", `source "$1"; stamped_sha256 "$2"`, "_", lib, f], { encoding: "utf8" });
+    assert.equal(r.status, 0, r.stderr);
+    return r.stdout.trim();
+  };
+
+  const real = "a".repeat(64), decoy = "b".repeat(64);
+  assert.equal(read(`${jsStamp("vanilla-web/x.js", "abc1234", real)}\n${BODY}`), real);
+
+  // A canon file can carry a bare sha256: token of its own — a pinned digest, a
+  // fixture, a doc comment. Reading that as the record would report permanent
+  // drift on a correctly synced copy, and check-vendored.mjs, which anchors on
+  // the rev, would disagree about the same file.
+  assert.equal(read(`// sha256:${decoy}\nconst a = 1;\n`), "", "a token with no stamp around it records nothing");
+  assert.equal(read(`${jsStamp("vanilla-web/x.js", "abc1234", real)}\n// sha256:${decoy}\n`), real);
 });

@@ -36,7 +36,7 @@ PAIRS=(
 
 strip="canonical source: vanilla-web"   # must be a prefix of the sync-mode stamp text
 mode=${1:-sync}
-source "$COMP/lib-stamp.sh"             # sha256_of / stamped_sha256 / stamped_rev
+source "$COMP/lib-stamp.sh"             # stamp_file / sha256_of / stamped_sha256
 
 # Compares files in the WORKING TREE (not staged blobs) — a deliberate simplification
 # matching the edit-canon → sync → add → commit flow. Catches the main case (canon

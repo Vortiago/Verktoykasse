@@ -24,14 +24,18 @@ sha256_of() {
 # The sha256 recorded in <file>'s stamp, or empty when it carries none (a copy
 # stamped before ADR 0004, or no copy at all). Reads the first 3 lines only, the
 # same window check-vendored.mjs parses, with no forks.
-# The trailing `return 0` is load-bearing: the loop ends on `read`'s non-zero at
-# EOF, and under the caller's `set -e` that would kill the script before it could
-# report the copy. "No hash recorded" is an answer, not an error.
+# The hash is anchored to the `@<rev> ` that precedes it, the same shape
+# check-vendored.mjs parses, so a bare sha256: token elsewhere in the window
+# cannot be read as the record.
+# The trailing `return 0` is load-bearing. A line with no match ends the body on a
+# failed `[[ ]] && { ... }`, which becomes the loop's status and the function's,
+# and under the caller's `set -e` that kills the script before it can report the
+# copy. "No hash recorded" is an answer, not an error.
 stamped_sha256() {
   [[ -f $1 ]] || return 0
   local line
   while IFS= read -r line; do
-    [[ $line =~ sha256:([0-9a-f]{64}) ]] && { echo "${BASH_REMATCH[1]}"; return 0; }
+    [[ $line =~ @[^[:space:]]+[[:space:]]sha256:([0-9a-f]{64}) ]] && { echo "${BASH_REMATCH[1]}"; return 0; }
   done < <(head -n 3 "$1")
   return 0
 }
