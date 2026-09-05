@@ -359,44 +359,39 @@ Describe 'expose: titling the tab this session runs in' {
     # moment to write one: it is the first proof that a rain is reading, and a
     # SECOND welcome means a second connection, which means the ssh session
     # holding it is a different one.
-    It 'titles the tab when the welcome arrives' {
+    BeforeEach {
         $script:titled = 0
-        $s = New-ExposeState -Machine 'lab1'; $r = New-FakeRain
-        Step-Expose $s $r 0 -Title { $script:titled++ }
-        $script:titled | Should -Be 0
-        $r.Incoming = (ConvertTo-WelcomeLine) + "`n"
-        Step-Expose $s $r 100 -Title { $script:titled++ }
-        $script:titled | Should -Be 1
+        $script:bump = { $script:titled++ }
     }
 
-    It 'does not title again on the same connection' {
-        # Under tmux each write costs a fork to find the client tty. Nothing has
-        # changed between two polls of one connection.
-        $script:titled = 0
+    It 'titles the tab once, when the welcome arrives' {
         $s = New-ExposeState -Machine 'lab1'; $r = New-FakeRain
-        Step-Expose $s $r 0 -Title { $script:titled++ }
+        Step-Expose $s $r 0 -Title $script:bump
+        $script:titled | Should -Be 0
         $r.Incoming = (ConvertTo-WelcomeLine) + "`n"
-        Step-Expose $s $r 100 -Title { $script:titled++ }
+        Step-Expose $s $r 100 -Title $script:bump
+        $script:titled | Should -Be 1
+        # Not again on the same connection. Under tmux each write costs a fork
+        # to find the client tty, and nothing has changed between two polls.
         $r.Incoming = (ConvertTo-WelcomeLine) + "`n"
-        Step-Expose $s $r 200 -Title { $script:titled++ }
-        Step-Expose $s $r 300 -Title { $script:titled++ }
+        Step-Expose $s $r 200 -Title $script:bump
+        Step-Expose $s $r 300 -Title $script:bump
         $script:titled | Should -Be 1
     }
 
     It 'titles again after a redial' {
         # The ssh session went and came back, so the tab did too. tmux keeps the
         # pane across both, and the new login is a new tty and a new tab.
-        $script:titled = 0
         $s = New-ExposeState -Machine 'lab1' -RetryMs 1000; $r = New-FakeRain
-        Step-Expose $s $r 0 -Title { $script:titled++ }
+        Step-Expose $s $r 0 -Title $script:bump
         $r.Incoming = (ConvertTo-WelcomeLine) + "`n"
-        Step-Expose $s $r 100 -Title { $script:titled++ }
+        Step-Expose $s $r 100 -Title $script:bump
         $r.Shut = $true
-        Step-Expose $s $r 200 -Title { $script:titled++ }
+        Step-Expose $s $r 200 -Title $script:bump
         $r.Shut = $false
-        Step-Expose $s $r 1200 -Title { $script:titled++ }
+        Step-Expose $s $r 1200 -Title $script:bump
         $r.Incoming = (ConvertTo-WelcomeLine) + "`n"
-        Step-Expose $s $r 1300 -Title { $script:titled++ }
+        Step-Expose $s $r 1300 -Title $script:bump
         $script:titled | Should -Be 2
     }
 

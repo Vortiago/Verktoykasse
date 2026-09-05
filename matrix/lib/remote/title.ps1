@@ -1,5 +1,6 @@
 # The tab title the reporting side writes onto its own ssh session, so a click on
-# the rain can find that tab again. Needs ConvertTo-CellText from console.ps1.
+# the rain can find that tab again. Needs ConvertTo-WireText from wire.ps1 and
+# $script:ESC from console.ps1.
 #
 # Windows Terminal hosts every window in one process and hands UI Automation
 # nothing but a tab's name: no pid, and no text buffer for any tab but the one in
@@ -14,11 +15,6 @@
 # So this machine writes its own. A lane for this machine exists only because
 # -ExposeOnSSH is running here, inside the very ssh session the rain wants to
 # raise, which makes this the one process that can always name that tab.
-
-# Long enough for any real login name, short enough that the machine stays
-# readable on a narrow tab. The machine name arrives already cut by
-# Get-ExposeMachineName.
-$script:TitleMaxUser = 32
 
 function Get-TabTitleSequence {
     <#
@@ -39,14 +35,14 @@ function Get-TabTitleSequence {
     param([Parameter(Mandatory)] [string] $Machine,
           [AllowEmptyString()] [string] $User = '')
 
-    # The same filter every drawn string takes. It is here for one character in
-    # particular: an ESC inside a user name would end this sequence and leave the
-    # rest of the name to be read as commands.
-    $name = (ConvertTo-CellText $User).Trim()
-    if ($name.Length -gt $script:TitleMaxUser) { $name = $name.Substring(0, $script:TitleMaxUser) }
+    # ConvertTo-WireText, like every other string that reaches a screen. It is
+    # here for one character in particular: an ESC inside a user name would end
+    # this sequence and leave the rest of the name to be read as commands. The
+    # caps are the ones a tab has room for, not the wire's.
+    $name = (ConvertTo-WireText $User 32).Trim()
     if (-not $name) { $name = 'matrix' }
 
-    "$([char]0x1b)]0;$name@$((ConvertTo-CellText $Machine).Trim())$([char]0x07)"
+    "$script:ESC]0;$name@$((ConvertTo-WireText $Machine 64).Trim())$([char]7)"
 }
 
 function Get-TmuxClientTty {
@@ -86,22 +82,55 @@ function Get-TmuxClientTty {
 function Write-TtyText {
     <#
     .SYNOPSIS
-        Put text on a terminal device.
+        Put text on a terminal device, or give up on it.
     .DESCRIPTION
         Opened, never created and never truncated: the device is already there,
         and a path that is not is a bug this must not paper over. Not appended
         to either, because append asks for a seek a character device cannot do.
         Shared for read and write, because the tmux client attached to this tty
         is holding it.
+
+        A buffer of 1 is FileStream's way of saying no buffer, so the bytes go
+        to the device on the write rather than on a flush this may never reach.
+    .PARAMETER TimeoutMs
+        The bound. A pty blocks a writer once its output queue fills, and that
+        queue fills exactly when the far end of the ssh link has stopped
+        reading. This runs on the poll path of a frame loop, so a title that
+        cannot be delivered is dropped rather than waited on.
     #>
-    param([Parameter(Mandatory)] [string] $Path, [Parameter(Mandatory)] [string] $Text)
+    param([Parameter(Mandatory)] [string] $Path, [Parameter(Mandatory)] [string] $Text,
+          [int] $TimeoutMs = 200)
     $bytes = [System.Text.Encoding]::UTF8.GetBytes($Text)
-    $fs = [System.IO.File]::Open($Path, [System.IO.FileMode]::Open,
-                                 [System.IO.FileAccess]::Write, [System.IO.FileShare]::ReadWrite)
+    $fs = [System.IO.FileStream]::new($Path, [System.IO.FileMode]::Open,
+                                      [System.IO.FileAccess]::Write,
+                                      [System.IO.FileShare]::ReadWrite, 1, $false)
+    $done = $false
     try {
-        $fs.Write($bytes, 0, $bytes.Length)
-        $fs.Flush()
-    } finally { $fs.Dispose() }
+        $done = $fs.WriteAsync($bytes, 0, $bytes.Length).Wait($TimeoutMs)
+    } finally {
+        # Dispose waits for a write that has not landed, which is the wait the
+        # bound above exists to avoid. A stream left behind is closed when the
+        # process exits, and only a stalled link can leave one.
+        if ($done) { $fs.Dispose() }
+    }
+}
+
+function Write-TmuxClientTitle {
+    <#
+    .SYNOPSIS
+        Write a sequence to the tmux client's tty. True when it went out.
+    .DESCRIPTION
+        The two halves of the tmux route in one name, so the caller holds one
+        seam rather than two and never has to know that finding the tty and
+        writing to it are separate steps. False means no client is attached.
+    #>
+    param([Parameter(Mandatory)] [string] $Text,
+          [scriptblock] $Tty = { Get-TmuxClientTty },
+          [scriptblock] $Write = ${function:Write-TtyText})
+    $path = [string](& $Tty)
+    if (-not $path) { return $false }
+    & $Write $path $Text
+    $true
 }
 
 function Set-RemoteTabTitle {
@@ -125,22 +154,17 @@ function Set-RemoteTabTitle {
     param([Parameter(Mandatory)] [string] $Machine,
           [AllowEmptyString()] [string] $User = $(if ($env:USER) { $env:USER } else { $env:USERNAME }),
           [AllowEmptyString()] [string] $Tmux = $env:TMUX,
-          [scriptblock] $Tty = { Get-TmuxClientTty },
-          [scriptblock] $WriteTty = ${function:Write-TtyText},
+          [scriptblock] $WriteTmux = ${function:Write-TmuxClientTitle},
           [scriptblock] $Write = $null)
 
     $seq = Get-TabTitleSequence -Machine $Machine -User $User
 
     if ($Tmux) {
-        $path = ''
-        try { $path = [string](& $Tty) } catch { $path = '' }
-        if ($path -and $WriteTty) {
-            try { $null = & $WriteTty $path $seq } catch { return $false }
-            return $true
-        }
-        # No client attached. stdout below reaches the pane and no further, which
-        # titles the wrong thing but costs one write and never misleads: the rain
-        # only ever reads a title it finds on a local tab.
+        # A tmux server with no client attached falls through to stdout. That
+        # reaches the pane and no further, which titles the wrong thing but
+        # costs one write and never misleads: the rain only ever reads a title
+        # it finds on a local tab.
+        try { if (& $WriteTmux $seq) { return $true } } catch { return $false }
     }
 
     if (-not $Write) { return $false }

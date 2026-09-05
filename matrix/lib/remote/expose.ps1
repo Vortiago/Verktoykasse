@@ -164,12 +164,13 @@ function Update-Expose {
             if ($null -eq $o) { continue }
             switch ([string]$o.t) {
                 'welcome' {
-                    $first = -not $State.Welcomed
+                    # Before the flag, so the edge IS the flag and no local has
+                    # to survive the assignment. Swallowed like the focus below:
+                    # a tab that keeps its old name costs a click, and a throw
+                    # here costs the frame loop.
+                    if ($Title -and -not $State.Welcomed) { try { & $Title } catch { } }
                     $State.Welcomed = $true
                     $State.RefusedWhy = ''
-                    # Swallowed like the focus below: a tab that keeps its old
-                    # name costs a click, and a throw here costs the frame loop.
-                    if ($first -and $Title) { try { & $Title } catch { } }
                 }
                 'refused' {
                     # Filtered like every string from a peer: it reaches a screen.

@@ -251,8 +251,9 @@ $titleTab = $null
 if ($expose -and -not $NoTabTitle) {
     $titleTab = {
         # Write-Raw is the console handle this script owns; Set-RemoteTabTitle
-        # only reaches for it outside tmux, where stdout IS the ssh stream.
-        [void](Set-RemoteTabTitle -Machine $script:expose.Machine -Write { param($t) Write-Raw $t })
+        # only reaches for it outside tmux, where stdout IS the ssh stream. It
+        # is named at call time, which is the only time it is defined by.
+        [void](Set-RemoteTabTitle -Machine $script:expose.Machine -Write ${function:Write-Raw})
     }
 }
 

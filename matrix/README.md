@@ -370,7 +370,7 @@ could name its own ssh could steal a click.
 | --- | --- | --- |
 | tmux | yes | yes, by pid |
 | Konsole | yes | yes, by pid |
-| Windows Terminal | yes | yes, by the title the reporting side wrote |
+| Windows Terminal | yes | by title, which -ExposeOnSSH now writes |
 
 Where no pid names a tab, the backend answers through `Resolve-MachineTab`, which
 reads tab titles. `user@machine` scores 2 and is taken for `machine`. A tab that

@@ -90,6 +90,14 @@ BeforeAll {
         [pscustomobject]@{ Stdout = $out; Stderr = $err; ExitCode = $Run.Process.ExitCode }
     }
 
+    # The rain's answer to a hello, written straight onto the accepted socket.
+    # Every case below that needs a welcomed report sends this one.
+    function Send-Welcome ($conn) {
+        $stream = $conn.GetStream()
+        $line = [System.Text.Encoding]::UTF8.GetBytes('{"v":1,"t":"welcome"}' + "`n")
+        $stream.Write($line, 0, $line.Length); $stream.Flush()
+    }
+
     # A free loopback port, found by taking one and letting it go. Nothing here
     # may use the real 9999: a developer running the suite may have a rain up.
     function Get-FreePort {
@@ -233,6 +241,13 @@ Describe 'matrix.ps1 -Remote' {
 }
 
 Describe 'matrix.ps1 -ExposeOnSSH' {
+    # No child here may run as if it were in a tmux pane. The title write would
+    # go to the tmux client's tty instead of the stdout these read back, and a
+    # developer running the suite from inside tmux would watch it fail and
+    # retitle their own terminal.
+    BeforeEach { $script:tmuxSnap = Get-EnvSnapshot 'TMUX'; $env:TMUX = '' }
+    AfterEach  { Restore-EnvSnapshot $script:tmuxSnap }
+
     It 'reports this machine to a listener while it draws' {
         $r = Invoke-ExposeRain $liveHome @('-Seconds', '10', '-RemoteName', 'orkanger') {
             param($conn)
@@ -276,52 +291,29 @@ Describe 'matrix.ps1 -ExposeOnSSH' {
     }
 
     It 'says it is connected once the host welcomes it' {
-        $r = Invoke-ExposeRain $emptyHome @('-Seconds', '5', '-Stats', '-PollSeconds', '0.2') {
-            param($conn)
-            $stream = $conn.GetStream()
-            $welcome = [System.Text.Encoding]::UTF8.GetBytes('{"v":1,"t":"welcome"}' + "`n")
-            $stream.Write($welcome, 0, $welcome.Length); $stream.Flush()
-        }
+        $r = Invoke-ExposeRain $emptyHome @('-Seconds', '5', '-Stats', '-PollSeconds', '0.2') `
+                               { param($conn) Send-Welcome $conn }
         (Remove-Sgr $r.Stdout) | Should -Match 'host connected'
     }
 
     # The tab the rain on the other machine has to find. Windows Terminal matches
     # a click on the title and on nothing else, and no shell reliably writes one
-    # over ssh, so the welcome is answered with an OSC 0 of this end's own.
-    #
-    # TMUX is cleared for the child: inside a pane the sequence goes to the tmux
-    # client's tty instead, which is right in life and unreadable from here. The
-    # choice between the two is covered in RemoteTitle.Tests.ps1.
+    # over ssh, so the welcome is answered with an OSC 0 of this end's own. Which
+    # of the two destinations it takes is covered in RemoteTitle.Tests.ps1.
     It 'titles the tab it runs in once the host welcomes it' {
-        $snap = Get-EnvSnapshot 'TMUX'
-        $env:TMUX = ''
-        try {
-            $r = Invoke-ExposeRain $emptyHome @('-Seconds', '5', '-PollSeconds', '0.2',
-                                               '-RemoteName', 'orkanger') {
-                param($conn)
-                $stream = $conn.GetStream()
-                $welcome = [System.Text.Encoding]::UTF8.GetBytes('{"v":1,"t":"welcome"}' + "`n")
-                $stream.Write($welcome, 0, $welcome.Length); $stream.Flush()
-            }
-        } finally { Restore-EnvSnapshot $snap }
+        $r = Invoke-ExposeRain $emptyHome @('-Seconds', '5', '-PollSeconds', '0.2',
+                                            '-RemoteName', 'orkanger') `
+                               { param($conn) Send-Welcome $conn }
         # Not Remove-Sgr: it strips CSI, and this is an OSC. The login name in
         # the middle is whatever the runner has.
-        $r.Stdout | Should -Match ([regex]::Escape("$([char]27)]0;") + '[^]+' +
+        $r.Stdout | Should -Match ([regex]::Escape("$([char]27)]0;") + '[^\x07]+' +
                                    [regex]::Escape("@orkanger$([char]7)"))
     }
 
     It 'leaves the tab title alone with -NoTabTitle' {
-        $snap = Get-EnvSnapshot 'TMUX'
-        $env:TMUX = ''
-        try {
-            $r = Invoke-ExposeRain $emptyHome @('-Seconds', '5', '-PollSeconds', '0.2',
-                                               '-RemoteName', 'orkanger', '-NoTabTitle') {
-                param($conn)
-                $stream = $conn.GetStream()
-                $welcome = [System.Text.Encoding]::UTF8.GetBytes('{"v":1,"t":"welcome"}' + "`n")
-                $stream.Write($welcome, 0, $welcome.Length); $stream.Flush()
-            }
-        } finally { Restore-EnvSnapshot $snap }
+        $r = Invoke-ExposeRain $emptyHome @('-Seconds', '5', '-PollSeconds', '0.2',
+                                            '-RemoteName', 'orkanger', '-NoTabTitle') `
+                               { param($conn) Send-Welcome $conn }
         $r.Stdout | Should -Not -Match ([regex]::Escape("@orkanger$([char]7)"))
     }
 }

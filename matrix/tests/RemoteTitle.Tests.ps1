@@ -5,10 +5,15 @@
 # answers the same FileStream calls a tty does.
 BeforeAll {
     . (Join-Path $PSScriptRoot '../lib/console.ps1')
+    . (Join-Path $PSScriptRoot '../lib/remote/wire.ps1')
     . (Join-Path $PSScriptRoot '../lib/remote/title.ps1')
+    # The other half of the contract: the scorer that reads what this writes. It
+    # defers every Add-Type to Initialize-Uia, so sourcing it costs nothing here.
+    . (Join-Path $PSScriptRoot '../lib/terminal/windows-terminal.ps1')
 
-    $script:ESC = [char]0x1b
-    $script:BEL = [char]0x07
+    # $script:ESC comes from console.ps1. BEL has no constant there, because
+    # nothing else in the rain ends a sequence with one.
+    $script:BEL = [char]7
 }
 
 Describe 'title: the sequence' {
@@ -35,14 +40,25 @@ Describe 'title: the sequence' {
     }
 
     It 'caps the user name' {
-        $long = 'a' * 100
-        $seq = Get-TabTitleSequence -Machine 'lab1' -User $long
-        $seq | Should -Be "$script:ESC]0;$('a' * 32)@lab1$script:BEL"
+        Get-TabTitleSequence -Machine 'lab1' -User ('a' * 100) |
+            Should -Be "$script:ESC]0;$('a' * 32)@lab1$script:BEL"
     }
 
     It 'trims the ends rather than titling a tab with a space' {
         Get-TabTitleSequence -Machine 'lab1' -User '  atle  ' |
             Should -Be "$script:ESC]0;atle@lab1$script:BEL"
+    }
+
+    It 'writes what the host scores highest' {
+        # The two ends of this feature are on different machines and in
+        # different files, and nothing else crosses them: the producer runs on
+        # the reporting side, the scorer on Windows. Tighten Get-MachineTitleScore
+        # without this and every remote click breaks with the suite still green.
+        $title = Get-TabTitleSequence -Machine 'lab1' -User 'atle'
+        # As the tab carries it: Get-TerminalTab hands Resolve-MachineTab the
+        # name alone, without the sequence around it.
+        $shown = $title.Trim($script:ESC, $script:BEL) -replace '^\]0;', ''
+        Get-MachineTitleScore -Title $shown -Machine 'lab1' | Should -Be 2
     }
 }
 
@@ -77,51 +93,62 @@ Describe 'title: finding the tty under tmux' {
     }
 }
 
+Describe 'title: the tmux route' {
+    It 'writes the sequence to the tty it was given' {
+        $script:wrote = ''
+        Write-TmuxClientTitle -Text 'seq' -Tty { '/dev/pts/3' } `
+                              -Write { param($p, $t) $script:wrote = "$p|$t" } | Should -BeTrue
+        $script:wrote | Should -Be '/dev/pts/3|seq'
+    }
+
+    It 'answers false when no client is attached' {
+        # A tmux server nobody is looking at. There is no tab to title.
+        $script:wrote = ''
+        Write-TmuxClientTitle -Text 'seq' -Tty { '' } `
+                              -Write { param($p, $t) $script:wrote = "$p|$t" } | Should -BeFalse
+        $script:wrote | Should -Be ''
+    }
+}
+
 Describe 'title: where the write goes' {
     BeforeEach {
-        $script:tty = [System.Collections.Generic.List[string]]::new()
+        $script:tmux = [System.Collections.Generic.List[string]]::new()
         $script:out = [System.Collections.Generic.List[string]]::new()
-        $script:writeTty = { param($p, $t) $script:tty.Add("$p|$t") }
+        $script:writeTmux = { param($t) $script:tmux.Add($t); $true }
         $script:writeOut = { param($t) $script:out.Add($t) }
     }
 
-    It 'writes to the client tty when this is a tmux pane' {
+    It 'takes the tmux route when this is a tmux pane' {
         $wrote = Set-RemoteTabTitle -Machine 'lab1' -User 'atle' -Tmux '/tmp/tmux-1000/default,42,0' `
-                                    -Tty { '/dev/pts/3' } -WriteTty $script:writeTty -Write $script:writeOut
+                                    -WriteTmux $script:writeTmux -Write $script:writeOut
         $wrote | Should -BeTrue
-        $script:tty | Should -Be "/dev/pts/3|$script:ESC]0;atle@lab1$script:BEL"
+        $script:tmux | Should -Be "$script:ESC]0;atle@lab1$script:BEL"
         # stdout under tmux reaches the pane and stops there. Writing both would
         # retitle the pane as well, which is not this machine's tab.
         $script:out.Count | Should -Be 0
     }
 
     It 'writes to stdout when this is not a tmux pane' {
-        $script:asked = $false
         $wrote = Set-RemoteTabTitle -Machine 'lab1' -User 'atle' -Tmux '' `
-                                    -Tty { $script:asked = $true; '/dev/pts/3' } `
-                                    -WriteTty $script:writeTty -Write $script:writeOut
+                                    -WriteTmux $script:writeTmux -Write $script:writeOut
         $wrote | Should -BeTrue
         $script:out | Should -Be "$script:ESC]0;atle@lab1$script:BEL"
-        $script:tty.Count | Should -Be 0
         # No tmux, no fork to ask one anything.
-        $script:asked | Should -BeFalse
+        $script:tmux.Count | Should -Be 0
     }
 
-    It 'falls back to stdout when the tty cannot be found' {
-        # A tmux server with no client attached. The pane title is the wrong
-        # target, but it is better than nothing and costs one write.
+    It 'falls back to stdout when no tmux client is attached' {
         $wrote = Set-RemoteTabTitle -Machine 'lab1' -User 'atle' -Tmux 'default,42,0' `
-                                    -Tty { '' } -WriteTty $script:writeTty -Write $script:writeOut
+                                    -WriteTmux { $false } -Write $script:writeOut
         $wrote | Should -BeTrue
         $script:out.Count | Should -Be 1
-        $script:tty.Count | Should -Be 0
     }
 
     It 'swallows a write that fails' {
         # A tty that went away between the lookup and the open. This runs on the
         # poll path of a frame loop and must never throw into it.
-        { Set-RemoteTabTitle -Machine 'lab1' -Tmux 'default' -Tty { '/dev/pts/3' } `
-                             -WriteTty { throw 'gone' } -Write $script:writeOut } | Should -Not -Throw
+        { Set-RemoteTabTitle -Machine 'lab1' -Tmux 'default' -WriteTmux { throw 'gone' } `
+                             -Write $script:writeOut } | Should -Not -Throw
     }
 
     It 'reports nothing written when there is nowhere to write' {
