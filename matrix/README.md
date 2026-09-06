@@ -412,12 +412,9 @@ writes one layer down instead. No tmux option is read or changed. The tty is
 asked for fresh every time, because tmux outlives the login that started it and
 `$SSH_TTY` in an old pane names a pty that is gone.
 
-It is written on the edge into welcomed, and only there. A welcome is the first
-proof that a rain is reading, and every later welcome starts a connection this
-end has not titled for: a redial after the ssh session came back is a new tab,
-and a redial after the rain restarted rewrites the same title onto the same one.
-The login name loses an `@` of its own to a `-`, because the scorer on the other
-side reads the machine off the first `@` in the word. `-NoTabTitle` turns the
+The title goes on when the rain answers, and again on every reconnect. The login
+name goes on as it is, an `@` of its own included, because the scorer on the
+other side reads the machine off the last `@` in a word. `-NoTabTitle` turns the
 whole thing off and leaves the tab whatever name the shell gave it.
 
 ### The token

@@ -39,12 +39,12 @@ Describe 'title: the sequence' {
             Should -Be "$script:ESC]0;at le@lab1$script:BEL"
     }
 
-    It 'replaces an @ the login name carries of its own' {
-        # Get-MachineTitleScore cuts a word at its FIRST @ and reads the machine
-        # off the rest. Left in, 'a@b' would offer it 'b@lab1' and score 0, and
-        # the click would find nothing on a tab this end had just titled.
+    It 'leaves an @ the login name carries of its own' {
+        # An AD-style login goes on the tab as the user typed it.
+        # Get-MachineTitleScore reads the machine off the LAST @, so nothing
+        # here has to be mangled to be read.
         Get-TabTitleSequence -Machine 'lab1' -User 'a@b' |
-            Should -Be "$script:ESC]0;a-b@lab1$script:BEL"
+            Should -Be "$script:ESC]0;a@b@lab1$script:BEL"
     }
 
     It 'caps the user name' {
@@ -62,9 +62,9 @@ Describe 'title: the sequence' {
         # different files, and nothing else crosses them: the producer runs on
         # the reporting side, the scorer on Windows. Tighten Get-MachineTitleScore
         # without this and every remote click breaks with the suite still green.
-        # The awkward login is in here too: it is the one the scorer cannot read
-        # unless the producer has already taken the @ out.
-        foreach ($user in 'atle', 'a@b', '', '  atle  ') {
+        # The awkward login is in here too: an @ of its own is what the two
+        # sides have to agree about.
+        foreach ($user in 'atle', 'a@b', '') {
             $title = Get-TabTitleSequence -Machine 'lab1' -User $user
             # As the tab carries it: Get-TerminalTab hands Resolve-MachineTab the
             # name alone, without the sequence around it.

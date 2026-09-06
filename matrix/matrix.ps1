@@ -244,10 +244,8 @@ if ($ExposeOnSSH) {
 # writes one over ssh: macOS titles nothing without Terminal.app, and tmux
 # forwards nothing with set-titles off. So this end writes its own.
 #
-# Written on the welcome, which is why it is a block and not a line at startup: a
-# welcome is the first proof a rain is reading, and every later one starts a
-# connection this end has not titled for. A redial after the ssh session came back
-# is a new tab, and a redial after the rain restarted rewrites the same title.
+# A block and not a line at startup, because it is written on the welcome. See
+# Update-Expose's -Title for which welcomes and why.
 $titleTab = $null
 if ($expose -and -not $NoTabTitle) {
     $titleTab = {

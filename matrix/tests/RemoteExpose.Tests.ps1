@@ -355,11 +355,8 @@ Describe 'expose: what it can do here' {
 
 Describe 'expose: titling the tab this session runs in' {
     # The rain on the other machine finds this ssh session by the tab title, and
-    # on Windows Terminal it has nothing else to find it by. A welcome is the
-    # moment to write one: it is the first proof that a rain is reading, and
-    # every later welcome starts a connection this end has not titled for. The
-    # tab behind it may be a new one (the ssh session came back) or the same one
-    # (the rain restarted), and writing on the edge covers both.
+    # on Windows Terminal it has nothing else to find it by. Which welcomes are
+    # written on is Update-Expose's -Title; the two cases below pin it.
     BeforeEach {
         $script:titled = 0
         $script:bump = { $script:titled++ }
