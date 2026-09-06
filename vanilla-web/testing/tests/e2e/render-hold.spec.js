@@ -105,6 +105,28 @@ test("a selection spanning the region holds a swap, though neither endpoint is i
   await expect(page.getByTestId("regionText")).toHaveText("build:t1");
 });
 
+test("one selection read serves a whole synchronous pass, held host and swapping host alike (#83)", async ({ page }) => {
+  // What the node counter cannot vouch for: the REAL Selection getters, and a
+  // memoised REAL Range still answering correctly after the seam replaced a
+  // sibling region's children mid-pass.
+  await page.goto(FIXTURE);
+  expect(await page.evaluate(() => window.__selectSpanningRegion()))
+    .toEqual({ isCollapsed: false, spans: true });
+
+  const first = await page.evaluate(() => window.__renderPass("p1"));
+  // #region2 is outside the span and swaps; #region is held by the same selection,
+  // read from the snapshot taken before that swap.
+  expect(first.held).toEqual([false, true]);
+  expect(first.reads).toBeLessThanOrEqual(3);
+
+  // A fresh page.evaluate is a fresh task, so the memo has cleared: the next pass
+  // must ask again, and must ask once.
+  const second = await page.evaluate(() => window.__renderPass("p2"));
+  expect(second.held).toEqual([false, true]);
+  expect(second.reads).toBeGreaterThan(0);
+  expect(second.reads).toBeLessThanOrEqual(3);
+});
+
 test("defer:false reports the hold and arms nothing — the caller's own retry lands the fresh build", async ({ page }) => {
   await page.goto(FIXTURE);
   await page.getByLabel("first control").focus();
