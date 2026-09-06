@@ -104,6 +104,13 @@ function Update-Expose {
         conn, line -> writes it. Throwing is how it reports a broken pipe.
     .PARAMETER Focus
         session id -> switches to it. The one thing the rain can ask for.
+    .PARAMETER Title
+        -> titles the tab this ssh session runs in. Called on the edge into
+        welcomed, and only there: a welcome is the first proof a rain is
+        reading, and every later welcome starts a connection this end has not
+        titled for. A redial after the ssh session came back is a new tab; a
+        redial after the rain restarted is the same tab and the same title, so
+        writing on every edge costs one sequence and can never miss one.
     #>
     param([Parameter(Mandatory)] [hashtable] $State,
           [Parameter(Mandatory)] [long] $Now,
@@ -112,7 +119,8 @@ function Update-Expose {
           [Parameter(Mandatory)] [scriptblock] $Read,
           [Parameter(Mandatory)] [scriptblock] $Write,
           [Parameter(Mandatory)] [scriptblock] $Close,
-          [scriptblock] $Focus = $null)
+          [scriptblock] $Focus = $null,
+          [scriptblock] $Title = $null)
 
     # A refusing rain re-states it on every redial; a stopped one never will, and
     # sshd keeps taking the connection either way.
@@ -157,7 +165,15 @@ function Update-Expose {
             $o = ConvertFrom-WireLine $line
             if ($null -eq $o) { continue }
             switch ([string]$o.t) {
-                'welcome' { $State.Welcomed = $true; $State.RefusedWhy = '' }
+                'welcome' {
+                    # Before the flag, so the edge IS the flag and no local has
+                    # to survive the assignment. Swallowed like the focus below:
+                    # a tab that keeps its old name costs a click, and a throw
+                    # here costs the frame loop.
+                    if ($Title -and -not $State.Welcomed) { try { & $Title } catch { } }
+                    $State.Welcomed = $true
+                    $State.RefusedWhy = ''
+                }
                 'refused' {
                     # Filtered like every string from a peer: it reaches a screen.
                     $why = ConvertTo-WireText $o.why 64

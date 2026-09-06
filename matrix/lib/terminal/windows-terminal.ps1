@@ -168,16 +168,26 @@ function Get-MachineTitleScore {
 
         A word is cut at its first dot, so a short name matches a fully
         qualified one. Nowhere else: lab1-old is not lab1, nor is lab10.
+
+        The machine is what follows the LAST @ in the word. A login can carry
+        one of its own and a host name never does.
     #>
     param([AllowEmptyString()] [string] $Title, [Parameter(Mandatory)] [string] $Machine)
     if (-not $Title) { return 0 }
     $score = 0
     foreach ($word in ($Title -split '[\s:;,()\[\]"''<>|]+')) {
         if (-not $word) { continue }
-        # [char], not '@': the string overload of IndexOf compares by culture, and
-        # a title carrying an ignorable character would then answer an index the
+        # The LAST @, because that is where user@host splits. An AD-style login
+        # carries one of its own: atle@bliksund on lab1 titles a tab
+        # atle@bliksund@lab1, and reading the first @ offered this bliksund@lab1.
+        # That scored 0 rather than the 1 a bare mention gets, because the
+        # machine never stood as a word of its own either. Shells title that way
+        # too, and a title matrix did not write is one it cannot sanitise.
+        #
+        # [char], not '@': the string overload compares by culture, and a title
+        # carrying an ignorable character would then answer an index the
         # Substring below cuts at the wrong place. The char overload is ordinal.
-        $at = $word.IndexOf([char]'@')
+        $at = $word.LastIndexOf([char]'@')
         $name = if ($at -ge 0) { $word.Substring($at + 1) } else { $word }
         $name = ($name -split '\.')[0]
         if ($name -ine $Machine) { continue }

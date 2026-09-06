@@ -128,6 +128,14 @@ Describe 'Resolve-MachineTab' {
         (Resolve-MachineTab -Machine 'lab1' -ReadTab { $script:tabs }).Index | Should -Be 1
     }
 
+    It 'reads the machine off the last @, so a login carrying one still matches' {
+        # atle@bliksund is an ordinary AD login, and a shell titles its tab
+        # atle@bliksund@lab1. Read at the first @ this offered bliksund@lab1 and
+        # scored 0, so the click found nothing at all.
+        $script:tabs = @((New-TestTab 1 0 'atle@bliksund@lab1: ~' 'none'))
+        (Resolve-MachineTab -Machine 'lab1' -ReadTab { $script:tabs }).Index | Should -Be 0
+    }
+
     It 'takes the short name out of a fully qualified one, with whatever follows' {
         # The hello carries the name cut at the first dot; a shell often writes
         # the whole thing, and the working directory after a colon.

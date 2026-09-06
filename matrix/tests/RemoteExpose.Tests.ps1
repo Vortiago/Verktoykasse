@@ -40,10 +40,10 @@ BeforeAll {
     }
 
     function Step-Expose ($State, $Rain, [long] $Now, [object[]] $Session = @(),
-                          [scriptblock] $Focus = $null) {
+                          [scriptblock] $Focus = $null, [scriptblock] $Title = $null) {
         Update-Expose -State $State -Now $Now -Session $Session `
                       -Connect $Rain.Connect -Read $Rain.Read -Write $Rain.Write `
-                      -Close $Rain.Close -Focus $Focus
+                      -Close $Rain.Close -Focus $Focus -Title $Title
     }
 
 }
@@ -351,5 +351,55 @@ Describe 'expose: what it can do here' {
 
     It 'says nothing when there is' {
         Test-ExposeSupport -Tmux '/tmp/tmux-1000/default,123,0' | Should -Be ''
+    }
+}
+
+Describe 'expose: titling the tab this session runs in' {
+    # The rain on the other machine finds this ssh session by the tab title, and
+    # on Windows Terminal it has nothing else to find it by. Which welcomes are
+    # written on is Update-Expose's -Title; the two cases below pin it.
+    BeforeEach {
+        $script:titled = 0
+        $script:bump = { $script:titled++ }
+    }
+
+    It 'titles the tab once, when the welcome arrives' {
+        $s = New-ExposeState -Machine 'lab1'; $r = New-FakeRain
+        Step-Expose $s $r 0 -Title $script:bump
+        $script:titled | Should -Be 0
+        $r.Incoming = (ConvertTo-WelcomeLine) + "`n"
+        Step-Expose $s $r 100 -Title $script:bump
+        $script:titled | Should -Be 1
+        # Not again on the same connection. Under tmux each write costs a fork
+        # to find the client tty, and nothing has changed between two polls.
+        $r.Incoming = (ConvertTo-WelcomeLine) + "`n"
+        Step-Expose $s $r 200 -Title $script:bump
+        Step-Expose $s $r 300 -Title $script:bump
+        $script:titled | Should -Be 1
+    }
+
+    It 'titles again after a redial' {
+        # The ssh session went and came back, so the tab did too. tmux keeps the
+        # pane across both, and the new login is a new tty and a new tab.
+        $s = New-ExposeState -Machine 'lab1' -RetryMs 1000; $r = New-FakeRain
+        Step-Expose $s $r 0 -Title $script:bump
+        $r.Incoming = (ConvertTo-WelcomeLine) + "`n"
+        Step-Expose $s $r 100 -Title $script:bump
+        $r.Shut = $true
+        Step-Expose $s $r 200 -Title $script:bump
+        $r.Shut = $false
+        Step-Expose $s $r 1200 -Title $script:bump
+        $r.Incoming = (ConvertTo-WelcomeLine) + "`n"
+        Step-Expose $s $r 1300 -Title $script:bump
+        $script:titled | Should -Be 2
+    }
+
+    It 'survives a title write that throws' {
+        # Same rule as every other seam here: a frame loop is calling.
+        $s = New-ExposeState -Machine 'lab1'; $r = New-FakeRain
+        Step-Expose $s $r 0
+        $r.Incoming = (ConvertTo-WelcomeLine) + "`n"
+        { Step-Expose $s $r 100 -Title { throw 'no tty' } } | Should -Not -Throw
+        Get-ExposeStatus $s | Should -Be 'host connected'
     }
 }
