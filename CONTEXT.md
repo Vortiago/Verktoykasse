@@ -19,8 +19,9 @@ identified by its stamp. Edited only by re-copying from canon.
 _Avoid_: fork, snapshot, mirror
 
 **Stamp**:
-The one-line provenance header on a vendored copy naming its canon path and the
-commit it was copied at.
+The one-line provenance header on a vendored copy, naming its canon path, a
+sha256 of the canon bytes it carries, and the commit it was copied at. The hash
+decides stale against forked. The commit is for a human reader.
 _Avoid_: banner, watermark
 
 **Stale**:

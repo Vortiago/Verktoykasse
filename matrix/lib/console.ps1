@@ -90,7 +90,7 @@ function Add-TaggedTypes {
     if (-not (($TypeNames[0] -f $tag) -as [type])) {
         # One cache per source family: two compiled sources must not evict each
         # other. The family is the whole name list, not just its first entry - the
-        # suite compiles ConsoleVT_Linux.cs on its own under the same first name
+        # suite compiles ConsoleVT_Unix.cs on its own under the same first name
         # types.ps1 uses for the whole bundle, and a family read from that name
         # alone had the two deleting each other's cache on every alternating run.
         $stem = ($TypeNames[0] -split '[.{]')[0]

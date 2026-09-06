@@ -25,18 +25,22 @@ HERE=$(cd "$(dirname "$0")" && pwd)
 what=${1:?usage: vendor.sh <component|tokens|tones> <dest-dir>}
 dest=${2:?usage: vendor.sh <component|tokens|tones> <dest-dir>}
 rev=$(git -C "$HERE" rev-parse --short HEAD 2>/dev/null || echo unknown)
-# Stamp carries the source path within this skill, so check-vendored.mjs can
-# compare a copy against canon without content heuristics:
-#   from vanilla-components/<path>@<rev> - re-copy to update, don't fork
-stamp_for() { echo "from vanilla-components/$1@$rev - re-copy to update, don't fork"; }
-
-mkdir -p "$dest"
 
 # Provenance stamping is shared with sync-from-web.sh (stamp_file <file> <text>
-# <strip-pattern>). Re-stamping strips the old header first, so updates stay
-# clean; the pattern is a prefix of BOTH the old (pathless) and new stamps.
+# <strip-pattern>, plus sha256_of). Re-stamping strips the old header first, so
+# updates stay clean; the pattern is a prefix of the old (pathless), the pathful
+# and the hash-bearing stamps alike.
 strip="from vanilla-components"
 source "$HERE/lib-stamp.sh"
+
+# Stamp carries the source path within this skill and a sha256 of the bytes copied,
+# so check-vendored.mjs can classify a copy without content heuristics and without
+# trusting the rev (docs/adr/0005):
+#   from vanilla-components/<path>@<rev> sha256:<hex> - re-copy to update, don't fork
+# The path is relative to $HERE, which is also where the bytes to hash live.
+stamp_for() { echo "from vanilla-components/$1@$rev sha256:$(sha256_of "$HERE/$1") - re-copy to update, don't fork"; }
+
+mkdir -p "$dest"
 
 if [ "$what" = tokens ]; then
   cp "$HERE/tokens.css" "$dest/tokens.css"

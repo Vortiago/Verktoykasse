@@ -1,4 +1,4 @@
-// canonical source: vanilla-web/previews/naming.mjs@b78a4af — vendored copy, do not edit here
+// canonical source: vanilla-web/previews/naming.mjs@4a2a40c sha256:c2ce0b2b837bb44a8f505e0978e65471c1c1cd45469cd72aa982bcbaaced9907 - vendored copy, do not edit here
 // @ts-check
 // Shared kebab-title -> create<Name> factory-naming convention. One definition
 // so previews/new.mjs (which scaffolds the real import) and preview.js (which

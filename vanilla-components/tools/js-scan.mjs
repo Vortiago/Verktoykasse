@@ -1,4 +1,4 @@
-// canonical source: vanilla-web/tools/js-scan.mjs@b78a4af — vendored copy, do not edit here
+// canonical source: vanilla-web/tools/js-scan.mjs@4a2a40c sha256:753ec3549f70f28ec7606a24e5ceffed12674b3f45b4ed6bf8038a2b01618f4d - vendored copy, do not edit here
 // @ts-check
 // js-scan — shared quote/backtick/${}-aware scanning helpers for the check-*.mjs
 // static checkers (check-conventions.mjs, check-slots.mjs). Not a gate half

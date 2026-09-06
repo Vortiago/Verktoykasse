@@ -168,9 +168,16 @@ Describe 'Invoke-Tmux' {
         # pwsh installed as a dotnet global tool runs under the muxer: the process
         # path alone cannot relaunch it, the way Rain.Tests.ps1 relaunches the rain.
         $script:exe = [Environment]::ProcessPath
-        $script:pre = if ([IO.Path]::GetFileNameWithoutExtension($exe) -eq 'dotnet') {
-                          @(Join-Path $PSHOME 'pwsh.dll')
-                      } else { @() }
+        # @() around the whole if, not inside the branch. A one-element array is
+        # unrolled to its element on the way out of a branch, and $pre + @(...)
+        # then concatenates strings rather than joining arrays, and the dll and the
+        # first flag arrive glued together as one argv entry. Only a machine
+        # whose pwsh is a dotnet tool runs this branch at all.
+        $script:pre = @(
+            if ([IO.Path]::GetFileNameWithoutExtension($exe) -eq 'dotnet') {
+                Join-Path $PSHOME 'pwsh.dll'
+            }
+        )
     }
 
     It 'hands back what the client wrote to stdout' {

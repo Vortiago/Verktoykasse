@@ -3,6 +3,7 @@
 # fake connections are strings in a queue and the time is a number the test moves.
 # That is what lets the stale, drop and reconnect timings be asserted exactly.
 BeforeAll {
+    . (Join-Path $PSScriptRoot '../lib/proc.ps1')
     . (Join-Path $PSScriptRoot '../lib/console.ps1')
     . (Join-Path $PSScriptRoot '../lib/sessions.ps1')
     . (Join-Path $PSScriptRoot '../lib/remote/wire.ps1')

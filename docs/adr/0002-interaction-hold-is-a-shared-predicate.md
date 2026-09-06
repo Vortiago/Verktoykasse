@@ -70,6 +70,9 @@ Separate the *question* (is this host held?) from the *answer* (who lands the he
 the *current* moment only: a question, not a subscription. A consumer that wants to know when
 a hold clears either lets `renderRegion` self-flush (`defer:true`) or re-asks on its own tick.
 
+Amended by 0006: `heldInside` and `selectionInside` answer for the current synchronous
+pass, not the current call. The selection read is taken once per pass and shared.
+
 None of the above can be proved against hand-written test doubles, which is why
 `testing/tests/e2e/render-hold.spec.js` exists and is verified to fail against the pre-#72
 module.

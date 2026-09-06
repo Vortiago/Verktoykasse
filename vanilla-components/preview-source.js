@@ -1,4 +1,4 @@
-// canonical source: vanilla-web/preview-source.js@b78a4af — vendored copy, do not edit here
+// canonical source: vanilla-web/preview-source.js@4a2a40c sha256:2f2c6e986babf666cf4f7deecd70fa7dd06a7620a88d31d58d177d3764d59cf1 - vendored copy, do not edit here
 // @ts-check
 // View-source widget for the vanilla-web component preview harness (see
 // reference/preview.md, "View source"). preview.js is this module's ONLY

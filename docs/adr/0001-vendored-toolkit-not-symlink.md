@@ -31,18 +31,21 @@ Two hard constraints bound any fix:
 
 ## Decision
 
-Make `vanilla-web` the **sole canon** for the six files. `vanilla-components` keeps a
-**committed, generated copy** of each (the same category as the committed,
-generated `previews/registry.js`), produced by `vanilla-components/sync-from-web.sh`:
+Make `vanilla-web` the **sole canon** for the files on `sync-from-web.sh`'s `PAIRS`
+allow-list. `vanilla-components` keeps a **committed, generated copy** of each (the same
+category as the committed, generated `previews/registry.js`), produced by
+`vanilla-components/sync-from-web.sh`:
 
 - Each copy carries an app-safe provenance header
-  (`// canonical source: vanilla-web/<file> — vendored copy, do not edit here`, with the
-  git short-rev). You edit canon in `vanilla-web`, and you never edit the copy.
-- A **repo-local** git config-based `pre-commit` hook runs `sync-from-web.sh --check`,
-  which strips the stamp line and compares each copy's body to canon. Drift between canon
-  and a committed copy becomes **un-committable**. The hook is guarded: it no-ops unless a
-  canon or vendored path is staged, and it anchors on `git rev-parse --show-toplevel` so it
-  checks whichever worktree the commit is in.
+  (`// canonical source: vanilla-web/<file>@<rev> sha256:<hash> - vendored copy, do not
+  edit here`). You edit canon in `vanilla-web`, and you never edit the copy. ADR 0005 says
+  why the hash, and not the rev beside it, identifies the copy.
+- A **repo-local** git config-based `pre-commit` hook runs `sync-from-web.sh --precommit`,
+  which is `--check` guarded to fire only when a canon or vendored path is staged. The
+  check strips the stamp line, compares each copy's body to canon, and compares each
+  stamped hash to canon's. Drift between canon and a committed copy becomes
+  **un-committable**. The hook anchors on `git rev-parse --show-toplevel` so it checks
+  whichever worktree the commit is in.
 
 The vendored set is an explicit allow-list. `preview.html` and `tsconfig.json` legitimately
 differ per tree and are simply not on it. A file that must diverge later just leaves the
@@ -57,7 +60,8 @@ list.
 - **The copy is a generated artifact.** `vanilla-components/lib/templates.js` et al. are
   git-tracked but produced by a script, like `previews/registry.js`. Editing them directly
   is a mistake the header and the gate both catch.
-- **Cost:** a ~30-line `sync-from-web.sh` (reuses `vendor.sh`'s `stamp_file`), a one-line
+- **Cost:** `sync-from-web.sh` (sharing `stamp_file` with `vendor.sh` through
+  `lib-stamp.sh`), a one-line
   hook registration in `vanilla-components/install.sh`, and one rule to learn ("edit canon,
   re-sync"). It pays off in proportion to how often the toolkit changes, and `templates.js`
   is the most foundational module in the ecosystem.
@@ -95,3 +99,7 @@ symlink and block commits repo-wide.
 The drift check compares the working tree, not staged blobs, a deliberate simplification
 matching the edit-canon → `sync-from-web.sh` → `git add` → commit flow. It catches the
 primary "forgot to re-sync" case. It does not guard a contrived stage-then-restore.
+
+Extended by 0005: a copy is identified by a sha256 of the canon bytes it carries. The rev
+in the stamp is provenance for a human, and a fallback for a stamp written before that
+record.

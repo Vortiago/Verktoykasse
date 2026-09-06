@@ -67,6 +67,25 @@ never got around to response caching" and "we decided not to, and here's the
 one-line move when an app actually needs it" — which is what stops a future
 session from quietly bolting on a cache library.
 
+## 4. Deep links and the static host: hash routing needs no rewrite
+
+`shell.js` routes on `location.hash` (`#/<view-id>`), so the path the browser
+sends to the server is always `/`. Every deep link is therefore a request for a
+file that exists, and any static host serves it with no configuration:
+`serve.mjs`, a plain nginx root, a GitHub Pages site. Bookmark, share, reload
+and the back button all work with nothing on the server side. This is a property
+of the routing scheme rather than of `serve.mjs`, and it is one of the reasons
+the shell routes on the hash.
+
+An app that routes on `location.pathname` instead gives that up. Every deep link
+becomes a request for a path with no file behind it, so the host has to rewrite
+an unknown, extension-less path to `index.html`, keep a request that carries a
+file extension as a 404, and never rewrite `/api/*`. `index.html` then has to
+reference its assets with root-absolute URLs (`/shell.js`, not `./shell.js`), or
+a nested path like `/runs/42` resolves them under `/runs/`. GitHub Pages offers
+no rewrite mechanism at all. `serve.mjs` has no catch-all today, and needs none
+for the hash-routed shell. See #51, which weighs path routing against this cost.
+
 ## Node floor
 
 CI's pinned `node-version` (`.github/workflows/gate.yml`) is the version a
