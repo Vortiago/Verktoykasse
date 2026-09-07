@@ -288,3 +288,190 @@ Describe 'Merge-SessionTab' {
         (Merge-SessionTab -Session @() -Fresh @{} -Previous @{ A = $t1 }).Count | Should -Be 0
     }
 }
+
+# Lane order. The tab map is what makes it knowable: a window and a tab number
+# live on the tab, never on the session.
+Describe 'Sort-SessionLane' {
+    It 'puts one window''s lanes in tab order, not start order' {
+        # StartedAt runs the other way, so a pass that still sorts on it fails here.
+        $s = @(
+            (New-TestSession 'sid-c' 'idle' '' 103 1000),
+            (New-TestSession 'sid-a' 'idle' '' 101 2000),
+            (New-TestSession 'sid-b' 'idle' '' 102 3000)
+        )
+        $map = @{
+            'sid-c' = New-TestTab 900 2 'c' 'idle'
+            'sid-a' = New-TestTab 900 0 'a' 'idle'
+            'sid-b' = New-TestTab 900 1 'b' 'idle'
+        }
+        (Sort-SessionLane -Session $s -Map $map -Hwnd 900).SessionId |
+            Should -Be @('sid-a', 'sid-b', 'sid-c')
+    }
+
+    It 'leads with the window the rain runs in' {
+        # Window 800 holds the lower tab index, so an index-only sort puts it first.
+        $s = @(
+            (New-TestSession 'sid-a' 'idle' '' 101 1000),
+            (New-TestSession 'sid-b' 'idle' '' 102 2000),
+            (New-TestSession 'sid-c' 'idle' '' 103 3000)
+        )
+        $map = @{
+            'sid-a' = New-TestTab 900 1 'a' 'idle'
+            'sid-b' = New-TestTab 800 0 'b' 'idle'
+            'sid-c' = New-TestTab 900 0 'c' 'idle'
+        }
+        (Sort-SessionLane -Session $s -Map $map -Hwnd 900).SessionId |
+            Should -Be @('sid-c', 'sid-a', 'sid-b')
+    }
+
+    It 'orders the other windows by window handle' {
+        # Fed out of order, and every tab is index 0, so only the window key can
+        # answer. The tmux half is what forces a numeric key: sorted as text,
+        # '$10' comes before '$2'.
+        $s = @(
+            (New-TestSession 'sid-917' 'idle' '' 101 1000),
+            (New-TestSession 'sid-800' 'idle' '' 102 2000),
+            (New-TestSession 'sid-902' 'idle' '' 103 3000)
+        )
+        $map = @{
+            'sid-917' = New-TestTab 917 0 'a' 'idle'
+            'sid-800' = New-TestTab 800 0 'b' 'idle'
+            'sid-902' = New-TestTab 902 0 'c' 'idle'
+        }
+        (Sort-SessionLane -Session $s -Map $map -Hwnd 0).SessionId |
+            Should -Be @('sid-800', 'sid-902', 'sid-917')
+
+        $t = @(
+            (New-TestSession 'sid-ten' 'idle' '' 104 1000),
+            (New-TestSession 'sid-two' 'idle' '' 105 2000)
+        )
+        $tmux = @{
+            'sid-ten' = New-TestTab '$10' 0 'ten' 'idle'
+            'sid-two' = New-TestTab '$2'  0 'two' 'idle'
+        }
+        (Sort-SessionLane -Session $t -Map $tmux -Hwnd '$0').SessionId |
+            Should -Be @('sid-two', 'sid-ten')
+    }
+
+    It 'puts the remote sessions behind every window, grouped by host and in the order each host sent' {
+        # lab2 sent b before a, and b is the younger. A sort that falls back to
+        # StartedAt or to SessionId puts a first, so the arrival key is forced.
+        $s = @(
+            (New-TestSession 'sid-1' 'idle' '' 101 1000),
+            (New-TestSession 'sid-2' 'idle' '' 102 2000),
+            (New-TestRemoteSession 'lab2' 'b' 'idle' 3000),
+            (New-TestRemoteSession 'lab2' 'a' 'idle' 1000),
+            (New-TestRemoteSession 'lab1' 'x' 'idle' 2000)
+        )
+        $map = @{
+            'sid-1' = New-TestTab 900 0 '1' 'idle'
+            'sid-2' = New-TestTab 900 1 '2' 'idle'
+        }
+        (Sort-SessionLane -Session $s -Map $map -Hwnd 900).SessionId |
+            Should -Be @('sid-1', 'sid-2', 'lab1/x', 'lab2/b', 'lab2/a')
+    }
+
+    It 'parks a session with no matched tab last of all, older first' {
+        # A tab Claude has not titled yet, or a host with the tab status off. The
+        # lane is drawn, it has nothing to sort on.
+        $s = @(
+            (New-TestSession 'sid-late' 'idle' '' 103 3000),
+            (New-TestSession 'sid-tab'  'idle' '' 101 1000),
+            (New-TestRemoteSession 'lab1' 'x' 'idle' 2000),
+            (New-TestSession 'sid-soon' 'idle' '' 102 2000)
+        )
+        $map = @{ 'sid-tab' = New-TestTab 900 0 'tab' 'idle' }
+        (Sort-SessionLane -Session $s -Map $map -Hwnd 900).SessionId |
+            Should -Be @('sid-tab', 'lab1/x', 'sid-soon', 'sid-late')
+    }
+
+    It 'gives the same order for an array and its reverse' {
+        # One window, one tab index: what a tab read mid-renumber returns. Nothing
+        # but the last key can separate them, and Sort-Object is not stable, so
+        # without that key the two trade places between polls and the screen
+        # shuffles on its own.
+        $s = @(
+            (New-TestSession 'sid-a' 'idle' '' 101 1000),
+            (New-TestSession 'sid-b' 'idle' '' 102 2000)
+        )
+        $map = @{
+            'sid-a' = New-TestTab 900 0 'a' 'idle'
+            'sid-b' = New-TestTab 900 0 'b' 'idle'
+        }
+        (Sort-SessionLane -Session $s -Map $map -Hwnd 900).SessionId |
+            Should -Be @('sid-a', 'sid-b')
+        $reversed = @($s[1], $s[0])
+        (Sort-SessionLane -Session $reversed -Map $map -Hwnd 900).SessionId |
+            Should -Be @('sid-a', 'sid-b')
+    }
+
+    It 'falls back to start order when there is no tab map at all' {
+        # A Mac outside tmux, Windows outside Windows Terminal, Linux outside
+        # Konsole and tmux. Every local session is unmatched, so the rule above
+        # would put the whole screen behind the machines.
+        $s = @(
+            (New-TestSession 'sid-late'  'idle' '' 101 3000),
+            (New-TestRemoteSession 'lab1' 'x' 'idle' 2000),
+            (New-TestSession 'sid-early' 'idle' '' 102 1000)
+        )
+        (Sort-SessionLane -Session $s -Map @{} -Hwnd 0).SessionId |
+            Should -Be @('sid-early', 'sid-late', 'lab1/x')
+    }
+
+    It 'answers nothing for no sessions, which is what the first poll hands it' {
+        (Sort-SessionLane -Session @() -Map @{} -Hwnd 900).Count | Should -Be 0
+        $map = @{ 'sid-a' = New-TestTab 900 0 'a' 'idle' }
+        (Sort-SessionLane -Session @() -Map $map -Hwnd 900).Count | Should -Be 0
+    }
+}
+
+# The order the screen gets. Sort-SessionLane says where a lane belongs; this says
+# when the rain is allowed to act on a new answer.
+Describe 'Update-LaneOrder' {
+    BeforeEach {
+        $script:s = @(
+            (New-TestSession 'sid-a' 'idle' '' 101 1000),
+            (New-TestSession 'sid-b' 'idle' '' 102 2000)
+        )
+        $script:map = @{
+            'sid-a' = New-TestTab 900 0 'a' 'idle'
+            'sid-b' = New-TestTab 900 1 'b' 'idle'
+        }
+        $script:state = New-LaneOrderState
+    }
+
+    It 'holds the order when two matched sessions trade tabs' {
+        # The Windows title match is a guess and it flips. Acting on the flip moves
+        # the lane, and the renderer blanks and restarts every column that moved.
+        (Update-LaneOrder -Session $s -Map $map -Hwnd 900 -State $state).SessionId |
+            Should -Be @('sid-a', 'sid-b')
+        $map['sid-a'] = New-TestTab 900 1 'a' 'idle'
+        $map['sid-b'] = New-TestTab 900 0 'b' 'idle'
+        (Update-LaneOrder -Session $s -Map $map -Hwnd 900 -State $state).SessionId |
+            Should -Be @('sid-a', 'sid-b')
+    }
+
+    It 'sorts again when a session appears' {
+        [void](Update-LaneOrder -Session $s -Map $map -Hwnd 900 -State $state)
+        $fresh = @($s) + @(New-TestSession 'sid-c' 'idle' '' 103 3000)
+        $map['sid-c'] = New-TestTab 900 0 'c' 'idle'
+        $map['sid-a'] = New-TestTab 900 1 'a' 'idle'
+        $map['sid-b'] = New-TestTab 900 2 'b' 'idle'
+        (Update-LaneOrder -Session $fresh -Map $map -Hwnd 900 -State $state).SessionId |
+            Should -Be @('sid-c', 'sid-a', 'sid-b')
+    }
+
+    It 'sorts again when a straggler''s tab arrives at last' {
+        # A tab is always behind the registry, and the re-try is what catches up.
+        # A lane that could not be placed must not stay parked for the whole run.
+        $late = @($s) + @(New-TestSession 'sid-c' 'idle' '' 103 3000)
+        (Update-LaneOrder -Session $late -Map $map -Hwnd 900 -State $state).SessionId |
+            Should -Be @('sid-a', 'sid-b', 'sid-c')
+        # Its tab opened left of the other two, so those two renumbered with it.
+        $map['sid-c'] = New-TestTab 900 0 'c' 'idle'
+        $map['sid-a'] = New-TestTab 900 1 'a' 'idle'
+        $map['sid-b'] = New-TestTab 900 2 'b' 'idle'
+        (Update-LaneOrder -Session $late -Map $map -Hwnd 900 -State $state).SessionId |
+            Should -Be @('sid-c', 'sid-a', 'sid-b')
+    }
+}

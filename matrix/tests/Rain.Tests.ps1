@@ -161,9 +161,10 @@ Describe 'matrix.ps1' {
         (Remove-Sgr $r.Stdout) | Should -Match 'working'
     }
 
-    It 'puts the task in the header whether or not tabs are wanted' {
-        # The lane reads .Task off the session. The staple that puts it there must not
-        # depend on -Click or -ThisWindow, the flags that ask for the tab map.
+    It 'puts the task in the header with no flags set at all' {
+        # The lane reads .Task off the session. The staple that puts it there must
+        # not depend on -Click or -ThisWindow. Both used to decide whether the rain
+        # read the tabs; it always reads them now, and .Task still must not care.
         $r = Invoke-Rain $liveHome @('-Seconds', '2', '-Fps', '10')
         (Remove-Sgr $r.Stdout) | Should -Match 'zeppelin'
     }
