@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// canonical source: vanilla-web/tools/check-css-vars.mjs@4a2a40c sha256:7cae318942364f1874608894cf8a5357b5b0820942d9003dd7eaa2f73ce18bf8 - vendored copy, do not edit here
+// canonical source: vanilla-web/tools/check-css-vars.mjs@0c55dad sha256:3b0abe3f594e6f0655cd867cbc0bacdb8f8248af224cdd135280016591ca2645 - vendored copy, do not edit here
 // @ts-check
 // check-css-vars — the no-build stack's guard for CSS custom properties. `tsc`
 // checks the JS; nothing checks `var(--x)`, so an undefined custom property
@@ -12,11 +12,11 @@
 // node_modules/ and testing/ (deliberately-weird fixtures, vendored third-party
 // CSS) are skipped — same SKIP as check-slots.mjs/check-conventions.mjs.
 // Zero-dep; meant to run in the same gate as tsc. Exit 1 on any undefined var.
-import { globSync, readFileSync } from "node:fs";
-import { ROOT, SKIP } from "./js-scan.mjs";
+import { readFileSync } from "node:fs";
+import { ROOT, SKIP, scanPaths } from "./js-scan.mjs";
 
 const files = ["**/*.css", "**/*.js"]
-  .flatMap((p) => globSync(p, { cwd: ROOT }))
+  .flatMap((p) => scanPaths(p))
   .filter((p) => !SKIP.test(p + "/"));
 
 /** Names with a definition somewhere (CSS decl or JS setProperty). @type {Set<string>} */

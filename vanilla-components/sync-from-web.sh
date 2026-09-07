@@ -48,8 +48,14 @@ source "$COMP/lib-stamp.sh"             # stamp_file / sha256_of / stamped_sha25
 # True when the vendored copy's body, stamp line stripped, matches canon.
 # Shared by --check and by sync mode's skip, so the two cannot disagree about
 # what "unchanged" means. <canon-path> <vendored-path>, both relative.
+# CR-stripped on both sides, matching sha256_of and check-vendored.mjs's `lf`.
+# The two paths are written by different things — canon by a git checkout, the
+# copy by stamp_file's printf — so their line endings are a property of the
+# writer, not of the content: on Windows a raw diff reports all 354 lines of an
+# untouched serve.mjs as changed and every pair reads stale forever.
 body_matches() {
-  [[ -f $COMP/$2 ]] && diff -q "$WEB/$1" <(grep -v "$strip" "$COMP/$2") >/dev/null
+  [[ -f $COMP/$2 ]] &&
+    diff -q <(tr -d '\r' < "$WEB/$1") <(grep -v "$strip" "$COMP/$2" | tr -d '\r') >/dev/null
 }
 
 check() {

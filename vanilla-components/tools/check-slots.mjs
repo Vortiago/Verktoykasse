@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// canonical source: vanilla-web/tools/check-slots.mjs@4a2a40c sha256:4d5a667e9e177b4d2ca92ba0a6b6510392e63176f5fcaea270920131b3e41fa4 - vendored copy, do not edit here
+// canonical source: vanilla-web/tools/check-slots.mjs@0c55dad sha256:541c37902ccfaf01d024f301e7d8c2a329a6a2783c12db85f34f1defbbd3aced - vendored copy, do not edit here
 // @ts-check
 // check-slots — static gate for the .html ↔ .js template seam, the one boundary
 // `tsc` cannot see. Template ids and data-slot names are stringly-typed:
@@ -42,11 +42,11 @@
 // in one file routinely each declare their own `el`.
 // node_modules/ and testing/ (deliberately-weird fixtures) are skipped.
 // Zero-dep; same shape + exit contract as check-css-vars. Exit 1 on any error.
-import { globSync, readFileSync } from "node:fs";
-import { ROOT, SKIP, lineOf, stripComments, argSpan } from "./js-scan.mjs";
+import { readFileSync } from "node:fs";
+import { ROOT, SKIP, scanPaths, lineOf, stripComments, argSpan } from "./js-scan.mjs";
 
-const html = globSync("**/*.html", { cwd: ROOT }).filter((p) => !SKIP.test(p + "/"));
-const js = globSync("**/*.js", { cwd: ROOT }).filter((p) => !SKIP.test(p + "/"));
+const html = scanPaths("**/*.html").filter((p) => !SKIP.test(p + "/"));
+const js = scanPaths("**/*.js").filter((p) => !SKIP.test(p + "/"));
 
 /** Top-level (depth-0) split of an argument list on commas. @param {string} args */
 function splitTop(args) {

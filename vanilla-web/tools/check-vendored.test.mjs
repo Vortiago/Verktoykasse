@@ -32,7 +32,13 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const CHECKER = join(HERE, "check-vendored.mjs");
 const REPO = join(HERE, "..", "..");
 
-const sha256 = (/** @type {string} */ s) => createHash("sha256").update(s, "utf8").digest("hex");
+// CR-stripped before hashing, the same as the checker's own `lf` and
+// lib-stamp.sh's `sha256_of`. This has to mirror the checker rather than
+// re-decide: the fixtures below are read from a checkout, which git is free to
+// hand over as CRLF, so a raw hash here would pin the line endings of whoever
+// ran the test instead of the contract under test.
+const sha256 = (/** @type {string} */ s) =>
+  createHash("sha256").update(s.replace(/\r/g, ""), "utf8").digest("hex");
 
 /** The stamp's fixed words, assembled rather than written, so this file carries no
  * line that stripStamp would delete. @param {string} path @param {string} rev

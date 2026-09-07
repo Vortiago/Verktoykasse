@@ -11,11 +11,11 @@
 // node_modules/ and testing/ (deliberately-weird fixtures, vendored third-party
 // CSS) are skipped — same SKIP as check-slots.mjs/check-conventions.mjs.
 // Zero-dep; meant to run in the same gate as tsc. Exit 1 on any undefined var.
-import { globSync, readFileSync } from "node:fs";
-import { ROOT, SKIP } from "./js-scan.mjs";
+import { readFileSync } from "node:fs";
+import { ROOT, SKIP, scanPaths } from "./js-scan.mjs";
 
 const files = ["**/*.css", "**/*.js"]
-  .flatMap((p) => globSync(p, { cwd: ROOT }))
+  .flatMap((p) => scanPaths(p))
   .filter((p) => !SKIP.test(p + "/"));
 
 /** Names with a definition somewhere (CSS decl or JS setProperty). @type {Set<string>} */

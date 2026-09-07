@@ -3,6 +3,7 @@
 // static checkers (check-conventions.mjs, check-slots.mjs). Not a gate half
 // itself — check.mjs discovers halves via a `tools/check-*.mjs` glob, and this
 // filename doesn't match that prefix, so it's never misdetected as one.
+import { globSync } from "node:fs";
 
 /** tools/ sits in the app/skill root — every check-*.mjs resolves its file set
  * relative to this. Shared here (rather than re-declared per file) since it's
@@ -12,6 +13,27 @@ export const ROOT = new URL("../", import.meta.url);
  * fixtures, vendored third-party CSS) never belong in a source scan. Some
  * checkers extend this with their own extra skipped dirs. */
 export const SKIP = /(^|\/)(node_modules|testing)\//;
+
+/** Glob under `cwd` and answer POSIX-separated relative paths. Every checker's
+ * file set comes through here, which is the point.
+ *
+ * `fs.globSync` yields platform-native separators, so on Windows it answers
+ * `js\lib\render.js`. Every path predicate in this stack is spelled with `/`:
+ * SKIP above, each checker's own extra-skip regex, and the `split("/").pop()`
+ * that reduces a path to its basename. None of those match a backslash, so an
+ * un-normalised Windows run scans the very lib/ and tools/ files the
+ * exemptions exist to spare, then fails on canon it was never meant to read.
+ * The gate is green on CI and red for every Windows contributor, and because
+ * the findings land on the sanctioned helpers it reads as a false alarm rather
+ * than as a bug in the checker.
+ *
+ * Normalising belongs at the single place paths ENTER, not at each predicate:
+ * spread across the predicates, the next checker re-derives the bug by writing
+ * one more `/`-shaped regex, which is how this one arrived.
+ * @param {string} pattern @param {URL | string} [cwd] @returns {string[]} */
+export function scanPaths(pattern, cwd = ROOT) {
+  return globSync(pattern, { cwd }).map((p) => p.replaceAll("\\", "/"));
+}
 
 /** 1-based line of an index into text. @param {string} text @param {number} idx */
 export const lineOf = (text, idx) => text.slice(0, idx).split("\n").length;

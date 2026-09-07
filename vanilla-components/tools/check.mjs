@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// canonical source: vanilla-web/tools/check.mjs@4a2a40c sha256:9c84e43d061ac3c6b41cc155cafae90b828ad8a3af9905c4730f896b85245b11 - vendored copy, do not edit here
+// canonical source: vanilla-web/tools/check.mjs@0c55dad sha256:706e8dab61d51f01d316bbae6c9f3d7afebbb290d919fd6caa5a4de9828e96cb - vendored copy, do not edit here
 // @ts-check
 // check — THE gate command. One thing to run, locally and in CI, from any skill
 // or app dir that carries tools/:
@@ -22,7 +22,8 @@
 // from this file's own location (tools/ sits in the root it checks), so the
 // same file works in vanilla-web, vanilla-components, and any scaffolded app.
 // Zero-dep (node:child_process).
-import { globSync, readFileSync } from "node:fs";
+import { globSync, readFileSync, existsSync } from "node:fs";
+import { scanPaths } from "./js-scan.mjs";
 import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
@@ -42,7 +43,18 @@ const tsc = (() => {
     const lib = createRequire(join(ROOT, "noop.js")).resolve("typescript");
     return { cmd: process.execPath, args: [join(dirname(lib), "..", "bin", "tsc")] };
   } catch {
-    return { cmd: "npx", args: ["--yes", "--package", "typescript@5", "tsc"] };
+    // Run npx's SCRIPT under this node, not the `npx` shim, when it sits beside
+    // the interpreter (it does in every official install). On Windows the shim
+    // is npx.cmd: spawnSync does no PATHEXT lookup, so a bare "npx" is ENOENT,
+    // and naming npx.cmd instead earns EINVAL, because node refuses to spawn a
+    // .cmd without a shell (CVE-2024-27980). `shell: true` is the usual escape
+    // and the worse one here: it hands ROOT below to cmd.exe for a second round
+    // of quoting, and ROOT is a path this tool does not get to choose.
+    const cli = join(dirname(process.execPath), "node_modules", "npm", "bin", "npx-cli.js");
+    const via = existsSync(cli)
+      ? { cmd: process.execPath, args: [cli] }
+      : { cmd: "npx", args: /** @type {string[]} */ ([]) };
+    return { cmd: via.cmd, args: [...via.args, "--yes", "--package", "typescript@5", "tsc"] };
   }
 })();
 halves.push({ name: "tsc --noEmit", cmd: tsc.cmd, args: [...tsc.args, "--noEmit", "-p", ROOT] });
@@ -56,7 +68,10 @@ for (const rel of globSync("tools/check-*.mjs", { cwd: ROOT }).sort()) {
 
 // 3. the node test files guarding the invariants dynamically (leak tests etc.).
 if (!FAST) {
-  const tests = globSync("**/*.test.mjs", { cwd: ROOT })
+  // scanPaths, not globSync: the skip below is `/`-shaped and globSync answers
+  // native separators, so on Windows a raw glob would hand node --test the
+  // node_modules/ and testing/ files this filter exists to drop (js-scan.mjs).
+  const tests = scanPaths("**/*.test.mjs", ROOT)
     .filter((p) => !/(^|\/)(node_modules|testing)\//.test(p + "/")).sort();
   if (tests.length) {
     halves.push({ name: "node --test", cmd: process.execPath, args: ["--test", ...tests] });
