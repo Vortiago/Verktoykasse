@@ -293,7 +293,7 @@ const server = createServer(async (req, res) => {
     const headers = {
       ...SECURITY_HEADERS,
       "content-type": MIME[ext] || "application/octet-stream",
-      "cache-control": CACHE > 0 ? `max-age=${CACHE}` : "no-cache", ETag/304 still apply either way
+      "cache-control": CACHE > 0 ? `max-age=${CACHE}` : "no-cache", // ETag/304 still apply either way
       etag,
       vary: "Accept-Encoding",
     };

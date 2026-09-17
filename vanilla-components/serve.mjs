@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// canonical source: vanilla-web/serve.mjs@2e2ba06 sha256:82219ad7751d7e7a68004ee692334536ff96c542cb86d63fe707a51094f8e577 - vendored copy, do not edit here
+// canonical source: vanilla-web/serve.mjs@f500ce1 sha256:f1b9f61e90d4b57dadee2cc7f86e824062dcdde6646915e96a4b638a39250edc - vendored copy, do not edit here
 // @ts-check
 // Canonical zero-dependency static server for the vanilla-web conventions
 // (see vanilla-web/SKILL.md). Static files + a few extension points you opt into:
@@ -294,7 +294,7 @@ const server = createServer(async (req, res) => {
     const headers = {
       ...SECURITY_HEADERS,
       "content-type": MIME[ext] || "application/octet-stream",
-      "cache-control": CACHE > 0 ? `max-age=${CACHE}` : "no-cache", ETag/304 still apply either way
+      "cache-control": CACHE > 0 ? `max-age=${CACHE}` : "no-cache", // ETag/304 still apply either way
       etag,
       vary: "Accept-Encoding",
     };
