@@ -10,9 +10,9 @@
     border-radius: var(--r);
     background: var(--bg-elev);
     color: var(--text);
-    box-shadow: 0 12px 48px light-dark(rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.6));
+    box-shadow: var(--shadow-3);
   }
-  :scope::backdrop { background: light-dark(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.6)); }
+  :scope::backdrop { background: var(--scrim); }
 
   .dialog-head {
     display: flex;

@@ -112,6 +112,8 @@ const shellCss = `/* ${appName} — shell chrome + tokens. Views/components brin
     --fg: light-dark(#1a1a1a, #e8e8e8);
     --accent: light-dark(#0b57d0, #8ab4f8);
     --line: light-dark(#e2e2e2, #333);
+    --err-bg: light-dark(#fdecea, #4a1512);
+    --err-fg: light-dark(#b3261e, #ffb4ab);
   }
 }
 
@@ -123,7 +125,7 @@ const shellCss = `/* ${appName} — shell chrome + tokens. Views/components brin
   nav a { color: inherit; text-decoration: none; }
   nav a[aria-current] { color: var(--accent); font-weight: 600; }
   #theme { margin-inline-start: auto; }
-  #errbar { display: block; padding: 0.5rem 1rem; background: light-dark(#fdecea, #4a1512); color: light-dark(#b3261e, #ffb4ab); }
+  #errbar { display: block; padding: 0.5rem 1rem; background: var(--err-bg); color: var(--err-fg); }
   #errbar[hidden] { display: none; }
   #stage { padding: 1rem; }
   [aria-busy="true"] { opacity: 0.6; } /* withPending's busy look */

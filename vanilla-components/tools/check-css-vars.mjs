@@ -1,17 +1,12 @@
 #!/usr/bin/env node
-// canonical source: vanilla-web/tools/check-css-vars.mjs@0c55dad sha256:3b0abe3f594e6f0655cd867cbc0bacdb8f8248af224cdd135280016591ca2645 - vendored copy, do not edit here
+// canonical source: vanilla-web/tools/check-css-vars.mjs@773a55e sha256:ac4b950f05fde6e2d5ac7d7634bc752dcb65026529743d2e46a6445a6d9fcdad - vendored copy, do not edit here
 // @ts-check
-// check-css-vars — the no-build stack's guard for CSS custom properties. `tsc`
-// checks the JS; nothing checks `var(--x)`, so an undefined custom property
-// fails SILENTLY — it just falls back (a transparent popover, a missing colour).
-// This flags any *required* `var(--x)` whose name is never defined, where
-// "defined" means a CSS declaration (`--x:`) OR a JS `setProperty("--x", …)` (so
-// legit inline-set props like --sev / --bell / --host-accent don't false-positive).
-// A `var(--x, fallback)` is exempt: an explicit fallback means it CAN'T fail
-// silently, and it's the stack's idiom for an intentionally-optional var.
-// node_modules/ and testing/ (deliberately-weird fixtures, vendored third-party
-// CSS) are skipped — same SKIP as check-slots.mjs/check-conventions.mjs.
-// Zero-dep; meant to run in the same gate as tsc. Exit 1 on any undefined var.
+// check-css-vars — an undefined `var(--x)` fails SILENTLY (a transparent
+// popover, a missing colour), and nothing else in the gate reads CSS. Flags a
+// required `var(--x)` never defined, where defined means a `--x:` declaration
+// or a JS `setProperty("--x", …)`. A `var(--x, fallback)` is exempt: it cannot
+// fail silently, and it is the stack's idiom for an optional var.
+// check-css-tokens guards the mirror direction, a colour that skipped a token.
 import { readFileSync } from "node:fs";
 import { ROOT, SKIP, scanPaths } from "./js-scan.mjs";
 

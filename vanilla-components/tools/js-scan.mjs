@@ -1,4 +1,4 @@
-// canonical source: vanilla-web/tools/js-scan.mjs@0c55dad sha256:929c4a73949d5df4b1f8d1087aee8420274a019a9a921e11a6639f6335017438 - vendored copy, do not edit here
+// canonical source: vanilla-web/tools/js-scan.mjs@773a55e sha256:6dc1116fa7aecd850387e6c35cd6e733f9bd83ea264331508cd9adb8de176e20 - vendored copy, do not edit here
 // @ts-check
 // js-scan — shared quote/backtick/${}-aware scanning helpers for the check-*.mjs
 // static checkers (check-conventions.mjs, check-slots.mjs). Not a gate half
@@ -18,19 +18,11 @@ export const SKIP = /(^|\/)(node_modules|testing)\//;
 /** Glob under `cwd` and answer POSIX-separated relative paths. Every checker's
  * file set comes through here, which is the point.
  *
- * `fs.globSync` yields platform-native separators, so on Windows it answers
- * `js\lib\render.js`. Every path predicate in this stack is spelled with `/`:
- * SKIP above, each checker's own extra-skip regex, and the `split("/").pop()`
- * that reduces a path to its basename. None of those match a backslash, so an
- * un-normalised Windows run scans the very lib/ and tools/ files the
- * exemptions exist to spare, then fails on canon it was never meant to read.
- * The gate is green on CI and red for every Windows contributor, and because
- * the findings land on the sanctioned helpers it reads as a false alarm rather
- * than as a bug in the checker.
- *
- * Normalising belongs at the single place paths ENTER, not at each predicate:
- * spread across the predicates, the next checker re-derives the bug by writing
- * one more `/`-shaped regex, which is how this one arrived.
+ * `globSync` yields native separators, and every path predicate in this stack
+ * is `/`-shaped (SKIP, each checker's extra-skip regex, `split("/").pop()`), so
+ * an un-normalised Windows run scans the lib/ and tools/ files the exemptions
+ * exist to spare. Normalise here, where paths enter — a predicate that does its
+ * own is how the next `/`-shaped regex reintroduces this.
  * @param {string} pattern @param {URL | string} [cwd] @returns {string[]} */
 export function scanPaths(pattern, cwd = ROOT) {
   return globSync(pattern, { cwd }).map((p) => p.replaceAll("\\", "/"));
@@ -74,12 +66,9 @@ export function stripComments(text, isHtml) {
   return out;
 }
 
-/** Balanced argument span of a call from its `(` at openIdx to its matching
- * `)`, skipping strings/templates. Null when unterminated. Returns both the
- * args text and the index just past the closing paren (callers that only
- * need the text can destructure `{ args }`). Entering `${` records the current
- * bracket depth; the `}` at that recorded depth closes the interpolation
- * (context-pop only — it never opened a bracket, so it must not close one).
+/** Balanced argument span of a call, from its `(` at openIdx. Null when
+ * unterminated. Entering `${` records the current bracket depth; the `}` at
+ * that depth pops the context WITHOUT decrementing — it opened no bracket.
  * @param {string} text @param {number} openIdx
  * @returns {{args: string, end: number} | null} */
 export function argSpan(text, openIdx) {
@@ -140,11 +129,9 @@ export function splitTop(args) {
   return out;
 }
 
-/** First COMMENT-BORNE match of global regex `re` in one raw source line: a
- * match whose text was blanked in the comment-stripped copy of that line
- * (stripComments preserves offsets — comment chars become spaces, string
- * content survives). Guards suppression markers: a `// gate-allow:` inside a
- * string literal must not suppress anything.
+/** First COMMENT-BORNE match of `re` in one raw line — one whose text was
+ * blanked in the stripped copy. Guards the suppression markers: a
+ * `// gate-allow:` inside a string literal must not suppress anything.
  * @param {string} raw @param {string} stripped @param {RegExp} re
  * @returns {RegExpExecArray | null} */
 export function commentMatch(raw, stripped, re) {
