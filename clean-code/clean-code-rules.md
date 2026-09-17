@@ -51,14 +51,6 @@ publishes.** Trim the sentence that repeats the name, keep the annotation.
 non-obvious reason, or a workaround with its cause. The fact, present tense,
 once.
 
-**Put the argument where a reader looks for it**, and the constraint in the
-file. Why a rule exists belongs in its decision record or its reference doc; a
-header that re-argues it is a third copy that drifts from the other two.
-```
-// 30 lines on why this checker exists  →  // The rules and why: reference/css.md,
-// and what an LLM gets wrong, and…         // docs/adr/0007.
-```
-
 **Keep a comment a tool reads.** It is input, not prose. These are examples of
 the category, not the whole of it. Keep a shebang and a licence header too.
 ```
