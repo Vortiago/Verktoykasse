@@ -1,6 +1,6 @@
 // @ts-check
 // Canonical interaction-safe re-rendering for the vanilla-web conventions (see
-// SKILL.md). Copy into <app>/web/lib/render.js; extend, don't fork. Identity:
+// vanilla-web/SKILL.md). Copy into <app>/web/lib/render.js; extend, don't fork. Identity:
 // live (SSE-driven or polled) DOM updates that never clobber a focused
 // control, an open popover/dialog, or a mid-copy text selection.
 //
@@ -17,8 +17,8 @@
 //
 // The hold itself is exported as a predicate — heldInside, below, for the render
 // shapes renderRegion can't serve; selectionInside is its narrower selection-only
-// face. See docs/adr/0002 for why the hold is a predicate and a held swap has a
-// single owner.
+// face. A held swap has exactly one owner: the renderer that deferred it, or
+// the caller that asked only to be told the host was held.
 //
 // This module imports nothing from templates.js or chrome.js, and nothing
 // there imports this — components and defineComponent (lib/component.js)
@@ -49,7 +49,7 @@ let _passRanges;
  * building a fresh closure per pass. */
 const _clearPass = () => { _passRanges = undefined; };
 
-/** The selection's ranges, read ONCE per synchronous pass (#83).
+/** The selection's ranges, read ONCE per synchronous pass.
  *
  * Reading `isCollapsed`, `rangeCount` or `getRangeAt` forces a synchronous style
  * and layout update in Blink, because selection state depends on layout. A render
@@ -64,7 +64,7 @@ const _clearPass = () => { _passRanges = undefined; };
  * cost, so handing it back would only move the flush to the caller. A Range is a
  * DOM-tree object, `intersectsNode` forces no layout, and its boundary points
  * follow the mutation the seam performs, so a memoised Range still answers
- * correctly for a host rendered later in the pass. See docs/adr/0006.
+ * correctly for a host rendered later in the pass.
  * @returns {Range[]} */
 function _selectionRanges() {
   if (_passRanges) return _passRanges;
@@ -88,7 +88,7 @@ function _selectionRanges() {
  * renderRegion; `heldInside` is the fuller predicate.
  *
  * `Range.intersectsNode` rather than an anchor/focus containment test, and it's a
- * strict SUPERSET of one, not a different case (#72): a boundary point inside
+ * strict SUPERSET of one, not a different case: a boundary point inside
  * `host` sits between the points just before and just after it, so every
  * selection the endpoint test caught still holds. What it adds is the range that
  * starts BEFORE `host` and ends AFTER it — ⌘A over a panel — where neither
@@ -131,7 +131,7 @@ function _holdCause(host) {
  * popover/<dialog> inside it is open, or a text selection touches it. The exact
  * decision `renderRegion` makes internally, exported so an app that owns its own
  * retry loop shares ONE definition of "held" instead of reimplementing the
- * predicates (which then drift from canon — the reason #72 was filed).
+ * predicates (which then drift from canon — the reason was filed).
  *
  * Reach for it for the render shapes `renderRegion` can't serve: a `reconcileList`
  * driven by materialized items (a held render must re-derive from live state, not
@@ -198,7 +198,7 @@ function _flushRegion(host) {
 }
 
 /** Stash the latest skipped build for `host` and, only if nothing is armed for
- * it yet, attach the listener(s) that will flush it (#42 — "on the first tick
+ * it yet, attach the listener(s) that will flush it ("on the first tick
  * after the interaction clears" assumes there IS a next tick; this fires the
  * instant the interaction itself clears, tick or no tick). Whether a listener is
  * `once` is the caller's call, not this function's: the overlay branch's
@@ -234,7 +234,7 @@ function _deferSwap(host, build, sig, arm) {
  * deferred by focus/overlay/selection flushes the INSTANT that condition
  * clears — one listener set armed per host (focusout / toggle+close+removal
  * observer / selectionchange), not a wait for the next poll tick, so a quiet
- * SSE stream or a one-shot store-triggered render can't strand stale DOM (#42).
+ * SSE stream or a one-shot store-triggered render can't strand stale DOM.
  * Never advance `sig` on a skip (handled here: sig is only recorded when
  * swapping). `force:true` swaps unconditionally and clears any pending flush
  * for `host`.
@@ -248,7 +248,7 @@ function _deferSwap(host, build, sig, arm) {
  * lands held renders through its own tick-retry flag — because its keyed lists
  * and in-place updaters must re-derive from live state rather than replay a
  * captured build — this is how it shares canon's definition of "held" instead of
- * reimplementing the predicates (#72, docs/adr/0002). Pick one strategy per host;
+ * reimplementing the predicates. Pick one strategy per host;
  * a `defer:false` call drops any self-flush an earlier `defer:true` call left
  * armed. Note that disowning happens HERE, on the call — so a host this module
  * has ever deferred must keep coming through `renderRegion` (with `defer:false`)
@@ -277,7 +277,7 @@ export function renderRegion(host, build, opts = {}) {
   //     non-interactive element inside the host, which the entry guard does not
   //     hold for, so the next tick sig-skips with it still armed.
   //   - `defer:false`: the caller owns the retry, so this module must not keep a
-  //     second registry on the same host (#72 item 2 — two of them diverge: this
+  //     second registry on the same host item 2 — two of them diverge: this
   //     one's entry freezes at its tick's build while the caller's absorbs newer
   //     ones, then this one flushes the stale build in behind the fresher one).
   if (!opts.force) {
@@ -304,16 +304,16 @@ export function renderRegion(host, build, opts = {}) {
           // `focusout` fires BEFORE the incoming element is focused, and parks
           // document.activeElement on <body> for its whole duration — so this
           // flush asks `relatedTarget`, never the guards, which would see an idle
-          // host and swap on top of the element about to receive focus (#72).
+          // host and swap on top of the element about to receive focus.
           // Plain CONTAINMENT, deliberately not _holdCause: the entry guard holds
           // only for controls, but a swap must not land on ANY incoming focus
           // inside the host — that asymmetry is what keeps a <button> inside a
           // held region clickable (mousedown fires focusout; flushing there would
           // remove the button before its `click`). NOT `once`, so focus moving
           // between controls inside the host stays armed; teardown is still the
-          // pending entry's shared controller. docs/adr/0002 records the cost
-          // accepted: focus parked on a non-interactive element inside the host
-          // leaves the region stale until focus moves again.
+          // pending entry's shared controller. Accepted cost: focus parked on
+          // a non-interactive element inside the host leaves the region stale
+          // until focus moves again.
           host.addEventListener("focusout", (e) => {
             const next = /** @type {Element | null} */ (/** @type {FocusEvent} */ (e).relatedTarget);
             if (next && host.contains(next)) return; // focus stayed inside — still held

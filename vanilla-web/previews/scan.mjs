@@ -3,7 +3,7 @@
 // Generates previews/registry.js by walking components/ for *.preview.js files.
 // This is the no-build equivalent of a bundler's glob (or a C# source generator):
 // the browser has no reflection and can't enumerate files, so something with
-// filesystem access has to emit the import list. See reference/preview.md.
+// filesystem access has to emit the import list. See vanilla-web/reference/preview.md.
 //
 //   node previews/scan.mjs        # regenerate by hand
 //   (serve.mjs also calls this on startup, so a new *.preview.js is picked up
@@ -55,7 +55,7 @@ export default async function scanPreviews(webRoot) {
       title: basename(compDir), // component folder name
       importPath: rel.startsWith(".") ? rel : "./" + rel, // keep a valid ESM specifier
       // web-root-relative, so the harness can fetch() <dir>/<title>.{html,css,js}
-      // straight from the served page — see reference/preview.md → view source.
+      // straight from the served page — see vanilla-web/reference/preview.md → view source.
       dir: relative(root, compDir).split("\\").join("/"),
     };
   });

@@ -7,7 +7,7 @@
 //   error    tpl() id with no <template id> in any .html
 //   error    pick()/slot()/selector name with no data-slot marker anywhere
 //   error    a root data-slot read through .firstElementChild — the root-slot
-//            rule, and why the fragment form is fine: reference/components.md
+//            rule, and why the fragment form is fine: vanilla-web/reference/components.md
 //   warning  template or data-slot never referenced from JS (non-fatal: a test
 //            may reach a slot via querySelector/getByTestId)
 //

@@ -1,6 +1,6 @@
 // @ts-check
 // Standalone component preview harness for the vanilla-web conventions
-// (see reference/preview.md). Loaded by preview.html as its OWN page — it is
+// (see vanilla-web/reference/preview.md). Loaded by preview.html as its OWN page — it is
 // NOT part of the app router, so nothing here ships in the real app bundle.
 //
 // Left rail lists components from the generated previews/registry.js; selecting

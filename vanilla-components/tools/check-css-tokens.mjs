@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// canonical source: vanilla-web/tools/check-css-tokens.mjs@78bb167 sha256:68f89301b3269d299c346bfc007a40481e99da9cef7d99f4e1fcc632d39a96d7 - vendored copy, do not edit here
+// canonical source: vanilla-web/tools/check-css-tokens.mjs@2e2ba06 sha256:c7470d69e5c274126ee65344ffe76ccc5f8ef0b45fea35921a2c14c454dcefc1 - vendored copy, do not edit here
 // @ts-check
 // check-css-tokens — enforces the closed token vocabulary: raw-color,
 // inline-style, unscoped-css, viewport-media. The rules and their rationale are
-// in reference/css.md; the decision is docs/adr/0007. check-css-vars guards the
+// in vanilla-web/reference/css.md; the decision is docs/adr/0007. check-css-vars guards the
 // mirror direction, an undefined var(--x).
 // Escape: /* gate-allow: <rule>[, rule] */ (<!-- … --> in .html) on the line,
 // or anywhere in the first 10.
@@ -222,7 +222,7 @@ for (const { rel, raw, css, decls } of sheets) {
     /** @type {((i: number) => boolean) | null} */ let inDerivation = null;
     for (const lit of colorLiterals(d.prop, d.value)) {
       // black/white mixed INTO a token are this stack's darken/lighten
-      // operators (reference/css.md). A mix carrying no token is a palette
+      // operators (vanilla-web/reference/css.md). A mix carrying no token is a palette
       // choice wearing a mix for a hat, so it still counts.
       if (lit.kind === "named" && /^(?:black|white)$/i.test(lit.text)) {
         inDerivation ??= within(d.value, MIX, true, (t) => t.includes("var(--"));
@@ -258,7 +258,7 @@ for (const rel of html) {
 }
 
 if (findings.length) {
-  console.error(`✖ ${findings.length} CSS token violation${findings.length === 1 ? "" : "s"} (rules: reference/css.md):`);
+  console.error(`✖ ${findings.length} CSS token violation${findings.length === 1 ? "" : "s"} (rules: vanilla-web/reference/css.md):`);
   for (const f of findings) console.error(`  ${f.file}:${f.line}  ${f.rule}  ${f.msg}`);
   process.exit(1);
 }

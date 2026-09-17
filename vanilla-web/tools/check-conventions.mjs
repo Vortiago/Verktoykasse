@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // @ts-check
-// check-conventions — the mechanically checkable SKILL.md invariants, as gate
+// check-conventions — the mechanically checkable vanilla-web/SKILL.md invariants, as gate
 // failures. Three rules over app/component/view .js; what each one protects is
-// in SKILL.md ("Invariants") and reference/interactivity.md:
+// in vanilla-web/SKILL.md ("Invariants") and vanilla-web/reference/interactivity.md:
 //
 //   signal-listener  addEventListener with no { signal } / { once: true }
 //   html-string      innerHTML / outerHTML / insertAdjacentHTML / DOMParser
@@ -114,7 +114,7 @@ for (const rel of files) {
 }
 
 if (findings.length) {
-  console.error(`✖ ${findings.length} convention violation${findings.length === 1 ? "" : "s"} (rules: SKILL.md invariants):`);
+  console.error(`✖ ${findings.length} convention violation${findings.length === 1 ? "" : "s"} (rules: vanilla-web/SKILL.md invariants):`);
   for (const f of findings) console.error(`  ${f.file}:${f.line}  ${f.rule}  ${f.msg}`);
   process.exit(1);
 }

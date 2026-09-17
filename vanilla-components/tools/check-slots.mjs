@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// canonical source: vanilla-web/tools/check-slots.mjs@773a55e sha256:1e747c94099a8bf58e05a0e20ac03532e1906774640ab0515fdca65da2e6b454 - vendored copy, do not edit here
+// canonical source: vanilla-web/tools/check-slots.mjs@2e2ba06 sha256:ab463803db366a35874089952fd5942800a18f652bf71d3d6c5ab882302b6915 - vendored copy, do not edit here
 // @ts-check
 // check-slots — static gate for the .html <-> .js template seam, the one
 // boundary `tsc` cannot see: template ids and data-slot names are strings, so a
@@ -8,7 +8,7 @@
 //   error    tpl() id with no <template id> in any .html
 //   error    pick()/slot()/selector name with no data-slot marker anywhere
 //   error    a root data-slot read through .firstElementChild — the root-slot
-//            rule, and why the fragment form is fine: reference/components.md
+//            rule, and why the fragment form is fine: vanilla-web/reference/components.md
 //   warning  template or data-slot never referenced from JS (non-fatal: a test
 //            may reach a slot via querySelector/getByTestId)
 //

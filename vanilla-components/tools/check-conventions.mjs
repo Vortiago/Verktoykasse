@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// canonical source: vanilla-web/tools/check-conventions.mjs@773a55e sha256:2ea0cf0d3576cac68831c52f7fbaa230ce68f46fb3a3c6888678a4bd59339465 - vendored copy, do not edit here
+// canonical source: vanilla-web/tools/check-conventions.mjs@2e2ba06 sha256:536674f15cba0930e7e6d639a1d4f132f1d23e4a01923b031ce522e53c559c4b - vendored copy, do not edit here
 // @ts-check
-// check-conventions — the mechanically checkable SKILL.md invariants, as gate
+// check-conventions — the mechanically checkable vanilla-web/SKILL.md invariants, as gate
 // failures. Three rules over app/component/view .js; what each one protects is
-// in SKILL.md ("Invariants") and reference/interactivity.md:
+// in vanilla-web/SKILL.md ("Invariants") and vanilla-web/reference/interactivity.md:
 //
 //   signal-listener  addEventListener with no { signal } / { once: true }
 //   html-string      innerHTML / outerHTML / insertAdjacentHTML / DOMParser
@@ -115,7 +115,7 @@ for (const rel of files) {
 }
 
 if (findings.length) {
-  console.error(`✖ ${findings.length} convention violation${findings.length === 1 ? "" : "s"} (rules: SKILL.md invariants):`);
+  console.error(`✖ ${findings.length} convention violation${findings.length === 1 ? "" : "s"} (rules: vanilla-web/SKILL.md invariants):`);
   for (const f of findings) console.error(`  ${f.file}:${f.line}  ${f.rule}  ${f.msg}`);
   process.exit(1);
 }

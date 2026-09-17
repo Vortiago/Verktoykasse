@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// canonical source: vanilla-web/previews/new.mjs@4a2a40c sha256:51880c699844836b3a4fc41a2e1bcad004a273dec7d2382fccaa3802f58f733b - vendored copy, do not edit here
+// canonical source: vanilla-web/previews/new.mjs@2e2ba06 sha256:2aa0fc627969edb20fd3381876e171dc51f19204113de7afb4d7b5a87f2ed726 - vendored copy, do not edit here
 // @ts-check
-// Scaffolds a starter <name>.preview.js for one component (see reference/preview.md).
+// Scaffolds a starter <name>.preview.js for one component (see vanilla-web/reference/preview.md).
 // This is a one-time SEED, not generated output: it writes the boilerplate
 // (imports, the @type path, the render adapter, title) plus one TODO variant, and
 // refuses to overwrite an existing file. You fill in the variants. It's a separate
