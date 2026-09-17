@@ -208,3 +208,79 @@ test("a raw colour inside a comment is not a finding (offsets survive stripping)
   });
   assert.equal(code, 0, out);
 });
+
+test("a quoted value cannot steer the brace walk (a `;`/`{` in content is text)", (t) => {
+  const { code, out } = run(t, {
+    "tokens.css": TOKENS,
+    "components/c/c.css": `@scope (.c) { :scope::after { content: "a; b { color: #fff }"; color: var(--text); } }`,
+  });
+  assert.equal(code, 0, out);
+});
+
+test("an unquoted url() is a path, not a value", (t) => {
+  const { code, out } = run(t, {
+    "tokens.css": TOKENS,
+    "components/c/c.css": `@scope (.c) {
+      :scope { background: var(--bg) url(img/tan.png) no-repeat; }
+      .b { fill: url(#bead); }
+    }`,
+  });
+  assert.equal(code, 0, out);
+});
+
+test("a keyword followed by `(` is a function call — tan() in a shadow's length", (t) => {
+  const { code, out } = run(t, {
+    "tokens.css": TOKENS,
+    "components/c/c.css": `@scope (.c) { :scope { box-shadow: 0 0 calc(10px * tan(30deg)) var(--hairline); } }`,
+  });
+  assert.equal(code, 0, out);
+});
+
+test("a vendor-prefixed property is a property", (t) => {
+  const { code, out } = run(t, {
+    "tokens.css": TOKENS,
+    "components/c/c.css": `@scope (.c) { :scope { -webkit-text-fill-color: #ff0000; } }`,
+  });
+  assert.equal(code, 1);
+  assert.match(out, /-webkit-text-fill-color/);
+});
+
+test("a property name is case-insensitive; a custom property name is not", (t) => {
+  const { code, out } = run(t, {
+    "tokens.css": TOKENS,
+    "components/c/c.css": `@scope (.c) { :scope { BACKGROUND-COLOR: gold; } }`,
+  });
+  assert.equal(code, 1, out);
+  assert.match(out, /--bg/, "the advice table is spelled lower, so the property has to be too");
+});
+
+test("a header gate-allow may carry its reason on the lines below it", (t) => {
+  const { code, out } = run(t, {
+    "tokens.css": TOKENS,
+    "components/c/c.css": `/* gate-allow: raw-color\n * the vendor's brand red, fixed by contract.\n */\n@scope (.c) { :scope { background: #ff0000; } }`,
+  });
+  assert.equal(code, 0, out);
+});
+
+test("advice names the token this tree calls text, whatever it is called", (t) => {
+  // new-app.mjs scaffolds --fg/--line, vanilla-components ships --text/--hairline.
+  // Offering --accent for `color:` because --text is absent is worse than no advice.
+  const { code, out } = run(t, {
+    "shell.css": `@layer tokens { :root {
+      --bg: light-dark(#fafafa, #131315);
+      --fg: light-dark(#1a1a1a, #e8e8e8);
+      --accent: light-dark(#0b57d0, #8ab4f8);
+    } }`,
+    "views/v/v.css": `@scope (.v) { :scope { color: #333333; } }`,
+  });
+  assert.equal(code, 1);
+  assert.match(out, /use one of --fg/);
+});
+
+test("a CRLF checkout spells the escape the same way", (t) => {
+  const { code, out } = run(t, {
+    "tokens.css": TOKENS,
+    "components/c/c.css": `/* gate-allow: raw-color\r\n * the vendor's brand red.\r\n */\r\n@scope (.c) { :scope { background: #ff0000; } }\r\n`,
+  });
+  assert.equal(code, 0, out);
+});

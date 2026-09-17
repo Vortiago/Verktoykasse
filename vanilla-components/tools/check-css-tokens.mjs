@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// canonical source: vanilla-web/tools/check-css-tokens.mjs@f629ead sha256:664ab2b51ae803d5f013990bf442e572bc7b0b3ef5f32c27c5759177d889392a - vendored copy, do not edit here
+// canonical source: vanilla-web/tools/check-css-tokens.mjs@78bb167 sha256:68f89301b3269d299c346bfc007a40481e99da9cef7d99f4e1fcc632d39a96d7 - vendored copy, do not edit here
 // @ts-check
 // check-css-tokens — enforces the closed token vocabulary: raw-color,
 // inline-style, unscoped-css, viewport-media. The rules and their rationale are
@@ -29,25 +29,51 @@ const takesColor = (p) =>
 /** @type {Array<["hex" | "fn" | "named", RegExp]>} scanned in this order, which fixes finding order */
 const COLOR_SYNTAX = [["hex", HEX], ["fn", COLOR_FN], ["named", NAMED]];
 
-const QUOTED = /"[^"]*"|'[^']*'/g;
 const MIX = /color-mix\s*\(/gi;
+/** `url(…)` is a path, not a value: `fill: url(#bead)` is a reference. */
+const URL_FN = /\burl\s*\(/gi;
 
 /** Candidates per property family, filtered against what the tree defines, so
  * renaming a token changes the advice without touching this table.
  * @type {Array<[RegExp, string[]]>} */
 const ADVICE = [
   [/^background(-color)?$/, ["--bg", "--bg-elev", "--bg-elev-2"]],
-  [/^(color|caret-color)$/, ["--text", "--text-dim", "--accent", "--ok", "--warn", "--bad", "--info"]],
+  [/^(color|caret-color)$/, ["--text", "--fg", "--text-dim", "--accent", "--ok", "--warn", "--bad", "--info"]],
   [/^(border|outline)(-[a-z-]*)?$/, ["--hairline", "--line", "--accent"]],
   [/^box-shadow$/, ["--shadow-1", "--shadow-2", "--shadow-3"]],
-  [/^(fill|stroke)$/, ["--text", "--text-dim", "--accent"]],
+  [/^(fill|stroke)$/, ["--text", "--fg", "--text-dim", "--accent"]],
   [/^(text-decoration-color|column-rule-color|accent-color)$/, ["--accent", "--text-dim"]],
 ];
 
-/** Blanks comments, preserving offsets — line numbers and the comment-borne
- * escape test both read them. @param {string} text */
-const stripCss = (text) =>
-  text.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "));
+/** Blanks comments and string CONTENTS, preserving offsets and the quote marks
+ * themselves — line numbers, the comment-borne escape test, the brace walk and
+ * the literal scan all read this. A `;`, `{` or `}` inside `content: "…"` is
+ * text, and a walk that reads it as structure mis-splits the rest of the file.
+ * @param {string} text */
+function stripCss(text) {
+  let out = "";
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (c === "/" && text[i + 1] === "*") {
+      const end = text.indexOf("*/", i + 2);
+      const stop = end === -1 ? text.length : end + 2;
+      out += text.slice(i, stop).replace(/[^\n]/g, " ");
+      i = stop - 1;
+      continue;
+    }
+    if (c !== '"' && c !== "'") { out += c; continue; }
+    out += c;
+    let escaped = false;
+    for (i++; i < text.length; i++) {
+      const d = text[i];
+      if (!escaped && (d === c || d === "\n")) break;   // closing quote, or an unterminated string
+      out += d === "\n" ? "\n" : " ";                   // never drop a newline: lineOf reads this
+      escaped = !escaped && d === "\\";
+    }
+    out += text[i] ?? "";
+  }
+  return out;
+}
 
 /** Walks rather than matches: a selector ends at `{` and a declaration at `;`
  * or `}`, the one distinction a single pattern over CSS cannot make.
@@ -64,8 +90,11 @@ function declarations(css) {
       const chunk = css.slice(start, i);
       const colon = chunk.indexOf(":");
       if (colon !== -1) {
-        const prop = chunk.slice(0, colon).trim();
-        if (/^(--)?[a-z][a-z0-9-]*$/i.test(prop)) {   // else: a stray prelude fragment
+        const name = chunk.slice(0, colon).trim();
+        if (/^-{0,2}[a-z][a-z0-9-]*$/i.test(name)) {   // else: a stray prelude fragment
+          // A property name is case-insensitive (`BACKGROUND-COLOR` is one, and
+          // every table below is spelled lower); a custom property name is not.
+          const prop = name.startsWith("--") ? name : name.toLowerCase();
           out.push({ prop, value: chunk.slice(colon + 1), at: start + colon + 1 });
         }
       }
@@ -93,16 +122,19 @@ function within(v, re, balanced, keep) {
   return (i) => spans.some(([a, b]) => i >= a && i < b);
 }
 
-/** Colour literals in a declaration value. A font family named "Ivory" is not a
- * colour, so quoted text is skipped here rather than at each call site; bare
- * keywords additionally need a property that accepts one.
+/** Colour literals in a declaration value. An unquoted `url(tan.png)` or
+ * `url(#bead)` is a path, so url() spans are skipped here rather than at each
+ * call site (quoted text is already blanked by stripCss); bare keywords
+ * additionally need a property that accepts one, and are a function call rather
+ * than a colour when a `(` follows — `calc(100px * tan(30deg))`.
  * @param {string} prop @param {string} value */
 function* colorLiterals(prop, value) {
-  const inQuotes = within(value, QUOTED);
+  const inUrl = within(value, URL_FN, true);
   for (const [kind, re] of COLOR_SYNTAX) {
     if (kind === "named" && !takesColor(prop)) continue;
     for (const m of value.matchAll(re)) {
-      if (inQuotes(m.index)) continue;
+      if (inUrl(m.index)) continue;
+      if (kind === "named" && value[m.index + m[0].length] === "(") continue;
       yield { kind, index: m.index, text: m[0].replace(/\($/, "") };
     }
   }
@@ -164,15 +196,18 @@ const findings = [];
 function flagger(rel, raw) {
   /** @type {Set<string>} */ const fileWide = new Set();
   /** @type {Map<number, Set<string>>} */ const perLine = new Map();
-  raw.split("\n").forEach((ln, i) => {
-    for (const m of ln.matchAll(/(?:\/\*|<!--)\s*gate-allow:\s*([\w-,\s]+?)\s*(?:\*\/|-->)/g)) {
-      const rules = m[1].split(",").map((s) => s.trim()).filter(Boolean);
-      if (i < 10) for (const r of rules) fileWide.add(r);
-      const here = perLine.get(i + 1) ?? new Set();
-      for (const r of rules) here.add(r);
-      perLine.set(i + 1, here);
-    }
-  });
+  // End of line terminates the rule list as well as `*/` does, so a header
+  // escape can carry its reason on the lines below it.
+  // `[ \t\r]*` not `\s*`: under core.autocrlf the line ends `\r\n`, and `$`
+  // (multiline) matches before the `\n`, so the `\r` has to be consumable.
+  for (const m of raw.matchAll(/(?:\/\*|<!--)[ \t]*gate-allow:[ \t]*([\w,\t -]+?)[ \t\r]*(?:\*\/|-->|$)/gm)) {
+    const rules = m[1].split(",").map((s) => s.trim()).filter(Boolean);
+    const line = lineOf(raw, m.index);
+    if (line <= 10) for (const r of rules) fileWide.add(r);
+    const here = perLine.get(line) ?? new Set();
+    for (const r of rules) here.add(r);
+    perLine.set(line, here);
+  }
   return (/** @type {number} */ line, /** @type {string} */ rule, /** @type {string} */ msg) => {
     if (fileWide.has(rule) || perLine.get(line)?.has(rule)) return;
     findings.push({ file: rel, line, rule, msg });
@@ -184,12 +219,15 @@ for (const { rel, raw, css, decls } of sheets) {
 
   for (const d of decls) {
     if (d.prop.startsWith("--")) continue;   // the definition site: the one legal place
-    const inDerivation = within(d.value, MIX, true, (t) => t.includes("var(--"));
+    /** @type {((i: number) => boolean) | null} */ let inDerivation = null;
     for (const lit of colorLiterals(d.prop, d.value)) {
       // black/white mixed INTO a token are this stack's darken/lighten
       // operators (reference/css.md). A mix carrying no token is a palette
       // choice wearing a mix for a hat, so it still counts.
-      if (lit.kind === "named" && /^(?:black|white)$/i.test(lit.text) && inDerivation(lit.index)) continue;
+      if (lit.kind === "named" && /^(?:black|white)$/i.test(lit.text)) {
+        inDerivation ??= within(d.value, MIX, true, (t) => t.includes("var(--"));
+        if (inDerivation(lit.index)) continue;
+      }
       flag(lineOf(css, d.at + lit.index), "raw-color",
         `${d.prop}: ${lit.text} — raw colour outside a token definition; ${adviceFor(d.prop, lit.text)}`);
     }
