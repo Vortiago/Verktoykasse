@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// canonical source: vanilla-web/tools/check-css-tokens.mjs@c4bda18 sha256:7ca82f9960288483f47cd19ae65d85b4c6e6559f34e31553ea77ad78dd1f368d - vendored copy, do not edit here
+// canonical source: vanilla-web/tools/check-css-tokens.mjs@ed885bc sha256:af303ea0d2221a7ffb8f4b280076b4dd95e16c834d9317e8395fe1a174b5dbb6 - vendored copy, do not edit here
 // @ts-check
 // check-css-tokens — enforces the closed token vocabulary: raw-color,
 // inline-style, unscoped-css, viewport-media. The rules and their rationale are
@@ -7,21 +7,26 @@
 // mirror direction, an undefined var(--x).
 // Escape: /* gate-allow: <rule>[, rule] */ on the line, or in the first 10.
 import { readFileSync } from "node:fs";
-import { ROOT, SKIP, scanPaths, lineOf } from "./js-scan.mjs";
+import { ROOT, SKIP, scanPaths, lineOf, stripComments, argSpan } from "./js-scan.mjs";
 
 /** Trailing `(` required, so `color-mix(in oklch, …)` is a colour space, not a literal. */
 const COLOR_FN = /\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\(/gi;
 const HEX = /#[0-9a-f]{3,8}\b/gi;
 /** Omits the system keywords and `transparent`/`currentColor`: no design decision, no drift. */
 const NAMED = /\b(?:red|green|blue|yellow|orange|purple|pink|brown|gray|grey|black|white|cyan|magenta|lime|navy|teal|olive|maroon|silver|gold|violet|indigo|crimson|salmon|khaki|tomato|orchid|plum|beige|ivory|coral|azure|aqua|fuchsia)\b/gi;
+/** @type {Array<["hex" | "fn" | "named", RegExp]>} scanned in this order, which fixes finding order */
+const COLOR_SYNTAX = [["hex", HEX], ["fn", COLOR_FN], ["named", NAMED]];
+
+const QUOTED = /"[^"]*"|'[^']*'/g;
+const MIX = /color-mix\s*\(/gi;
 
 /** Candidates per property family, filtered against what the tree defines, so
  * renaming a token changes the advice without touching this table.
  * @type {Array<[RegExp, string[]]>} */
 const ADVICE = [
-  [/^(background|background-color)$/, ["--bg", "--bg-elev", "--bg-elev-2"]],
+  [/^background(-color)?$/, ["--bg", "--bg-elev", "--bg-elev-2"]],
   [/^(color|caret-color)$/, ["--text", "--text-dim", "--accent", "--ok", "--warn", "--bad", "--info"]],
-  [/^(border|border-.*color|border-[a-z-]*|outline|outline-color)$/, ["--hairline", "--line", "--accent"]],
+  [/^(border|outline)(-[a-z-]*)?$/, ["--hairline", "--line", "--accent"]],
   [/^box-shadow$/, ["--shadow-1", "--shadow-2", "--shadow-3"]],
   [/^(fill|stroke)$/, ["--text", "--text-dim", "--accent"]],
   [/^(text-decoration-color|column-rule-color|accent-color)$/, ["--accent", "--text-dim"]],
@@ -59,54 +64,65 @@ function declarations(css) {
   return out;
 }
 
-/** Quoted spans — a font family named "Ivory" is not a colour. @param {string} v */
-function quoted(v) {
+/** Is this offset inside a region `re` matches? With `balanced`, the region runs
+ * to the match's matching `)` rather than to the end of the match text.
+ * @param {string} v @param {RegExp} re @param {boolean} [balanced]
+ * @returns {(i: number) => boolean} */
+function within(v, re, balanced) {
   /** @type {Array<[number, number]>} */ const spans = [];
-  for (const m of v.matchAll(/"[^"]*"|'[^']*'/g)) spans.push([m.index, m.index + m[0].length]);
-  return spans;
+  for (const m of v.matchAll(re)) {
+    if (!balanced) { spans.push([m.index, m.index + m[0].length]); continue; }
+    const span = argSpan(v, m.index + m[0].length - 1);
+    if (span) spans.push([m.index, span.end]);
+  }
+  return (i) => spans.some(([a, b]) => i >= a && i < b);
 }
 
-/** `color-mix(…)` spans. Inside one, `black`/`white` are how this stack DERIVES
- * a shade (reference/css.md) — deleting that exemption fails button.css. A hex
- * inside a mix is still a literal. @param {string} v */
-function mixes(v) {
-  /** @type {Array<[number, number]>} */ const spans = [];
-  for (const m of v.matchAll(/color-mix\s*\(/gi)) {
-    let depth = 0;
-    for (let i = m.index + m[0].length - 1; i < v.length; i++) {
-      if (v[i] === "(") depth++;
-      else if (v[i] === ")" && --depth === 0) { spans.push([m.index, i + 1]); break; }
+/** Colour literals in a declaration value. A font family named "Ivory" is not a
+ * colour, so quoted text is skipped here rather than at each call site.
+ * @param {string} value */
+function* colorLiterals(value) {
+  const inQuotes = within(value, QUOTED);
+  for (const [kind, re] of COLOR_SYNTAX) {
+    for (const m of value.matchAll(re)) {
+      if (inQuotes(m.index)) continue;
+      yield { kind, index: m.index, text: m[0].replace(/\($/, "") };
     }
   }
-  return spans;
 }
 
 const files = scanPaths("**/*.css").filter((p) => !SKIP.test(p + "/"));
 const html = scanPaths("**/*.html").filter((p) => !SKIP.test(p + "/"));
+/** Read and parsed once; both passes below read this. The vocabulary must be
+ * complete over the whole tree before the first message can name a token. */
+const sheets = files.map((rel) => {
+  const raw = readFileSync(new URL(rel, ROOT), "utf8");
+  const css = stripCss(raw);
+  return { rel, raw, css, decls: declarations(css) };
+});
 
 /** @type {Set<string>} every custom property defined in the tree */
 const defined = new Set();
 /** @type {Map<string, string>} colour literal (lowercased) → the token holding it */
 const byValue = new Map();
-/** @type {string[]} tokens whose value IS a colour, for advice that would
+/** @type {Set<string>} tokens whose value IS a colour, for advice that would
  * otherwise guess from the name and miss a token called `--rail` */
-const colorTokens = [];
-for (const rel of files) {
-  const css = stripCss(readFileSync(new URL(rel, ROOT), "utf8"));
-  for (const d of declarations(css)) {
+const colorTokens = new Set();
+for (const { css, decls } of sheets) {
+  // Only a `@layer tokens` file supplies advice. preview.css declares its own
+  // palette under `@layer preview` and no component loads it, so advising
+  // var(--page-bg) inside a component would name a property that resolves
+  // nowhere — and check-css-vars, also tree-global, would pass it.
+  const isTokenLayer = /@layer\s+tokens\s*\{/.test(css);
+  for (const d of decls) {
     if (!d.prop.startsWith("--")) continue;
     defined.add(d.prop);
-    const skip = quoted(d.value);
-    let holdsColor = false;
-    for (const re of [HEX, COLOR_FN, NAMED]) {
-      for (const m of d.value.matchAll(re)) {
-        if (skip.some(([a, b]) => m.index >= a && m.index < b)) continue;
-        holdsColor = true;
-        const lit = m[0].toLowerCase().replace(/\($/, "");
-        if (re === HEX && !byValue.has(lit)) byValue.set(lit, d.prop);
-      }
+    if (!isTokenLayer) continue;
+    for (const lit of colorLiterals(d.value)) {
+      colorTokens.add(d.prop);
+      const key = lit.text.toLowerCase();
+      if (lit.kind === "hex" && !byValue.has(key)) byValue.set(key, d.prop);
     }
-    if (holdsColor && !colorTokens.includes(d.prop)) colorTokens.push(d.prop);
   }
 }
 
@@ -117,54 +133,47 @@ function adviceFor(prop, literal) {
   const family = ADVICE.find(([re]) => re.test(prop))?.[1].filter((t) => defined.has(t)) ?? [];
   if (family.length) return `use one of ${family.join(", ")}`;
   // Naming the wrong token is worse than admitting the gap.
-  return colorTokens.length
-    ? `no token for ${prop} here; colours defined in this tree: ${colorTokens.slice(0, 8).join(", ")} — reuse one or define a new token at its definition site`
+  return colorTokens.size
+    ? `no token for ${prop} here; colours defined in this tree: ${[...colorTokens].slice(0, 8).join(", ")} — reuse one or define a new token at its definition site`
     : "define it as a custom property (tokens.css) and use var(--…) here";
 }
 
 /** @type {Array<{file: string, line: number, rule: string, msg: string}>} */
 const findings = [];
 
-/** Suppressions: file-wide from the first 10 lines, plus per-line.
- * @param {string} raw */
-function allowances(raw) {
-  /** @type {Set<string>} */ const file = new Set();
+/** Records a finding unless a `gate-allow` marker suppresses that rule — on the
+ * line, or anywhere in the first 10 for the whole file.
+ * @param {string} rel @param {string} raw */
+function flagger(rel, raw) {
+  /** @type {Set<string>} */ const fileWide = new Set();
   /** @type {Map<number, Set<string>>} */ const perLine = new Map();
   raw.split("\n").forEach((ln, i) => {
     for (const m of ln.matchAll(/\/\*\s*gate-allow:\s*([\w-,\s]+?)\s*\*\//g)) {
       const rules = m[1].split(",").map((s) => s.trim()).filter(Boolean);
-      if (i < 10) for (const r of rules) file.add(r);
+      if (i < 10) for (const r of rules) fileWide.add(r);
       const here = perLine.get(i + 1) ?? new Set();
       for (const r of rules) here.add(r);
       perLine.set(i + 1, here);
     }
   });
-  return { file, perLine };
-}
-
-for (const rel of files) {
-  const raw = readFileSync(new URL(rel, ROOT), "utf8");
-  const css = stripCss(raw);
-  const allow = allowances(raw);
-  /** @param {number} line @param {string} rule @param {string} msg */
-  const flag = (line, rule, msg) => {
-    if (allow.file.has(rule) || allow.perLine.get(line)?.has(rule)) return;
+  return (/** @type {number} */ line, /** @type {string} */ rule, /** @type {string} */ msg) => {
+    if (fileWide.has(rule) || perLine.get(line)?.has(rule)) return;
     findings.push({ file: rel, line, rule, msg });
   };
+}
 
-  for (const d of declarations(css)) {
+for (const { rel, raw, css, decls } of sheets) {
+  const flag = flagger(rel, raw);
+
+  for (const d of decls) {
     if (d.prop.startsWith("--")) continue;   // the definition site: the one legal place
-    const skip = quoted(d.value);
-    const mix = mixes(d.value);
-    for (const re of [HEX, COLOR_FN, NAMED]) {
-      for (const m of d.value.matchAll(re)) {
-        if (skip.some(([a, b]) => m.index >= a && m.index < b)) continue;
-        if (re === NAMED && /^(?:black|white)$/i.test(m[0])
-            && mix.some(([a, b]) => m.index >= a && m.index < b)) continue;
-        const lit = m[0].replace(/\($/, "");
-        flag(lineOf(css, d.at + m.index), "raw-color",
-          `${d.prop}: ${lit} — raw colour outside a token definition; ${adviceFor(d.prop, lit)}`);
-      }
+    const inMix = within(d.value, MIX, true);
+    for (const lit of colorLiterals(d.value)) {
+      // black/white inside a color-mix are this stack's darken/lighten
+      // operators (reference/css.md), not a palette choice.
+      if (lit.kind === "named" && /^(?:black|white)$/i.test(lit.text) && inMix(lit.index)) continue;
+      flag(lineOf(css, d.at + lit.index), "raw-color",
+        `${d.prop}: ${lit.text} — raw colour outside a token definition; ${adviceFor(d.prop, lit.text)}`);
     }
   }
 
@@ -184,13 +193,11 @@ for (const rel of files) {
 
 for (const rel of html) {
   const raw = readFileSync(new URL(rel, ROOT), "utf8");
-  const text = raw.replace(/<!--[\s\S]*?-->/g, (m) => m.replace(/[^\n]/g, " "));
-  const allow = allowances(raw);
+  const text = stripComments(raw, true);
+  const flag = flagger(rel, raw);
   for (const m of text.matchAll(/\sstyle\s*=\s*["']/g)) {
-    const line = lineOf(text, m.index);
-    if (allow.file.has("inline-style") || allow.perLine.get(line)?.has("inline-style")) continue;
-    findings.push({ file: rel, line, rule: "inline-style",
-      msg: 'style="…" in a template — put the rule in the component .css, and pass anything dynamic as a custom property' });
+    flag(lineOf(text, m.index), "inline-style",
+      'style="…" in a template — put the rule in the component .css, and pass anything dynamic as a custom property');
   }
 }
 
