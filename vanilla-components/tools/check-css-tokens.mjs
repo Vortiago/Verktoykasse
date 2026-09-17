@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// canonical source: vanilla-web/tools/check-css-tokens.mjs@891d70f sha256:3340775d9648a7e723294659c362efb1c93d5e6676da57df6f7d2d94dceb4ab3 - vendored copy, do not edit here
+// canonical source: vanilla-web/tools/check-css-tokens.mjs@55c5477 sha256:a1875afb996106f1c9179ff6561f754abfe6067a6a2410bea607428cc7de5ebe - vendored copy, do not edit here
 // @ts-check
 // check-css-tokens — the CSS half of "an agent needs a closed vocabulary".
 //
@@ -128,10 +128,10 @@ function mixes(v) {
 const files = scanPaths("**/*.css").filter((p) => !SKIP.test(p + "/"));
 const html = scanPaths("**/*.html").filter((p) => !SKIP.test(p + "/"));
 
-// ── Pass 1: the vocabulary. Every custom property defined anywhere in the tree,
-// with its value, so advice can name real tokens and spot an exact re-spell of
-// one that already exists. @type {Map<string, string>}
-const tokens = new Map();
+// ── Pass 1: the vocabulary — every custom property defined anywhere in the
+// tree, so advice names tokens that exist rather than tokens it hopes for.
+/** @type {Set<string>} every defined custom property */
+const defined = new Set();
 /** @type {Map<string, string>} colour literal (lowercased) → token that holds it */
 const byValue = new Map();
 /** Tokens whose value IS a colour. The fallback advice lists these rather than
@@ -142,10 +142,12 @@ for (const rel of files) {
   const css = stripCss(readFileSync(new URL(rel, ROOT), "utf8"));
   for (const d of declarations(css)) {
     if (!d.prop.startsWith("--")) continue;
-    tokens.set(d.prop, d.value.trim());
+    defined.add(d.prop);
+    const skip = quoted(d.value);   // a font family named "Ivory" is not a colour
     let holdsColor = false;
     for (const re of [HEX, COLOR_FN, NAMED]) {
       for (const m of d.value.matchAll(re)) {
+        if (skip.some(([a, b]) => m.index >= a && m.index < b)) continue;
         holdsColor = true;
         const lit = m[0].toLowerCase().replace(/\($/, "");
         if (re === HEX && !byValue.has(lit)) byValue.set(lit, d.prop);
@@ -162,7 +164,7 @@ for (const rel of files) {
 function adviceFor(prop, literal) {
   const exact = byValue.get(literal.toLowerCase());
   if (exact) return `that value is already ${exact} — use var(${exact})`;
-  const family = ADVICE.find(([re]) => re.test(prop))?.[1].filter((t) => tokens.has(t)) ?? [];
+  const family = ADVICE.find(([re]) => re.test(prop))?.[1].filter((t) => defined.has(t)) ?? [];
   if (family.length) return `use one of ${family.join(", ")}`;
   // No token for this property's family in this tree. Offer the properties that
   // DO hold a colour rather than a same-shaped guess from the name — advice that
@@ -184,7 +186,9 @@ function allowances(raw) {
     for (const m of ln.matchAll(/\/\*\s*gate-allow:\s*([\w-,\s]+?)\s*\*\//g)) {
       const rules = m[1].split(",").map((s) => s.trim()).filter(Boolean);
       if (i < 10) for (const r of rules) file.add(r);
-      perLine.set(i + 1, new Set([...(perLine.get(i + 1) ?? []), ...rules]));
+      const here = perLine.get(i + 1) ?? new Set();
+      for (const r of rules) here.add(r);
+      perLine.set(i + 1, here);
     }
   });
   return { file, perLine };
@@ -250,4 +254,4 @@ if (findings.length) {
   for (const f of findings) console.error(`  ${f.file}:${f.line}  ${f.rule}  ${f.msg}`);
   process.exit(1);
 }
-console.log(`✓ check-css-tokens: ${files.length} stylesheets + ${html.length} templates clean against ${tokens.size} defined custom properties (raw-color, inline-style, unscoped-css, viewport-media)`);
+console.log(`✓ check-css-tokens: ${files.length} stylesheets + ${html.length} templates clean against ${defined.size} defined custom properties (raw-color, inline-style, unscoped-css, viewport-media)`);
