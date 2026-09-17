@@ -4,15 +4,27 @@
 // inline-style, unscoped-css, viewport-media. The rules and their rationale are
 // in reference/css.md; the decision is docs/adr/0007. check-css-vars guards the
 // mirror direction, an undefined var(--x).
-// Escape: /* gate-allow: <rule>[, rule] */ on the line, or in the first 10.
+// Escape: /* gate-allow: <rule>[, rule] */ (<!-- … --> in .html) on the line,
+// or anywhere in the first 10.
 import { readFileSync } from "node:fs";
 import { ROOT, SKIP, scanPaths, lineOf, stripComments, argSpan } from "./js-scan.mjs";
 
 /** Trailing `(` required, so `color-mix(in oklch, …)` is a colour space, not a literal. */
 const COLOR_FN = /\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\(/gi;
 const HEX = /#[0-9a-f]{3,8}\b/gi;
-/** Omits the system keywords and `transparent`/`currentColor`: no design decision, no drift. */
-const NAMED = /\b(?:red|green|blue|yellow|orange|purple|pink|brown|gray|grey|black|white|cyan|magenta|lime|navy|teal|olive|maroon|silver|gold|violet|indigo|crimson|salmon|khaki|tomato|orchid|plum|beige|ivory|coral|azure|aqua|fuchsia)\b/gi;
+/** All 148 CSS named colours. Omits the system keywords and
+ * `transparent`/`currentColor`: no design decision, no drift. */
+const NAMED = /\b(?:aliceblue|antiquewhite|aqua|aquamarine|azure|beige|bisque|black|blanchedalmond|blue|blueviolet|brown|burlywood|cadetblue|chartreuse|chocolate|coral|cornflowerblue|cornsilk|crimson|cyan|darkblue|darkcyan|darkgoldenrod|darkgray|darkgreen|darkgrey|darkkhaki|darkmagenta|darkolivegreen|darkorange|darkorchid|darkred|darksalmon|darkseagreen|darkslateblue|darkslategray|darkslategrey|darkturquoise|darkviolet|deeppink|deepskyblue|dimgray|dimgrey|dodgerblue|firebrick|floralwhite|forestgreen|fuchsia|gainsboro|ghostwhite|gold|goldenrod|gray|green|greenyellow|grey|honeydew|hotpink|indianred|indigo|ivory|khaki|lavender|lavenderblush|lawngreen|lemonchiffon|lightblue|lightcoral|lightcyan|lightgoldenrodyellow|lightgray|lightgreen|lightgrey|lightpink|lightsalmon|lightseagreen|lightskyblue|lightslategray|lightslategrey|lightsteelblue|lightyellow|lime|limegreen|linen|magenta|maroon|mediumaquamarine|mediumblue|mediumorchid|mediumpurple|mediumseagreen|mediumslateblue|mediumspringgreen|mediumturquoise|mediumvioletred|midnightblue|mintcream|mistyrose|moccasin|navajowhite|navy|oldlace|olive|olivedrab|orange|orangered|orchid|palegoldenrod|palegreen|paleturquoise|palevioletred|papayawhip|peachpuff|peru|pink|plum|powderblue|purple|rebeccapurple|red|rosybrown|royalblue|saddlebrown|salmon|sandybrown|seagreen|seashell|sienna|silver|skyblue|slateblue|slategray|slategrey|snow|springgreen|steelblue|tan|teal|thistle|tomato|turquoise|violet|wheat|white|whitesmoke|yellow|yellowgreen)\b/gi;
+/** Properties that accept a <color>. A bare keyword is not self-identifying the
+ * way `#abc` or `rgb(` is, so without this `font-family: Gold Sans` reads as a
+ * colour and so does the `tan()` in `calc(100px * tan(30deg))`. */
+const COLOR_PROP = new Set(["color", "background", "background-image", "border", "border-image",
+  "outline", "box-shadow", "text-shadow", "text-decoration", "column-rule", "fill", "stroke"]);
+/** @param {string} p */
+const takesColor = (p) =>
+  p.endsWith("-color") || COLOR_PROP.has(p) ||
+  /^border-(?:top|right|bottom|left|block|inline)(?:-(?:start|end))?$/.test(p);
+
 /** @type {Array<["hex" | "fn" | "named", RegExp]>} scanned in this order, which fixes finding order */
 const COLOR_SYNTAX = [["hex", HEX], ["fn", COLOR_FN], ["named", NAMED]];
 
@@ -65,24 +77,29 @@ function declarations(css) {
 
 /** Is this offset inside a region `re` matches? With `balanced`, the region runs
  * to the match's matching `)` rather than to the end of the match text.
+ * `keep` filters a span on its own text.
  * @param {string} v @param {RegExp} re @param {boolean} [balanced]
+ * @param {(text: string) => boolean} [keep]
  * @returns {(i: number) => boolean} */
-function within(v, re, balanced) {
+function within(v, re, balanced, keep) {
   /** @type {Array<[number, number]>} */ const spans = [];
   for (const m of v.matchAll(re)) {
-    if (!balanced) { spans.push([m.index, m.index + m[0].length]); continue; }
-    const span = argSpan(v, m.index + m[0].length - 1);
-    if (span) spans.push([m.index, span.end]);
+    const end = balanced ? argSpan(v, m.index + m[0].length - 1)?.end : m.index + m[0].length;
+    if (end === undefined) continue;
+    if (keep && !keep(v.slice(m.index, end))) continue;
+    spans.push([m.index, end]);
   }
   return (i) => spans.some(([a, b]) => i >= a && i < b);
 }
 
 /** Colour literals in a declaration value. A font family named "Ivory" is not a
- * colour, so quoted text is skipped here rather than at each call site.
- * @param {string} value */
-function* colorLiterals(value) {
+ * colour, so quoted text is skipped here rather than at each call site; bare
+ * keywords additionally need a property that accepts one.
+ * @param {string} prop @param {string} value */
+function* colorLiterals(prop, value) {
   const inQuotes = within(value, QUOTED);
   for (const [kind, re] of COLOR_SYNTAX) {
+    if (kind === "named" && !takesColor(prop)) continue;
     for (const m of value.matchAll(re)) {
       if (inQuotes(m.index)) continue;
       yield { kind, index: m.index, text: m[0].replace(/\($/, "") };
@@ -117,7 +134,7 @@ for (const { css, decls } of sheets) {
     if (!d.prop.startsWith("--")) continue;
     defined.add(d.prop);
     if (!isTokenLayer) continue;
-    for (const lit of colorLiterals(d.value)) {
+    for (const lit of colorLiterals("color", d.value)) {
       colorTokens.add(d.prop);
       const key = lit.text.toLowerCase();
       if (lit.kind === "hex" && !byValue.has(key)) byValue.set(key, d.prop);
@@ -147,7 +164,7 @@ function flagger(rel, raw) {
   /** @type {Set<string>} */ const fileWide = new Set();
   /** @type {Map<number, Set<string>>} */ const perLine = new Map();
   raw.split("\n").forEach((ln, i) => {
-    for (const m of ln.matchAll(/\/\*\s*gate-allow:\s*([\w-,\s]+?)\s*\*\//g)) {
+    for (const m of ln.matchAll(/(?:\/\*|<!--)\s*gate-allow:\s*([\w-,\s]+?)\s*(?:\*\/|-->)/g)) {
       const rules = m[1].split(",").map((s) => s.trim()).filter(Boolean);
       if (i < 10) for (const r of rules) fileWide.add(r);
       const here = perLine.get(i + 1) ?? new Set();
@@ -166,11 +183,12 @@ for (const { rel, raw, css, decls } of sheets) {
 
   for (const d of decls) {
     if (d.prop.startsWith("--")) continue;   // the definition site: the one legal place
-    const inMix = within(d.value, MIX, true);
-    for (const lit of colorLiterals(d.value)) {
-      // black/white inside a color-mix are this stack's darken/lighten
-      // operators (reference/css.md), not a palette choice.
-      if (lit.kind === "named" && /^(?:black|white)$/i.test(lit.text) && inMix(lit.index)) continue;
+    const inDerivation = within(d.value, MIX, true, (t) => t.includes("var(--"));
+    for (const lit of colorLiterals(d.prop, d.value)) {
+      // black/white mixed INTO a token are this stack's darken/lighten
+      // operators (reference/css.md). A mix carrying no token is a palette
+      // choice wearing a mix for a hat, so it still counts.
+      if (lit.kind === "named" && /^(?:black|white)$/i.test(lit.text) && inDerivation(lit.index)) continue;
       flag(lineOf(css, d.at + lit.index), "raw-color",
         `${d.prop}: ${lit.text} — raw colour outside a token definition; ${adviceFor(d.prop, lit.text)}`);
     }

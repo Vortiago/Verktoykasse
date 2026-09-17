@@ -103,7 +103,10 @@ once per session, and the gate runs on every check.
 `tools/check-css-tokens.mjs` is that gate half. Four rules, all from the lines
 above: `raw-color`, `inline-style` (`style="…"` in a template), `unscoped-css`
 (a `components/`/`views/` sheet with no `@scope`), `viewport-media` (a
-width/height `@media` in a component — that is `@container`'s job). Each finding
+width/height `@media` in a component — that is `@container`'s job). `raw-color`
+covers hex, the colour functions, and all 148 CSS named colours; a bare keyword
+counts only where the property accepts a colour, since `Gold` in a font stack
+and the `tan()` in a `calc()` are not colours. Each finding
 names the token to use **instead**, resolved against what the tree actually
 defines, so a violation costs one edit rather than a round-trip to go discover
 the vocabulary:
@@ -116,9 +119,11 @@ components/card/card.css:14  raw-color  border-color: #1a64d6 — raw colour
 Two things are deliberately NOT drift, because they are this stack's own idioms:
 deriving a shade through `color-mix(… , black/white)`, and the `in oklch`
 colour-space keyword. Both are asserted clean in
-`tools/check-css-tokens.test.mjs`. A genuine exception is a comment-borne
-`/* gate-allow: raw-color */`, on the line or in the file header — visible in the
-diff, never silent.
+`tools/check-css-tokens.test.mjs` — as is a `color-mix` that darkens a token.
+A mix carrying no `var()` is a colour someone picked, so it still counts.
+A genuine exception is a comment-borne `/* gate-allow: raw-color */` (or
+`<!-- gate-allow: inline-style -->` in a template), on the line or in the file
+header — visible in the diff, never silent.
 
 `check-css-vars` guards the mirror direction (a `var(--x)` nobody defines, which
 fails *silently* — a transparent popover, a missing colour). The pair is the

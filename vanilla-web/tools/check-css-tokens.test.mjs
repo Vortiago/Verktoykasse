@@ -156,6 +156,51 @@ test("a gate-allow comment suppresses, per line and per file", (t) => {
   assert.equal(file.code, 0, file.out);
 });
 
+test("a named colour beyond the common few is still a colour", (t) => {
+  const { code, out } = run(t, {
+    "tokens.css": TOKENS,
+    "components/c/c.css": `@scope (.c) { :scope { background: whitesmoke; border-color: darkred; } }`,
+  });
+  assert.equal(code, 1);
+  assert.match(out, /whitesmoke/);
+  assert.match(out, /darkred/, "the list is the whole spec list, not the obvious names");
+});
+
+test("a bare keyword is only a colour where a colour is accepted", (t) => {
+  // Unlike #abc or rgb(, a keyword is not self-identifying: these are a font
+  // stack and a trig function, and both carry a colour name.
+  const { code, out } = run(t, {
+    "tokens.css": TOKENS,
+    "components/c/c.css": `@scope (.c) {
+      :scope { font-family: Gold Sans, sans-serif; width: calc(100px * tan(30deg)); }
+      .b { animation-name: coral; }
+    }`,
+  });
+  assert.equal(code, 0, out);
+});
+
+test("a color-mix carrying no token is a palette choice, not a derivation", (t) => {
+  const { code, out } = run(t, {
+    "tokens.css": TOKENS,
+    "components/c/c.css": `@scope (.c) {
+      :scope { background: color-mix(in srgb, black 50%, white); }
+      .ok { background: color-mix(in srgb, var(--accent) 88%, black); }
+    }`,
+  });
+  assert.equal(code, 1);
+  assert.match(out, /black/);
+  assert.doesNotMatch(out, /\.ok/, "mixing into a token stays exempt");
+  assert.equal(out.match(/raw-color/g)?.length, 2, "both endpoints of the tokenless mix");
+});
+
+test("an HTML template escapes in HTML comment syntax", (t) => {
+  const { code, out } = run(t, {
+    "tokens.css": TOKENS,
+    "c.html": `<template id="tpl-a"><div style="color: red"></div><!-- gate-allow: inline-style --></template>`,
+  });
+  assert.equal(code, 0, out);
+});
+
 test("a raw colour inside a comment is not a finding (offsets survive stripping)", (t) => {
   const { code, out } = run(t, {
     "tokens.css": TOKENS,

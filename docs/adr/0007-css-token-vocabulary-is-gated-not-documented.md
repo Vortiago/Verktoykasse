@@ -60,6 +60,10 @@ in and also the state in which its absence is invisible.
   "no" costs a round-trip to go discover the vocabulary, which is the cost the rule was
   meant to remove. Advice is derived, never hardcoded, so renaming a token changes the
   advice without touching the checker.
+- **A bare keyword is not self-identifying.** `#abc` and `rgb(` are colours wherever they
+  appear; `gold` is a colour in `background` and a font in `font-family`. So the named
+  colours — all 148, not a memorable subset — count only where the property takes one.
+  The same asymmetry `COLOR_FN`'s trailing `(` already encodes.
 - **The stack's own idioms are not drift.** `color-mix(…, black)` deriving a shade, and
   the `in oklch` colour-space keyword, are `reference/css.md`'s prescribed way to avoid
   five near-duplicate accents. A rule that failed on shipped library code on day one would
@@ -73,8 +77,9 @@ in and also the state in which its absence is invisible.
   values are byte-identical to what those three components already rendered, so the visual
   baselines do not move.
 - **Escapes are comment-borne and visible**: `/* gate-allow: <rule> */` on the line or in
-  the file header, the same dialect `check-conventions.mjs` already uses. A real exception
-  should cost a line in the diff, not a silent pass.
+  the file header, the same dialect `check-conventions.mjs` already uses, spelled
+  `<!-- gate-allow: <rule> -->` in a template. A real exception should cost a line in the
+  diff, not a silent pass — and an escape only one of the four rules can reach is not one.
 
 ## Consequences
 
