@@ -1,26 +1,14 @@
 #!/usr/bin/env node
 // @ts-check
-// check — THE gate command. One thing to run, locally and in CI, from any skill
-// or app dir that carries tools/:
+// check — THE gate command, run from any skill or app dir carrying tools/:
 //
 //   node tools/check.mjs          # everything
-//   node tools/check.mjs --fast   # skip node --test (typecheck + static checks)
+//   node tools/check.mjs --fast   # skip node --test
 //
-// Runs, in order:
-//   1. tsc --noEmit         (typescript resolved locally if installed, else
-//                            pinned via `npx --yes --package typescript@5`)
-//   2. tools/check-*.mjs    discovered by glob — a future gate half is a file
-//                            drop, zero wiring. A check-* that is NOT a gate
-//                            half (needs arguments, e.g. check-vendored.mjs)
-//                            opts out with a `// gate: off` line in its header.
-//   3. node --test          over the tree's *.test.mjs (skipped under --fast,
-//                            or when there are none)
-//
-// All halves run even after a failure — one pass yields the full defect list —
-// then one ✓/✗ summary block; exit non-zero if any half failed. Paths derive
-// from this file's own location (tools/ sits in the root it checks), so the
-// same file works in vanilla-web, vanilla-components, and any scaffolded app.
-// Zero-dep (node:child_process).
+// In order: tsc --noEmit, every tools/check-*.mjs, then node --test. A gate half
+// is a file drop — discovered by glob, zero wiring — and a check-* that is NOT
+// one (it needs arguments) opts out with `// gate: off` in its header. Every
+// half runs even after a failure, so one pass yields the full defect list.
 import { globSync, readFileSync, existsSync } from "node:fs";
 import { scanPaths } from "./js-scan.mjs";
 import { spawnSync } from "node:child_process";
@@ -42,13 +30,11 @@ const tsc = (() => {
     const lib = createRequire(join(ROOT, "noop.js")).resolve("typescript");
     return { cmd: process.execPath, args: [join(dirname(lib), "..", "bin", "tsc")] };
   } catch {
-    // Run npx's SCRIPT under this node, not the `npx` shim, when it sits beside
-    // the interpreter (it does in every official install). On Windows the shim
-    // is npx.cmd: spawnSync does no PATHEXT lookup, so a bare "npx" is ENOENT,
-    // and naming npx.cmd instead earns EINVAL, because node refuses to spawn a
-    // .cmd without a shell (CVE-2024-27980). `shell: true` is the usual escape
-    // and the worse one here: it hands ROOT below to cmd.exe for a second round
-    // of quoting, and ROOT is a path this tool does not get to choose.
+    // Run npx's SCRIPT under this node, never the shim. On Windows the shim is
+    // npx.cmd: spawnSync does no PATHEXT lookup (bare "npx" is ENOENT) and node
+    // refuses to spawn a .cmd without a shell (CVE-2024-27980). `shell: true`
+    // would hand ROOT to cmd.exe for a second round of quoting, and ROOT is not
+    // a path this tool chooses.
     const cli = join(dirname(process.execPath), "node_modules", "npm", "bin", "npx-cli.js");
     const via = existsSync(cli)
       ? { cmd: process.execPath, args: [cli] }

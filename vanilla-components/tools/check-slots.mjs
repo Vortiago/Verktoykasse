@@ -1,47 +1,20 @@
 #!/usr/bin/env node
-// canonical source: vanilla-web/tools/check-slots.mjs@0c55dad sha256:541c37902ccfaf01d024f301e7d8c2a329a6a2783c12db85f34f1defbbd3aced - vendored copy, do not edit here
+// canonical source: vanilla-web/tools/check-slots.mjs@773a55e sha256:1e747c94099a8bf58e05a0e20ac03532e1906774640ab0515fdca65da2e6b454 - vendored copy, do not edit here
 // @ts-check
-// check-slots — static gate for the .html ↔ .js template seam, the one boundary
-// `tsc` cannot see. Template ids and data-slot names are stringly-typed:
-// a typo'd tpl("tpl-buttn") throws only at runtime, and a typo'd slot key
-// silently renders nothing (slot() is querySelectorAll-based). This walks
-// **/*.html for <template id="tpl-…"> ids + data-slot names, and **/*.js for
-// the string literals in tpl("…"), pick(el, "…"), slot(frag, {…}) keys, and
-// [data-slot="…"] selectors (regex-grade — the conventions keep these calls
-// syntactically uniform).
+// check-slots — static gate for the .html <-> .js template seam, the one
+// boundary `tsc` cannot see: template ids and data-slot names are strings, so a
+// typo throws at runtime (pick) or renders nothing at all (slot).
 //
 //   error    tpl() id with no <template id> in any .html
 //   error    pick()/slot()/selector name with no data-slot marker anywhere
-//   error    a data-slot on a template's ROOT read through that root element
-//            (the unreachable-root-slot rule — see below)
-//   warning  template or data-slot never referenced from JS (dead markup —
-//            non-fatal: tests may reach slots via querySelector/getByTestId)
+//   error    a root data-slot read through .firstElementChild — the root-slot
+//            rule, and why the fragment form is fine: reference/components.md
+//   warning  template or data-slot never referenced from JS (non-fatal: a test
+//            may reach a slot via querySelector/getByTestId)
 //
-// Scope is the whole app namespace, not per-template: a pick() takes a runtime
-// fragment, so the checker can't know which template it targets — pooling all
-// ids/names still catches the typo class, which is the point. JS-created
-// markers (dataset.slot = "x", setAttribute("data-slot", …)) count as defined.
-//
-// THE ROOT-SLOT RULE. pick()/slot() are querySelector(All)-based, and those never
-// match the context node itself — only descendants. So a data-slot on a
-// template's own root element behaves in two opposite ways:
-//
-//   const node = tpl("tpl-x");                    // DocumentFragment
-//   pick(node, "link")                            // ✓ root IS a child of the fragment
-//
-//   const el = tpl("tpl-x").firstElementChild;    // the root ELEMENT
-//   pick(el, "link")                              // ✗ throws: slot not found
-//   slot(el, { link: v })                         // ✗ WORSE: silent, renders nothing
-//
-// The fragment form is a legitimate shipped idiom (app-bar and side-nav both use
-// it), so this cannot be an HTML-only "no root slots" rule — it would fail
-// working library code. The checker therefore keys on `.firstElementChild` (or
-// .firstChild / .children[0]) and only errors when a name read through that root
-// element is a root marker and not also on a descendant. Variable linking is
-// windowed to the next redeclaration of the same name, because helper functions
-// in one file routinely each declare their own `el`.
-// node_modules/ and testing/ (deliberately-weird fixtures) are skipped.
-// Zero-dep; same shape + exit contract as check-css-vars. Exit 1 on any error.
+// Names pool across the whole app: a pick() takes a runtime fragment, so the
+// target template is unknowable here. Variable linking is windowed to the next
+// redeclaration of the same name — helper functions each declare their own `el`.
 import { readFileSync } from "node:fs";
 import { ROOT, SKIP, scanPaths, lineOf, stripComments, argSpan } from "./js-scan.mjs";
 

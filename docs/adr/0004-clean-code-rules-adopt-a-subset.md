@@ -33,8 +33,11 @@ imperative.
 
 The file closes on what it does not adopt: where the book goes further, keep the
 code as its author wrote it. That statement names the two an agent reintroduces
-most often. This record holds every rejected rule and the reason, so the rules
-file states only what to do.
+most often, and it is the whole of what this repo says about the book's further
+rules. **No list of rejected rules is kept**, here or anywhere: a rule named as
+rejected reads to an agent as a rule this repo does not care about, which is not
+what "we do not hold it as a hard limit" means. A rule worth naming is worth
+writing in the rules file as an action to take.
 
 Five rules in the file are this codebase's rather than the book's: edit the lines
 the task names, a TODO carries an issue reference, keep the type annotation and
@@ -42,73 +45,31 @@ the published help, keep a comment a tool reads, and name a boolean as a
 condition. The file names no chapter, so it claims no authorship it does not
 have.
 
-## Rejected rules
-
-These are real Clean Code rules. The rules file does not adopt them. The first
-nine are the ones an agent reintroduces unprompted.
-
-- **A function is small** (chapter 3: two to four lines, at most a screen). It
-  splits one job into fragments a reader reassembles. A forty-line function that
-  does one thing stays whole, rather than becoming `renderPart1`, `Part2`,
-  `Part3`.
-- **At most three arguments, zero ideal** (chapter 3). Three named parameters
-  read better than the options object a count forces: `render(el, data, signal)`
-  is not improved by `render({ el, data, signal })`.
-- **One assert per test** (chapter 9). A test of a state change needs the before
-  and the after in one test, or each half is blind.
-- **A comment is a failure, so write none** (chapter 4, the opening argument). A
-  constraint comment is load-bearing, and a type annotation is the type system
-  rather than prose. Delete `// @ts-check` and `tsc` silently stops reading the
-  file. The keep-list in the rules file exists for this rejection.
-- **Single Responsibility per class or line** (chapter 10). The module is the
-  unit here: `render.js` states one identity, and each function inside it does
-  not need its own.
-- **The stepdown rule and newspaper ordering** (chapters 3 and 5). This repo
-  defines a helper before its first use, `nfmt` at `vanilla-web/format.js:22`
-  used at `:41`, and reordering a file makes a diff nobody asked for.
-- **The Boy Scout rule** (the introduction: leave the file cleaner than you
-  found it). A rules file that loads on a read turns it into a sweep: open
-  `render.js` to fix one bug, rewrite its header nobody asked about. The
-  `## Scope` rule replaces it.
-- **Avoid encodings, no member prefix** (chapter 2). `_helper` marks a
-  module-private function in JavaScript, which has no keyword for one:
-  `_isInteractive`, `_holdCause`, `_dropPending` and `_flushRegion` in
-  `vanilla-web/render.js`.
-- **Do not return null, do not pass null** (chapter 7). A nullable return is
-  checked here: `@returns {T | null}` at `vanilla-web/store.js:84` and
-  `render.js:69`, under `strict` and `checkJs`. A Special Case object would lose
-  that check.
-
-The rest are rejected as out of scope. This file governs what a reader sees on
-one screen: the comment, the name, and the shape of one function. Architecture,
-design and reuse belong to `code-review` and `/simplify`, which already run on a
-diff.
-
-- **One level of abstraction per function** (chapter 3): it needs a judgement no
-  rules file makes for the reader.
-- **Command-query separation** (chapter 3): a useful default, and too easy to
-  apply as a hard rule.
-- **Extract a try or catch block into its own function** (chapter 3): it
-  multiplies tiny functions in a codebase that has few.
-- **Formatting: line width, vertical distance, team rules** (chapter 5): a
-  formatter owns these, not an agent.
-- **Objects and data structures: the Law of Demeter, hybrids, DTOs**
-  (chapter 6).
-- **Boundaries, systems, emergence, concurrency** (chapters 8, 11, 12, 13).
-- **Do not repeat yourself** (chapter 3): `/simplify` and `code-review` own
-  reuse.
-
 ## Consequences
 
 - An agent reading the file learns which rules not to apply, because the closing
   statement travels with the rules file it loads.
-- The reasons live here, where a reader who wants them looks for a decision.
-- A new rejection edits two places: this list always, and the closing statement
-  when an agent is likely to reintroduce the rule.
+- A rule this repo declines is edited in one place, the rules file's closing
+  statement, and only when an agent is likely to reintroduce it. There is no
+  second list to keep in step.
+- The book's reasoning for a rule this repo does not adopt is not recorded. That
+  is the cost of the line above, and it is accepted: the book is the place to
+  read the book.
 - The keep-list is illustration, not a registry. Its headline is the general
   predicate, "keep a comment a tool reads", so a new directive in this repo
   needs no line in the rules file. A future maintainer who reads the table as
   exhaustive takes on a per-directive edit the predicate never asked for.
+
+## Amendments
+
+- **2026-09-17**: the `## Rejected rules` list was removed. It was read as
+  licence rather than as nuance — an agent that found "a comment is a failure,
+  so write none" under a *Rejected* heading concluded comment volume was not a
+  concern here, and wrote a 37-line rationale essay atop a 146-line checker
+  (`vanilla-web/tools/check-css-tokens.mjs`, since cut). The list said what this
+  repo does not enforce as a hard limit; it was read as what this repo does not
+  want. The closing statement in the rules file carries what an agent has to act
+  on.
 
 ## Alternatives considered
 
