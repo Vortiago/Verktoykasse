@@ -7,7 +7,7 @@ description: Atle's conventions for building web UIs: vanilla ES modules, HTML <
 
 **No build step, no runtime deps**: plain ES modules served statically, and the
 only dev dependency is `typescript`. `node tools/check.mjs` runs the whole gate
-in one command (`tsc --noEmit`, `check-css-vars`, and `node --test`) with
+in one command (`tsc --noEmit`, the `check-*` halves, and `node --test`) with
 `--fast` to skip the `node --test` pass (→ `reference/modules.md`).
 
 ## Decision rule
@@ -63,7 +63,7 @@ Copy **verbatim** from the skill dir: `shell.js` (makes `location.hash`
 `AbortController` per mount, `document.startViewTransition` swaps, and surfaces
 errors to `<output id="errbar">`), `lib/templates.js`, `lib/render.js`,
 `lib/chrome.js`, `serve.mjs`,
-`tsconfig.json`, `tools/check-css-vars.mjs`, plus `preview.*`, `preview-source.js`
+`tsconfig.json`, `tools/check-css-vars.mjs`, `tools/check-css-tokens.mjs`, plus `preview.*`, `preview-source.js`
 + `previews/scan.mjs` if you want the
 component catalogue (→ `reference/preview.md`). `index.html` preloads the module graph
 (`modulepreload` for `shell.js`, `views/registry.js`, `lib/templates.js`,
@@ -128,7 +128,11 @@ it needs it.
 - **Components** are `components/<name>/` folders with the factory contract
   `create<Name>(props, signal) → { el, …updaters }`. → `reference/components.md`
 - **CSS** is `@scope` per component + tokens in `@layer`, and responsiveness through
-  `@container`, not viewport media. → `reference/css.md`
+  `@container`, not viewport media. **A colour literal is legal only as the value
+  of a custom property** — everywhere else it's `var(--token)`, so a new colour
+  gets named in `shell.css` before it gets used. `check-css-tokens` fails the gate
+  on the rest (`raw-color`, `inline-style`, `unscoped-css`, `viewport-media`) and
+  names the token to use instead. → `reference/css.md`
 - **Live data** is pushed over SSE (`EventSource` + `liveSSE`), not interval
   polling. `every`/`livePoll` is the fallback for trivial pages or pull-only
   upstreams. → `reference/server.md`
@@ -165,10 +169,13 @@ it needs it.
   signal are `store.subscribe(cb, signal)` and `loadCSS(url, path, signal)`.
   Guarded by `*.leak.test.mjs` (node) + `testing/tests/e2e/memory-*` (browser).
   → `reference/testing.md`
-- **The gate**: every module starts `// @ts-check` + JSDoc. `tsc --noEmit`,
-  `check-css-vars` (undefined `var(--x)` fails silently), and `node --test`,
-  run all three with `node tools/check.mjs` (`--fast` skips the `node --test`
-  pass). → `reference/modules.md`
+- **The gate**: every module starts `// @ts-check` + JSDoc. `tsc --noEmit`, the
+  `check-*` halves (`check-css-vars` — an undefined `var(--x)` fails silently;
+  `check-css-tokens` — a raw colour outside a token definition never fails at
+  all; `check-conventions`; `check-slots`), and `node --test`. Run the lot with
+  `node tools/check.mjs` (`--fast` skips the `node --test` pass). A new half is a
+  `tools/check-*.mjs` file drop — check.mjs discovers them.
+  → `reference/modules.md`
 - **Preview** (optional): a component can ship `<name>.preview.js` exporting
   `{ title, render, variants }`. `serve.mjs` generates the catalogue and serves
   it at `/preview.html`. No npm, no build. → `reference/preview.md`

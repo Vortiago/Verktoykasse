@@ -2,7 +2,9 @@
  *
  * The single file defining :root custom properties. Components style ONLY through
  * these tokens (never hard-coded colors), so an app that ships its own tokens.css
- * with the same names re-themes the whole library for free.
+ * with the same names re-themes the whole library for free. That rule is not a
+ * convention any more: tools/check-css-tokens.mjs fails the gate on a colour
+ * literal anywhere but a custom property's own value, which is here.
  *
  * Theming is `light-dark()`: every color carries (light, dark) and follows the
  * root's `color-scheme`. wireTheme() (lib/templates.js) cycles auto/light/dark.
@@ -46,6 +48,14 @@
     --space-s:  8px;
     --space-m:  12px;
     --space-l:  16px;
+
+    /* ── Elevation ── the three surfaces that float: tip → menu → dialog.
+       Full box-shadow values, not just a colour, so "which elevation is this"
+       is the only decision at the call site. The scrim is the dialog backdrop. */
+    --shadow-1: 0 4px 16px light-dark(rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0.5));
+    --shadow-2: 0 8px 24px light-dark(rgba(0, 0, 0, 0.14), rgba(0, 0, 0, 0.5));
+    --shadow-3: 0 12px 48px light-dark(rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.6));
+    --scrim:    light-dark(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.6));
 
     /* ── Shape ── */
     --r: 4px;        /* default corner radius */
