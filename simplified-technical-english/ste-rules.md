@@ -11,8 +11,8 @@ numbers and the rules this file rejects.
 ## Before you write
 
 **One term for one concept.** Pick one word for a thing and keep it for the whole
-document. This is the most valuable rule here, and the one no mechanical check
-catches. It covers the reader as much as the subject: `endpoint / route / URL`
+document. This is the most valuable rule here. It covers the reader as much as
+the subject: `endpoint / route / URL`
 for one idea, or `you / the user / the operator` for one reader, is one word.
 
 **Open with the point.** The first sentence says what the thing is and does.
@@ -20,8 +20,7 @@ for one idea, or `you / the user / the operator` for one reader, is one word.
 checks a session must pass before shipping.`
 
 **Write the new line to the rules, even where the lines around it predate them.**
-A file from before the rules teaches its own register by example. The lines you
-did not touch stay as their author wrote them.
+The lines you did not touch stay as their author wrote them.
 
 ## Always
 

@@ -47,9 +47,8 @@ function says why the step comes here, not what the step is.
 **Write a comment as prose.** Present tense, the full form of a verb, a comma or
 a colon where an em dash would go, British spelling, and the fact once.
 
-**Write a comment in about four lines.** State the decision, then what the other
-choice costs, and stop. Where the reasoning needs more room, it belongs in an
-ADR, and the comment cites it.
+**Write a comment in about four lines.** Where the reasoning needs more room, it
+belongs in an ADR the comment cites.
 
 ## A comment the name or the shape replaces
 
@@ -70,7 +69,7 @@ line.
 // previously a Map, switched to WeakMap  →  // A WeakMap lets a removed host
 // so hosts get collected                    // be collected.
 ```
-**Keep only live code.** The history holds the commented-out line too.
+**Keep only live code.**
 
 **Give a TODO an issue reference.** `// TODO fix later` →
 `// TODO(#88) handle a missing id`
@@ -91,8 +90,6 @@ A generated file keeps every comment its generator wrote. A string that holds a
 comment for a generated file is code.
 
 ## Names
-
-**Put the meaning in the name**, so the comment does not have to carry it.
 
 **Use one word per concept across a file.** `fetchUser`, `getAccount` and
 `retrieveOrder` for one idea become one verb, kept.
