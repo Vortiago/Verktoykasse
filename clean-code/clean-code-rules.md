@@ -123,12 +123,13 @@ name means it stays whole, at any length.
 
 ## Shape of a module
 
-**Open a module with its identity and what it depends on.** The first comment
-says what the module is, where a copy of it lives, and what it imports. Leave
-the consumers to the caller: who imports this is not the module's concern, and
-such a list goes stale the moment somebody adds one. A module-level variable
-gets the same treatment as the module: which function here writes it, and when
-it clears.
+**Open a module with what it is.** One or two sentences on the job it does,
+which neither the file name nor the import block states. Those two already say
+where the module sits and what it depends on, so a comment repeating either one
+rots on the next edit. Who imports the module is the caller's concern.
+
+**Say who writes a module-level variable, and when it clears.** That is a
+lifetime, and reading it off a long file means reading the whole file.
 
 **Split the parse from the read.** A function that reads a file, a process or a
 socket hands the text to a function that only parses it. The parse takes a
