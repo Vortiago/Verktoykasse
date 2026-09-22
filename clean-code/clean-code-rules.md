@@ -121,9 +121,7 @@ name means it stays whole, at any length.
 
 ## Shape of a module
 
-**Open a module with what it is.** One or two sentences on the job it does. The
-file name carries the path, the import block carries the dependencies, and the
-callers are the caller's concern.
+**Open a module with what it is.** One or two sentences on the job it does.
 
 **Say who writes a module-level variable, and when it clears.**
 ```
