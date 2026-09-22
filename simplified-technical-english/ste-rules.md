@@ -2,33 +2,22 @@
 
 Apply these rules to everything you write for a reader: a markdown file, a plan
 file, a commit or PR body, and your own replies in this terminal. Apply them as
-you write, not in a review pass after. Apply them to text you paste or port in
-as much as to text you compose.
+you write, not in a review pass after, and to text you paste or port in as much
+as to text you compose.
 
-Write documentation people actually read: short, plain, one word per idea. This
-file is the single source of these rules, and the `ste-review` subagent reviews
-against it.
-
-Based on ASD-STE100 Simplified Technical English. It claims no compliance, and an
-`[ASD n.n]` tag is a cross-reference, nothing more.
+A subset of ASD-STE100. It claims no compliance. ADR 0003 holds the clause
+numbers and the rules this file rejects.
 
 ## Before you write
 
 **One term for one concept.** Pick one word for a thing and keep it for the whole
-document. `[ASD 1.11]` This is the most valuable rule here, and the one that no
-mechanical check can catch. It covers the reader as much as the subject.
-
-```
-endpoint / route / URL / path  for one idea    →  pick one and keep it
-you / the user / the operator  for one reader  →  pick one and keep it
-```
+document. This is the most valuable rule here, and the one no mechanical check
+catches. It covers the reader as much as the subject: `endpoint / route / URL`
+for one idea, or `you / the user / the operator` for one reader, is one word.
 
 **Open with the point.** The first sentence says what the thing is and does.
-
-```
-This document provides an overview of the gate.
-   →  The gate is the set of checks a session must pass before shipping.
-```
+`This document provides an overview of the gate.` → `The gate is the set of
+checks a session must pass before shipping.`
 
 **Write the new line to the rules, even where the lines around it predate them.**
 A file from before the rules teaches its own register by example. The lines you
@@ -36,93 +25,46 @@ did not touch stay as their author wrote them.
 
 ## Always
 
-**Delete the semicolon.** Use two sentences. `[ASD 8.1]`
-
-```
-The gate runs; the hook does not.        →  The gate runs. The hook does not.
-```
+**Delete the semicolon.** `The gate runs; the hook does not.` becomes two
+sentences.
 
 **No em dash.** Use a comma, a colon, or two sentences.
 
-```
-One command — same locally and in CI.    →  One command, same locally and in CI.
-```
+**No contraction.** `don't isn't can't it's won't` → `do not is not cannot it is
+will not`. A possessive is not a contraction: `the user's call` is correct.
 
-**No contraction.** Write the full form. `[ASD 4.2]`
-
-```
-don't  isn't  can't  it's  won't         →  do not  is not  cannot  it is  will not
-```
-
-A possessive is not a contraction. `the user's call` is correct.
-
-**No Latin abbreviation.** `[ASD GR-6]`
-
-```
-e.g.  i.e.  etc.  vs.                    →  for example  that is  and so on  versus
-```
+**No Latin abbreviation.** `e.g. i.e. etc. vs.` → `for example`, `that is`,
+`and so on`, `versus`.
 
 **Write `through` or `with`, not `via`.** Pick whichever reads as English.
 
-```
-install via npm  →  install with npm      routed via  →  routed through
-```
+**No filler opener.** `It should be noted that` and `Please note that` go.
+`In order to` → `To`. `At this point in time` → `Now`.
 
-**No filler opener.** Delete it and start with the point.
+**Delete a claim word that carries no fact.** `simply easily seamlessly just`
+go. `robust powerful comprehensive` → name what it does.
 
-```
-It should be noted that the gate runs.   →  The gate runs.
-In order to build, run make.             →  To build, run make.
-At this point in time                    →  Now
-Please note that                         →  (delete)
-```
+**Use the plain verb.** `utilise leverage facilitate` → `use use help`.
 
-**Delete a claim word that carries no fact.** State the fact or say nothing.
+**Use the verb, not the noun built from it.** `make a decision` → `decide`.
+`perform a check on` → `check`.
 
-```
-simply  easily  seamlessly  just  →  (delete)
-robust  powerful  comprehensive   →  name what it does
-```
+**Use a single-word verb.** `kick off spin up tear down` → `start start remove`.
 
-**Use the plain verb.** An inflated verb hides how small the action is.
+**Present tense for behaviour.** `This will create a file.` → `This creates a
+file.` Reserve the future for a future event.
 
-```
-utilise  leverage  facilitate  →  use  use  help
-```
-
-**Use the verb, not the noun built from it.** `[ASD 3.7]`
-
-```
-make a decision  →  decide      perform a check on  →  check
-```
-
-**Use a single-word verb.** `[ASD 9.3]`
-
-```
-kick off  spin up  tear down             →  start  start  remove
-```
-
-**Present tense for behaviour.** Reserve the future for a future event.
-
-```
-This will create a config file.          →  This creates a config file.
-```
-
-**Write British English.**
-
-```
-utilize  behavior  center  analyze       →  utilise  behaviour  centre  analyse
-```
+**Write British English.** `utilize behavior center analyze` → `utilise
+behaviour centre analyse`.
 
 ## Keep it short
 
-**At most 20 words in a procedure step.** `[ASD 5.1]`
-**At most 25 words in a sentence of description.** `[ASD 6.3]`
-**At most 6 sentences in a paragraph.** `[ASD 6.6]`
+**At most 20 words in a procedure step.**
+**At most 25 words in a sentence of description.**
+**At most 6 sentences in a paragraph.**
 
 These are limits, not targets. A parenthesised aside, a hyphenated compound, a
 number with its unit, quoted text and a code span each count as one word.
-`[ASD 8.5 to 8.7]`
 
 ## Shape of a document
 
@@ -136,61 +78,37 @@ prose.
 
 ## Procedures
 
-**One instruction per step.** `[ASD 5.2]` A `then` inside a step is a second step.
+**One instruction per step.** A `then` inside a step is a second step.
+`2. Install the deps and then run the migration.` becomes two numbered steps.
 
-```
-2. Install the deps and then run the migration.
-   →  2. Install the dependencies.
-      3. Run the migration.
-```
+**Start a step with the action.** A step opening with `The`, `It`, `There` or
+`You` plus a verb of being or a modal is a description.
+`1. You should verify the token.` → `1. Verify the token.`
 
-**Start a step with the action.** `[ASD 5.3]` A step that opens with `The`, `It`,
-`There` or `You` plus a verb of being or a modal is a description.
+**Put the condition first, then a comma, then the command.**
+`If the cache misses, query the datastore.`
 
-```
-1. The operator is required to open the console.   →  1. Open the console.
-3. You should verify the token.                    →  3. Verify the token.
-```
-
-**Put the condition first, then a comma, then the command.** `[ASD 5.4]`
-
-```
-If the cache misses, query the datastore.
-```
-
-**Put the warning before the step it guards.** `[ASD 7]` A reader who meets the
-prohibition after the action has already taken it. Start the warning with the
-command, not with the reason.
-
-```
-3. Run `vendor.sh` to refresh the copy. Do not edit a vendored copy.
-   →  3. Do not edit a vendored copy. Run `vendor.sh` to refresh it.
-```
+**Put the warning before the step it guards.** A reader who meets the
+prohibition after the action has already taken it. Start with the command, not
+the reason. `Run vendor.sh to refresh the copy. Do not edit a vendored copy.` →
+`Do not edit a vendored copy. Run vendor.sh to refresh it.`
 
 ## Words and voice
 
-**Active voice, with the actor named.** `[ASD 3.6]` In description, use the
-passive only when the actor is genuinely unknown.
+**Active voice, with the actor named.** `The file is read by the loader.` →
+`The loader reads the file.` In description, use the passive only when the actor
+is genuinely unknown.
 
-```
-The file is read by the loader.   →  The loader reads the file.
-```
+**At most three nouns in a row.** `Widget Service Data Access Layer
+Configuration Manager` → `the configuration manager for the widget datastore`.
 
-**At most three nouns in a row.** `[ASD 2.1]`
-
-```
-Widget Service Data Access Layer Configuration Manager
-   →  the configuration manager for the widget datastore
-```
-
-**One topic per paragraph.** `[ASD 6.5]`
+**One topic per paragraph.**
 
 **Keep the reason where a reader needs judgement.** Cut it from a mechanical
 step. A prohibition with no reason leaves the reader guessing what to do instead.
 
 ## The rest of the standard
 
-This file adopts a subset of ASD-STE100 and rejects the rest. Apply no other
-rule from the standard. Do not restrict modals: `should` stays `should`, and
-`may have failed` is not `failed`. Do not ban compound tenses: `the job has
-completed` is not `the job completed`.
+Apply no other rule from ASD-STE100. Do not restrict modals: `should` stays
+`should`, and `may have failed` is not `failed`. Do not ban compound tenses:
+`the job has completed` is not `the job completed`.

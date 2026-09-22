@@ -47,6 +47,33 @@ the published help, keep a comment a tool reads, and name a boolean as a
 condition. The file names no chapter, so it claims no authorship it does not
 have.
 
+## Decision, revised 2026-09-22
+
+The first version named six things to delete and one generative rule, and that
+rule was the only one with no example. An agent that obeyed it wrote nothing, or
+wrote an essay and passed every rule. The file said nothing about how work
+splits across files and folders, so files reached hundreds of lines.
+
+- **The file leads with what a comment answers**, in five shapes, each with a
+  real example from this repo.
+- **A comment is prose in the STE register, and runs to about four lines.**
+  Reasoning that needs more room belongs in an ADR the comment cites. This
+  restates three STE rules inline rather than pointing at `ste-rules.md`, which
+  loads on its own and covers different artefacts.
+- **A `Shape of a file tree` section** carries three rules: a feature gets a
+  folder holding every part of it, each variant gets its own file behind one
+  shared interface, and at about 300 lines a file is named to see whether it
+  holds one thing or two. `vanilla-components/components/` and
+  `matrix/lib/terminal/` are the exemplars.
+- **Two rules that contradicted the corpus become keeps.** "Turn a step label
+  into a named function" fought `render.js:284` and `sessions.ps1:493`, both
+  long single-job functions whose step comments carry the reason for each step's
+  order. "Mark a section with a blank line" would have deleted
+  `statusline/lib.sh:6` and `conventional-commits/validate.sh:40`, which name a
+  contract.
+- **The module-private prefix rule is stated**, having been defended here but
+  never written down.
+
 ## Rejected rules
 
 These are real Clean Code rules. The rules file does not adopt them. The first
@@ -55,8 +82,8 @@ nine are the ones an agent reintroduces unprompted.
 - **A function is small** (chapter 3: two to four lines, at most a screen). It
   splits one job into fragments a reader reassembles. A forty-line function that
   does one thing stays whole, rather than becoming `renderPart1`, `Part2`,
-  `Part3`. A function has no length rule here. The 300-line check ADR 0007 adds
-  is a check on a file, not a budget for a function.
+  `Part3`. A function has no length rule here. The 300-line check under
+  `Shape of a file tree` is a check on a file, not a budget for a function.
 - **At most three arguments, zero ideal** (chapter 3). Three named parameters
   read better than the options object a count forces: `render(el, data, signal)`
   is not improved by `render({ el, data, signal })`.
@@ -68,8 +95,8 @@ nine are the ones an agent reintroduces unprompted.
   file. The keep-list in the rules file exists for this rejection.
 - **Single Responsibility per class or line** (chapter 10). The module is the
   unit here: `render.js` states one identity, and each function inside it does
-  not need its own. ADR 0007 promotes that aside to a rule, so the file is now
-  where the principle is applied.
+  not need its own. That aside is now a rule: at about 300 lines, name what the
+  file holds, and two names means two files.
 - **The stepdown rule and newspaper ordering** (chapters 3 and 5). This repo
   defines a helper before its first use, `nfmt` at `vanilla-web/format.js:22`
   used at `:41`, and reordering a file makes a diff nobody asked for.
@@ -87,13 +114,13 @@ nine are the ones an agent reintroduces unprompted.
   that check.
 
 The rest are rejected as out of scope. This file governs the comment, the name,
-the shape of one function, and how work splits across files and folders
-(ADR 0007 adds the last of those). Reuse and design belong to `code-review` and
-`/simplify`, which already run on a diff.
+the shape of one function, and how work splits across files and folders. Reuse
+and design belong to `code-review` and `/simplify`, which already run on a
+diff.
 
 - **One level of abstraction per function** (chapter 3): it needs a judgement no
-  rules file makes for the reader. Partly adopted by ADR 0007 as "split the
-  parse from the read", which asks one yes-or-no question instead.
+  rules file makes for the reader. Partly adopted as "split the parse from the
+  read", which asks one yes-or-no question instead.
 - **Command-query separation** (chapter 3): a useful default, and too easy to
   apply as a hard rule.
 - **Extract a try or catch block into its own function** (chapter 3): it
@@ -139,7 +166,7 @@ the shape of one function, and how work splits across files and folders
   asks this file's questions: one hunts correctness, the other reuse and
   efficiency. Neither asks whether a comment answers a question. The reason that
   holds is that a reviewer built against rules that under-teach amplifies the
-  wrong thing. Revisit once ADR 0007's rewrite has run on real work.
+  wrong thing. Revisit once the rewrite below has run on real work.
 - **A committed `.claude/settings.json`.** Rejected: no settings key enables,
   imports or requires a rules file, so such a file would claim an enforcement it
   cannot deliver. `./install.sh` is what makes the rules apply.
@@ -151,9 +178,7 @@ the shape of one function, and how work splits across files and folders
   different artefacts and name different sources. A link is cheap to add later
   and awkward to unpick once something depends on it.
 
-## Amended by
+## Related
 
-- **ADR 0007** corrects the compaction claim above, widens this file's scope to
-  the file tree, promotes the file-level Single Responsibility rule, bounds the
-  function-length rejection, and records the partial adoption of one level of
-  abstraction.
+- **ADR 0007** decides that this file loads every session rather than on a
+  matching read, and corrects the compaction claim above.

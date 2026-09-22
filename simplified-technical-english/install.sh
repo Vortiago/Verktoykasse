@@ -20,9 +20,7 @@
 
 here="$HERE/simplified-technical-english"
 
-# 1. the rules. The file carries no `paths:` frontmatter, so it loads at session
-#    start. Only a Read arms a path-scoped rule, and writing prose does not read
-#    prose first, so the scoped form never reached a working session (ADR 0007).
+# 1. the rules. No `paths:` frontmatter, so it loads at session start (ADR 0007).
 link "$here/ste-rules.md" "$HOME/.claude/rules/ste-rules.md"
 
 # 2. the reviewer subagent. link() already does `mkdir -p` on the parent, so it
