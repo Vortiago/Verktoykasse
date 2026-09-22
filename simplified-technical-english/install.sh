@@ -20,7 +20,7 @@
 
 here="$HERE/simplified-technical-english"
 
-# 1. the rules. No `paths:` frontmatter, so it loads at session start (ADR 0007).
+# 1. the rules. No `paths:` frontmatter, so it loads at session start (ADR 0003).
 link "$here/ste-rules.md" "$HOME/.claude/rules/ste-rules.md"
 
 # 2. the reviewer subagent. link() already does `mkdir -p` on the parent, so it

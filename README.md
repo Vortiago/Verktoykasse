@@ -102,7 +102,7 @@ A directory is a skill when it holds a `SKILL.md`.
   file, a commit or PR body, and Claude's own replies. It carries no `paths:`
   frontmatter, because only a Read arms a path-scoped rule and writing prose
   does not read prose first, so the scoped form never reached a working session
-  ([ADR 0007](docs/adr/0007-the-rules-files-load-every-session.md)).
+  ([ADR 0003](docs/adr/0003-ste-rules-adopt-a-subset.md)).
   [`ste-review.md`](simplified-technical-english/ste-review.md) is a subagent that
   reviews on demand (`@ste-review`), covering markdown, **code comments and
   docstrings**, commit messages and PR bodies, and judging the things no pattern
@@ -120,8 +120,7 @@ A directory is a skill when it holds a `SKILL.md`.
   (a feature gets a folder, a variant gets a file, a 300-line file gets named),
   the shape of a function, dead code and an error message. Every rule names an
   action to take. The rules it does not adopt from the book, and why, live in
-  [ADR 0004](docs/adr/0004-clean-code-rules-adopt-a-subset.md), as corrected by
-  [ADR 0007](docs/adr/0007-the-rules-files-load-every-session.md).
+  [ADR 0004](docs/adr/0004-clean-code-rules-adopt-a-subset.md).
 
 ## Install
 
