@@ -7,7 +7,7 @@
 # file. It is two files, each symlinked to where Claude Code already looks for
 # its kind:
 #
-#   ste-rules.md   -> ~/.claude/rules/     loads on a markdown touch, every project
+#   ste-rules.md   -> ~/.claude/rules/     loads every session, every project
 #   ste-review.md  -> ~/.claude/agents/    the reviewer, by `@` or by delegation
 #
 # Not a skill does not mean user-only. Claude delegates to `ste-review` on its
@@ -20,9 +20,7 @@
 
 here="$HERE/simplified-technical-english"
 
-# 1. the rules, as a path-scoped rule. The `paths:` frontmatter in the file is
-#    what makes it load when Claude reads or edits a markdown file, rather than
-#    sitting in context all session.
+# 1. the rules. No `paths:` frontmatter, so it loads at session start (ADR 0003).
 link "$here/ste-rules.md" "$HOME/.claude/rules/ste-rules.md"
 
 # 2. the reviewer subagent. link() already does `mkdir -p` on the parent, so it
@@ -31,6 +29,7 @@ link "$here/ste-review.md" "$HOME/.claude/agents/ste-review.md"
 
 cat <<'EOF'
 note    Simplified Technical English is guidance, not enforcement.
-        The rules load automatically when Claude touches a *.md file.
+        The rules load in every session, and cover a markdown file, a plan
+        file, a commit or PR body, and Claude's own replies.
         To review on demand:  @ste-review  (or name it in a prompt)
 EOF

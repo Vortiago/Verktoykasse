@@ -1,126 +1,176 @@
----
-paths:
-  - "**/*.{js,jsx,mjs,cjs,ts,tsx,mts,cts,cs,php,py,sh,ps1,psm1}"
----
-
 # Clean code
 
-Write code a reader understands without a comment: a name that says what, a
-function that does one thing, a comment for what the code cannot say. A subset
-of Clean Code (Robert C. Martin). Left of an arrow is what you found, right is
-what you write.
+Apply these rules to every line of code you write or change, as you write it,
+and to code you paste or port in as much as to code you compose.
+
+Write code a reader understands: a name that says what, a function that does one
+thing, a file that holds one thing, and a comment for what the code cannot say.
+A subset of Clean Code (Robert C. Martin). ADR 0004 holds the rules this file
+rejects. Left of an arrow is what you found, right is what you write.
 
 ## Scope
 
 **Edit the lines the task names.** Fix the comment on a line you change. Leave
 the rest as its author wrote it, until somebody asks for a cleanup.
 
-## Comments
+## A comment that earns its place
+
+A comment answers a question the code cannot. Before you write one, find its
+question below. A comment with no question here becomes a name or a shape.
+
+**The choice, and what the other choice costs.**
+```
+# ReadAllText, not Get-Content -Raw: the provider and pipeline cost 7x on a
+# file this small. This runs per session per poll.
+```
+**The failure this prevents, and the issue that found it.**
+```
+// `focusout` fires BEFORE the incoming element is focused, so a flush here
+// would swap on top of the element about to receive focus (#72).
+```
+**The fact the platform imposes, with its number.**
+```
+// Indexed rather than `.some`, which would allocate a closure per host per
+// pass, including on the idle pass where there is nothing to walk.
+```
+**The rule every branch keeps, stated once.** A step comment inside a long
+function says why the step comes here, not what the step is.
+```
+// Sig gate FIRST, ahead of the hold guards: an unchanged sig proves the DOM
+// already matches, so nothing is owed whether or not the host is held.
+```
+**The contract: what null means, and what the caller owns.**
+```
+# Nothing, not zero, for a line this cannot read. Zero is a real tick value.
+```
+
+**Write a comment as prose.** Present tense, the full form of a verb, a comma or
+a colon where an em dash would go, British spelling, and the fact once.
+
+**Write a comment in about four lines.** Where the reasoning needs more room, it
+belongs in an ADR the comment cites.
+
+## A comment the name or the shape replaces
 
 **Let the name carry what the comment would say.**
-```
-// increment the counter                  →  count++;
-count++;
-```
-**Turn a step label into a named function.**
-```
-// validate the input                     →  validate(input);
-…ten lines…                                  save(input);
-// now save it
-```
-**Mark a section with a blank line**, not with `// ===== helpers =====`.
+`const d = Date.now() - t; // ms since start` → `const msSinceStart = Date.now() - startedAt;`
 
-**State the constraint that holds now.**
+**Keep a step comment that states a reason.** A label that only names the step is
+a function's name: `// now save it` → `save(input);`
+
+**Keep a section marker that names a contract.** A bare rule of dashes is a blank
+line.
+```
+# ── colours (CL_ prefixed so they never collide with an extension's vars) ──   keep
+// ===== helpers =====                                                          →  (a blank line)
+```
+**State the constraint that holds now.** The history holds the old version.
 ```
 // previously a Map, switched to WeakMap  →  // A WeakMap lets a removed host
 // so hosts get collected                    // be collected.
 ```
-**Keep only live code.** The history holds the old version.
-```
-// const legacy = parse(x);               →  const parsed = parse(x);
-const parsed = parse(x);
-```
-**Give a TODO an issue reference.**
-```
-// TODO fix later                         →  // TODO(#88) handle a missing id
-```
-**Keep the type annotation a checker reads, and the help text a tool
-publishes.** Trim the sentence that repeats the name, keep the annotation.
+**Keep only live code.**
 
-**Keep a comment that states what the code cannot.** A platform constraint, a
-non-obvious reason, or a workaround with its cause. The fact, present tense,
-once.
+**Give a TODO an issue reference.** `// TODO fix later` →
+`// TODO(#88) handle a missing id`
 
-**Keep a comment a tool reads.** It is input, not prose. These are examples of
-the category, not the whole of it. Keep a shebang and a licence header too.
-```
-@param @returns @type @typedef @ts-check     type annotations
-@return @var @phpstan-* @psalm-*             PHP docblocks
-# type: ignore   # noqa                      Python checker directives
-/// <summary>   <# .SYNOPSIS #>              published help
-// gate: off  gate-allow:  static-render     gate directives
-# shellcheck source=   #requires -Version    tool pragmas
-canonical source:   GENERATED by             provenance, generated file
-```
+## Keep what a tool reads
+
+**Keep the type annotation a checker reads, and the help text a tool publishes.**
+Trim the sentence that repeats the name, keep the annotation.
+
+**Keep a comment a tool reads.** It is input, not prose, and deleting one breaks
+a gate for a reason that looks unrelated. These are examples of the category,
+not the whole of it: `@param @returns @type @typedef @ts-check`, PHP docblocks,
+`# type: ignore`, `# noqa`, `/// <summary>`, `<# .SYNOPSIS #>`, `gate: off`,
+`gate-allow:`, `# shellcheck source=`, `#requires -Version`, `canonical source:`,
+`GENERATED by`. Keep a shebang and a licence header too.
+
 A generated file keeps every comment its generator wrote. A string that holds a
 comment for a generated file is code.
 
 ## Names
 
-**Put the meaning in the name**, so the comment does not have to carry it.
-```
-const d = Date.now() - t; // ms since start
-   →  const msSinceStart = Date.now() - startedAt;
-```
-**Use one word per concept across a file**: `fetchUser`, `getAccount` and
+**Use one word per concept across a file.** `fetchUser`, `getAccount` and
 `retrieveOrder` for one idea become one verb, kept.
 
 **Name the thing, not its wrapper.** `Data`, `Info`, `Manager` and `Util` add
-nothing.
+nothing: `userData configManager helperUtil` → `user config format`.
+
+**Name a boolean as a condition.** `flag status mode` → `isHeld hasOverlay
+canRetry`.
+
+**Mark a module-private with the prefix its language uses**: `_flushRegion` in
+JavaScript, `$script:TranscriptState` in PowerShell, `cl_cache` in a sourced
+shell library. The prefix is the only privacy the language has.
+
+## Shape of a file tree
+
+**Give a feature a folder and put every part of it there**, under the name of
+the thing: `components/dialog/` holds `dialog.html`, `dialog.css`, `dialog.js`
+and `dialog.preview.js`.
+
+**Give each variant its own file behind one shared interface**: `lib/terminal/`
+holds `konsole.ps1`, `tmux.ps1`, `windows-terminal.ps1` and `none.ps1`.
+
+**At about 300 lines, name what the file holds.** Two names means two files. One
+name means it stays whole, at any length.
+
+## Shape of a module
+
+**Open a module with what it is.** One or two sentences on the job it does.
+
+**Say who writes a module-level variable, and when it clears.**
 ```
-userData  configManager  helperUtil       →  user  config  format
-```
-**Name a boolean as a condition.**
-```
-flag  status  mode                        →  isHeld  hasOverlay  canRetry
+/** Written only by _flushRegion. Aborted the moment the host flushes. */
+const _pendingFlush = new WeakMap();
 ```
 
-## Shape
+**Split the parse from the read.** A function that reads a file, a process or a
+socket hands the text to a function that only parses it. The parse takes a
+string, so its test runs on any platform: `Get-ProcessStartTicks` reads
+`/proc/<pid>/stat`, and `ConvertTo-ProcStartTicks` parses the line.
+
+**Give a number a name and its reason.**
+```
+if ($quiet -ge 90)   →  # A permission prompt is written to no file, so a
+                        # transcript quiet this long is blocked, not working.
+                        $script:BlockedSeconds = 90
+```
+
+## Shape of a function
 
 **Give a function one job, and a name that states it.** A name that needs `and`
-becomes two functions.
-```
-await loadAndRender(id);                  →  await render(await load(id));
-```
-**Return early.** A guard clause replaces a nested else.
-```
-if (x) { …20 lines… } else { return null; }  →  if (!x) return null;  …20 lines…
-```
+becomes two functions: `await loadAndRender(id)` → `await render(await load(id))`
+
+**Return early.** A guard clause replaces a nested else:
+`if (x) { …20 lines… } else { return null; }` → `if (!x) return null;` then the
+20 lines.
 
 ## Dead code
 
 **Keep a function, import, parameter or flag only while something calls it.** A
-parameter arrives with its first caller. `noUnusedLocals` and
-`noUnusedParameters` find them in a typechecked tree. A shell or PowerShell file
-has no such check, so read for it.
-```
-function render(el, opts = {})  (opts unused)  →  function render(el)
-```
+parameter arrives with its first caller, so `function render(el, opts = {})`
+with `opts` unused becomes `function render(el)`. `noUnusedLocals` and
+`noUnusedParameters` find these in a typechecked tree. A shell or PowerShell
+file has no such check, so read for it.
 
 ## Errors
 
 **Give a catch either the reason it swallows, or a rethrow that adds context.**
-```
-} catch {}                              →  } catch (e) { throw new Error(`read ${p}: ${e}`); }
-} catch { /* the file is optional */ }   →  keep, as is
-```
-**Name the expected and the found in the message.**
-```
-throw new Error("invalid")  →  throw new Error(`expected a template id, got ${id}`)
-```
+`} catch {}` → `} catch (e) { throw new Error(\`read ${p}: ${e}\`); }`, while
+`} catch { /* the file is optional */ }` stays as is.
+
+**Name the expected and the found in the message.** `throw new Error("invalid")`
+→ ``throw new Error(`expected a template id, got ${id}`)``
 
 ## Not adopted
 
 Where the book goes further, keep the code as its author wrote it. Keep a
 function that does one thing whole, at any length, and keep three named
-parameters as three.
+parameters as three. A function has no length rule here: the 300-line check above
+is a check on a file, not a budget for a function.
+
+Reuse and design belong to `/simplify` and `/code-review`, which run on a diff.
+Where a module's seam goes, and how deep it is, is the `codebase-design` skill's
+question.

@@ -1,7 +1,7 @@
 # 0003: The Simplified Technical English rules adopt a subset of ASD-STE100
 
 - Status: Accepted
-- Date: 2026-09-01
+- Date: 2026-09-22
 - Deciders: Atle
 
 ## Context
@@ -14,6 +14,17 @@ no other file in this repo reaches it there. That file is a directive an agent
 applies. Design history is not a directive.
 
 ## Decision
+
+**The file carries no `paths:` frontmatter and loads at session start.** Only a
+Read arms a path-scoped rule. The write and edit tools arm nothing, so writing
+prose never loaded the file: across 2851 transcripts it reached zero working
+sessions. An unscoped file loads in the launch-time memory block instead, under
+"IMPORTANT: These instructions OVERRIDE any default behavior", and is re-sent
+after every compaction. That block instructs Claude rather than describing a
+file, so the rules reach four surfaces: a markdown file, a plan file, a commit
+or PR body, and Claude's own replies. The cost is about 1100 tokens per session
+and per subagent spawn, cached. ADR 0004 records the same decision for the
+clean-code file.
 
 The rules file keeps a short guard: apply no other rule from the standard. The
 guard names the two rejections an agent reintroduces unprompted, each with the
@@ -37,6 +48,32 @@ These are real ASD-STE100 rules. The rules file does not adopt them.
 - **Cutting the rationale.** The rule "keep the reason where a reader needs
   judgement" replaces it.
 - **American spelling.** The British English rule replaces it.
+
+## Clause numbers
+
+A tag is a cross-reference and nothing more, so it costs context in every
+session for no runtime value. The mapping lives here instead of in the rules
+file.
+
+| rule | clause |
+| --- | --- |
+| Delete the semicolon | 8.1 |
+| No contraction | 4.2 |
+| No Latin abbreviation | GR-6 |
+| Use the verb, not the noun built from it | 3.7 |
+| Use a single-word verb | 9.3 |
+| At most 20 words in a procedure step | 5.1 |
+| At most 25 words in a sentence of description | 6.3 |
+| At most 6 sentences in a paragraph | 6.6 |
+| One instruction per step | 5.2 |
+| Start a step with the action | 5.3 |
+| Put the condition first, then a comma, then the command | 5.4 |
+| Put the warning before the step it guards | 7 |
+| One term for one concept | 1.11 |
+| Active voice, with the actor named | 3.6 |
+| At most three nouns in a row | 2.1 |
+| One topic per paragraph | 6.5 |
+| Word counting: aside, compound, number, quote, code span | 8.5 to 8.7 |
 
 ## Consequences
 

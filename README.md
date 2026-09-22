@@ -97,8 +97,12 @@ A directory is a skill when it holds a `SKILL.md`.
   writing rules for documentation, based on ASD-STE100 Simplified Technical
   English. Guidance, not enforcement, and deliberately not a skill: it is two
   files. [`ste-rules.md`](simplified-technical-english/ste-rules.md) is the single
-  source of the rules, symlinked to `~/.claude/rules/` where its `paths:`
-  frontmatter loads it whenever Claude touches a `*.md` file, in any project.
+  source of the rules, symlinked to `~/.claude/rules/`, where it loads in every
+  session, in any project. It governs four surfaces: a markdown file, a plan
+  file, a commit or PR body, and Claude's own replies. It carries no `paths:`
+  frontmatter, because only a Read arms a path-scoped rule and writing prose
+  does not read prose first, so the scoped form never reached a working session
+  ([ADR 0003](docs/adr/0003-ste-rules-adopt-a-subset.md)).
   [`ste-review.md`](simplified-technical-english/ste-review.md) is a subagent that
   reviews on demand (`@ste-review`), covering markdown, **code comments and
   docstrings**, commit messages and PR bodies, and judging the things no pattern
@@ -109,11 +113,14 @@ A directory is a skill when it holds a `SKILL.md`.
 
 - **[clean-code](clean-code/clean-code-rules.md)**: writing rules for code, based
   on Clean Code. Guidance, not enforcement, and not a skill: one file, symlinked
-  to `~/.claude/rules/`, where its `paths:` frontmatter loads it on a code-file
-  touch. It covers the comment that earns its place, the name that removes the
-  need for one, the shape of a function, dead code and an error message. Every
-  rule names an action to take. The rules it does not adopt from the book, and
-  why, live in [ADR 0004](docs/adr/0004-clean-code-rules-adopt-a-subset.md).
+  to `~/.claude/rules/`, where it loads in every session. It leads with the five
+  questions a comment answers, each with a real example, then sets the register:
+  a comment is prose, and it runs to about four lines. It also covers the name
+  that removes the need for a comment, how work splits across files and folders
+  (a feature gets a folder, a variant gets a file, a 300-line file gets named),
+  the shape of a function, dead code and an error message. Every rule names an
+  action to take. The rules it does not adopt from the book, and why, live in
+  [ADR 0004](docs/adr/0004-clean-code-rules-adopt-a-subset.md).
 
 ## Install
 
