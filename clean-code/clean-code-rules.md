@@ -16,9 +16,7 @@ the rest as its author wrote it, until somebody asks for a cleanup.
 ## A comment that earns its place
 
 A comment answers a question the code cannot. Before you write one, find its
-question below. A comment with no question here becomes a name or a shape. The
-examples are real code, shortened. They show the kind of comment, not a density
-to reach.
+question below. A comment with no question here becomes a name or a shape.
 
 **The choice, and what the other choice costs.**
 ```
@@ -123,13 +121,15 @@ name means it stays whole, at any length.
 
 ## Shape of a module
 
-**Open a module with what it is.** One or two sentences on the job it does,
-which neither the file name nor the import block states. Those two already say
-where the module sits and what it depends on, so a comment repeating either one
-rots on the next edit. Who imports the module is the caller's concern.
+**Open a module with what it is.** One or two sentences on the job it does. The
+file name carries the path, the import block carries the dependencies, and the
+callers are the caller's concern.
 
-**Say who writes a module-level variable, and when it clears.** That is a
-lifetime, and reading it off a long file means reading the whole file.
+**Say who writes a module-level variable, and when it clears.**
+```
+/** Written only by _flushRegion. Aborted the moment the host flushes. */
+const _pendingFlush = new WeakMap();
+```
 
 **Split the parse from the read.** A function that reads a file, a process or a
 socket hands the text to a function that only parses it. The parse takes a
