@@ -1,19 +1,38 @@
----
-paths:
-  - "**/*.md"
-  - "**/*.markdown"
-  - "**/*.mdx"
----
-
 # Simplified Technical English
 
+Apply these rules to everything you write for a reader: a markdown file, a plan
+file, a commit or PR body, and your own replies in this terminal. Apply them as
+you write, not in a review pass after. Apply them to text you paste or port in
+as much as to text you compose.
+
 Write documentation people actually read: short, plain, one word per idea. This
-file is the single source of these rules. It loads when you touch a markdown
-file, and the `ste-review` subagent reviews against it. The rules cover a commit
-message body and a PR body too.
+file is the single source of these rules, and the `ste-review` subagent reviews
+against it.
 
 Based on ASD-STE100 Simplified Technical English. It claims no compliance, and an
 `[ASD n.n]` tag is a cross-reference, nothing more.
+
+## Before you write
+
+**One term for one concept.** Pick one word for a thing and keep it for the whole
+document. `[ASD 1.11]` This is the most valuable rule here, and the one that no
+mechanical check can catch. It covers the reader as much as the subject.
+
+```
+endpoint / route / URL / path  for one idea    →  pick one and keep it
+you / the user / the operator  for one reader  →  pick one and keep it
+```
+
+**Open with the point.** The first sentence says what the thing is and does.
+
+```
+This document provides an overview of the gate.
+   →  The gate is the set of checks a session must pass before shipping.
+```
+
+**Write the new line to the rules, even where the lines around it predate them.**
+A file from before the rules teaches its own register by example. The lines you
+did not touch stay as their author wrote them.
 
 ## Always
 
@@ -107,13 +126,6 @@ number with its unit, quoted text and a code span each count as one word.
 
 ## Shape of a document
 
-**Open with the point.** The first sentence says what the thing is and does.
-
-```
-This document provides an overview of the gate.
-   →  The gate is the set of checks a session must pass before shipping.
-```
-
 **End when the content ends.** A closing summary restates the body, so delete it.
 
 **A list is for parallel items.** Write an argument, or a chain of reasoning, as
@@ -156,15 +168,6 @@ command, not with the reason.
 ```
 
 ## Words and voice
-
-**One term for one concept.** Pick one word for a thing and keep it for the whole
-document. `[ASD 1.11]` This is the most valuable rule here, and the one that no
-mechanical check can catch. It covers the reader as much as the subject.
-
-```
-endpoint / route / URL / path  for one idea    →  pick one and keep it
-you / the user / the operator  for one reader  →  pick one and keep it
-```
 
 **Active voice, with the actor named.** `[ASD 3.6]` In description, use the
 passive only when the actor is genuinely unknown.

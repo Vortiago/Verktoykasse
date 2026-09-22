@@ -1,41 +1,81 @@
----
-paths:
-  - "**/*.{js,jsx,mjs,cjs,ts,tsx,mts,cts,cs,php,py,sh,ps1,psm1}"
----
-
 # Clean code
 
-Write code a reader understands without a comment: a name that says what, a
-function that does one thing, a comment for what the code cannot say. A subset
-of Clean Code (Robert C. Martin). Left of an arrow is what you found, right is
-what you write.
+Apply these rules to every line of code you write or change, as you write it.
+Apply them to code you paste or port in as much as to code you compose.
+
+Write code a reader understands: a name that says what, a function that does one
+thing, a file that holds one thing, and a comment for what the code cannot say.
+A subset of Clean Code (Robert C. Martin). Left of an arrow is what you found,
+right is what you write. The comment examples are real code, shortened. They
+show the kind of comment, not a density to reach.
 
 ## Scope
 
 **Edit the lines the task names.** Fix the comment on a line you change. Leave
 the rest as its author wrote it, until somebody asks for a cleanup.
 
-## Comments
+## A comment that earns its place
+
+A comment answers a question the code cannot. Before you write one, find its
+question below. A comment with no question here becomes a name or a shape.
+
+**The choice, and what the other choice costs.** `X, not Y: the cost of Y.`
+```
+# ReadAllText, not Get-Content -Raw: the provider and pipeline cost 7x on a
+# file this small. This runs per session per poll.
+```
+**The failure this prevents, and the issue that found it.**
+```
+// `focusout` fires BEFORE the incoming element is focused, so a flush here
+// would swap on top of the element about to receive focus (#72).
+```
+**The fact the platform imposes, with its number.**
+```
+// Indexed rather than `.some`, which would allocate a closure per host per
+// pass, including on the idle pass where there is nothing to walk.
+```
+**The rule every branch keeps, stated once.** A step comment inside a long
+function says why the step comes here, not what the step is.
+```
+// Sig gate FIRST, ahead of the hold guards: an unchanged sig proves the DOM
+// already matches, so nothing is owed whether or not the host is held.
+```
+**The contract: what null means, and what the caller owns.**
+```
+# Nothing, not zero, for a line this cannot read. Zero is a real tick value.
+```
+
+**Write a comment as prose.** Present tense, the full form of a verb, a comma or
+a colon where an em dash would go, British spelling, and the fact once.
+
+**Write a comment in about four lines.** State the decision, then what the other
+choice costs, and stop. Where the reasoning needs more room, it belongs in an
+ADR, and the comment cites it.
+
+## A comment the name or the shape replaces
 
 **Let the name carry what the comment would say.**
 ```
-// increment the counter                  →  count++;
-count++;
+const d = Date.now() - t; // ms since start
+   →  const msSinceStart = Date.now() - startedAt;
 ```
-**Turn a step label into a named function.**
+**Keep a step comment that states a reason.** A label that only names the step is
+a function's name.
 ```
-// validate the input                     →  validate(input);
-…ten lines…                                  save(input);
-// now save it
+// now save it                            →  save(input);
 ```
-**Mark a section with a blank line**, not with `// ===== helpers =====`.
-
-**State the constraint that holds now.**
+**Keep a section marker that names a contract.** A bare rule of dashes is a blank
+line.
+```
+# ── colours (CL_ prefixed so they never collide with an extension's vars) ──   keep
+// ===== helpers =====                                                          →  (a blank line)
+```
+**State the constraint that holds now.** The history holds the old version.
 ```
 // previously a Map, switched to WeakMap  →  // A WeakMap lets a removed host
 // so hosts get collected                    // be collected.
 ```
-**Keep only live code.** The history holds the old version.
+**Keep only live code.** The history holds the commented-out line too.
 ```
 // const legacy = parse(x);               →  const parsed = parse(x);
 const parsed = parse(x);
@@ -44,12 +84,11 @@ const parsed = parse(x);
 ```
 // TODO fix later                         →  // TODO(#88) handle a missing id
 ```
-**Keep the type annotation a checker reads, and the help text a tool
-publishes.** Trim the sentence that repeats the name, keep the annotation.
 
-**Keep a comment that states what the code cannot.** A platform constraint, a
-non-obvious reason, or a workaround with its cause. The fact, present tense,
-once.
+## Keep what a tool reads
+
+**Keep the type annotation a checker reads, and the help text a tool publishes.**
+Trim the sentence that repeats the name, keep the annotation.
 
 **Keep a comment a tool reads.** It is input, not prose. These are examples of
 the category, not the whole of it. Keep a shebang and a licence header too.
@@ -69,8 +108,7 @@ comment for a generated file is code.
 
 **Put the meaning in the name**, so the comment does not have to carry it.
 ```
-const d = Date.now() - t; // ms since start
-   →  const msSinceStart = Date.now() - startedAt;
+const d = Date.now() - t;                 →  const msSinceStart = …
 ```
 **Use one word per concept across a file**: `fetchUser`, `getAccount` and
 `retrieveOrder` for one idea become one verb, kept.
@@ -84,8 +122,46 @@ userData  configManager  helperUtil       →  user  config  format
 ```
 flag  status  mode                        →  isHeld  hasOverlay  canRetry
 ```
+**Mark a module-private with the prefix its language uses.** `_flushRegion` in
+JavaScript, `$script:TranscriptState` in PowerShell, `cl_cache` in a sourced
+shell library. The prefix is the only privacy the language has.
 
-## Shape
+## Shape of a file tree
+
+**Give a feature a folder and put every part of it there.** The markup, the
+style, the behaviour and the preview for one thing sit together, under the name
+of the thing.
+```
+components/dialog/  dialog.html  dialog.css  dialog.js  dialog.preview.js
+```
+**Give each variant its own file behind one shared interface.**
+```
+lib/terminal/  konsole.ps1  tmux.ps1  windows-terminal.ps1  none.ps1
+```
+**At about 300 lines, name what the file holds.** Two names means two files. One
+name means it stays whole, at any length.
+
+## Shape of a module
+
+**Open a module with its identity and its seam.** The first comment says what the
+module is, where a copy of it lives, what it imports, and what must not import
+it. A module-level variable gets the same: who writes it, and when it clears.
+
+**Split the parse from the read.** A function that reads a file, a process or a
+socket hands the text to a function that only parses it. The parse takes a
+string, so its test runs on any platform.
+```
+Get-ProcessStartTicks reads /proc/<pid>/stat and parses field 22
+   →  Get-ProcessStartTicks reads it, ConvertTo-ProcStartTicks parses the line
+```
+**Give a number a name and its reason.**
+```
+if ($quiet -ge 90)   →  # A permission prompt is written to no file, so a
+                        # transcript quiet this long is blocked, not working.
+                        $script:BlockedSeconds = 90
+```
+
+## Shape of a function
 
 **Give a function one job, and a name that states it.** A name that needs `and`
 becomes two functions.
@@ -123,4 +199,9 @@ throw new Error("invalid")  →  throw new Error(`expected a template id, got ${
 
 Where the book goes further, keep the code as its author wrote it. Keep a
 function that does one thing whole, at any length, and keep three named
-parameters as three.
+parameters as three. A function has no length rule here. The 300-line check
+above is a check on a file, not a budget for a function.
+
+Reuse and design belong to `/simplify` and `/code-review`, which run on a diff.
+Where a module's seam goes, and how deep it is, is the `codebase-design` skill's
+question.

@@ -19,10 +19,15 @@ oddly. A "comments are a failure" reading strips a type annotation, a checker
 directive or a provenance stamp, and the gate then fails for a reason that looks
 unrelated to the edit.
 
-A rule written as a prohibition does not survive compaction. A path-scoped rule
-reloads only on the next matching read, so until then the summary's paraphrase
-is the only trace of it. Strip the negation from "do not add a docstring to
-every function" and the instruction inverts.
+A rule written as a prohibition does not survive compaction. Strip the negation
+from "do not add a docstring to every function" and the instruction inverts.
+
+This record first said a path-scoped rule "reloads only on the next matching
+read". That was measured and is false, and ADR 0007 carries the correction. Only
+a Read arms such a rule, so a session that writes code without reading it first
+never loads the file at all. The rules file now carries no `paths:` and loads at
+session start. The decision below still stands: a compaction summary still
+paraphrases, so a rule still reads as a keep.
 
 ## Decision
 
@@ -50,7 +55,8 @@ nine are the ones an agent reintroduces unprompted.
 - **A function is small** (chapter 3: two to four lines, at most a screen). It
   splits one job into fragments a reader reassembles. A forty-line function that
   does one thing stays whole, rather than becoming `renderPart1`, `Part2`,
-  `Part3`.
+  `Part3`. A function has no length rule here. The 300-line check ADR 0007 adds
+  is a check on a file, not a budget for a function.
 - **At most three arguments, zero ideal** (chapter 3). Three named parameters
   read better than the options object a count forces: `render(el, data, signal)`
   is not improved by `render({ el, data, signal })`.
@@ -62,7 +68,8 @@ nine are the ones an agent reintroduces unprompted.
   file. The keep-list in the rules file exists for this rejection.
 - **Single Responsibility per class or line** (chapter 10). The module is the
   unit here: `render.js` states one identity, and each function inside it does
-  not need its own.
+  not need its own. ADR 0007 promotes that aside to a rule, so the file is now
+  where the principle is applied.
 - **The stepdown rule and newspaper ordering** (chapters 3 and 5). This repo
   defines a helper before its first use, `nfmt` at `vanilla-web/format.js:22`
   used at `:41`, and reordering a file makes a diff nobody asked for.
@@ -79,13 +86,14 @@ nine are the ones an agent reintroduces unprompted.
   `render.js:69`, under `strict` and `checkJs`. A Special Case object would lose
   that check.
 
-The rest are rejected as out of scope. This file governs what a reader sees on
-one screen: the comment, the name, and the shape of one function. Architecture,
-design and reuse belong to `code-review` and `/simplify`, which already run on a
-diff.
+The rest are rejected as out of scope. This file governs the comment, the name,
+the shape of one function, and how work splits across files and folders
+(ADR 0007 adds the last of those). Reuse and design belong to `code-review` and
+`/simplify`, which already run on a diff.
 
 - **One level of abstraction per function** (chapter 3): it needs a judgement no
-  rules file makes for the reader.
+  rules file makes for the reader. Partly adopted by ADR 0007 as "split the
+  parse from the read", which asks one yes-or-no question instead.
 - **Command-query separation** (chapter 3): a useful default, and too easy to
   apply as a hard rule.
 - **Extract a try or catch block into its own function** (chapter 3): it
@@ -122,11 +130,16 @@ diff.
   it is the honest candidate if a check is ever wanted: the repo's
   `vanilla-web/tools/js-scan.mjs` already separates a comment from a string
   literal, so the scaffolder at `vanilla-web/previews/new.mjs:60` that emits a
-  TODO inside a string is not a false positive for it. Note that "a false block
-  leaves an agent stuck" is *not* a reason here: `gate-allow:` and `gate: off`
-  are this repo's escape hatches, and the rules file lists both.
-- **A `clean-code-review` subagent.** Rejected: `code-review` and `/simplify`
-  already run on a diff, and a third reviewer is the noise this file targets.
+  TODO inside a string is not a false positive for it. This record once leaned on
+  `gate-allow:` and `gate: off` to answer "a false block leaves an agent stuck".
+  Do not lean on them again. A documented bypass becomes an agent's first move
+  rather than its last, so it stops the guard guarding.
+- **A `clean-code-review` subagent.** Rejected, but not for the reason first
+  recorded here. `code-review` and `/simplify` do run on a diff, and neither
+  asks this file's questions: one hunts correctness, the other reuse and
+  efficiency. Neither asks whether a comment answers a question. The reason that
+  holds is that a reviewer built against rules that under-teach amplifies the
+  wrong thing. Revisit once ADR 0007's rewrite has run on real work.
 - **A committed `.claude/settings.json`.** Rejected: no settings key enables,
   imports or requires a rules file, so such a file would claim an enforcement it
   cannot deliver. `./install.sh` is what makes the rules apply.
@@ -137,3 +150,10 @@ diff.
 - **Pointing `ste-review` at this file.** Rejected: the two rules govern
   different artefacts and name different sources. A link is cheap to add later
   and awkward to unpick once something depends on it.
+
+## Amended by
+
+- **ADR 0007** corrects the compaction claim above, widens this file's scope to
+  the file tree, promotes the file-level Single Responsibility rule, bounds the
+  function-length rejection, and records the partial adoption of one level of
+  abstraction.
