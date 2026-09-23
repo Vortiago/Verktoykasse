@@ -6,9 +6,10 @@
 
 ## Context
 
-`simplified-technical-english/ste-rules.md` builds on ASD-STE100 and names the
-standard. The model knows the full standard from training, so the name alone
-primes an agent to apply rules the file never adopted. The `ste-review`
+`simplified-technical-english/ste-rules.md` builds on ASD-STE100, and names
+neither the standard nor this record. The model knows the full standard from
+training, so the name alone primes an agent to apply rules the file never
+adopted. A pointer to this record primes the same way. The `ste-review`
 subagent reads the rules file at run time, in whichever project it runs, and
 no other file in this repo reaches it there. That file is a directive an agent
 applies. Design history is not a directive.
@@ -26,10 +27,11 @@ or PR body, and Claude's own replies. The cost is about 1100 tokens per session
 and per subagent spawn, cached. ADR 0004 records the same decision for the
 clean-code file.
 
-The rules file keeps a short guard: apply no other rule from the standard. The
-guard names the two rejections an agent reintroduces unprompted, each with the
-contrast example that shows the bad rewrite. This record holds every rejected
-rule and the reason, so the rules file states only what to do.
+The rules file states no rejection. A prohibition names the rule it forbids,
+and an agent that loses the negation applies it. Two keeps guard the rejections
+an agent reintroduces unprompted: keep the modal that says how sure you are, and
+keep a compound tense that names a state. This record holds every rejected rule
+and the reason.
 
 ## Rejected rules
 
@@ -77,10 +79,9 @@ file.
 
 ## Consequences
 
-- `ste-review` still learns which rules not to apply, because the guard travels
-  with the rules file it reads at run time.
+- `ste-review` meets two keeps at run time, not a list of rejections.
 - The reasons live here, where a reader who wants them looks for a decision.
-- A new rejection edits two places: this list always, and the guard when an
+- A new rejection edits this list. It adds a keep to the rules file only when an
   agent is likely to reintroduce the rule.
 
 ## Alternatives considered
@@ -90,6 +91,6 @@ file.
 - **Move the whole section to a README.** Rejected: a README is no more
   reachable at run time than this record, and the repo keeps design rationale
   in `docs/adr/`.
-- **Delete the section and keep no guard.** Rejected: the file names
-  ASD-STE100, so a primed agent rewrites `should` to `must` and flags a
-  compound tense. The guard is load-bearing.
+- **A guard that names the standard and prohibits its extra rules.** Rejected:
+  the name primes the rules, and the prohibition inverts once its negation is
+  lost. The two keeps do the same work with neither risk.

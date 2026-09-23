@@ -114,12 +114,12 @@ A directory is a skill when it holds a `SKILL.md`.
 - **[clean-code](clean-code/clean-code-rules.md)**: writing rules for code, based
   on Clean Code. Guidance, not enforcement, and not a skill: one file, symlinked
   to `~/.claude/rules/`, where it loads in every session. It leads with the five
-  questions a comment answers, each with a real example, then sets the register:
-  a comment is prose, and it runs to about four lines. It also covers the name
-  that removes the need for a comment, how work splits across files and folders
-  (a feature gets a folder, a variant gets a file, a 300-line file gets named),
-  the shape of a function, dead code and an error message. Every rule names an
-  action to take. The rules it does not adopt from the book, and why, live in
+  questions a comment answers, each with an example. A comment is short prose of
+  at most four lines. The agent fixes a problem it finds on the way, in the same
+  change, and leaves the code cleaner than it found it. The file also covers
+  names, how work splits across files and folders, the shape of a function, dead
+  code, errors and tests. Every rule names an action to take. The rules it does
+  not adopt from the book, and why, live in
   [ADR 0004](docs/adr/0004-clean-code-rules-adopt-a-subset.md).
 
 ## Install

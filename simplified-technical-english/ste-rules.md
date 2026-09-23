@@ -5,9 +5,6 @@ file, a commit or PR body, and your own replies in this terminal. Apply them as
 you write, not in a review pass after, and to text you paste or port in as much
 as to text you compose.
 
-A subset of ASD-STE100. It claims no compliance. ADR 0003 holds the clause
-numbers and the rules this file rejects.
-
 ## Before you write
 
 **One term for one concept.** Pick one word for a thing and keep it for the whole
@@ -106,8 +103,8 @@ Configuration Manager` → `the configuration manager for the widget datastore`.
 **Keep the reason where a reader needs judgement.** Cut it from a mechanical
 step. A prohibition with no reason leaves the reader guessing what to do instead.
 
-## The rest of the standard
+**Keep the modal that says how sure you are.** `should` stays `should`, and
+`may have failed` stays `may have failed`.
 
-Apply no other rule from ASD-STE100. Do not restrict modals: `should` stays
-`should`, and `may have failed` is not `failed`. Do not ban compound tenses:
-`the job has completed` is not `the job completed`.
+**Keep a compound tense that names a state.** `the job has completed` stays
+`the job has completed`.
