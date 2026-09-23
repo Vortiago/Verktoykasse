@@ -6,9 +6,10 @@
 
 ## Context
 
-`simplified-technical-english/ste-rules.md` builds on ASD-STE100 and names the
-standard. The model knows the full standard from training, so the name alone
-primes an agent to apply rules the file never adopted. The `ste-review`
+`simplified-technical-english/ste-rules.md` builds on ASD-STE100, and names
+neither the standard nor this record. The model knows the full standard from
+training, so the name alone primes an agent to apply rules the file never
+adopted. A pointer to this record primes the same way. The `ste-review`
 subagent reads the rules file at run time, in whichever project it runs, and
 no other file in this repo reaches it there. That file is a directive an agent
 applies. Design history is not a directive.
@@ -26,10 +27,15 @@ or PR body, and Claude's own replies. The cost is about 1100 tokens per session
 and per subagent spawn, cached. ADR 0004 records the same decision for the
 clean-code file.
 
-The rules file keeps a short guard: apply no other rule from the standard. The
-guard names the two rejections an agent reintroduces unprompted, each with the
-contrast example that shows the bad rewrite. This record holds every rejected
-rule and the reason, so the rules file states only what to do.
+**Every rule says what to write.** A rule written as "no X" names the thing it
+forbids, and an agent that loses the "no" writes X. So `No em dash` becomes "use
+a comma, a colon or two sentences where an em dash would go". The file states
+no rejected rule. Two rules keep what an agent would otherwise remove: the word
+that says how sure you are, and a tense that describes a state. This record
+holds every rejected rule and the reason.
+
+**The Boy Scout rule applies to text.** The agent applies the rules to the text
+around its change too, as the clean-code rules do for code.
 
 ## Rejected rules
 
@@ -45,7 +51,7 @@ These are real ASD-STE100 rules. The rules file does not adopt them.
   the documentation established.
 - **The ban on compound tenses.** It loses a state distinction that matters:
   `the job has completed` is not `the job completed`.
-- **Cutting the rationale.** The rule "keep the reason where a reader needs
+- **Cutting the rationale.** The rule "give the reason when the reader must
   judgement" replaces it.
 - **American spelling.** The British English rule replaces it.
 
@@ -57,31 +63,30 @@ file.
 
 | rule | clause |
 | --- | --- |
-| Delete the semicolon | 8.1 |
-| No contraction | 4.2 |
-| No Latin abbreviation | GR-6 |
-| Use the verb, not the noun built from it | 3.7 |
-| Use a single-word verb | 9.3 |
+| Use two sentences where a semicolon would go | 8.1 |
+| Write the full form of a verb | 4.2 |
+| Write the English words for a Latin abbreviation | GR-6 |
+| Use the verb, not the noun made from it | 3.7 |
+| Use a one-word verb | 9.3 |
 | At most 20 words in a procedure step | 5.1 |
 | At most 25 words in a sentence of description | 6.3 |
 | At most 6 sentences in a paragraph | 6.6 |
-| One instruction per step | 5.2 |
-| Start a step with the action | 5.3 |
+| Give one instruction in each step | 5.2 |
+| Start a step with its verb | 5.3 |
 | Put the condition first, then a comma, then the command | 5.4 |
-| Put the warning before the step it guards | 7 |
-| One term for one concept | 1.11 |
-| Active voice, with the actor named | 3.6 |
-| At most three nouns in a row | 2.1 |
-| One topic per paragraph | 6.5 |
+| Put the warning before the step it is for | 7 |
+| Use one word for one thing | 1.11 |
+| Use the active voice, and name who does it | 3.6 |
+| Use at most three nouns in a row | 2.1 |
+| Keep one topic in each paragraph | 6.5 |
 | Word counting: aside, compound, number, quote, code span | 8.5 to 8.7 |
 
 ## Consequences
 
-- `ste-review` still learns which rules not to apply, because the guard travels
-  with the rules file it reads at run time.
+- `ste-review` reads no list of rejected rules at run time.
 - The reasons live here, where a reader who wants them looks for a decision.
-- A new rejection edits two places: this list always, and the guard when an
-  agent is likely to reintroduce the rule.
+- A new rejection edits this list. It adds a rule to the rules file only when an
+  agent is likely to bring the rejected rule back.
 
 ## Alternatives considered
 
@@ -90,6 +95,6 @@ file.
 - **Move the whole section to a README.** Rejected: a README is no more
   reachable at run time than this record, and the repo keeps design rationale
   in `docs/adr/`.
-- **Delete the section and keep no guard.** Rejected: the file names
-  ASD-STE100, so a primed agent rewrites `should` to `must` and flags a
-  compound tense. The guard is load-bearing.
+- **A guard that names the standard and prohibits its extra rules.** Rejected:
+  the name primes the rules, and the prohibition inverts once its negation is
+  lost. The two keep rules do the same work with neither risk.
