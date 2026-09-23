@@ -1,54 +1,54 @@
 # Simplified Technical English
 
-Apply these rules to everything you write for a reader: a markdown file, a plan
-file, a commit or PR body, and your own replies in this terminal. Apply them as
-you write, not in a review pass after, and to text you paste or port in as much
-as to text you compose.
+Apply these rules to all text you write for a reader: a markdown file, a plan
+file, a commit or PR body, and your replies in this terminal. Apply them while
+you write. Apply them to text you paste or copy in too.
 
 ## Before you write
 
-**One term for one concept.** Pick one word for a thing and keep it for the whole
-document. This is the most valuable rule here. It covers the reader as much as
-the subject: `endpoint / route / URL`
-for one idea, or `you / the user / the operator` for one reader, is one word.
+**Use one word for one thing.** Pick one word for a thing and use it in the
+whole document. This is the most important rule. It applies to the reader too:
+`endpoint / route / URL` for one thing is one word, and so is
+`you / the user / the operator` for one reader.
 
-**Open with the point.** The first sentence says what the thing is and does.
+**Start with the point.** The first sentence says what the thing is and does.
 `This document provides an overview of the gate.` → `The gate is the set of
 checks a session must pass before shipping.`
 
-**Write the new line to the rules, even where the lines around it predate them.**
-The lines you did not touch stay as their author wrote them.
+**Leave the text cleaner than you found it.** Apply the rules to the text
+around your change too.
 
 ## Always
 
-**Delete the semicolon.** `The gate runs; the hook does not.` becomes two
-sentences.
+**Use two sentences where a semicolon would go.** `The gate runs; the hook does
+not.` → `The gate runs. The hook does not.`
 
-**No em dash.** Use a comma, a colon, or two sentences.
+**Use a comma, a colon or two sentences where an em dash would go.**
 
-**No contraction.** `don't isn't can't it's won't` → `do not is not cannot it is
-will not`. A possessive is not a contraction: `the user's call` is correct.
+**Write the full form of a verb.** `don't isn't can't it's won't` → `do not is
+not cannot it is will not`. A possessive stays: `the user's call`.
 
-**No Latin abbreviation.** `e.g. i.e. etc. vs.` → `for example`, `that is`,
-`and so on`, `versus`.
+**Write the English words for a Latin abbreviation.** `e.g. i.e. etc. vs.` →
+`for example`, `that is`, `and so on`, `versus`.
 
-**Write `through` or `with`, not `via`.** Pick whichever reads as English.
+**Write `through` or `with` where `via` would go.** Pick the one that reads as
+English.
 
-**No filler opener.** `It should be noted that` and `Please note that` go.
-`In order to` → `To`. `At this point in time` → `Now`.
+**Start the sentence with its content.** `It should be noted that` and
+`Please note that` go. `In order to` → `To`. `At this point in time` → `Now`.
 
-**Delete a claim word that carries no fact.** `simply easily seamlessly just`
-go. `robust powerful comprehensive` → name what it does.
+**Replace a word that praises with the fact.** `simply easily seamlessly just`
+go. `robust powerful comprehensive` → say what it does.
 
 **Use the plain verb.** `utilise leverage facilitate` → `use use help`.
 
-**Use the verb, not the noun built from it.** `make a decision` → `decide`.
+**Use the verb, not the noun made from it.** `make a decision` → `decide`.
 `perform a check on` → `check`.
 
-**Use a single-word verb.** `kick off spin up tear down` → `start start remove`.
+**Use a one-word verb.** `kick off spin up tear down` → `start start remove`.
 
-**Present tense for behaviour.** `This will create a file.` → `This creates a
-file.` Reserve the future for a future event.
+**Use the present tense for behaviour.** `This will create a file.` → `This
+creates a file.` Use the future only for a future event.
 
 **Write British English.** `utilize behavior center analyze` → `utilise
 behaviour centre analyse`.
@@ -59,52 +59,50 @@ behaviour centre analyse`.
 **At most 25 words in a sentence of description.**
 **At most 6 sentences in a paragraph.**
 
-These are limits, not targets. A parenthesised aside, a hyphenated compound, a
-number with its unit, quoted text and a code span each count as one word.
+These are limits, not targets. Each of these counts as one word: a text in
+brackets, a hyphenated word, a number with its unit, a quote and a code span.
 
 ## Shape of a document
 
-**End when the content ends.** A closing summary restates the body, so delete it.
+**Stop after the last fact.** A closing summary only repeats the body.
 
-**A list is for parallel items.** Write an argument, or a chain of reasoning, as
-prose.
+**Use a list for items of the same kind.** Write an argument, or a chain of
+reasons, as prose.
 
-**Spell out an abbreviation at first use**, unless the field owns it. `API`,
-`CI` and `URL` need none here.
+**Spell out an abbreviation the first time you use it.** A common one needs
+nothing: `API`, `CI` and `URL`.
 
 ## Procedures
 
-**One instruction per step.** A `then` inside a step is a second step.
-`2. Install the deps and then run the migration.` becomes two numbered steps.
+**Give one instruction in each step.** A `then` inside a step starts a second
+step. `2. Install the deps and then run the migration.` → two numbered steps.
 
-**Start a step with the action.** A step opening with `The`, `It`, `There` or
-`You` plus a verb of being or a modal is a description.
-`1. You should verify the token.` → `1. Verify the token.`
+**Start a step with its verb.** `1. You should verify the token.` →
+`1. Verify the token.`
 
 **Put the condition first, then a comma, then the command.**
 `If the cache misses, query the datastore.`
 
-**Put the warning before the step it guards.** A reader who meets the
-prohibition after the action has already taken it. Start with the command, not
-the reason. `Run vendor.sh to refresh the copy. Do not edit a vendored copy.` →
+**Put the warning before the step it is for.** Start with the command, then the
+reason. `Run vendor.sh to refresh the copy. Do not edit a vendored copy.` →
 `Do not edit a vendored copy. Run vendor.sh to refresh it.`
 
 ## Words and voice
 
-**Active voice, with the actor named.** `The file is read by the loader.` →
-`The loader reads the file.` In description, use the passive only when the actor
-is genuinely unknown.
+**Use the active voice, and name who does it.** `The file is read by the
+loader.` → `The loader reads the file.` Use the passive only when nobody knows
+who does it.
 
-**At most three nouns in a row.** `Widget Service Data Access Layer
+**Use at most three nouns in a row.** `Widget Service Data Access Layer
 Configuration Manager` → `the configuration manager for the widget datastore`.
 
-**One topic per paragraph.**
+**Keep one topic in each paragraph.**
 
-**Keep the reason where a reader needs judgement.** Cut it from a mechanical
-step. A prohibition with no reason leaves the reader guessing what to do instead.
+**Give the reason when the reader must decide something.** Leave it out of a
+simple step. A warning without a reason leaves the reader unsure what to do.
 
-**Keep the modal that says how sure you are.** `should` stays `should`, and
+**Keep the word that says how sure you are.** `should` stays `should`, and
 `may have failed` stays `may have failed`.
 
-**Keep a compound tense that names a state.** `the job has completed` stays
+**Keep a tense that describes a state.** `the job has completed` stays
 `the job has completed`.

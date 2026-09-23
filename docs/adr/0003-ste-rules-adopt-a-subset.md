@@ -27,11 +27,15 @@ or PR body, and Claude's own replies. The cost is about 1100 tokens per session
 and per subagent spawn, cached. ADR 0004 records the same decision for the
 clean-code file.
 
-The rules file states no rejection. A prohibition names the rule it forbids,
-and an agent that loses the negation applies it. Two keeps guard the rejections
-an agent reintroduces unprompted: keep the modal that says how sure you are, and
-keep a compound tense that names a state. This record holds every rejected rule
-and the reason.
+**Every rule says what to write.** A rule written as "no X" names the thing it
+forbids, and an agent that loses the "no" writes X. So `No em dash` becomes "use
+a comma, a colon or two sentences where an em dash would go". The file states
+no rejected rule. Two rules keep what an agent would otherwise remove: the word
+that says how sure you are, and a tense that describes a state. This record
+holds every rejected rule and the reason.
+
+**The Boy Scout rule applies to text.** The agent applies the rules to the text
+around its change too, as the clean-code rules do for code.
 
 ## Rejected rules
 
@@ -47,7 +51,7 @@ These are real ASD-STE100 rules. The rules file does not adopt them.
   the documentation established.
 - **The ban on compound tenses.** It loses a state distinction that matters:
   `the job has completed` is not `the job completed`.
-- **Cutting the rationale.** The rule "keep the reason where a reader needs
+- **Cutting the rationale.** The rule "give the reason when the reader must
   judgement" replaces it.
 - **American spelling.** The British English rule replaces it.
 
@@ -59,30 +63,30 @@ file.
 
 | rule | clause |
 | --- | --- |
-| Delete the semicolon | 8.1 |
-| No contraction | 4.2 |
-| No Latin abbreviation | GR-6 |
-| Use the verb, not the noun built from it | 3.7 |
-| Use a single-word verb | 9.3 |
+| Use two sentences where a semicolon would go | 8.1 |
+| Write the full form of a verb | 4.2 |
+| Write the English words for a Latin abbreviation | GR-6 |
+| Use the verb, not the noun made from it | 3.7 |
+| Use a one-word verb | 9.3 |
 | At most 20 words in a procedure step | 5.1 |
 | At most 25 words in a sentence of description | 6.3 |
 | At most 6 sentences in a paragraph | 6.6 |
-| One instruction per step | 5.2 |
-| Start a step with the action | 5.3 |
+| Give one instruction in each step | 5.2 |
+| Start a step with its verb | 5.3 |
 | Put the condition first, then a comma, then the command | 5.4 |
-| Put the warning before the step it guards | 7 |
-| One term for one concept | 1.11 |
-| Active voice, with the actor named | 3.6 |
-| At most three nouns in a row | 2.1 |
-| One topic per paragraph | 6.5 |
+| Put the warning before the step it is for | 7 |
+| Use one word for one thing | 1.11 |
+| Use the active voice, and name who does it | 3.6 |
+| Use at most three nouns in a row | 2.1 |
+| Keep one topic in each paragraph | 6.5 |
 | Word counting: aside, compound, number, quote, code span | 8.5 to 8.7 |
 
 ## Consequences
 
-- `ste-review` meets two keeps at run time, not a list of rejections.
+- `ste-review` reads no list of rejected rules at run time.
 - The reasons live here, where a reader who wants them looks for a decision.
-- A new rejection edits this list. It adds a keep to the rules file only when an
-  agent is likely to reintroduce the rule.
+- A new rejection edits this list. It adds a rule to the rules file only when an
+  agent is likely to bring the rejected rule back.
 
 ## Alternatives considered
 
@@ -93,4 +97,4 @@ file.
   in `docs/adr/`.
 - **A guard that names the standard and prohibits its extra rules.** Rejected:
   the name primes the rules, and the prohibition inverts once its negation is
-  lost. The two keeps do the same work with neither risk.
+  lost. The two keep rules do the same work with neither risk.
