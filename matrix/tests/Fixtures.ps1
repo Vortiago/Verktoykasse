@@ -16,9 +16,17 @@ function New-TestTab ($hwnd, $index, $text, $glyph, $processId = 0) {
 # title scoring does not, and leaves it at 0.
 # The parameter is $processId, not $pid: the automatic $PID is read-only and a
 # parameter that shadows it never binds.
-function New-TestSession ($id, $status = 'idle', $task = '', $processId = 0) {
+function New-TestSession ($id, $status = 'idle', $task = '', $processId = 0, $startedAt = 0) {
     [pscustomobject]@{ SessionId = $id; Status = $status; Task = $task
-                       Name = ''; Cwd = ''; Pid = $processId }
+                       Name = ''; Cwd = ''; Pid = $processId; StartedAt = $startedAt }
+}
+
+# A session as ConvertTo-RemoteSession hands it out: RemoteHost is what marks a
+# lane as another machine's, and Pid stays 0 so it can never claim a local tab.
+function New-TestRemoteSession ($machine, $id, $status = 'idle', $startedAt = 0) {
+    [pscustomobject]@{ SessionId = "$machine/$id"; Status = $status; Task = ''
+                       Name = "${machine}: $id"; Cwd = '?'; Pid = 0
+                       StartedAt = $startedAt; RemoteHost = $machine; RemoteId = $id }
 }
 
 # A session in the shape Get-LocalSession hands out: everything the lane header

@@ -1,5 +1,7 @@
-# The session -> tab map over time: built once, kept current at the lowest cost
-# that stays correct, and carried across a pass that failed to re-match.
+# The session -> tab map over time, and the lane order read off it. The map is
+# built once, kept current at the lowest cost that stays correct, and carried
+# across a pass that failed to re-match. The order is what the map is for: a
+# window and a tab number live on a tab, never on a session.
 #
 # Nothing here knows which terminal it is on. It calls Get-TabKey,
 # Get-AllTerminalTab and Resolve-SessionTab by name, and exactly one backend
@@ -201,4 +203,126 @@ function Update-SessionTabMap {
 
     $State.RetryWait = Get-NextWait $State.RetryWait $settled $RetryMs $MaxRetryMs
     $State.RetryAt   = $Now + $State.RetryWait
+}
+
+function Get-WindowNumber {
+    # A window handle is a number on Windows and Konsole, and a string like '$2'
+    # under tmux. Its digits are what orders it: sorted as text, '$10' comes
+    # before '$2'. A handle with no digits sorts last, behind every real window.
+    param([object] $Hwnd)
+    [long] $n = 0
+    $digits = [regex]::Match([string]$Hwnd, '\d+')
+    if ($digits.Success -and [long]::TryParse($digits.Value, [ref] $n)) { $n } else { [long]::MaxValue }
+}
+
+function Sort-SessionLane {
+    <#
+    .SYNOPSIS
+        The sessions in lane order: left to right the way the tabs read.
+    .DESCRIPTION
+        Three blocks, in this order: the local sessions a tab matched, the remote
+        sessions, and the local sessions no tab matched.
+
+        Each block sorts on its own keys, so no Sort-Object call compares a [long]
+        window handle against the [string] session id tmux answers with.
+
+        Every block ends in a unique key. Sort-Object is not stable, so a pair
+        equal on every key would trade places between polls, and the renderer
+        blanks and restarts every column that changed lane.
+    .PARAMETER Map
+        sessionId -> tab. An EMPTY map is a backend that answers no tabs at all: a
+        Mac outside tmux, Windows outside Windows Terminal, Linux outside Konsole
+        and tmux. Every local session is then unmatched, and the whole screen would
+        sit behind the remote block. So an empty map keeps the order the rain drew
+        before this function existed: the locals oldest first, then the machines.
+    .PARAMETER Hwnd
+        The window the rain runs in. Its lanes lead.
+    #>
+    param([Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Session,
+          [Parameter(Mandatory)] [hashtable] $Map,
+          [object] $Hwnd)
+
+    if ($Map.Count -eq 0) {
+        return @(@($Session | Where-Object { -not $_.RemoteHost } | Sort-Object StartedAt, SessionId) +
+                 @($Session | Where-Object { $_.RemoteHost }))
+    }
+
+    # Where each session sat in the input. For a remote session that is the order
+    # its own machine sent, and that machine ran this same sort before it built
+    # the frame, so its windows and tabs arrive already in order.
+    $arrival = @{}
+    for ($i = 0; $i -lt $Session.Count; $i++) { $arrival[$Session[$i].SessionId] = $i }
+
+    # One wrapped pipeline per block. A filter assigned to a variable first pipes a
+    # bare $null into Sort-Object when it matches nothing, and that null becomes a
+    # lane Get-SessionLanes cannot draw.
+    @($Session | Where-Object { -not $_.RemoteHost -and $Map.ContainsKey($_.SessionId) } |
+        Sort-Object @{ E = { if ($Map[$_.SessionId].Hwnd -eq $Hwnd) { 0 } else { 1 } } },
+                    @{ E = { Get-WindowNumber $Map[$_.SessionId].Hwnd } },
+                    @{ E = { [string]$Map[$_.SessionId].Hwnd } },
+                    @{ E = { $Map[$_.SessionId].Index } },
+                    SessionId) +
+    @($Session | Where-Object { $_.RemoteHost } |
+        Sort-Object RemoteHost, @{ E = { $arrival[$_.SessionId] } }) +
+    @($Session | Where-Object { -not $_.RemoteHost -and -not $Map.ContainsKey($_.SessionId) } |
+        Sort-Object StartedAt, SessionId)
+}
+
+function New-LaneOrderState {
+    # The state Update-LaneOrder owns, spelled in one place: matrix.ps1 and the
+    # tests must not each hand-roll the shape. Fields: see .PARAMETER State.
+    @{ Key = ''; Order = @() }
+}
+
+function Update-LaneOrder {
+    <#
+    .SYNOPSIS
+        Lane order that holds still while a tab match flips.
+    .DESCRIPTION
+        No API maps a console process to the Windows Terminal tab hosting it, so
+        Resolve-SessionTab scores tab titles instead. That is a guess, and it can
+        flip: two sessions in one window with overlapping prompts trade tabs for
+        one rebuild and trade back. Today a flip only moves the [tab N] label. As a
+        sort key it moves the lane, and the renderer blanks and restarts every
+        column that changed lane.
+
+        So re-sort only when the key changes. The key is two sets: every session,
+        and every session the map has a tab for. A flip leaves both untouched. A
+        session appearing or going changes the first. A straggler matched on the
+        re-try changes the second, so a lane still finds its window as soon as its
+        tab arrives.
+
+        A renumber is what the key cannot see. Drag or close a tab and the
+        survivors renumber, and the lanes hold their old order until a session
+        appears or goes.
+
+        Konsole and tmux match on a pid and never flap. They pay one string compare
+        a poll for a guard they do not need, which is cheaper than a second code
+        path per backend.
+    .PARAMETER State
+        Mutated in place. New-LaneOrderState spells the shape. Key: the two sets
+        the stored order was sorted for. Order: sessionIds, in lane order.
+    #>
+    param([Parameter(Mandatory)] [AllowEmptyCollection()] [object[]] $Session,
+          [Parameter(Mandatory)] [hashtable] $Map,
+          [object] $Hwnd,
+          [Parameter(Mandatory)] [hashtable] $State)
+
+    $ids     = @($Session | ForEach-Object { $_.SessionId } | Sort-Object)
+    $matched = @($ids | Where-Object { $Map.ContainsKey($_) })
+    $key     = ($ids -join '|') + '#' + ($matched -join '|')
+
+    if ($key -ne $State.Key) {
+        $State.Key   = $key
+        $State.Order = @(Sort-SessionLane -Session $Session -Map $Map -Hwnd $Hwnd |
+                         ForEach-Object { $_.SessionId })
+    }
+
+    $at = @{}
+    for ($i = 0; $i -lt $State.Order.Count; $i++) { $at[$State.Order[$i]] = $i }
+    # A session the stored order does not name sorts last. The key names every
+    # session, so that is unreachable while the key holds, and it is what keeps a
+    # caller that hands over a stale state from losing a lane.
+    @($Session | Sort-Object @{ E = { if ($at.ContainsKey($_.SessionId)) { $at[$_.SessionId] }
+                                      else { [int]::MaxValue } } }, SessionId)
 }
