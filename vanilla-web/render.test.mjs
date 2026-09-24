@@ -59,6 +59,36 @@ test("falls back when startViewTransition is present but not callable", (t) => {
   assert.ok(isThenableFinished(ret), "fallback returns the shim here too");
 });
 
+test("updates in place without a transition while the document is hidden", (t) => {
+  let started = 0;
+  patchGlobal(t, "document", { visibilityState: "hidden", startViewTransition() { started++; return { finished: Promise.resolve() }; } });
+  let updated = 0;
+  const ret = withTransition(() => { updated++; });
+  assert.equal(started, 0, "a hidden document never starts a transition");
+  assert.equal(updated, 1, "the update still ran");
+  assert.ok(isThenableFinished(ret), "returns the shim");
+});
+
+test("a skipped transition's ready rejection is handled, not left unhandled", async (t) => {
+  /** @type {unknown[]} */
+  const unhandled = [];
+  const onUnhandled = (/** @type {unknown} */ reason) => { unhandled.push(reason); };
+  process.on("unhandledRejection", onUnhandled);
+  t.after(() => process.off("unhandledRejection", onUnhandled));
+  const skipped = new Error("Transition was aborted because of invalid state");
+  skipped.name = "InvalidStateError";
+  patchGlobal(t, "document", {
+    visibilityState: "visible",
+    /** @param {() => void} cb */
+    startViewTransition(cb) { cb(); return { finished: Promise.resolve(), ready: Promise.reject(skipped) }; },
+  });
+  let updated = 0;
+  withTransition(() => { updated++; });
+  await new Promise((r) => setTimeout(r, 10));
+  assert.equal(updated, 1, "the update ran");
+  assert.deepEqual(unhandled, [], "no unhandled rejection escaped");
+});
+
 // ── #42: renderRegion's deferred-flush ───────────────────────────────────────
 //
 // A skipped swap must flush the INSTANT the interaction clears, not only "the

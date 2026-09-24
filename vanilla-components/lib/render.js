@@ -1,4 +1,4 @@
-// canonical source: vanilla-web/render.js@04db416 sha256:aeae2737cf4449c362db12d75312e28a1d69585721f97a47dd6cf023aa69138e - vendored copy, do not edit here
+// canonical source: vanilla-web/render.js@dd1ad93 sha256:215b7cf5387639bc0aabf0d8b6c92a88de21e758e06176796f89609369d4d7a0 - vendored copy, do not edit here
 // @ts-check
 // Canonical interaction-safe re-rendering for the vanilla-web conventions (see
 // SKILL.md). Copy into <app>/web/lib/render.js; extend, don't fork. Identity:
@@ -446,8 +446,9 @@ export function reconcileList(host, items, keyOf, create, update) {
  * captures the old state), so don't read the new DOM synchronously after the
  * call. Reduced motion is handled in CSS — `shell.css` neutralises the
  * `::view-transition-*` animations under `prefers-reduced-motion` — so this never
- * checks it. Where the API is missing, `update` runs synchronously: same DOM
- * result, no animation.
+ * checks it. Where the API is missing, or the document is hidden, `update` runs
+ * synchronously: same DOM result, no animation. A skipped transition's `ready`
+ * rejection is absorbed here, so it never reaches an unhandled-rejection hook.
  *
  *   btn.addEventListener("click", () => withTransition(() =>
  *     renderRegion(panel, () => detailView(id), { force: true })), { signal });
@@ -455,8 +456,17 @@ export function reconcileList(host, items, keyOf, create, update) {
  * @param {() => void} update - the DOM mutation to animate
  * @returns {{ finished: Promise<unknown> }} the transition — await `.finished` */
 export function withTransition(update) {
-  const doc = /** @type {Document & { startViewTransition?: (cb: () => void) => { finished: Promise<unknown> } }} */ (document);
-  if (typeof doc.startViewTransition === "function") return doc.startViewTransition(update);
+  const doc = /** @type {Document & { startViewTransition?: (cb: () => void) => { finished: Promise<unknown>, ready?: Promise<unknown> } }} */ (document);
+  // A hidden document cannot animate: the browser skips the transition and
+  // rejects `ready` with InvalidStateError. A tab opened in the background
+  // mounts its first view exactly then, so update in place instead.
+  if (typeof doc.startViewTransition === "function" && doc.visibilityState !== "hidden") {
+    const transition = doc.startViewTransition(update);
+    // A skipped transition (hidden mid-way, or superseded by a newer one) still
+    // runs `update`. Only the animation is lost, so its rejection is not an error.
+    transition.ready?.catch(() => {});
+    return transition;
+  }
   update();
   return { finished: Promise.resolve() };
 }
