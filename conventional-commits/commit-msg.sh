@@ -21,7 +21,7 @@ if ! cc_header_valid "$header"; then
     $header
   expected: <type>[(scope)][!]: <subject>
   types:    feat fix perf refactor docs test build ci style chore revert
-  → skill: conventional-commits (~/.claude/skills/conventional-commits/SKILL.md)
+  → skill: conventional-commits ($dir/SKILL.md)
 EOF
   exit 1
 fi
