@@ -41,6 +41,8 @@ const entry = cache.get(id);                                       ← keep as i
      uses for each thing, and name the word to keep.
    - **Keep one topic in each paragraph** and **give the reason when the reader
      must decide something.** Ask what the reader already knows.
+   - **State what is true now.** Flag each passage that tells history instead
+     of current fact. Propose moving it to the commit or PR body.
    - **A paragraph that says nothing.** Short text is not always useful text.
    - **One reader.** Check that the document talks to one reader, at one level
      of knowledge, from start to end.

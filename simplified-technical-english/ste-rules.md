@@ -64,6 +64,11 @@ brackets, a hyphenated word, a number with its unit, a quote and a code span.
 
 ## Shape of a document
 
+**State what is true now.** History belongs in the commit or PR body: how a
+design came to be, a migration, a one-time step.
+`Unset core.hooksPath before you switch from Husky.` → `Git runs the hooks in
+githooks/.`
+
 **Stop after the last fact.** A closing summary only repeats the body.
 
 **Use a list for items of the same kind.** Write an argument, or a chain of
