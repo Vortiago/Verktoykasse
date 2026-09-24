@@ -41,6 +41,8 @@ const entry = cache.get(id);                                       ← keep as i
      uses for each thing, and name the word to keep.
    - **Keep one topic in each paragraph** and **give the reason when the reader
      must decide something.** Ask what the reader already knows.
+   - **State what is true now.** Find each one-time step and each story of how
+     a design came to be. Propose the commit or PR body as their place.
    - **A paragraph that says nothing.** Short text is not always useful text.
    - **One reader.** Check that the document talks to one reader, at one level
      of knowledge, from start to end.

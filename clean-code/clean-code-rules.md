@@ -44,8 +44,9 @@ question below. A comment with no question here becomes a name or a shape.
 the full form of a verb, a comma or a colon where an em dash would go, British
 spelling, and the fact once.
 
-**Write a comment in at most four lines.** Reasoning that needs more room goes
-in the commit message or the project's documentation.
+**Write a comment in at most four lines.** Lasting reasoning that needs more
+room goes in a document beside the code. History and a one-time step go in the
+commit message or the pull request.
 
 ## A comment the name or the shape replaces
 
