@@ -1,0 +1,13 @@
+{
+  "name": "opencode-plan-accept",
+  "version": "0.1.0",
+  "description": "Accept an OpenCode plan: compact the session, switch to the build agent, and build.",
+  "type": "module",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@opencode/plugin": "2.0.22"
+  }
+}

@@ -122,6 +122,12 @@ A directory is a skill when it holds a `SKILL.md`.
   not adopt from the book, and why, live in
   [ADR 0004](docs/adr/0004-clean-code-rules-adopt-a-subset.md).
 
+- **[opencode-plan-accept](opencode-plan-accept/README.md)**: an OpenCode 2
+  plugin for plan-first work. One command, `/accept`, compacts the session,
+  switches to the build agent, and starts building. Install it with
+  `opencode plugin add` from the path in its
+  [README](opencode-plan-accept/README.md).
+
 ## Install
 
 ```sh
