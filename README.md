@@ -131,7 +131,8 @@ A directory is a skill when it holds a `SKILL.md`.
 - **[opencode-tasklist](opencode-tasklist/README.md)**: an OpenCode 2 plugin
   that gives the agent a persistent task list with Claude Code's `Task*` tools.
   It injects the list once after a compaction, nudges the model when a stop
-  leaves tasks open, and shows the list in the TUI sidebar. Install it with
+  leaves tasks open, and shows the list in the TUI sidebar, local or remote.
+  Install it with
   `opencode plugin add` from the path in its
   [README](opencode-tasklist/README.md).
 

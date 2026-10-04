@@ -74,9 +74,20 @@ empty. A long subject does not wrap, so each task stays on one line. Colours com
 from the theme tokens, so the view fits light and dark. One constant holds the
 marks. Swap them for the classic `☐ ◐ ☑` if a colour emoji panics a renderer.
 
-The component polls the file once a second, so an update is not instant. The poll
-also reads the file when nothing changed. A server event or an RPC method would be
-instant, at the cost of a second path between the server and the TUI.
+## Remote
+
+The TUI half does not read a local file. It asks the server for the list through
+the `list` method of the `tasklist` RPC, so the sidebar works against a remote
+server. The server emits an `updated` event after each write, and the TUI
+re-reads on that event. It also re-reads on `server.connected`, so a reconnect
+never leaves the sidebar stale. There is no poll.
+
+The server half must run on the same machine as the server. Install the plugin
+there in the same way:
+
+```sh
+opencode plugin add 'github:Vortiago/Verktoykasse#main::path:opencode-tasklist'
+```
 
 ## Naming
 
@@ -91,9 +102,8 @@ A model that knows Claude Code already knows these tools.
 - The plugin does not exclude a read-only plan session. A plan session that
   records tasks can receive a nudge to finish them.
 - The per-session maps are never cleared on session deletion. The leak is small.
-- The sidebar reads the local file, so it works only when the TUI and the server
-  share a machine. A remote server would instead need an RPC method on the
-  server half.
+- The plugin must run on the server that owns the session, because the RPC and
+  the store live there.
 
 ## Licence
 

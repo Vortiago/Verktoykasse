@@ -2,6 +2,7 @@
 // once after a compaction, and nudges the model when a stop leaves tasks open. See README.md.
 import { Plugin } from "@opencode/plugin"
 import type { Context } from "@opencode/plugin/promise/plugin"
+import { Tasklist } from "./rpc"
 import {
   createTask,
   deleteTask,
@@ -29,6 +30,11 @@ export default Plugin.define({
   async setup(ctx) {
     const state = emptyState()
 
+    // The TUI reads the list through this method, so the sidebar works against a remote server.
+    const rpc = await ctx.rpc.register(Tasklist, {
+      list: async (input) => ({ tasks: readTasks((input as { sessionID: string }).sessionID) }),
+    })
+
     await ctx.tool.transform((editor) => {
       editor.add({
         name: "TaskCreate",
@@ -47,6 +53,7 @@ export default Plugin.define({
           const subject = field(input, "subject")?.trim()
           if (!subject) return { content: "TaskCreate needs a non-empty subject." }
           const task = createTask(context.sessionID, subject, field(input, "activeForm"))
+          await rpc.events.emit("updated", { sessionID: context.sessionID })
           return { content: `Task #${task.id} created.` }
         },
       })
@@ -82,7 +89,9 @@ export default Plugin.define({
           if (!taskId) return { content: "TaskUpdate needs a taskId." }
           const status = field(input, "status")
           if (status === "deleted") {
-            return { content: deleteTask(context.sessionID, taskId) ? `Task #${taskId} deleted.` : notFound(taskId) }
+            if (!deleteTask(context.sessionID, taskId)) return { content: notFound(taskId) }
+            await rpc.events.emit("updated", { sessionID: context.sessionID })
+            return { content: `Task #${taskId} deleted.` }
           }
           const update: Update = {
             status: statusOf(status),
@@ -90,7 +99,9 @@ export default Plugin.define({
             activeForm: field(input, "activeForm"),
           }
           const task = updateTask(context.sessionID, taskId, update)
-          return { content: task ? `Task #${taskId} updated.` : notFound(taskId) }
+          if (!task) return { content: notFound(taskId) }
+          await rpc.events.emit("updated", { sessionID: context.sessionID })
+          return { content: `Task #${taskId} updated.` }
         },
       })
 

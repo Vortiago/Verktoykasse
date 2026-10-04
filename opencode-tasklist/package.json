@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./index.ts",
+    "./rpc": "./rpc.ts",
     "./tui": "./tui.tsx"
   },
   "license": "MIT",
