@@ -32,6 +32,11 @@ stays the proof.
 | `fast` | no sleep, heavy I/O, or large computation | Beck, `Fast`; Meszaros, `Slow Tests`, `Sleepy Test`; testsmells.org, `Sleepy Test` |
 | `readable` | a reader can follow it without opening the code under test | Beck, `Readable`; Meszaros, `Obscure Test`; testsmells.org, `Unknown Test` |
 | `magic_number` | the assertion names its values | testsmells.org, `Magic Number Test`; Meszaros, `Hard-Coded Test Data` |
+| `reads_output` | the assertion reads the produced output, not the input or the setup | testsmells.org, `Assertion Diversion`, `Calculating Expected Results On The Fly`; house catalogue, passes-for-the-wrong-reason; mutation-testing propagation |
+| `automated` | pass or fail with nobody doing or reading anything | Beck, `Automated`; Meszaros, `Manual Intervention`; WPT checklist on manual tests |
+| `restores` | clears or restores the state it changes | Beck, `Isolated`; Meszaros, `Interacting Tests`, `Test Run War`; testsmells.org, `Test Pollution` |
+| `duplicate` | each assertion checks a distinct condition | testsmells.org, `Duplicate Assert` |
+| `redundant_print` | no leftover log or debugger | testsmells.org, `Redundant Print` |
 | `verdict` | slop, weak, good, strong | synthesis of the rows above; the four levels and the cross-question rule are house (inference) |
 
 ### Static flags
@@ -43,7 +48,7 @@ stays the proof.
 | `unknown` | no assertion at all | testsmells.org, `Unknown Test` |
 | `commented-assert` | a comment-borne deleted check | WPT checklist, "The test does not contain commented-out code"; house catalogue |
 | `roulette` | several assertions, no message | Meszaros, `Assertion Roulette`; testsmells.org, `Assertion Roulette` |
-| `non-deterministic`, `eager`, `name-mismatch` | descriptive flags, no escalation | the rows above |
+| `implementation-coupled`, `conditional`, `order-dependent`, `uncontrolled-resource`, `weak-assert`, `vague-name`, `non-deterministic`, `eager`, `name-mismatch`, `structure-dependent`, `silent-failure`, `general-fixture`, `slow`, `obscure`, `magic-number`, `asserts-input`, `manual`, `state-leak`, `duplicate-assert`, `debug-output` | the descriptive flags, no escalation | the question rows above |
 
 ### Named defects
 

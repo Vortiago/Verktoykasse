@@ -11,7 +11,7 @@ export const VERDICTS = ["slop", "weak", "good", "strong"];
 /** The three logically equivalent phrasings of "can this test fail". */
 export const CAN_FAIL_KEYS = ["can_fail_a", "can_fail_b", "can_fail_c"];
 /** The descriptive questions: asked once each, reported as flags, never escalating alone. */
-export const DESCRIPTIVE_KEYS = ["observable", "conditional", "isolated", "controlled", "specific", "named", "deterministic", "one_thing", "name_matches", "resilient", "diagnostic", "fixture", "fast", "readable", "magic_number"];
+export const DESCRIPTIVE_KEYS = ["observable", "conditional", "isolated", "controlled", "specific", "named", "deterministic", "one_thing", "name_matches", "resilient", "diagnostic", "fixture", "fast", "readable", "magic_number", "reads_output", "automated", "restores", "duplicate", "redundant_print"];
 
 const ASSERTS_MEANING = {
   behaviour: "it checks the output value or observable behaviour the code produces, against a literal expected result",
@@ -62,6 +62,13 @@ Readable: a reader can tell what the test does and why without opening the code
   under test.
 Magic number: the assertion names its values, rather than a bare number or string
   the reader must decode.
+Asserts the output: the assertion reads the value the code under test produced,
+  not its own input, its setup, or merely that no error was thrown.
+Automated: the test reaches pass or fail with no person doing or reading anything.
+Restores state: the test clears or restores every global, environment variable,
+  timer, and spy it changes, so it leaves nothing for the next test.
+Duplicate assertion: each assertion checks a distinct condition.
+Debug output: no console.log, print, or debugger is left in the test.
 Deterministic: same result every run, with no sleep, clock, network, randomness, or
   order dependence.
 One behaviour: the body checks one thing, not several unrelated behaviours.
@@ -105,9 +112,9 @@ export function batteryQuestions() {
     // The descriptive questions below report a smell as a flag; the verdict score
     // is what escalates.
     observable: noul(
-      "Does this test assert observable behaviour of the code under test, rather than private internals, call order, or the exact interactions with a collaborator?",
+      "Does this test assert observable behaviour of the code under test, rather than private internals or internal call order?",
       "it checks behaviour a caller could observe",
-      "it checks internals, call order, or collaborator interactions instead of the behaviour",
+      "it checks private internals or internal call order",
     ),
     conditional: noul(
       "Does this test assert unconditionally, with no branch, loop, or catch that can leave the assertion unrun?",
@@ -136,7 +143,7 @@ export function batteryQuestions() {
     ),
     deterministic: noul(
       "Does this test give the same result on every run, with no reliance on time, order, the network, or a sleep?",
-      "it is deterministic and independent of other tests",
+      "it gives the same result every run",
       "it can pass or fail for reasons outside the code under test",
     ),
     one_thing: noul(
@@ -178,6 +185,31 @@ export function batteryQuestions() {
       "Does the assertion name its values, rather than use a bare number or string the reader must decode?",
       "the values are named or self-explanatory",
       "a bare number or string must be decoded from the code under test",
+    ),
+    reads_output: noul(
+      "Does the assertion read the value the code under test produced, rather than its own input, its setup, or only that no error was thrown?",
+      "it asserts the returned or observed output",
+      "it asserts its own input, its setup, or merely that the call did not throw",
+    ),
+    automated: noul(
+      "Does this test reach a pass or fail with no person doing or reading anything?",
+      "it is self-checking and unattended",
+      "it needs a manual step, or a person to read the output",
+    ),
+    restores: noul(
+      "Does the test restore every global, environment variable, timer, and spy that it changes, so it leaves nothing for the next test?",
+      "it clears or restores what it changes",
+      "it leaves process or module state changed for the next test",
+    ),
+    duplicate: noul(
+      "Does the test assert a distinct condition each time, rather than repeat the same condition or expression?",
+      "each assertion checks a distinct condition",
+      "the same check is repeated",
+    ),
+    redundant_print: noul(
+      "Does the test contain no leftover debug output, such as console.log, print, or debugger?",
+      "it contains no debug output",
+      "a print or debugger statement is left in the test",
     ),
     verdict: score(
       "Overall, is this test a real guard against the behaviour it names? Weigh whether it can fail, what it asserts, and every smell the earlier questions name. It is a real guard only if it can fail when that behaviour breaks.",

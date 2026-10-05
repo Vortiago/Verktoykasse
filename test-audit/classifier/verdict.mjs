@@ -27,6 +27,11 @@ const FLAG_BY_GATE = {
   fast: "slow",
   readable: "obscure",
   magic_number: "magic-number",
+  reads_output: "asserts-input",
+  automated: "manual",
+  restores: "state-leak",
+  duplicate: "duplicate-assert",
+  redundant_print: "debug-output",
 };
 
 /**

@@ -41,6 +41,11 @@ function goodAnswers() {
     fast: noul(0.99),
     readable: noul(0.99),
     magic_number: noul(0.99),
+    reads_output: noul(0.99),
+    automated: noul(0.99),
+    restores: noul(0.99),
+    duplicate: noul(0.99),
+    redundant_print: noul(0.99),
     verdict: score(3),
   };
 }
@@ -132,7 +137,7 @@ test("descriptive gates report as flags without escalating", () => {
   const off = Object.fromEntries(DESCRIPTIVE_KEYS.map((gate) => [gate, noul(0.1)]));
   const result = verdictFrom(TEST, { ...goodAnswers(), ...off });
   assert.equal(result.needsEyes, false);
-  for (const flag of ["implementation-coupled", "conditional", "order-dependent", "uncontrolled-resource", "weak-assert", "vague-name", "non-deterministic", "eager", "name-mismatch", "structure-dependent", "silent-failure", "general-fixture", "slow", "obscure", "magic-number"]) {
+  for (const flag of ["implementation-coupled", "conditional", "order-dependent", "uncontrolled-resource", "weak-assert", "vague-name", "non-deterministic", "eager", "name-mismatch", "structure-dependent", "silent-failure", "general-fixture", "slow", "obscure", "magic-number", "asserts-input", "manual", "state-leak", "duplicate-assert", "debug-output"]) {
     assert.ok(result.flags.includes(flag), flag);
   }
 });

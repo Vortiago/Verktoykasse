@@ -26,7 +26,7 @@ The tool never breaks a tie, because a silent pass is the failure it hunts.
 
 ## The questions
 
-The tool asks 22 questions about one test. All questions share one state and
+The tool asks 27 questions about one test. All questions share one state and
 travel in one call.
 
 | Question | Type | Looks for |
@@ -52,6 +52,11 @@ travel in one call.
 | `fast` | yes/no | slow test: a sleep, heavy I/O, or a large computation |
 | `readable` | yes/no | obscure test: a reader must open the code under test to follow it |
 | `magic_number` | yes/no | magic number test: a bare value the reader must decode |
+| `reads_output` | yes/no | assertion diversion: the assertion reads its own input or its setup, or only that no error was thrown |
+| `automated` | yes/no | manual intervention: a step a person must do, or output a person must read |
+| `restores` | yes/no | test pollution: state left behind for the next test |
+| `duplicate` | yes/no | duplicate assert: the same condition asserted twice |
+| `redundant_print` | yes/no | redundant print: a leftover log or debugger |
 | `verdict` | score | slop, weak, good, strong |
 
 Three questions carry the verdict: the `can_fail_*` set, the `asserts_*` pair,
@@ -88,7 +93,8 @@ The descriptive questions raise these flags: `implementation-coupled`,
 `conditional`, `order-dependent`, `uncontrolled-resource`, `weak-assert`,
 `vague-name`, `non-deterministic`, `eager`, `name-mismatch`,
 `structure-dependent`, `silent-failure`, `general-fixture`, `slow`, `obscure`,
-and `magic-number`. These flags report. They do not escalate.
+`magic-number`, `asserts-input`, `manual`, `state-leak`, `duplicate-assert`, and
+`debug-output`. These flags report. They do not escalate.
 
 ## Endpoints and models
 
@@ -170,6 +176,11 @@ sources and which are house inferences.
 | Speed (`fast`) | Beck, `Fast`; Meszaros, `Slow Tests` and `Sleepy Test`; testsmells.org, `Sleepy Test` |
 | Readability (`readable`) | Beck, `Readable`; Meszaros, `Obscure Test`; testsmells.org, `Unknown Test` |
 | Magic number (`magic_number`) | testsmells.org, `Magic Number Test`; Meszaros, `Hard-Coded Test Data` |
+| Asserts the output (`reads_output`) | testsmells.org, `Assertion Diversion`, `Calculating Expected Results On The Fly`; the house catalogue, passes-for-the-wrong-reason; mutation-testing propagation |
+| Automated (`automated`) | Beck, `Automated`; Meszaros, `Manual Intervention`; the WPT checklist on manual tests |
+| Restores state (`restores`) | Beck, `Isolated`; Meszaros, `Interacting Tests`, `Test Run War`; testsmells.org, `Test Pollution` |
+| Duplicate assert (`duplicate`) | testsmells.org, `Duplicate Assert` |
+| Redundant print (`redundant_print`) | testsmells.org, `Redundant Print` |
 | Test type (`type`) | Meszaros, `Test Organization`; Feathers, characterization testing. The six labels are house choice |
 | Determinism (`deterministic`) | Beck, `Deterministic` and `Isolated`; Meszaros, `Erratic Test`; testsmells.org, `Sleepy Test` and `Mystery Guest` |
 | Eager test (`one_thing`) | Meszaros, `Eager Test`; testsmells.org, `Eager Test` |
