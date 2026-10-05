@@ -18,8 +18,8 @@ opencode plugin add 'github:Vortiago/Verktoykasse#main::path:opencode-plan-accep
 1. Run `/plan <task>`. The plan agent researches the task, presents the plan,
    and writes it to `~/.opencode/plan`.
 2. Read the plan. Reply to the plan agent to change it.
-3. Run `/accept`. It reads the newest plan file, compacts the session, switches
-   to the build agent and its model, and sends the plan to it.
+3. Run `/accept`. It reads the plan this session wrote, compacts the session,
+   switches to the build agent and its model, and sends the plan to it.
 
 The command sends the plan with the prompt, so the plan survives the compact.
 
