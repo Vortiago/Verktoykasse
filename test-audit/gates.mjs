@@ -18,7 +18,7 @@ export const VERDICTS = ["slop", "weak", "good", "strong"];
 /** The three logically equivalent phrasings of "can this test fail". */
 export const CAN_FAIL_KEYS = ["can_fail_a", "can_fail_b", "can_fail_c"];
 /** The descriptive gates: asked once each, reported as flags, never escalating alone. */
-export const DESCRIPTIVE_KEYS = ["observable", "conditional", "isolated", "controlled", "specific", "nonduplicate", "named", "deterministic", "one_thing", "name_matches"];
+export const DESCRIPTIVE_KEYS = ["observable", "conditional", "isolated", "controlled", "specific", "named", "deterministic", "one_thing", "name_matches"];
 /** Verdicts at or below this level escalate. */
 const WEAK = VERDICTS.indexOf("weak");
 
@@ -29,7 +29,6 @@ const FLAG_BY_GATE = {
   isolated: "order-dependent",
   controlled: "uncontrolled-resource",
   specific: "weak-assert",
-  nonduplicate: "duplicate-assert",
   named: "vague-name",
   deterministic: "non-deterministic",
   one_thing: "eager",
@@ -52,6 +51,37 @@ const TYPE_MEANING = {
   smoke: "only checks that something runs or exists, at a coarse level",
   characterization: "pins current behaviour as a baseline before a change",
 };
+
+/**
+ * The shared rubric sent with every test. It is the knowledge the questions
+ * assume: the definition of each concept a reviewer looks for. Grounded in the
+ * sources in references.md. Kept short so it fits the state cap beside the test.
+ */
+export const RUBRIC = `Rubric for judging a test. Use these definitions for every question.
+
+Falsifiable: a change to the code under test makes the test fail.
+  Not falsifiable: a tautology (true === true, or both sides call the same code);
+  a check that the result is merely defined, non-null, or the right shape;
+  an assertion on data the code copies straight from its input.
+Observable behaviour: output or effects a caller can observe. Private internals,
+  call order, and that a mock was called are not observable behaviour.
+Conditional test logic: a branch, loop, or catch that can leave the assertion
+  unrun, so the test may assert nothing on some inputs.
+Isolated: passes on its own and in any order, with no shared mutable state and no
+  dependence on another test.
+Controlled resources: the test fixes the time, network, filesystem, and
+  environment it needs; it does not assume they are present.
+Specific assertion: the strongest assertion that would catch the failure. Weaker
+  forms (toBeDefined, toBeTruthy, typeof, Array.isArray, a length) pass on wrong output.
+Name: states the behaviour and the expected result, not a vague label.
+Deterministic: same result every run, with no sleep, clock, network, randomness, or
+  order dependence.
+One behaviour: the body checks one thing, not several unrelated behaviours.
+Type: unit, integration, regression, e2e, smoke, or characterization, by what it
+  actually exercises.
+Verdict: slop, weak, good, or strong. Slop is no real guard; weak is a guard with
+  a serious smell; good is a real guard; strong is a real guard with a specific
+  expected value that would fail loudly.`;
 
 /**
  * The whole battery for one test. All questions travel in one call, so the state
@@ -111,11 +141,6 @@ export function batteryQuestions() {
       "the assertion is specific to the expected value",
       "a weaker assertion would also pass on wrong output",
     ),
-    nonduplicate: noul(
-      "Does this test assert something new, rather than repeat an assertion or another test without adding a behaviour?",
-      "it adds a new behaviour check",
-      "it duplicates an assertion or another test",
-    ),
     named: noul(
       "Does the test's name state the behaviour and its expected result, rather than a vague label such as works, test1, or should be fine?",
       "the name states the behaviour and the expected result",
@@ -144,15 +169,16 @@ export function batteryQuestions() {
 }
 
 /**
- * The per-test state. A readable JSON record, capped so one huge test cannot
- * crowd the read. The source comes first so a truncation drops context, not
- * the test under audit.
+ * The per-test state. The shared rubric comes first, so a truncation never drops
+ * the definitions; then the test record, then the change context. The test JSON
+ * is capped to leave room, and the source sits early in it so a hard test still
+ * shows the assertion.
  * @param {{ file: string, line: number, name: string, path: string[], source: string, fixtures: string[], imports: string[] }} test
  * @param {string} [changeContext]
  * @param {number} [cap]
  */
 export function buildState(test, changeContext = "", cap = config.stateCap) {
-  const text = JSON.stringify(
+  const record = JSON.stringify(
     {
       file: test.file,
       line: test.line,
@@ -161,12 +187,14 @@ export function buildState(test, changeContext = "", cap = config.stateCap) {
       source: test.source,
       fixtures: test.fixtures,
       imports: test.imports,
-      changeContext,
     },
     null,
     2,
   );
-  return text.length > cap ? `${text.slice(0, cap)}\n… [state truncated]` : text;
+  const context = changeContext ? `\n\nChange context:\n${changeContext}` : "";
+  const room = Math.max(400, cap - RUBRIC.length - context.length - 32);
+  const testText = record.length > room ? `${record.slice(0, room)}\n… [test truncated]` : record;
+  return `${RUBRIC}\n\nTest:\n${testText}${context}`;
 }
 
 /**

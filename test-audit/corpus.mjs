@@ -46,7 +46,7 @@ export function loadLabels() {
 }
 
 /**
- * @param {{ config?: object, ask?: Function, targets?: Array<{url: string, model: string, label: string}> }} [opts]
+ * @param {{ config?: object, ask?: Function, targets?: Array<{url: string, model: string, label: string}>, onProgress?: (event: { target: string, index: number, total: number, status: string, test: string }) => void }} [opts]
  * @returns {Promise<{ text: string, code: number }>}
  */
 export async function runSelftest(opts = {}) {
@@ -62,7 +62,21 @@ export async function runSelftest(opts = {}) {
       usage.calls += 1;
       usage.tokens += tokensOf(json.usage);
     };
-    const rows = await mapPool(labels.cases, cfg.concurrency, (label) => runCase(label, { cfg, ask, target, onResponse }));
+    let done = 0;
+    const total = labels.cases.length;
+    const rows = await mapPool(labels.cases, cfg.concurrency, async (label, index) => {
+      const row = await runCase(label, { cfg, ask, target, onResponse });
+      done += 1;
+      opts.onProgress?.({
+        target: target.label,
+        index: done,
+        total,
+        position: index + 1,
+        status: rowStatus(row),
+        test: label.test,
+      });
+      return row;
+    });
     entries.push({ target, rows, verdict: judge(rows, labels.acceptance), usage });
   }
   const pass = entries.every((entry) => entry.verdict.pass);

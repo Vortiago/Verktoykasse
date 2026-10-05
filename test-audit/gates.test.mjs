@@ -4,7 +4,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { batteryQuestions, buildState, classify, verdictFrom, CAN_FAIL_KEYS, DESCRIPTIVE_KEYS } from "./gates.mjs";
+import { batteryQuestions, buildState, classify, verdictFrom, CAN_FAIL_KEYS, DESCRIPTIVE_KEYS, RUBRIC } from "./gates.mjs";
 
 const TEST = { file: "add.test.mjs", line: 1, name: "add", path: [], source: 'test("add", () => { expect(add(1, 1)).toBe(2); });', fixtures: [], imports: [] };
 
@@ -29,7 +29,6 @@ function goodAnswers() {
     isolated: noul(0.99),
     controlled: noul(0.99),
     specific: noul(0.99),
-    nonduplicate: noul(0.99),
     named: noul(0.99),
     deterministic: noul(0.99),
     one_thing: noul(0.99),
@@ -44,12 +43,18 @@ test("the battery carries the whole question set once", () => {
   assert.deepEqual(Object.keys(questions.asserts_b.criteria), [...Object.keys(questions.asserts_a.criteria)].reverse());
 });
 
-test("buildState carries the source and truncates under the cap", () => {
-  const full = buildState(TEST, "context", 10_000);
+test("buildState sends the rubric, the test, and the context", () => {
+  const full = buildState(TEST, "the change", 10_000);
+  assert.match(full, /Rubric for judging a test/);
   assert.match(full, /expect\(add\(1, 1\)\)/);
-  const capped = buildState(TEST, "context", 40);
-  assert.match(capped, /state truncated/);
-  assert.equal(capped.length <= 40 + "\n… [state truncated]".length, true);
+  assert.match(full, /the change/);
+});
+
+test("buildState keeps the rubric and truncates the test under pressure", () => {
+  const big = { ...TEST, source: `test("big", () => { ${"expect(x).toBe(1); ".repeat(200)}});` };
+  const capped = buildState(big, "", RUBRIC.length + 300);
+  assert.match(capped, /Rubric for judging a test/);
+  assert.match(capped, /test truncated/);
 });
 
 test("a clean test does not escalate", () => {
@@ -119,7 +124,7 @@ test("descriptive gates report as flags without escalating", () => {
   const off = Object.fromEntries(DESCRIPTIVE_KEYS.map((gate) => [gate, noul(0.1)]));
   const result = verdictFrom(TEST, { ...goodAnswers(), ...off });
   assert.equal(result.needsEyes, false);
-  for (const flag of ["implementation-coupled", "conditional", "order-dependent", "uncontrolled-resource", "weak-assert", "duplicate-assert", "vague-name", "non-deterministic", "eager", "name-mismatch"]) {
+  for (const flag of ["implementation-coupled", "conditional", "order-dependent", "uncontrolled-resource", "weak-assert", "vague-name", "non-deterministic", "eager", "name-mismatch"]) {
     assert.ok(result.flags.includes(flag), flag);
   }
 });

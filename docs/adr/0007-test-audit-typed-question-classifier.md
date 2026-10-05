@@ -29,6 +29,12 @@ wrong.
   costs one token. The battery names its sources: Beck's Test Desiderata,
   Meszaros, testsmells.org, the WPT review checklist, and the house catalogue in
   `verify-prd-implemented/test-patterns.md`.
+- **A shared rubric travels with every test.** The state opens with the
+  definitions the questions assume: falsifiable, observable behaviour,
+  conditional logic, isolation, controlled resources, specificity, and the
+  verdict levels. A question alone asks the model to guess what "falsifiable" or
+  "implementation coupling" means. The rubric is grounded in the same sources and
+  costs one read per test.
 - **The client speaks any Jev-compatible endpoint**, so the corpus can score
   the llama-arbiter on Koishi or a local Ollama 0.35 decision model, side by
   side. A missing `mass` (Ollama reports none) is trusted: the paraphrase spread
@@ -75,6 +81,8 @@ wrong.
 - A gate model swap is not transparent: the thresholds (`minMass`,
   `stableBand`) and the phrasings are calibrated to one model. The selftest is
   the tripwire.
+- A per-test gate cannot judge duplication across tests: that needs the whole
+  file, so a `duplicate` gate is left out rather than guessed from one test.
 
 ## Alternatives considered
 

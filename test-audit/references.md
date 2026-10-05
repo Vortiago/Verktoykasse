@@ -25,7 +25,6 @@ stays the proof.
 | `isolated` | passes alone and in any order, no shared mutable state | Beck, `Isolated`; Meszaros, `Interacting Tests`, `Test Run War`, `Unrepeatable Test` |
 | `controlled` | controls time, network, filesystem, and environment | Meszaros, `Resource Optimism`, `Mystery Guest`; testsmells.org, `Mystery Guest` |
 | `specific` | the most specific assertion for the failure | WPT checklist, "the most specific asserts possible"; testsmells.org, `Sensitive Equality` |
-| `nonduplicate` | asserts something new, not a repeated or copied assertion | testsmells.org, `Duplicate Assert`, `Redundant Assertion`; Meszaros, `Obscure Test` |
 | `named` | the name states the behaviour and expected result | Meszaros, `Obscure Test`; testsmells.org, `Unknown Test` |
 | `verdict` | slop, weak, good, strong | synthesis of the rows above; the four levels and the cross-question rule are house (inference) |
 

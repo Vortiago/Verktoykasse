@@ -51,7 +51,13 @@ async function main() {
   }
   if (args.selftest) {
     const { runSelftest } = await import("./corpus.mjs");
-    const { text, code } = await runSelftest({ config, targets: selftestTargets(args) });
+    const { text, code } = await runSelftest({
+      config,
+      targets: selftestTargets(args),
+      onProgress: (event) => {
+        process.stderr.write(`  [${event.target} ${event.index}/${event.total}] ${event.status.padEnd(6)} ${event.test}\n`);
+      },
+    });
     console.log(text);
     return code;
   }

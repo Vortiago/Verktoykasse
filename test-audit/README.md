@@ -40,7 +40,6 @@ tool hunts, so escalation is the only safe default.
 | `isolated` | yes/no | interacting tests, test-run war, shared mutable state, order dependence |
 | `controlled` | yes/no | resource optimism and mystery guest: an assumed network, clock, filesystem, or environment |
 | `specific` | yes/no | a weak assertion where the most specific one is possible |
-| `nonduplicate` | yes/no | duplicate assertion, redundant assertion, a copy of another test |
 | `named` | yes/no | an obscure test: a vague name that states no behaviour or result |
 | `deterministic` | yes/no | sleep, time, network, order dependence |
 | `one_thing` | yes/no | eager test: several unrelated behaviours in one body |
@@ -55,6 +54,17 @@ called a tautology falsifiable at 0.92 with mass 0.99; its twins said 0.00 and
 
 The `can_fail_*` answers, the `asserts_*` pair, and `verdict` carry the verdict.
 Every other question reports as a flag and never escalates alone.
+
+### What the model sees
+
+One audit asks all 16 questions about one test in a single call. The shared
+`state` holds three parts: the rubric (the definitions above, so the model knows
+what each concept means), the test record (`file`, `path`, `name`, `source`,
+`fixtures`, `imports`), and a capped slice of the non-test diff. Each question
+adds only its own `instructions` and the `criteria` that say what each answer
+means, for example `{"true": "a change can make it fail", "false": "no change can
+make it fail"}`. The reply carries `probabilities`, `confidence`, and, on the
+arbiter, `mass`.
 
 ### Static flags
 
