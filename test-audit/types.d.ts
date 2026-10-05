@@ -33,6 +33,8 @@ export interface AuditResult {
   test: Pick<AuditTest, "file" | "line" | "name" | "path">;
   canFail: { values: Array<number | null>; mean: number | null; spread: number | null; state: string };
   asserts: { value?: string; a?: string; b?: string; trust: boolean; agrees: boolean };
+  /** Whether the test actually runs; undefined when unanswered. */
+  runs?: boolean;
   type?: string;
   /** One boolean per descriptive gate (observable, conditional, isolated, …); undefined when unanswered. */
   descriptive: Record<string, boolean | undefined>;

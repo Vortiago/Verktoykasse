@@ -47,11 +47,17 @@ a high margin, and it was wrong.
   `asserts` gate also swaps its answer order between phrasings, as a position
   control. The tool reads `confidence` as a margin, never as a probability of
   correctness.
-- **An untrusted or unstable verdict escalates.** A hard static flag, an
+- **An untrusted or unstable verdict escalates.** A `runs` answer of no, an
   unanswered or unstable `can_fail`, disagreeing `asserts`, or a `slop`/`weak`
   verdict marks the test `needs-eyes`. The tool never tie-breaks a disagreement
   with a third phrasing. A human decides, because a silent pass is the failure
-  this tool exists to catch. The descriptive gates report and do not escalate.
+  this tool exists to catch. The descriptive questions report and do not
+  escalate.
+- **The tool does no static analysis of the test source.** A rule for one
+  runner's assertion or skip method does not fit the next runner, so `runs` and
+  the rest of the battery read the source and judge the intent, and the same
+  battery works across frameworks. The one syntactic read is finding the test
+  blocks.
 - **The tool is a cheap sensor, not a proof.** It never runs mutations in the
   first version. It may suspect `passes-for-the-wrong-reason`, and it never
   claims to prove it. `verify-prd-implemented` keeps the mutation check.

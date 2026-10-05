@@ -88,7 +88,7 @@ const CHECK_ABBREVIATION = {
  */
 export function formatBenchmark(entries) {
   const checks = DESCRIPTIVE_KEYS;
-  const header = ["Test", "Defect", "can_fail", "spread", "asserts", ...checks.map((key) => CHECK_ABBREVIATION[key] ?? key), "verdict", "eyes"];
+  const header = ["Test", "Defect", "can_fail", "spread", "asserts", "runs", ...checks.map((key) => CHECK_ABBREVIATION[key] ?? key), "verdict", "eyes"];
   const lines = [`# test-audit benchmark`, ""];
   for (const entry of entries) {
     const { rows, verdict, usage, target } = entry;
@@ -115,6 +115,7 @@ export function formatBenchmark(entries) {
         canFailText(result.canFail),
         result.canFail.spread === null ? "-" : result.canFail.spread.toFixed(2),
         result.asserts.value ?? "unclassified",
+        result.runs === true ? "yes" : result.runs === false ? "-" : "?",
         ...checks.map((key) => checkSymbol(d[key])),
         result.score.label ?? "unclassified",
         result.needsEyes ? "yes" : "-",

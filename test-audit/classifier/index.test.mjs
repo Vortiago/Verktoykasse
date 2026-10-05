@@ -25,6 +25,7 @@ function goodAnswers() {
     can_fail_c: noul(0.98),
     asserts_a: choice("behaviour"),
     asserts_b: choice("behaviour"),
+    runs: noul(0.99),
     type: choice("unit"),
     observable: noul(0.99),
     conditional: noul(0.99),
@@ -44,15 +45,13 @@ function goodAnswers() {
     reads_output: noul(0.99),
     automated: noul(0.99),
     restores: noul(0.99),
-    duplicate: noul(0.99),
-    redundant_print: noul(0.99),
     verdict: score(3),
   };
 }
 
 test("the battery carries the whole question set once", () => {
   const questions = batteryQuestions();
-  assert.deepEqual(Object.keys(questions), [...CAN_FAIL_KEYS, "asserts_a", "asserts_b", "type", ...DESCRIPTIVE_KEYS, "verdict"]);
+  assert.deepEqual(Object.keys(questions), [...CAN_FAIL_KEYS, "asserts_a", "asserts_b", "runs", "type", ...DESCRIPTIVE_KEYS, "verdict"]);
   assert.deepEqual(Object.keys(questions.asserts_b.criteria), [...Object.keys(questions.asserts_a.criteria)].reverse());
 });
 
@@ -128,16 +127,17 @@ test("a score between levels rounds to the nearest level", () => {
   assert.equal(low.needsEyes, true);
 });
 
-test("a hard static flag escalates, an info flag does not", () => {
-  assert.match(verdictFrom(TEST, goodAnswers(), { smellFlags: ["skipped"] }).reasons.join(" "), /skipped/);
-  assert.equal(verdictFrom(TEST, goodAnswers(), { smellFlags: ["roulette"] }).needsEyes, false);
+test("a test that does not run escalates", () => {
+  const result = verdictFrom(TEST, { ...goodAnswers(), runs: noul(0.1) });
+  assert.equal(result.needsEyes, true);
+  assert.match(result.reasons.join(" "), /does not run/);
 });
 
 test("descriptive gates report as flags without escalating", () => {
   const off = Object.fromEntries(DESCRIPTIVE_KEYS.map((gate) => [gate, noul(0.1)]));
   const result = verdictFrom(TEST, { ...goodAnswers(), ...off });
   assert.equal(result.needsEyes, false);
-  for (const flag of ["implementation-coupled", "conditional", "order-dependent", "uncontrolled-resource", "weak-assert", "vague-name", "non-deterministic", "eager", "name-mismatch", "structure-dependent", "silent-failure", "general-fixture", "slow", "obscure", "magic-number", "asserts-input", "manual", "state-leak", "duplicate-assert", "debug-output"]) {
+  for (const flag of ["implementation-coupled", "conditional", "order-dependent", "uncontrolled-resource", "weak-assert", "vague-name", "non-deterministic", "eager", "name-mismatch", "structure-dependent", "silent-failure", "general-fixture", "slow", "obscure", "magic-number", "asserts-input", "manual", "state-leak"]) {
     assert.ok(result.flags.includes(flag), flag);
   }
 });
@@ -178,6 +178,7 @@ test("answers without mass are accepted, so an Ollama response works", () => {
     can_fail_c: { noul: 0.98 },
     asserts_a: { choice: "behaviour" },
     asserts_b: { choice: "behaviour" },
+    runs: { noul: 0.99 },
     type: { choice: "unit" },
     deterministic: { noul: 0.99 },
     one_thing: { noul: 0.99 },

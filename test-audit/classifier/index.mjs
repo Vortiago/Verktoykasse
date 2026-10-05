@@ -44,7 +44,7 @@ export function buildState(test, changeContext = "", cap = config.stateCap) {
 /**
  * Ask the battery once and reduce the answers to a verdict.
  * @param {object} test
- * @param {{ ask?: Function, config?: object, url?: string, model?: string, changeContext?: string, smellFlags?: string[], onResponse?: (json: object) => void, signal?: AbortSignal }} [opts]
+ * @param {{ ask?: Function, config?: object, url?: string, model?: string, changeContext?: string, onResponse?: (json: object) => void, signal?: AbortSignal }} [opts]
  */
 export async function classify(test, opts = {}) {
   const cfg = opts.config ?? config;
@@ -64,5 +64,5 @@ export async function classify(test, opts = {}) {
     if (opts.signal?.aborted) throw err;
     error = err instanceof Error ? err.message : String(err);
   }
-  return verdictFrom(test, answers, { config: cfg, smellFlags: opts.smellFlags ?? [], error });
+  return verdictFrom(test, answers, { config: cfg, error });
 }

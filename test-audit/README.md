@@ -13,10 +13,16 @@ the behaviour of the code and checks that the named test fails.
 
 ```
 git diff (base..head, the index, or the working tree)
-  -> change/       read the diff, find the tests, flag the static smells
+  -> change/       read the diff and find the tests
   -> classifier/   ask one SystemOne call per test
   -> report/       print a verdict, a summary, and an exit code
 ```
+
+The tool does no static analysis of the test source. Framework-specific syntax,
+such as how a runner names its assertion or skip method, differs by language and
+would need a rule per framework. The questions instead read the source and judge
+the intent, so the same battery works across runners. The one place the tool
+reads the syntax directly is to find the test blocks in the first place.
 
 Trust has two parts: `mass` and the spread between paraphrases. `mass` says
 whether the endpoint answered at all. The spread says whether the judgement
@@ -26,7 +32,7 @@ The tool never breaks a tie, because a silent pass is the failure it hunts.
 
 ## The questions
 
-The tool asks 27 questions about one test. All questions share one state and
+The tool asks 26 questions about one test. All questions share one state and
 travel in one call.
 
 | Question | Type | Looks for |
@@ -36,6 +42,7 @@ travel in one call.
 | `can_fail_c` | yes/no | the same judgement, asked directly |
 | `asserts_a` | choice | behaviour, hardcoded data, shape only, interaction only, nothing |
 | `asserts_b` | choice, order swapped | the position control for `asserts_a` |
+| `runs` | yes/no | a skipped, ignored, or focused test that does not run |
 | `type` | choice | unit, integration, regression, e2e, smoke, characterization |
 | `observable` | yes/no | implementation coupling: private internals, call order, exact collaborator interactions |
 | `conditional` | yes/no | conditional logic: a branch, loop, or catch can leave the assertion unrun |
@@ -55,13 +62,11 @@ travel in one call.
 | `reads_output` | yes/no | assertion diversion: the assertion reads its own input or its setup, or only that no error was thrown |
 | `automated` | yes/no | manual intervention: a step a person must do, or output a person must read |
 | `restores` | yes/no | test pollution: state left behind for the next test |
-| `duplicate` | yes/no | duplicate assert: the same condition asserted twice |
-| `redundant_print` | yes/no | redundant print: a leftover log or debugger |
 | `verdict` | score | slop, weak, good, strong |
 
-Three questions carry the verdict: the `can_fail_*` set, the `asserts_*` pair,
-and `verdict`. The other questions add a flag. A flag does not escalate a test on
-its own.
+Four answers carry the verdict: `runs`, the `can_fail_*` set, the `asserts_*`
+pair, and `verdict`. The other questions add a flag. A flag does not escalate a
+test on its own.
 
 The three `can_fail_*` questions ask the same thing in different words. The tool
 aligns their polarity and compares them. A spread above
@@ -83,18 +88,15 @@ each answer means. For example, `{"true": "a change can make it fail", "false":
 The reply holds `probabilities` and `confidence` for each answer. Some endpoints
 also report `mass`.
 
-## Static flags
-
-Some defects need no model call. A skipped or focused test, an empty body, a test
-with no assertion, and a commented-out assertion escalate at once. `roulette`
-(several assertions and no message) is only a note.
+## Flags
 
 The descriptive questions raise these flags: `implementation-coupled`,
 `conditional`, `order-dependent`, `uncontrolled-resource`, `weak-assert`,
 `vague-name`, `non-deterministic`, `eager`, `name-mismatch`,
 `structure-dependent`, `silent-failure`, `general-fixture`, `slow`, `obscure`,
-`magic-number`, `asserts-input`, `manual`, `state-leak`, `duplicate-assert`, and
-`debug-output`. These flags report. They do not escalate.
+`magic-number`, `asserts-input`, `manual`, and `state-leak`. A non-behaviour
+`asserts` answer adds its own flag. These flags report. They do not escalate; the
+verdict-carrying answers do.
 
 ## Endpoints and models
 
@@ -164,6 +166,7 @@ sources and which are house inferences.
 | --- | --- |
 | Falsifiability (`can_fail_*`) | Beck, *Test Desiderata* (`Behavioral`); WPT review checklist, "fails when it's supposed to fail"; Meszaros, `Erratic Test`; the mutation-testing literature |
 | Assertion target (`asserts_*`) | testsmells.org, Open Catalog of Test Smells (`Redundant Assertion`, `Unknown Test`, `Sensitive Equality`, `Magic Number Test`); Meszaros, `Obscure Test`; Fowler, "Mocks Aren't Stubs" |
+| Runs (`runs`) | testsmells.org, `Ignored Test`; Meszaros, `Ignored Test`; the house catalogue, skipped / disabled / focused |
 | Implementation coupling (`observable`) | Meszaros, `Indirect Testing`; Fowler, "Mocks Aren't Stubs"; testsmells.org, `Redundant Assertion` |
 | Conditional logic (`conditional`) | Meszaros, `Conditional Test Logic`; testsmells.org, `Conditional Test Logic` |
 | Isolation (`isolated`) | Beck, `Isolated`; Meszaros, `Interacting Tests`, `Test Run War`, `Unrepeatable Test` |
@@ -179,8 +182,6 @@ sources and which are house inferences.
 | Asserts the output (`reads_output`) | testsmells.org, `Assertion Diversion`, `Calculating Expected Results On The Fly`; the house catalogue, passes-for-the-wrong-reason; mutation-testing propagation |
 | Automated (`automated`) | Beck, `Automated`; Meszaros, `Manual Intervention`; the WPT checklist on manual tests |
 | Restores state (`restores`) | Beck, `Isolated`; Meszaros, `Interacting Tests`, `Test Run War`; testsmells.org, `Test Pollution` |
-| Duplicate assert (`duplicate`) | testsmells.org, `Duplicate Assert` |
-| Redundant print (`redundant_print`) | testsmells.org, `Redundant Print` |
 | Test type (`type`) | Meszaros, `Test Organization`; Feathers, characterization testing. The six labels are house choice |
 | Determinism (`deterministic`) | Beck, `Deterministic` and `Isolated`; Meszaros, `Erratic Test`; testsmells.org, `Sleepy Test` and `Mystery Guest` |
 | Eager test (`one_thing`) | Meszaros, `Eager Test`; testsmells.org, `Eager Test` |

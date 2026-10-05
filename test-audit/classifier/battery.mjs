@@ -11,7 +11,7 @@ export const VERDICTS = ["slop", "weak", "good", "strong"];
 /** The three logically equivalent phrasings of "can this test fail". */
 export const CAN_FAIL_KEYS = ["can_fail_a", "can_fail_b", "can_fail_c"];
 /** The descriptive questions: asked once each, reported as flags, never escalating alone. */
-export const DESCRIPTIVE_KEYS = ["observable", "conditional", "isolated", "controlled", "specific", "named", "deterministic", "one_thing", "name_matches", "resilient", "diagnostic", "fixture", "fast", "readable", "magic_number", "reads_output", "automated", "restores", "duplicate", "redundant_print"];
+export const DESCRIPTIVE_KEYS = ["observable", "conditional", "isolated", "controlled", "specific", "named", "deterministic", "one_thing", "name_matches", "resilient", "diagnostic", "fixture", "fast", "readable", "magic_number", "reads_output", "automated", "restores"];
 
 const ASSERTS_MEANING = {
   behaviour: "it checks the output value or observable behaviour the code produces, against a literal expected result",
@@ -41,6 +41,7 @@ Falsifiable: a change to the code under test makes the test fail.
   Not falsifiable: a tautology (true === true, or both sides call the same code);
   a check that the result is merely defined, non-null, or the right shape;
   an assertion on data the code copies straight from its input.
+Runs: the test is not skipped, ignored, or narrowed to only or focus.
 Observable behaviour: output or effects a caller can observe. Private internals,
   call order, and that a mock was called are not observable behaviour.
 Conditional test logic: a branch, loop, or catch that can leave the assertion
@@ -67,8 +68,6 @@ Asserts the output: the assertion reads the value the code under test produced,
 Automated: the test reaches pass or fail with no person doing or reading anything.
 Restores state: the test clears or restores every global, environment variable,
   timer, and spy it changes, so it leaves nothing for the next test.
-Duplicate assertion: each assertion checks a distinct condition.
-Debug output: no console.log, print, or debugger is left in the test.
 Deterministic: same result every run, with no sleep, clock, network, randomness, or
   order dependence.
 One behaviour: the body checks one thing, not several unrelated behaviours.
@@ -107,6 +106,11 @@ export function batteryQuestions() {
     asserts_b: choice(
       "What does the test's assertion actually check?",
       Object.fromEntries([...ASSERT_KINDS].reverse().map((kind) => [kind, ASSERTS_MEANING[kind]])),
+    ),
+    runs: noul(
+      "Does this test actually run in the suite, rather than being skipped, ignored, or narrowed by an only or focus marker?",
+      "it runs",
+      "it is skipped, ignored, or focused",
     ),
     type: choice("What type of test is this?", { ...TYPE_MEANING }),
     // The descriptive questions below report a smell as a flag; the verdict score
@@ -200,16 +204,6 @@ export function batteryQuestions() {
       "Does the test restore every global, environment variable, timer, and spy that it changes, so it leaves nothing for the next test?",
       "it clears or restores what it changes",
       "it leaves process or module state changed for the next test",
-    ),
-    duplicate: noul(
-      "Does the test assert a distinct condition each time, rather than repeat the same condition or expression?",
-      "each assertion checks a distinct condition",
-      "the same check is repeated",
-    ),
-    redundant_print: noul(
-      "Does the test contain no leftover debug output, such as console.log, print, or debugger?",
-      "it contains no debug output",
-      "a print or debugger statement is left in the test",
     ),
     verdict: score(
       "Overall, is this test a real guard against the behaviour it names? Weigh whether it can fail, what it asserts, and every smell the earlier questions name. It is a real guard only if it can fail when that behaviour breaks.",

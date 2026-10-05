@@ -5,7 +5,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { extractTests, findSmells, findFileFlags } from "../change/index.mjs";
+import { extractTests } from "../change/index.mjs";
 import { classify, ask as systemoneAsk, tokensOf } from "../classifier/index.mjs";
 import { mapPool } from "../lib/pool.mjs";
 import { loadLabels } from "./labels.mjs";
@@ -64,13 +64,11 @@ async function runCase(label, ctx) {
   const text = readFileSync(join(HERE, label.file), "utf8");
   const test = extractTests(text, label.file).find((candidate) => candidate.name === label.test);
   if (!test) return { label, error: `test not found: ${label.test}` };
-  const smellFlags = [...findFileFlags(text), ...findSmells(test)];
   const result = await classify(test, {
     ask: ctx.ask,
     config: ctx.cfg,
     url: ctx.target.url,
     model: ctx.target.model,
-    smellFlags,
     onResponse: ctx.onResponse,
   });
   return { label, result };

@@ -4,7 +4,6 @@
 
 import { trusted } from "./systemone.mjs";
 import { VERDICTS, CAN_FAIL_KEYS, DESCRIPTIVE_KEYS } from "./battery.mjs";
-import { HARD_FLAGS } from "../change/index.mjs";
 import config from "../config.mjs";
 
 /** Verdicts at or below this level escalate. */
@@ -30,15 +29,13 @@ const FLAG_BY_GATE = {
   reads_output: "asserts-input",
   automated: "manual",
   restores: "state-leak",
-  duplicate: "duplicate-assert",
-  redundant_print: "debug-output",
 };
 
 /**
  * Reduce one test's answers to a verdict.
  * @param {object} test
  * @param {Record<string, any>} answers
- * @param {{ config?: object, smellFlags?: string[], error?: string }} [opts]
+ * @param {{ config?: object, error?: string }} [opts]
  */
 export function verdictFrom(test, answers, opts = {}) {
   const cfg = opts.config ?? config;
@@ -53,6 +50,7 @@ export function verdictFrom(test, answers, opts = {}) {
   const assertsTrusted = assertsA !== undefined && assertsB !== undefined;
   const asserts = assertsTrusted ? assertsA : undefined;
 
+  const runs = boolOf(answers.runs, cfg);
   const type = choiceOf(answers.type, cfg);
   const descriptive = {};
   for (const gate of DESCRIPTIVE_KEYS) descriptive[gate] = boolOf(answers[gate], cfg);
@@ -60,10 +58,10 @@ export function verdictFrom(test, answers, opts = {}) {
   const verdictIndex = verdictIndexOf(scoreValue);
   const verdict = verdictIndex === undefined ? undefined : VERDICTS[verdictIndex];
 
-  // The descriptive questions report as flags; only the hard static smells and
-  // the verdict-carrying answers escalate.
+  // The descriptive questions report as flags. The verdict-carrying answers
+  // (runs, can_fail, asserts, verdict) are what escalate.
   /** @type {string[]} */
-  const flagList = [...(opts.smellFlags ?? [])];
+  const flagList = [];
   if (asserts && asserts !== "behaviour") flagList.push(asserts);
   for (const gate of DESCRIPTIVE_KEYS) {
     if (descriptive[gate] === false) flagList.push(FLAG_BY_GATE[gate]);
@@ -79,8 +77,8 @@ export function verdictFrom(test, answers, opts = {}) {
     assertsA,
     assertsB,
     asserts,
+    runs,
     verdict,
-    flags,
   });
 
   return {
@@ -88,6 +86,7 @@ export function verdictFrom(test, answers, opts = {}) {
     answers,
     canFail: { values, mean, spread, state: canFailState },
     asserts: { value: asserts, a: assertsA, b: assertsB, trust: assertsTrusted, agrees: assertsTrusted && assertsA === assertsB },
+    runs,
     type,
     descriptive,
     score: { value: scoreValue, label: verdict },
@@ -116,7 +115,7 @@ function canFailStateOf(present, spread, band) {
  * The reasons a test escalates to a human. An empty list is the only pass.
  * @returns {string[]}
  */
-function escalate({ error, answered, canFailState, canFailMean, spread, assertsTrusted, assertsA, assertsB, asserts, verdict, flags }) {
+function escalate({ error, answered, canFailState, canFailMean, spread, assertsTrusted, assertsA, assertsB, asserts, runs, verdict }) {
   const reasons = [];
   if (error) reasons.push(`no answers (${error})`);
   if (!answered) reasons.push("can_fail not fully answered");
@@ -129,12 +128,13 @@ function escalate({ error, answered, canFailState, canFailMean, spread, assertsT
   if (canFailMean !== null && canFailMean < 0.5 && (verdict === "good" || verdict === "strong")) {
     reasons.push("can_fail contradicts the verdict");
   }
+  if (runs === undefined) reasons.push("runs unclassified");
+  else if (runs === false) reasons.push("does not run");
   if (!assertsTrusted) reasons.push("asserts unclassified");
   else if (assertsA !== assertsB) reasons.push(`asserts unstable (${assertsA} vs ${assertsB})`);
   else if (asserts === "nothing") reasons.push("asserts nothing");
   if (verdict === undefined) reasons.push("verdict unclassified");
   else if (VERDICTS.indexOf(verdict) <= WEAK) reasons.push(`verdict ${verdict}`);
-  for (const flag of flags) if (HARD_FLAGS.has(flag)) reasons.push(flag);
   return reasons;
 }
 

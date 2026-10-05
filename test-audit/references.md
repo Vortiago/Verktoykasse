@@ -16,11 +16,12 @@ stays the proof.
 | `can_fail_c` | if the behaviour regresses, will it fail? | the same sources as `a`; WPT checklist |
 | `asserts_a` | behaviour, hardcoded-data, shape-only, interaction-only, nothing | testsmells.org (`Redundant Assertion`, `Unknown Test`, `Magic Number Test`, `Sensitive Equality`); Meszaros, `Obscure Test` (`Hard-Coded Test Data`, `Indirect Testing`); Fowler, "Mocks Aren't Stubs"; house catalogue |
 | `asserts_b` | the same, with the answer order reversed (position control) | MT-Bench (Zheng et al. 2023), position and verbosity bias; "Large Language Models are not Fair Evaluators" (Wang et al. 2023), balanced position calibration |
+| `runs` | does the test actually run, or is it skipped, ignored, or focused? | testsmells.org, `Ignored Test`; Meszaros, `Ignored Test`; house catalogue, skipped / disabled / focused |
 | `type` | unit, integration, regression, e2e, smoke, characterization | Meszaros, `Test Organization` and `Test Strategy`; Feathers, characterization testing. The exact six labels are house choice (inference) |
 | `deterministic` | no time, order, network, or sleep | Beck, `Deterministic` and `Isolated`; Meszaros, `Erratic Test` (`Nondeterministic Test`, `Resource Optimism`, `Interacting Tests`, `Test Run War`); testsmells.org (`Sleepy Test`, `Mystery Guest`, `Resource Optimism`, `Conditional Test Logic`) |
 | `one_thing` | one behaviour, not an eager test | Meszaros, `Eager Test` (under `Obscure Test` and `Assertion Roulette`); testsmells.org, `Eager Test` |
 | `name_matches` | does the body assert what the name states? | WPT checklist, "testing what it thinks it's testing"; testsmells.org, `Unknown Test`; Meszaros, `Obscure Test`; house catalogue, name-only |
-| `observable` | behaviour, not internals, call order, or collaborator interactions | Meszaros, `Indirect Testing`; Fowler, "Mocks Aren't Stubs"; testsmells.org, `Redundant Assertion` |
+| `observable` | behaviour, not private internals or internal call order | Meszaros, `Indirect Testing`; Fowler, "Mocks Aren't Stubs"; testsmells.org, `Redundant Assertion` |
 | `conditional` | the assertion always runs, no branch, loop, or catch skips it | Meszaros, `Conditional Test Logic`; testsmells.org, `Conditional Test Logic` |
 | `isolated` | passes alone and in any order, no shared mutable state | Beck, `Isolated`; Meszaros, `Interacting Tests`, `Test Run War`, `Unrepeatable Test` |
 | `controlled` | controls time, network, filesystem, and environment | Meszaros, `Resource Optimism`, `Mystery Guest`; testsmells.org, `Mystery Guest` |
@@ -35,20 +36,15 @@ stays the proof.
 | `reads_output` | the assertion reads the produced output, not the input or the setup | testsmells.org, `Assertion Diversion`, `Calculating Expected Results On The Fly`; house catalogue, passes-for-the-wrong-reason; mutation-testing propagation |
 | `automated` | pass or fail with nobody doing or reading anything | Beck, `Automated`; Meszaros, `Manual Intervention`; WPT checklist on manual tests |
 | `restores` | clears or restores the state it changes | Beck, `Isolated`; Meszaros, `Interacting Tests`, `Test Run War`; testsmells.org, `Test Pollution` |
-| `duplicate` | each assertion checks a distinct condition | testsmells.org, `Duplicate Assert` |
-| `redundant_print` | no leftover log or debugger | testsmells.org, `Redundant Print` |
 | `verdict` | slop, weak, good, strong | synthesis of the rows above; the four levels and the cross-question rule are house (inference) |
 
-### Static flags
+### Flags
 
-| Flag | Defect | Source(s) |
-| --- | --- | --- |
-| `skipped` / `focused` | ignored or focused test | testsmells.org, `Ignored Test`; house catalogue |
-| `empty` | empty body | testsmells.org, `Empty Test` |
-| `unknown` | no assertion at all | testsmells.org, `Unknown Test` |
-| `commented-assert` | a comment-borne deleted check | WPT checklist, "The test does not contain commented-out code"; house catalogue |
-| `roulette` | several assertions, no message | Meszaros, `Assertion Roulette`; testsmells.org, `Assertion Roulette` |
-| `implementation-coupled`, `conditional`, `order-dependent`, `uncontrolled-resource`, `weak-assert`, `vague-name`, `non-deterministic`, `eager`, `name-mismatch`, `structure-dependent`, `silent-failure`, `general-fixture`, `slow`, `obscure`, `magic-number`, `asserts-input`, `manual`, `state-leak`, `duplicate-assert`, `debug-output` | the descriptive flags, no escalation | the question rows above |
+The descriptive questions raise one flag each, named in the table above. They
+report; they do not escalate. The tool does no static analysis of the test
+source: a rule for one runner's assertion or skip method would not fit the next
+runner, so the questions read the source and judge the intent instead. The one
+place the tool reads the syntax is to find the test blocks.
 
 ### Named defects
 
