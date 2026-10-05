@@ -9,8 +9,6 @@ import { batteryQuestions, RUBRIC } from "./battery.mjs";
 import { verdictFrom } from "./verdict.mjs";
 import config from "../config.mjs";
 
-export { batteryQuestions, RUBRIC, ASSERT_KINDS, VERDICTS, CAN_FAIL_KEYS, DESCRIPTIVE_KEYS } from "./battery.mjs";
-export { verdictFrom } from "./verdict.mjs";
 export { ask, tokensOf } from "./systemone.mjs";
 
 /**

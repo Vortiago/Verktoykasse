@@ -5,7 +5,7 @@
 import { noul, choice, score } from "./systemone.mjs";
 
 /** The answer kinds for the `asserts` question, best first. */
-export const ASSERT_KINDS = ["behaviour", "hardcoded-data", "shape-only", "interaction-only", "nothing"];
+const ASSERT_KINDS = ["behaviour", "hardcoded-data", "shape-only", "interaction-only", "nothing"];
 /** The `verdict` score levels, lowest first. `.score` is their array index. */
 export const VERDICTS = ["slop", "weak", "good", "strong"];
 /** The three logically equivalent phrasings of "can this test fail". */
