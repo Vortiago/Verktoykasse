@@ -1,16 +1,16 @@
 // SystemOne client for test-audit. One Jev-compatible typed-question endpoint:
-// the llama-arbiter on Koishi, or a local Ollama 0.35 or later.
+// a local Ollama 0.35 or later, llama-arbiter, Ollaya, or any TypeSafe server.
 //
 //   POST {base}/v1/systemone
 //   { "model", "state", "questions": { name: {type, instructions, criteria} } }
 //
 // The router reads `state` into a slot once, then answers every question in one
-// token and maps the letter back to the answer's name. The arbiter adds `mass`
+// token and maps the letter back to the answer's name. Some servers add `mass`
 // to each answer: the share of the softmax the allowed answers held BEFORE the
 // grammar, so near 0 means the model was going to write something else and the
-// grammar forced a letter. Ollama reports no `mass`, so a missing `mass` is read
-// as trusted and the paraphrase spread carries that trust instead. `confidence`
-// is a margin against the runner-up, and is NOT calibrated.
+// grammar forced a letter. A server that reports no `mass` (Ollama) is read as
+// trusted, and the paraphrase spread carries that trust instead. `confidence` is
+// a margin against the runner-up, and is NOT calibrated.
 //
 // The whole battery for one test travels in one call, so the state is read once.
 
@@ -69,10 +69,11 @@ export const score = (instructions, levels) => ({
 });
 
 /**
- * Is the answer trustworthy? On the arbiter, `mass` near 1 means the model was
- * answering and near 0 means the grammar did the choosing; below `minMass` the
- * answer is unanswered and the caller escalates. Ollama reports no `mass`, so an
- * answer without one is trusted: the paraphrase spread is then the guard.
+ * Is the answer trustworthy? Where a server reports `mass`, it is the share of
+ * the softmax the allowed answers held before the grammar: near 1 means the model
+ * was answering, near 0 means the grammar did the choosing, and below `minMass`
+ * the answer is unanswered and the caller escalates. A server that reports no
+ * `mass` is trusted, so the paraphrase spread is then the guard.
  * @param {Answer | undefined} answer
  * @param {number} [minMass]
  */

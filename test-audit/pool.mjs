@@ -1,6 +1,6 @@
-// Bounded concurrency, used by both the CLI and the calibration run. The
-// arbiter queues a turn behind whoever is prefilling, so calls go out a few at
-// a time rather than all at once.
+// Bounded concurrency, used by both the CLI and the calibration run. An
+// endpoint may queue a turn behind other work, so calls go out a few at a time
+// rather than all at once.
 
 /**
  * Run `fn` over `items`, at most `limit` at once, preserving order.

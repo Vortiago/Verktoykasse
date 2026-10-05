@@ -142,9 +142,11 @@ A directory is a skill when it holds a `SKILL.md`.
   tautology, vacuous, shape-not-value, mock-only, name-only, and the rest of the
   house catalogue. Trust combines `mass`, a paraphrase pair, and the margin, so
   an unstable judgment routes to a human instead of passing silently. It points
-  at the arbiter on Koishi or a local Ollama decision model, and `--selftest
-  --targets` scores several models on one labelled corpus ([references
-  here](test-audit/references.md)). It is an inferential sensor beside the
+  at any Jev-compatible SystemOne endpoint (a local Ollama decision model,
+  llama-arbiter, or any TypeSafe server), and `--selftest --targets` scores
+  several models on one labelled corpus ([references
+  here](test-audit/references.md), [results here](test-audit/BENCHMARK.md)). It
+  is an inferential sensor beside the
   mutation check in `verify-prd-implemented`, not a coverage tool. Ships a CLI
   and the `opencode-test-audit` plugin.
 

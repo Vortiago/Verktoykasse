@@ -177,8 +177,7 @@ grounded in the sources but not stated by them:
   is an engineering choice, not a published finding.
 
 **In-house and unverified.** The SystemOne endpoint, the Jev-compatible typed
-question protocol, the llama-arbiter on Koishi, the `mass` reading (the softmax
-share the allowed answers held before the grammar), and the `confidence` margin
-are internal to this project. They are described in `systemone.mjs` and
-`README.md`. No public primary source exists for them. `confidence` is
-explicitly not calibrated.
+question protocol, the `mass` reading (the softmax share the allowed answers
+held before the grammar), and the `confidence` margin are implementation
+details. They are described in `systemone.mjs` and `README.md`. No public
+primary source exists for them. `confidence` is explicitly not calibrated.

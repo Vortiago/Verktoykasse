@@ -1,5 +1,5 @@
 // Unit tests for the calibration scoring. `judge` and `rowStatus` are pure, so
-// the rules that decide pass or fail are tested without the live arbiter.
+// the rules that decide pass or fail are tested without a live endpoint.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";

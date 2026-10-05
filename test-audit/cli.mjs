@@ -11,7 +11,7 @@
 //   node cli.mjs --json              full record
 //   node cli.mjs --url http://127.0.0.1:11434 --model nimble   point at any SystemOne endpoint
 //   node cli.mjs --selftest          live calibration over corpus/
-//   node cli.mjs --selftest --targets "http://127.0.0.1:11434|nimble, http://koishi...:8090|qwen3.8-flash-next-mtp"
+//   node cli.mjs --selftest --targets "http://127.0.0.1:11434|nimble, http://127.0.0.1:11435|winnow:e4b"
 //
 // A transport failure is an audit failure, not a skip: the affected test
 // escalates like any other.
@@ -29,18 +29,19 @@ const USAGE = `test-audit: a SystemOne classifier for the tests a change adds
   --head <ref>       audit <base>...<ref> instead of the working tree
   --staged           audit the staged change
   --files <path...>  audit named files
-  --url <base>       SystemOne base URL (llama-arbiter, or Ollama 0.35+)
+  --url <base>       SystemOne base URL (Ollama 0.35+, llama-arbiter, or TypeSafe)
   --model <id>       decision model the base serves
   --json             print the full record
   --markdown         print a review comment
   --selftest         live calibration over corpus/ (needs an endpoint)
+  --benchmark        with --selftest, print a markdown benchmark report
   --targets <list>   comma-separated "url|model" or "model" entries to compare
   --models <list>    comma-separated models on the configured URL to compare
   --help             this text
 
-  TEST_AUDIT_SYSTEMONE_URL (or TEST_AUDIT_ARBITER_URL), TEST_AUDIT_MODEL,
-  TEST_AUDIT_MIN_MASS, TEST_AUDIT_STABLE_BAND, TEST_AUDIT_CONCURRENCY,
-  TEST_AUDIT_TIMEOUT_MS, TEST_AUDIT_STATE_CAP, TEST_AUDIT_CHANGE_CAP
+  TEST_AUDIT_SYSTEMONE_URL, TEST_AUDIT_MODEL, TEST_AUDIT_MIN_MASS,
+  TEST_AUDIT_STABLE_BAND, TEST_AUDIT_CONCURRENCY, TEST_AUDIT_TIMEOUT_MS,
+  TEST_AUDIT_STATE_CAP, TEST_AUDIT_CHANGE_CAP
 `;
 
 async function main() {
@@ -54,6 +55,7 @@ async function main() {
     const { text, code } = await runSelftest({
       config,
       targets: selftestTargets(args),
+      benchmark: args.benchmark,
       onProgress: (event) => {
         process.stderr.write(`  [${event.target} ${event.index}/${event.total}] ${event.status.padEnd(6)} ${event.test}\n`);
       },
@@ -100,7 +102,7 @@ function splitOnce(text, sep) {
  * @param {string[]} argv
  */
 function parseArgs(argv) {
-  const args = { base: undefined, head: undefined, staged: false, files: undefined, url: undefined, model: undefined, targets: undefined, models: undefined, json: false, markdown: false, selftest: false, help: false };
+  const args = { base: undefined, head: undefined, staged: false, files: undefined, url: undefined, model: undefined, targets: undefined, models: undefined, json: false, markdown: false, selftest: false, benchmark: false, help: false };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "--base") args.base = argv[++i];
@@ -113,6 +115,7 @@ function parseArgs(argv) {
     else if (arg === "--json") args.json = true;
     else if (arg === "--markdown") args.markdown = true;
     else if (arg === "--selftest") args.selftest = true;
+    else if (arg === "--benchmark") args.benchmark = true;
     else if (arg === "--help" || arg === "-h") args.help = true;
     else if (arg === "--files") {
       args.files = [];

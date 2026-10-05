@@ -1,9 +1,9 @@
-// test-audit configuration. Env-driven, with defaults for this machine, in the
-// shape searx-researcher uses for the same endpoint. `.mjs` so the vanilla-web
-// tsc gate (include **/*.js) leaves it alone, as it does the server there.
+// test-audit configuration. Env-driven, with portable defaults. `.mjs` so the
+// vanilla-web tsc gate (include **/*.js) leaves it alone.
 //
-// The base URL points at any Jev-compatible SystemOne endpoint: the llama-arbiter
-// on Koishi, or a local Ollama 0.35 or later. Both answer POST {base}/v1/systemone.
+// The base URL points at any Jev-compatible SystemOne endpoint: a local Ollama
+// 0.35 or later, llama-arbiter, Ollaya, or any TypeSafe-compatible server. Every
+// one answers POST {base}/v1/systemone.
 
 const env = process.env;
 
@@ -19,17 +19,17 @@ function num(name, fallback) {
 }
 
 export const config = {
-  /** SystemOne base URL: llama-arbiter, or Ollama 0.35's /v1/systemone. */
-  baseUrl: env.TEST_AUDIT_SYSTEMONE_URL || env.TEST_AUDIT_ARBITER_URL || "http://koishi.tail6defbc.ts.net:8090",
+  /** SystemOne base URL. Defaults to a local Ollama server. */
+  baseUrl: env.TEST_AUDIT_SYSTEMONE_URL || "http://127.0.0.1:11434",
   /** The decision model the base serves. */
-  model: env.TEST_AUDIT_MODEL || "qwen3.8-flash-next-mtp",
+  model: env.TEST_AUDIT_MODEL || "nimble",
   /** An answer whose `mass` is below this is not trusted, and the test escalates. */
   minMass: num("TEST_AUDIT_MIN_MASS", 0.5),
   /** Paraphrase spread above this is instability, not a tie to break. */
   stableBand: num("TEST_AUDIT_STABLE_BAND", 0.25),
-  /** Calls in flight. The endpoint queues behind a prefill, so stay modest. */
+  /** Calls in flight. A busy endpoint may queue, so keep it modest. */
   concurrency: num("TEST_AUDIT_CONCURRENCY", 3),
-  /** Per-call timeout. A queued turn can wait minutes. */
+  /** Per-call timeout. */
   timeoutMs: num("TEST_AUDIT_TIMEOUT_MS", 120_000),
   /** Cap on the per-test state, in characters. */
   stateCap: num("TEST_AUDIT_STATE_CAP", 8000),

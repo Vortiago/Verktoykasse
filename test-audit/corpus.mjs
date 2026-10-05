@@ -46,7 +46,7 @@ export function loadLabels() {
 }
 
 /**
- * @param {{ config?: object, ask?: Function, targets?: Array<{url: string, model: string, label: string}>, onProgress?: (event: { target: string, index: number, total: number, status: string, test: string }) => void }} [opts]
+ * @param {{ config?: object, ask?: Function, targets?: Array<{url: string, model: string, label: string}>, benchmark?: boolean, onProgress?: (event: { target: string, index: number, total: number, status: string, test: string }) => void }} [opts]
  * @returns {Promise<{ text: string, code: number }>}
  */
 export async function runSelftest(opts = {}) {
@@ -80,7 +80,7 @@ export async function runSelftest(opts = {}) {
     entries.push({ target, rows, verdict: judge(rows, labels.acceptance), usage });
   }
   const pass = entries.every((entry) => entry.verdict.pass);
-  const text = entries.length === 1 ? formatSingle(entries[0]) : formatMatrix(entries);
+  const text = opts.benchmark ? formatBenchmark(entries) : entries.length === 1 ? formatSingle(entries[0]) : formatMatrix(entries);
   return { text, code: pass ? 0 : 1 };
 }
 
@@ -240,6 +240,60 @@ function formatMatrix(entries) {
     lines.push(`   ${verdict.pass ? "PASS" : "FAIL"}`);
   }
   return lines.join("\n");
+}
+
+/**
+ * The benchmark report: for every test, the result of every check, in markdown.
+ * A `+` is a clean answer, a `-` is the smell the check looks for, and a `.` is
+ * an unanswered check. The verdict-carrying checks are can_fail and asserts;
+ * the rest are descriptive.
+ */
+function formatBenchmark(entries) {
+  const lines = [`# test-audit benchmark`, ""];
+  for (const entry of entries) {
+    const { rows, verdict, usage, target } = entry;
+    lines.push(`## ${target.label}`, "");
+    lines.push(`Endpoint \`${target.url}\`. ${rows.length} cases, ${usage.calls} calls, ${usage.tokens} tokens.`);
+    lines.push("");
+    lines.push(summaryLine(verdict));
+    lines.push("");
+    lines.push(defectLine(verdict));
+    lines.push("");
+    lines.push("| Test | Defect | can_fail | spread | asserts | obs | cond | iso | ctl | spec | name | det | one | nm | verdict | eyes |");
+    lines.push("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |");
+    for (const row of rows) {
+      const { label, result, error } = row;
+      if (!result) {
+        lines.push(`| ${md(label.test)} | ${label.defect ?? "-"} | ${md(error ?? "no answer")} | | | | | | | | | | | | | |`);
+        continue;
+      }
+      const d = result.descriptive;
+      lines.push(
+        `| ${md(label.test)} | ${label.defect ?? "-"} | ${canFailText(result.canFail)} | ${result.canFail.spread === null ? "-" : result.canFail.spread.toFixed(2)} | ${result.asserts.value ?? "unclassified"} | ${checkSymbol(d.observable)} | ${checkSymbol(d.conditional)} | ${checkSymbol(d.isolated)} | ${checkSymbol(d.controlled)} | ${checkSymbol(d.specific)} | ${checkSymbol(d.named)} | ${checkSymbol(d.deterministic)} | ${checkSymbol(d.one_thing)} | ${checkSymbol(d.name_matches)} | ${result.score.label ?? "unclassified"} | ${result.needsEyes ? "yes" : "-"} |`,
+      );
+    }
+    const eyes = rows.filter((row) => row.needsEyes);
+    if (eyes.length) {
+      lines.push("");
+      lines.push("Needs eyes:");
+      for (const row of eyes) lines.push(`- \`${row.label.test}\` (${row.label.defect ?? "-"}): ${row.reasons.join("; ")}`);
+    }
+    lines.push("");
+  }
+  lines.push("Legend: `+` clean, `-` the smell the check looks for, `.` unanswered. `can_fail` is the mean P(can fail) over three phrasings; `spread` above the band is instability. `obs` observable, `cond` conditional, `iso` isolated, `ctl` controlled, `spec` specific, `name` named, `det` deterministic, `one` one behaviour, `nm` name matches body.");
+  return lines.join("\n");
+}
+
+/** A check result as one markdown-safe mark. */
+function checkSymbol(value) {
+  if (value === true) return "+";
+  if (value === false) return "-";
+  return ".";
+}
+
+/** Escape a pipe so a test name cannot break the table. */
+function md(text) {
+  return String(text).replaceAll("|", "\\|");
 }
 
 /** @param {ReturnType<typeof judge>} verdict */

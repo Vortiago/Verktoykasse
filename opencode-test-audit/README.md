@@ -21,8 +21,9 @@ opencode plugin add 'github:Vortiago/Verktoykasse#main::path:opencode-test-audit
   `files` to scope the audit. The tool returns the same markdown report.
 
 The command audits the session's project directory (`ctx.location.directory`).
-Calls go to the in-house SystemOne endpoint on Koishi, the same one
-`searx-researcher` uses. Set `TEST_AUDIT_ARBITER_URL` to point elsewhere.
+Calls go to the configured SystemOne endpoint (`TEST_AUDIT_SYSTEMONE_URL`,
+default a local Ollama 0.35 server) with the configured decision model
+(`TEST_AUDIT_MODEL`). Both are shared with the core tool.
 
 ## Why advisory
 
