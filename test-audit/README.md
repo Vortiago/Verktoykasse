@@ -13,11 +13,9 @@ the behaviour of the code and checks that the named test fails.
 
 ```
 git diff (base..head, the index, or the working tree)
-  -> collect.mjs   read the diff and the touched files
-  -> extract.mjs   find the test blocks (JS/TS)
-  -> smells.mjs    find the static flags, with no model
-  -> gates.mjs     ask one SystemOne call per test
-  -> report.mjs    print a verdict, a summary, and an exit code
+  -> change/       read the diff, find the tests, flag the static smells
+  -> classifier/   ask one SystemOne call per test
+  -> report/       print a verdict, a summary, and an exit code
 ```
 
 Trust has two parts: `mass` and the spread between paraphrases. `mass` says

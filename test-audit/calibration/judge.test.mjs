@@ -3,7 +3,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { judge, rowStatus, loadLabels } from "./corpus.mjs";
+import { judge, rowStatus, loadLabels } from "./index.mjs";
 
 /** A labelled row with a result whose can-fail mean and escalation are set. */
 function row(label, { mean = 0.99, state = "stable", needsEyes = false } = {}) {

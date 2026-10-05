@@ -3,12 +3,9 @@
 // call `runAudit`, so they share one pipeline.
 
 import process from "node:process";
-import { collect } from "./collect.mjs";
-import { extractTests, isTestFile, splitDiff } from "./extract.mjs";
-import { findSmells, findFileFlags } from "./smells.mjs";
-import { classify } from "./gates.mjs";
-import { tokensOf } from "./systemone.mjs";
-import { mapPool } from "./pool.mjs";
+import { collect, extractTests, isTestFile, splitDiff, findSmells, findFileFlags } from "./change/index.mjs";
+import { classify, tokensOf } from "./classifier/index.mjs";
+import { mapPool } from "./lib/pool.mjs";
 import config from "./config.mjs";
 
 /**

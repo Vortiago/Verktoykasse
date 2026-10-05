@@ -1,6 +1,6 @@
 // Static test smells: the checks that need no model, run before any call.
-// Each flag names the catalogue pattern it stands for. The gate questions in
-// gates.mjs judge what only semantics can; these judge what a scan can.
+// Each flag names the catalogue pattern it stands for. The verdict rules in
+// classifier/verdict.mjs judge what only semantics can; these judge what a scan can.
 
 import { codeOnly } from "./code.mjs";
 

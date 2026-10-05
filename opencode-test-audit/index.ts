@@ -4,7 +4,7 @@
 // ../test-audit. See README.md.
 import { Plugin } from "@opencode/plugin"
 import { runAudit } from "../test-audit/audit.mjs"
-import { formatMarkdown } from "../test-audit/report.mjs"
+import { formatMarkdown } from "../test-audit/report/index.mjs"
 
 interface AuditArgs {
   base?: string

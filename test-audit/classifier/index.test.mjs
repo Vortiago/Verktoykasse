@@ -4,7 +4,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { batteryQuestions, buildState, classify, verdictFrom, CAN_FAIL_KEYS, DESCRIPTIVE_KEYS, RUBRIC } from "./gates.mjs";
+import { batteryQuestions, buildState, classify, verdictFrom, CAN_FAIL_KEYS, DESCRIPTIVE_KEYS, RUBRIC } from "./index.mjs";
 
 const TEST = { file: "add.test.mjs", line: 1, name: "add", path: [], source: 'test("add", () => { expect(add(1, 1)).toBe(2); });', fixtures: [], imports: [] };
 

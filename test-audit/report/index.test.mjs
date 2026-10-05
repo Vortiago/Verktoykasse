@@ -2,7 +2,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { exitCode, formatText, formatJson, formatMarkdown } from "./report.mjs";
+import { exitCode, formatText, formatJson, formatMarkdown } from "./index.mjs";
 
 /** A minimal verdict record; only the fields the report reads are filled. */
 function result(overrides = {}) {

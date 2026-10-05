@@ -15,7 +15,7 @@
 //
 // The whole battery for one test travels in one call, so the state is read once.
 
-import config from "./config.mjs";
+import config from "../config.mjs";
 
 /** @typedef {"choice" | "score" | "noul"} QuestionType */
 /** @typedef {{ type: QuestionType, instructions: string, criteria?: unknown }} Question */

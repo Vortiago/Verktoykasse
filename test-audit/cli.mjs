@@ -18,7 +18,7 @@
 
 import process from "node:process";
 import { runAudit } from "./audit.mjs";
-import { exitCode, formatJson, formatMarkdown, formatText } from "./report.mjs";
+import { exitCode, formatJson, formatMarkdown, formatText } from "./report/index.mjs";
 import config from "./config.mjs";
 
 const USAGE = `test-audit: a SystemOne classifier for the tests a change adds
@@ -51,7 +51,7 @@ async function main() {
     return 0;
   }
   if (args.selftest) {
-    const { runSelftest } = await import("./corpus.mjs");
+    const { runSelftest } = await import("./calibration/index.mjs");
     const { text, code } = await runSelftest({
       config,
       targets: selftestTargets(args),

@@ -170,7 +170,7 @@ grounded in the sources but not stated by them:
   "cannot fail" beside a `good` or `strong` verdict is a contradiction.
 - The `type` taxonomy and the exact six labels. Feathers grounds
   `characterization` alone.
-- The static regex smells in `smells.mjs` as approximations of the named smells.
+- The static regex smells in `change/smells.mjs` as approximations of the named smells.
 - The position-swap control for `asserts_b` as a mitigation of position bias.
   That position bias exists is cited; that this swap removes it is an inference.
 - A small, fast model used as a one-token binary classifier per question. This
@@ -179,5 +179,5 @@ grounded in the sources but not stated by them:
 **In-house and unverified.** The SystemOne endpoint, the Jev-compatible typed
 question protocol, the `mass` reading (the share of the model's probability that
 the allowed answers held before the grammar), and the `confidence` margin are
-implementation details. They appear in `systemone.mjs` and `README.md`. No
+implementation details. They appear in `classifier/systemone.mjs` and `README.md`. No
 public primary source exists for them. `confidence` is not calibrated.

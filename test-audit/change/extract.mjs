@@ -6,7 +6,7 @@
 // `argSpan` walks to the matching bracket of a call, and `splitTop` splits the
 // argument list on its top-level commas.
 
-import { argSpan, splitTop, lineOf } from "./tools/js-scan.mjs";
+import { argSpan, splitTop, lineOf } from "../tools/js-scan.mjs";
 import { codeOnly } from "./code.mjs";
 
 /** A path is a test file when it ends in .test./.spec. or sits under __tests__. */
