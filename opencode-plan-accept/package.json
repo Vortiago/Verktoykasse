@@ -9,5 +9,9 @@
   "license": "MIT",
   "dependencies": {
     "@opencode/plugin": "2.0.22"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.4",
+    "typescript": "5.9.3"
   }
 }
