@@ -21,6 +21,12 @@ const FLAG_BY_GATE = {
   deterministic: "non-deterministic",
   one_thing: "eager",
   name_matches: "name-mismatch",
+  resilient: "structure-dependent",
+  diagnostic: "silent-failure",
+  fixture: "general-fixture",
+  fast: "slow",
+  readable: "obscure",
+  magic_number: "magic-number",
 };
 
 /**

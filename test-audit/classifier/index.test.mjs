@@ -35,6 +35,12 @@ function goodAnswers() {
     deterministic: noul(0.99),
     one_thing: noul(0.99),
     name_matches: noul(0.99),
+    resilient: noul(0.99),
+    diagnostic: noul(0.99),
+    fixture: noul(0.99),
+    fast: noul(0.99),
+    readable: noul(0.99),
+    magic_number: noul(0.99),
     verdict: score(3),
   };
 }
@@ -126,7 +132,7 @@ test("descriptive gates report as flags without escalating", () => {
   const off = Object.fromEntries(DESCRIPTIVE_KEYS.map((gate) => [gate, noul(0.1)]));
   const result = verdictFrom(TEST, { ...goodAnswers(), ...off });
   assert.equal(result.needsEyes, false);
-  for (const flag of ["implementation-coupled", "conditional", "order-dependent", "uncontrolled-resource", "weak-assert", "vague-name", "non-deterministic", "eager", "name-mismatch"]) {
+  for (const flag of ["implementation-coupled", "conditional", "order-dependent", "uncontrolled-resource", "weak-assert", "vague-name", "non-deterministic", "eager", "name-mismatch", "structure-dependent", "silent-failure", "general-fixture", "slow", "obscure", "magic-number"]) {
     assert.ok(result.flags.includes(flag), flag);
   }
 });

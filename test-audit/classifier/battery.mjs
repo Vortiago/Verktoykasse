@@ -11,7 +11,7 @@ export const VERDICTS = ["slop", "weak", "good", "strong"];
 /** The three logically equivalent phrasings of "can this test fail". */
 export const CAN_FAIL_KEYS = ["can_fail_a", "can_fail_b", "can_fail_c"];
 /** The descriptive questions: asked once each, reported as flags, never escalating alone. */
-export const DESCRIPTIVE_KEYS = ["observable", "conditional", "isolated", "controlled", "specific", "named", "deterministic", "one_thing", "name_matches"];
+export const DESCRIPTIVE_KEYS = ["observable", "conditional", "isolated", "controlled", "specific", "named", "deterministic", "one_thing", "name_matches", "resilient", "diagnostic", "fixture", "fast", "readable", "magic_number"];
 
 const ASSERTS_MEANING = {
   behaviour: "it checks the output value or observable behaviour the code produces, against a literal expected result",
@@ -52,6 +52,16 @@ Controlled resources: the test fixes the time, network, filesystem, and
 Specific assertion: the strongest assertion that would catch the failure. Weaker
   forms (toBeDefined, toBeTruthy, typeof, Array.isArray, a length) pass on wrong output.
 Name: states the behaviour and the expected result, not a vague label.
+Structure-insensitive: a refactor of the code under test that keeps the behaviour
+  does not break the test.
+Diagnostic: a failure names the assertion that failed and the expected value.
+Local fixture: the test builds only the data it needs, not a large shared fixture
+  or values unrelated to the behaviour.
+Fast: the test runs in milliseconds, with no sleep, heavy I/O, or large computation.
+Readable: a reader can tell what the test does and why without opening the code
+  under test.
+Magic number: the assertion names its values, rather than a bare number or string
+  the reader must decode.
 Deterministic: same result every run, with no sleep, clock, network, randomness, or
   order dependence.
 One behaviour: the body checks one thing, not several unrelated behaviours.
@@ -138,6 +148,36 @@ export function batteryQuestions() {
       "Does the test body assert the behaviour its name states?",
       "the body asserts the behaviour the name promises",
       "the name promises one behaviour and the body asserts something else or something trivial",
+    ),
+    resilient: noul(
+      "Would a refactor of the code under test that keeps the same behaviour break this test?",
+      "the test checks behaviour, so a behaviour-preserving refactor keeps it green",
+      "the test depends on the current structure, so a refactor breaks it",
+    ),
+    diagnostic: noul(
+      "When this test fails, does it say which assertion failed and what was expected?",
+      "the failure names the assertion and the expected value",
+      "a failure gives no clue which assertion failed or why",
+    ),
+    fixture: noul(
+      "Does the test build only the data it needs, rather than a large shared fixture or values unrelated to the behaviour?",
+      "it builds only the data it needs",
+      "it leans on a large or unrelated fixture",
+    ),
+    fast: noul(
+      "Does the test run fast, with no sleep, no heavy I/O, and no large computation?",
+      "it runs fast",
+      "it sleeps, waits, or does heavy work",
+    ),
+    readable: noul(
+      "Can a reader tell what this test does and why, without opening the code under test?",
+      "the test reads clearly on its own",
+      "the reader must open the code under test to understand it",
+    ),
+    magic_number: noul(
+      "Does the assertion name its values, rather than use a bare number or string the reader must decode?",
+      "the values are named or self-explanatory",
+      "a bare number or string must be decoded from the code under test",
     ),
     verdict: score(
       "Overall, is this test a real guard against the behaviour it names? Weigh whether it can fail, what it asserts, and every smell the earlier questions name. It is a real guard only if it can fail when that behaviour breaks.",

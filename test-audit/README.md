@@ -26,7 +26,7 @@ The tool never breaks a tie, because a silent pass is the failure it hunts.
 
 ## The questions
 
-The tool asks 16 questions about one test. All questions share one state and
+The tool asks 22 questions about one test. All questions share one state and
 travel in one call.
 
 | Question | Type | Looks for |
@@ -46,6 +46,12 @@ travel in one call.
 | `deterministic` | yes/no | sleep, time, network, order dependence |
 | `one_thing` | yes/no | eager test: several unrelated behaviours in one body |
 | `name_matches` | yes/no | name-only test: the body asserts something other than the name |
+| `resilient` | yes/no | structure sensitivity: a behaviour-preserving refactor breaks the test |
+| `diagnostic` | yes/no | assertion roulette: a failure does not say which assertion failed |
+| `fixture` | yes/no | general fixture and irrelevant information: data the test does not need |
+| `fast` | yes/no | slow test: a sleep, heavy I/O, or a large computation |
+| `readable` | yes/no | obscure test: a reader must open the code under test to follow it |
+| `magic_number` | yes/no | magic number test: a bare value the reader must decode |
 | `verdict` | score | slop, weak, good, strong |
 
 Three questions carry the verdict: the `can_fail_*` set, the `asserts_*` pair,
@@ -80,8 +86,9 @@ with no assertion, and a commented-out assertion escalate at once. `roulette`
 
 The descriptive questions raise these flags: `implementation-coupled`,
 `conditional`, `order-dependent`, `uncontrolled-resource`, `weak-assert`,
-`vague-name`, `non-deterministic`, `eager`, and `name-mismatch`. These flags
-report. They do not escalate.
+`vague-name`, `non-deterministic`, `eager`, `name-mismatch`,
+`structure-dependent`, `silent-failure`, `general-fixture`, `slow`, `obscure`,
+and `magic-number`. These flags report. They do not escalate.
 
 ## Endpoints and models
 
@@ -157,6 +164,12 @@ sources and which are house inferences.
 | Controlled resources (`controlled`) | Meszaros, `Resource Optimism`, `Mystery Guest`; testsmells.org, `Mystery Guest` |
 | Specific assertion (`specific`) | WPT checklist, "the most specific asserts possible"; testsmells.org, `Sensitive Equality` |
 | Vague name (`named`) | Meszaros, `Obscure Test`; testsmells.org, `Unknown Test` |
+| Structure-insensitive (`resilient`) | Beck, `Structure-insensitive`; Meszaros, `Fragile Test` and `Sensitive Equality` |
+| Diagnostic failure (`diagnostic`) | Meszaros, `Assertion Roulette` (`Missing Assertion Message`); testsmells.org, `Assertion Roulette` |
+| Fixture scope (`fixture`) | Meszaros, `General Fixture` and `Irrelevant Information` |
+| Speed (`fast`) | Beck, `Fast`; Meszaros, `Slow Tests` and `Sleepy Test`; testsmells.org, `Sleepy Test` |
+| Readability (`readable`) | Beck, `Readable`; Meszaros, `Obscure Test`; testsmells.org, `Unknown Test` |
+| Magic number (`magic_number`) | testsmells.org, `Magic Number Test`; Meszaros, `Hard-Coded Test Data` |
 | Test type (`type`) | Meszaros, `Test Organization`; Feathers, characterization testing. The six labels are house choice |
 | Determinism (`deterministic`) | Beck, `Deterministic` and `Isolated`; Meszaros, `Erratic Test`; testsmells.org, `Sleepy Test` and `Mystery Guest` |
 | Eager test (`one_thing`) | Meszaros, `Eager Test`; testsmells.org, `Eager Test` |

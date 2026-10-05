@@ -26,6 +26,12 @@ stays the proof.
 | `controlled` | controls time, network, filesystem, and environment | Meszaros, `Resource Optimism`, `Mystery Guest`; testsmells.org, `Mystery Guest` |
 | `specific` | the most specific assertion for the failure | WPT checklist, "the most specific asserts possible"; testsmells.org, `Sensitive Equality` |
 | `named` | the name states the behaviour and expected result | Meszaros, `Obscure Test`; testsmells.org, `Unknown Test` |
+| `resilient` | a behaviour-preserving refactor does not break it | Beck, `Structure-insensitive`; Meszaros, `Fragile Test`, `Sensitive Equality` |
+| `diagnostic` | a failure names the assertion and the expected value | Meszaros, `Assertion Roulette` (`Missing Assertion Message`); testsmells.org, `Assertion Roulette` |
+| `fixture` | only the data the test needs, not a large shared fixture | Meszaros, `General Fixture`, `Irrelevant Information` |
+| `fast` | no sleep, heavy I/O, or large computation | Beck, `Fast`; Meszaros, `Slow Tests`, `Sleepy Test`; testsmells.org, `Sleepy Test` |
+| `readable` | a reader can follow it without opening the code under test | Beck, `Readable`; Meszaros, `Obscure Test`; testsmells.org, `Unknown Test` |
+| `magic_number` | the assertion names its values | testsmells.org, `Magic Number Test`; Meszaros, `Hard-Coded Test Data` |
 | `verdict` | slop, weak, good, strong | synthesis of the rows above; the four levels and the cross-question rule are house (inference) |
 
 ### Static flags
