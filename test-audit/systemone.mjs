@@ -1,14 +1,16 @@
-// SystemOne client for test-audit. One typed-question endpoint on llama-arbiter:
+// SystemOne client for test-audit. One Jev-compatible typed-question endpoint:
+// the llama-arbiter on Koishi, or a local Ollama 0.35 or later.
 //
-//   POST {arbiter}/v1/systemone
+//   POST {base}/v1/systemone
 //   { "model", "state", "questions": { name: {type, instructions, criteria} } }
 //
 // The router reads `state` into a slot once, then answers every question in one
-// token and maps the letter back to the answer's name. Each answer carries
-// `probabilities`, `confidence`, and `mass`: the share of the softmax the
-// allowed answers held BEFORE the grammar. `mass` is the trust signal: near 0
-// means the model was going to write something else and the grammar forced a
-// letter. `confidence` is a margin against the runner-up, and is NOT calibrated.
+// token and maps the letter back to the answer's name. The arbiter adds `mass`
+// to each answer: the share of the softmax the allowed answers held BEFORE the
+// grammar, so near 0 means the model was going to write something else and the
+// grammar forced a letter. Ollama reports no `mass`, so a missing `mass` is read
+// as trusted and the paraphrase spread carries that trust instead. `confidence`
+// is a margin against the runner-up, and is NOT calibrated.
 //
 // The whole battery for one test travels in one call, so the state is read once.
 
@@ -16,21 +18,21 @@ import config from "./config.mjs";
 
 /** @typedef {"choice" | "score" | "noul"} QuestionType */
 /** @typedef {{ type: QuestionType, instructions: string, criteria?: unknown }} Question */
-/** @typedef {{ type: QuestionType, probabilities: Record<string, number>, confidence: number, mass: number, choice?: string, score?: number, noul?: number }} Answer */
+/** @typedef {{ type: QuestionType, probabilities?: Record<string, number>, confidence?: number, mass?: number, choice?: string, score?: number, noul?: number }} Answer */
 
 /**
  * Ask one or more typed questions about `state`.
  * @param {string | unknown} state
  * @param {Record<string, Question>} questions
- * @param {{ signal?: AbortSignal, timeoutMs?: number, onResponse?: (json: object) => void }} [opts]
+ * @param {{ url?: string, model?: string, signal?: AbortSignal, timeoutMs?: number, onResponse?: (json: object) => void }} [opts]
  * @returns {Promise<Record<string, Answer>>}
  */
 export async function ask(state, questions, opts = {}) {
-  const { signal, timeoutMs = config.timeoutMs, onResponse } = opts;
-  const body = { model: config.model, state, questions };
+  const { url = config.baseUrl, model = config.model, signal, timeoutMs = config.timeoutMs, onResponse } = opts;
+  const body = { model, state, questions };
 
   const timeout = AbortSignal.timeout(timeoutMs);
-  const res = await fetch(`${config.arbiter}/v1/systemone`, {
+  const res = await fetch(`${url}/v1/systemone`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -67,14 +69,16 @@ export const score = (instructions, levels) => ({
 });
 
 /**
- * Is the answer trustworthy? `mass` near 1 means the model was answering;
- * near 0 means the grammar did the choosing. Below `minMass` the gate is
- * treated as unanswered, and the caller escalates.
+ * Is the answer trustworthy? On the arbiter, `mass` near 1 means the model was
+ * answering and near 0 means the grammar did the choosing; below `minMass` the
+ * answer is unanswered and the caller escalates. Ollama reports no `mass`, so an
+ * answer without one is trusted: the paraphrase spread is then the guard.
  * @param {Answer | undefined} answer
  * @param {number} [minMass]
  */
 export function trusted(answer, minMass = config.minMass) {
-  return !!answer && typeof answer.mass === "number" && answer.mass >= minMass;
+  if (!answer) return false;
+  return typeof answer.mass === "number" ? answer.mass >= minMass : true;
 }
 
 /** The token count of one response's `usage`, whatever shape it carries. */

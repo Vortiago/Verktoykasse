@@ -1,0 +1,22 @@
+{
+  "group": "mixed",
+  "sources": [{"name": "self-consistency: paraphrased gates", "url": "https://kentbeck.github.io/TestDesiderata/"}],
+  "cases": [
+    {
+      "file": "cases/mixed-world-shape.case.mjs",
+      "test": "the schema is sound",
+      "defect": "ambiguous",
+      "mixed": true,
+      "mustEscalate": true,
+      "note": "A tautology sits beside a weak shape assertion, so the paraphrased gates disagree."
+    },
+    {
+      "file": "cases/mixed-graph-shapes.case.mjs",
+      "test": "collects the graph nodes",
+      "defect": "ambiguous",
+      "mixed": true,
+      "mustEscalate": true,
+      "note": "Both assertions check the shape and never the node values, so the paraphrased gates disagree."
+    }
+  ]
+}

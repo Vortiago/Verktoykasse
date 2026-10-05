@@ -42,7 +42,16 @@ export async function runAudit(args = {}, opts = {}) {
 
   const results = await mapPool(tests, cfg.concurrency, (test) => {
     const smellFlags = [...findFileFlags(fileText.get(test.file) ?? ""), ...findSmells(test)];
-    return classify(test, { ask: opts.ask, config: cfg, changeContext: context, smellFlags, onResponse, signal: opts.signal });
+    return classify(test, {
+      ask: opts.ask,
+      config: cfg,
+      url: opts.url,
+      model: opts.model,
+      changeContext: context,
+      smellFlags,
+      onResponse,
+      signal: opts.signal,
+    });
   });
   return { results, ref: change.ref, usage, files: audited };
 }

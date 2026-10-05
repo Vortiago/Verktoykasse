@@ -1,0 +1,14 @@
+{
+  "group": "asserts",
+  "sources": [{"name": "testsmells.org, Open Catalog of Test Smells", "url": "https://testsmells.org/"}],
+  "cases": [
+    {"file": "cases/asserts-result-array.case.mjs", "test": "returns a list of routes", "defect": "shape-only", "canFail": true, "mustEscalate": true, "mixed": false, "note": "The array check can fail when the return type changes, but no route value is ever asserted."},
+    {"file": "cases/asserts-result-length.case.mjs", "test": "builds three steps", "defect": "shape-only", "canFail": true, "mustEscalate": true, "mixed": false, "note": "A wrong count fails the test, yet the step contents are never checked."},
+    {"file": "cases/asserts-result-keys.case.mjs", "test": "loads the profile fields", "defect": "shape-only", "canFail": true, "mustEscalate": true, "mixed": false, "note": "The keys can change and fail the test, but the field values pass unexamined."},
+    {"file": "cases/asserts-spy-called.case.mjs", "test": "notifies the listener", "defect": "interaction-only", "canFail": true, "mustEscalate": true, "mixed": false, "note": "A missing call fails the test, though the mock stands in for behaviour it never verifies."},
+    {"file": "cases/asserts-spy-count.case.mjs", "test": "publishes twice", "defect": "interaction-only", "canFail": true, "mustEscalate": true, "mixed": false, "note": "A changed call count fails the test, yet the payload of each call is never asserted."},
+    {"file": "cases/asserts-mock-argument.case.mjs", "test": "forwards the payload", "defect": "interaction-only", "canFail": true, "mustEscalate": true, "mixed": false, "note": "The mock argument shape can change and fail the test, while the real output stays unchecked."},
+    {"file": "cases/asserts-constant-copy.case.mjs", "test": "taxes the standard rate", "defect": "hardcoded-data", "canFail": true, "mustEscalate": true, "mixed": false, "note": "The expected object mirrors the code's own table, so it agrees by construction and cannot catch a wrong value."},
+    {"file": "cases/asserts-status-table.case.mjs", "test": "resolves the status labels", "defect": "hardcoded-data", "canFail": true, "mustEscalate": true, "mixed": false, "note": "The expected labels repeat the code's constant, so the assertion tracks the same data rather than the behaviour."}
+  ]
+}

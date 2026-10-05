@@ -4,7 +4,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { batteryQuestions, buildState, classify, verdictFrom, CAN_FAIL_KEYS } from "./gates.mjs";
+import { batteryQuestions, buildState, classify, verdictFrom, CAN_FAIL_KEYS, DESCRIPTIVE_KEYS } from "./gates.mjs";
 
 const TEST = { file: "add.test.mjs", line: 1, name: "add", path: [], source: 'test("add", () => { expect(add(1, 1)).toBe(2); });', fixtures: [], imports: [] };
 
@@ -24,6 +24,13 @@ function goodAnswers() {
     asserts_a: choice("behaviour"),
     asserts_b: choice("behaviour"),
     type: choice("unit"),
+    observable: noul(0.99),
+    conditional: noul(0.99),
+    isolated: noul(0.99),
+    controlled: noul(0.99),
+    specific: noul(0.99),
+    nonduplicate: noul(0.99),
+    named: noul(0.99),
     deterministic: noul(0.99),
     one_thing: noul(0.99),
     name_matches: noul(0.99),
@@ -33,7 +40,7 @@ function goodAnswers() {
 
 test("the battery carries the whole question set once", () => {
   const questions = batteryQuestions();
-  assert.deepEqual(Object.keys(questions), [...CAN_FAIL_KEYS, "asserts_a", "asserts_b", "type", "deterministic", "one_thing", "name_matches", "verdict"]);
+  assert.deepEqual(Object.keys(questions), [...CAN_FAIL_KEYS, "asserts_a", "asserts_b", "type", ...DESCRIPTIVE_KEYS, "verdict"]);
   assert.deepEqual(Object.keys(questions.asserts_b.criteria), [...Object.keys(questions.asserts_a.criteria)].reverse());
 });
 
@@ -109,11 +116,12 @@ test("a hard static flag escalates, an info flag does not", () => {
 });
 
 test("descriptive gates report as flags without escalating", () => {
-  const result = verdictFrom(TEST, { ...goodAnswers(), deterministic: noul(0.1), one_thing: noul(0.1), name_matches: noul(0.1) });
+  const off = Object.fromEntries(DESCRIPTIVE_KEYS.map((gate) => [gate, noul(0.1)]));
+  const result = verdictFrom(TEST, { ...goodAnswers(), ...off });
   assert.equal(result.needsEyes, false);
-  assert.ok(result.flags.includes("non-deterministic"));
-  assert.ok(result.flags.includes("eager"));
-  assert.ok(result.flags.includes("name-mismatch"));
+  for (const flag of ["implementation-coupled", "conditional", "order-dependent", "uncontrolled-resource", "weak-assert", "duplicate-assert", "vague-name", "non-deterministic", "eager", "name-mismatch"]) {
+    assert.ok(result.flags.includes(flag), flag);
+  }
 });
 
 test("a good verdict beside a stable cannot-fail answer escalates", () => {
@@ -141,5 +149,25 @@ test("classify asks once with the state and the whole battery", async () => {
   assert.match(seen.state, /add\.test\.mjs/);
   assert.match(seen.state, /the change/);
   assert.deepEqual(Object.keys(seen.questions), Object.keys(batteryQuestions()));
+  assert.equal(result.needsEyes, false);
+});
+
+test("answers without mass are accepted, so an Ollama response works", () => {
+  // Ollama 0.35 reports no `mass`; only the fields the question needs are sent.
+  const answers = {
+    can_fail_a: { noul: 0.99 },
+    can_fail_b: { noul: 0.01 },
+    can_fail_c: { noul: 0.98 },
+    asserts_a: { choice: "behaviour" },
+    asserts_b: { choice: "behaviour" },
+    type: { choice: "unit" },
+    deterministic: { noul: 0.99 },
+    one_thing: { noul: 0.99 },
+    name_matches: { noul: 0.99 },
+    verdict: { score: 3 },
+  };
+  const result = verdictFrom(TEST, answers);
+  assert.equal(result.canFail.state, "stable");
+  assert.equal(result.asserts.value, "behaviour");
   assert.equal(result.needsEyes, false);
 });

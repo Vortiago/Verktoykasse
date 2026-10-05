@@ -29,6 +29,10 @@ wrong.
   costs one token. The battery names its sources: Beck's Test Desiderata,
   Meszaros, testsmells.org, the WPT review checklist, and the house catalogue in
   `verify-prd-implemented/test-patterns.md`.
+- **The client speaks any Jev-compatible endpoint**, so the corpus can score
+  the llama-arbiter on Koishi or a local Ollama 0.35 decision model, side by
+  side. A missing `mass` (Ollama reports none) is trusted: the paraphrase spread
+  and the cross-question rule then carry the trust, and the report says so.
 - **Trust is `mass` plus a paraphrase spread.** Each verdict-carrying question
   is asked in more than one logically equivalent phrasing, polarity normalised.
   An answer is trusted when `mass >= minMass`; the judgment is stable when the

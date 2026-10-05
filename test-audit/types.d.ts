@@ -34,9 +34,8 @@ export interface AuditResult {
   canFail: { values: Array<number | null>; mean: number | null; spread: number | null; state: string };
   asserts: { value?: string; a?: string; b?: string; trust: boolean; agrees: boolean };
   type?: string;
-  deterministic?: boolean;
-  oneThing?: boolean;
-  nameMatches?: boolean;
+  /** One boolean per descriptive gate (observable, conditional, isolated, …); undefined when unanswered. */
+  descriptive: Record<string, boolean | undefined>;
   score: { value?: number; label?: string };
   flags: string[];
   needsEyes: boolean;

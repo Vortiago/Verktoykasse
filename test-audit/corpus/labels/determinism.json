@@ -1,0 +1,56 @@
+{
+  "group": "determinism",
+  "sources": [
+    {
+      "name": "Kent Beck, Test Desiderata (deterministic)",
+      "url": "https://kentbeck.github.io/TestDesiderata/"
+    }
+  ],
+  "cases": [
+    {
+      "file": "cases/determinism-timer.case.mjs",
+      "test": "the retry lands within the window",
+      "defect": "non-deterministic",
+      "canFail": true,
+      "mustEscalate": false,
+      "mixed": false,
+      "note": "A real guard on the retry count, but the fixed sleep makes the outcome depend on scheduling."
+    },
+    {
+      "file": "cases/determinism-clock.case.mjs",
+      "test": "the token has not expired yet",
+      "defect": "non-deterministic",
+      "canFail": true,
+      "mustEscalate": false,
+      "mixed": false,
+      "note": "A real expiry check, but reading Date.now makes the result depend on when the test runs."
+    },
+    {
+      "file": "cases/determinism-network.case.mjs",
+      "test": "the remote catalogue lists the widget",
+      "defect": "non-deterministic",
+      "canFail": true,
+      "mustEscalate": false,
+      "mixed": false,
+      "note": "A real catalogue check, but a live fetch makes the result depend on the network."
+    },
+    {
+      "file": "cases/determinism-randomness.case.mjs",
+      "test": "the sorter keeps every random value",
+      "defect": "non-deterministic",
+      "canFail": true,
+      "mustEscalate": false,
+      "mixed": false,
+      "note": "A real sorting property, but the random input makes a failure hard to reproduce."
+    },
+    {
+      "file": "cases/determinism-order.case.mjs",
+      "test": "the metric keys keep their insertion order",
+      "defect": "non-deterministic",
+      "canFail": true,
+      "mustEscalate": false,
+      "mixed": false,
+      "note": "A real metrics check, but it pins key order that the structure does not guarantee."
+    }
+  ]
+}

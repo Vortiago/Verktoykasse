@@ -1,0 +1,60 @@
+{
+  "group": "good",
+  "sources": [{"name": "Kent Beck, Test Desiderata", "url": "https://kentbeck.github.io/TestDesiderata/"}],
+  "cases": [
+    {
+      "file": "cases/good-unit-seconds.case.mjs",
+      "test": "converts minutes to seconds",
+      "defect": "clean",
+      "canFail": true,
+      "mustEscalate": false,
+      "mixed": false,
+      "note": "a real guard"
+    },
+    {
+      "file": "cases/good-unit-slug.case.mjs",
+      "test": "slugs a display name",
+      "defect": "clean",
+      "canFail": true,
+      "mustEscalate": false,
+      "mixed": false,
+      "note": "a real guard"
+    },
+    {
+      "file": "cases/good-regression-whitespace.case.mjs",
+      "test": "regression #77: a trimmed name keeps its inner spaces",
+      "defect": "clean",
+      "canFail": true,
+      "mustEscalate": false,
+      "mixed": false,
+      "note": "a real guard"
+    },
+    {
+      "file": "cases/good-integration-cache.case.mjs",
+      "test": "the cache returns a stored value",
+      "defect": "clean",
+      "canFail": true,
+      "mustEscalate": false,
+      "mixed": false,
+      "note": "a real guard"
+    },
+    {
+      "file": "cases/good-e2e-version.case.mjs",
+      "test": "the service reports its version",
+      "defect": "clean",
+      "canFail": true,
+      "mustEscalate": false,
+      "mixed": false,
+      "note": "a real guard"
+    },
+    {
+      "file": "cases/good-characterization-receipt.case.mjs",
+      "test": "formats a receipt line",
+      "defect": "clean",
+      "canFail": true,
+      "mustEscalate": false,
+      "mixed": false,
+      "note": "a real guard"
+    }
+  ]
+}

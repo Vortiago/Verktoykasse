@@ -3,7 +3,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { judge, rowStatus } from "./corpus.mjs";
+import { judge, rowStatus, loadLabels } from "./corpus.mjs";
 
 /** A labelled row with a result whose can-fail mean and escalation are set. */
 function row(label, { mean = 0.99, state = "stable", needsEyes = false } = {}) {
@@ -61,4 +61,28 @@ test("rowStatus names the notable rows", () => {
   assert.equal(rowStatus(row({ test: "x", mixed: true, mustEscalate: true }, { needsEyes: false })), "MIXED");
   assert.equal(rowStatus(row({ test: "x", mustEscalate: false }, { needsEyes: true })), "FALSE+");
   assert.equal(rowStatus(row({ test: "x", canFail: true }, { mean: 0.2 })), "WRONG");
+});
+
+test("judge groups escalation by defect, so a whole family that slips shows", () => {
+  const rows = [
+    row({ test: "a", defect: "tautology", mustEscalate: true }, { needsEyes: true }),
+    row({ test: "b", defect: "tautology", mustEscalate: true }, { needsEyes: true }),
+    row({ test: "c", defect: "shape-only", mustEscalate: true }, { needsEyes: false }),
+  ];
+  const verdict = judge(rows, { canFailAgreement: 0.9 });
+  assert.deepEqual(verdict.defects.tautology, { total: 2, escalated: 2 });
+  assert.deepEqual(verdict.defects["shape-only"], { total: 1, escalated: 0 });
+  assert.equal(verdict.silentPasses, 1);
+  assert.equal(verdict.pass, false);
+});
+
+test("loadLabels merges the baseline with every fragment", () => {
+  const { acceptance, cases } = loadLabels();
+  assert.equal(typeof acceptance.canFailAgreement, "number");
+  assert.ok(cases.length >= 18);
+  for (const label of cases) {
+    assert.ok(typeof label.file === "string" && label.file.startsWith("cases/"));
+    assert.ok(typeof label.test === "string");
+  }
+  assert.ok(cases.some((label) => label.defect === "tautology"));
 });

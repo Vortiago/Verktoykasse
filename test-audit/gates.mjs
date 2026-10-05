@@ -17,8 +17,24 @@ export const ASSERT_KINDS = ["behaviour", "hardcoded-data", "shape-only", "inter
 export const VERDICTS = ["slop", "weak", "good", "strong"];
 /** The three logically equivalent phrasings of "can this test fail". */
 export const CAN_FAIL_KEYS = ["can_fail_a", "can_fail_b", "can_fail_c"];
+/** The descriptive gates: asked once each, reported as flags, never escalating alone. */
+export const DESCRIPTIVE_KEYS = ["observable", "conditional", "isolated", "controlled", "specific", "nonduplicate", "named", "deterministic", "one_thing", "name_matches"];
 /** Verdicts at or below this level escalate. */
 const WEAK = VERDICTS.indexOf("weak");
+
+/** The flag a false answer to each descriptive gate raises. */
+const FLAG_BY_GATE = {
+  observable: "implementation-coupled",
+  conditional: "conditional",
+  isolated: "order-dependent",
+  controlled: "uncontrolled-resource",
+  specific: "weak-assert",
+  nonduplicate: "duplicate-assert",
+  named: "vague-name",
+  deterministic: "non-deterministic",
+  one_thing: "eager",
+  name_matches: "name-mismatch",
+};
 
 const ASSERTS_MEANING = {
   behaviour: "it checks the output value or observable behaviour the code produces, against a literal expected result",
@@ -68,6 +84,43 @@ export function batteryQuestions() {
       Object.fromEntries([...ASSERT_KINDS].reverse().map((kind) => [kind, ASSERTS_MEANING[kind]])),
     ),
     type: choice("What type of test is this?", { ...TYPE_MEANING }),
+    // The descriptive gates below report a smell as a flag; the verdict score
+    // is what escalates.
+    observable: noul(
+      "Does this test assert observable behaviour of the code under test, rather than private internals, call order, or the exact interactions with a collaborator?",
+      "it checks behaviour a caller could observe",
+      "it checks internals, call order, or collaborator interactions instead of the behaviour",
+    ),
+    conditional: noul(
+      "Does this test assert unconditionally, with no branch, loop, or catch that can leave the assertion unrun?",
+      "the assertion always runs",
+      "a branch, loop, or catch can leave the assertion unrun",
+    ),
+    isolated: noul(
+      "Does this test pass on its own and in any order, with no reliance on shared mutable state or another test?",
+      "it is independent of other tests and of run order",
+      "it shares state with, or depends on the order of, other tests",
+    ),
+    controlled: noul(
+      "Does the test control the external resources it needs, such as time, the network, the filesystem, or the environment, rather than assume they are present?",
+      "its inputs and resources are controlled",
+      "it assumes an external resource is present",
+    ),
+    specific: noul(
+      "Does the test use the most specific assertion that would catch the failure, rather than a weaker one that would also pass on wrong output?",
+      "the assertion is specific to the expected value",
+      "a weaker assertion would also pass on wrong output",
+    ),
+    nonduplicate: noul(
+      "Does this test assert something new, rather than repeat an assertion or another test without adding a behaviour?",
+      "it adds a new behaviour check",
+      "it duplicates an assertion or another test",
+    ),
+    named: noul(
+      "Does the test's name state the behaviour and its expected result, rather than a vague label such as works, test1, or should be fine?",
+      "the name states the behaviour and the expected result",
+      "the name is vague",
+    ),
     deterministic: noul(
       "Does this test give the same result on every run, with no reliance on time, order, the network, or a sleep?",
       "it is deterministic and independent of other tests",
@@ -84,7 +137,7 @@ export function batteryQuestions() {
       "the name promises one behaviour and the body asserts something else or something trivial",
     ),
     verdict: score(
-      "Overall, is this test a real guard against the behaviour it names? It is a real guard only if it can fail when that behaviour breaks.",
+      "Overall, is this test a real guard against the behaviour it names? Weigh whether it can fail, what it asserts, and every smell the earlier questions name. It is a real guard only if it can fail when that behaviour breaks.",
       VERDICTS,
     ),
   };
@@ -119,7 +172,7 @@ export function buildState(test, changeContext = "", cap = config.stateCap) {
 /**
  * Ask the battery once and reduce the answers to a verdict.
  * @param {object} test
- * @param {{ ask?: Function, config?: object, changeContext?: string, smellFlags?: string[], onResponse?: (json: object) => void, signal?: AbortSignal }} [opts]
+ * @param {{ ask?: Function, config?: object, url?: string, model?: string, changeContext?: string, smellFlags?: string[], onResponse?: (json: object) => void, signal?: AbortSignal }} [opts]
  */
 export async function classify(test, opts = {}) {
   const cfg = opts.config ?? config;
@@ -129,6 +182,8 @@ export async function classify(test, opts = {}) {
   let error;
   try {
     answers = await ask(state, batteryQuestions(), {
+      url: opts.url,
+      model: opts.model,
       timeoutMs: cfg.timeoutMs,
       signal: opts.signal,
       onResponse: opts.onResponse,
@@ -161,24 +216,21 @@ export function verdictFrom(test, answers, opts = {}) {
   const asserts = assertsTrusted ? assertsA : undefined;
 
   const type = choiceOf(answers.type, cfg);
-  const deterministic = boolOf(answers.deterministic, cfg);
-  const oneThing = boolOf(answers.one_thing, cfg);
-  const nameMatches = boolOf(answers.name_matches, cfg);
+  const descriptive = {};
+  for (const gate of DESCRIPTIVE_KEYS) descriptive[gate] = boolOf(answers[gate], cfg);
   const scoreValue = scoreOf(answers.verdict, cfg);
   const verdictIndex = verdictIndexOf(scoreValue);
   const verdict = verdictIndex === undefined ? undefined : VERDICTS[verdictIndex];
 
   // Descriptive gates report as flags; only the hard static smells and the
   // verdict-carrying gates escalate.
-  const flags = [
-    ...new Set([
-      ...opts.smellFlags ?? [],
-      ...(asserts && asserts !== "behaviour" ? [asserts] : []),
-      ...(deterministic === false ? ["non-deterministic"] : []),
-      ...(oneThing === false ? ["eager"] : []),
-      ...(nameMatches === false ? ["name-mismatch"] : []),
-    ]),
-  ];
+  /** @type {string[]} */
+  const flagList = [...(opts.smellFlags ?? [])];
+  if (asserts && asserts !== "behaviour") flagList.push(asserts);
+  for (const gate of DESCRIPTIVE_KEYS) {
+    if (descriptive[gate] === false) flagList.push(FLAG_BY_GATE[gate]);
+  }
+  const flags = [...new Set(flagList)];
   const reasons = escalate({
     error: opts.error,
     answered: present.length === CAN_FAIL_KEYS.length,
@@ -199,9 +251,7 @@ export function verdictFrom(test, answers, opts = {}) {
     canFail: { values, mean, spread, state: canFailState },
     asserts: { value: asserts, a: assertsA, b: assertsB, trust: assertsTrusted, agrees: assertsTrusted && assertsA === assertsB },
     type,
-    deterministic,
-    oneThing,
-    nameMatches,
+    descriptive,
     score: { value: scoreValue, label: verdict },
     flags,
     needsEyes: reasons.length > 0,

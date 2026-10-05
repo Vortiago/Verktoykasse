@@ -1,0 +1,86 @@
+{
+  "group": "naming",
+  "sources": [
+    {"name": "Meszaros, xUnit Test Patterns (Obscure Test)", "url": "http://xunitpatterns.com/"},
+    {"name": "verify-prd-implemented test-patterns (Skipped / disabled / focused)", "url": "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md"}
+  ],
+  "cases": [
+    {
+      "file": "cases/naming-tax-defined.case.mjs",
+      "test": "computes the tax due",
+      "defect": "name-only",
+      "canFail": false,
+      "mustEscalate": true,
+      "mixed": false,
+      "note": "The name promises a tax value, while toBeDefined is true for any defined value."
+    },
+    {
+      "file": "cases/naming-email-truthy.case.mjs",
+      "test": "validates email addresses",
+      "defect": "name-only",
+      "canFail": false,
+      "mustEscalate": true,
+      "mixed": false,
+      "note": "The name promises validation, while a truthy check passes for any non-empty value."
+    },
+    {
+      "file": "cases/naming-sort-length.case.mjs",
+      "test": "sorts rows by name",
+      "defect": "name-only",
+      "canFail": false,
+      "mustEscalate": true,
+      "mixed": false,
+      "note": "The name promises a sort, while the length check holds for any permutation."
+    },
+    {
+      "file": "cases/disabled-skip-token.case.mjs",
+      "test": "rejects a stale token",
+      "defect": "skipped",
+      "mustEscalate": true,
+      "mixed": false,
+      "note": "The static scan flags the skip, so the test never runs."
+    },
+    {
+      "file": "cases/disabled-xit-key.case.mjs",
+      "test": "parses a dotted key",
+      "defect": "skipped",
+      "mustEscalate": true,
+      "mixed": false,
+      "note": "The static scan flags the xit, so the test never runs."
+    },
+    {
+      "file": "cases/disabled-focus-draft.case.mjs",
+      "test": "saves the draft",
+      "defect": "focused",
+      "mustEscalate": true,
+      "mixed": false,
+      "note": "The it.only focuses the file and narrows the whole run."
+    },
+    {
+      "file": "cases/disabled-focus-draft.case.mjs",
+      "test": "loads the draft",
+      "defect": "focused",
+      "mustEscalate": true,
+      "mixed": false,
+      "note": "The plain test inherits the file-level focus from it.only."
+    },
+    {
+      "file": "cases/disabled-comment-merge.case.mjs",
+      "test": "merges the options",
+      "defect": "commented-out",
+      "canFail": false,
+      "mustEscalate": true,
+      "mixed": false,
+      "note": "The static scan flags the commented assertion that sits beside a tautology."
+    },
+    {
+      "file": "cases/disabled-early-return-name.case.mjs",
+      "test": "rejects a blank name",
+      "defect": "early-return",
+      "canFail": false,
+      "mustEscalate": true,
+      "mixed": false,
+      "note": "The early return makes the assertion unreachable, so the test cannot fail."
+    }
+  ]
+}

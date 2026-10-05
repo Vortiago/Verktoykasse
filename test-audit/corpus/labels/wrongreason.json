@@ -1,0 +1,65 @@
+{
+  "group": "wrongreason",
+  "sources": [
+    {
+      "name": "verify-prd-implemented test-patterns (Passes for the wrong reason; No negative/positive pair)",
+      "url": "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md"
+    }
+  ],
+  "cases": [
+    {
+      "file": "cases/wrongreason-asserts-input.case.mjs",
+      "test": "normalise keeps the title text",
+      "defect": "wrong-reason",
+      "canFail": true,
+      "mustEscalate": true,
+      "mixed": false,
+      "note": "The assertion holds because it reads the input object, not the value the code returned."
+    },
+    {
+      "file": "cases/wrongreason-absent-record.case.mjs",
+      "test": "reports no booking for a free slot",
+      "defect": "wrong-reason",
+      "canFail": true,
+      "mustEscalate": true,
+      "mixed": false,
+      "note": "The lookup is empty only because the fixture never creates the booking it queries."
+    },
+    {
+      "file": "cases/wrongreason-passthrough-argument.case.mjs",
+      "test": "builds a job with the given name",
+      "defect": "wrong-reason",
+      "canFail": true,
+      "mustEscalate": true,
+      "mixed": false,
+      "note": "The asserted field is copied from the argument, so a stub that only copies would pass."
+    },
+    {
+      "file": "cases/onlynegative-absent-key.case.mjs",
+      "test": "returns null for an unknown setting",
+      "defect": "only-negative",
+      "canFail": true,
+      "mustEscalate": true,
+      "mixed": false,
+      "note": "Only the absent lookup is checked, so a reader that always returns null would pass."
+    },
+    {
+      "file": "cases/onlynegative-empty-array.case.mjs",
+      "test": "finds no imports in an empty file",
+      "defect": "only-negative",
+      "canFail": true,
+      "mustEscalate": true,
+      "mixed": false,
+      "note": "Only the empty result is checked, so a finder that never finds anything would pass."
+    },
+    {
+      "file": "cases/onlynegative-no-throw.case.mjs",
+      "test": "parses a well formed header",
+      "defect": "only-negative",
+      "canFail": true,
+      "mustEscalate": true,
+      "mixed": false,
+      "note": "Only that the call does not throw is checked, and the parsed output is never asserted."
+    }
+  ]
+}

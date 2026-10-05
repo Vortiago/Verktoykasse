@@ -137,13 +137,16 @@ A directory is a skill when it holds a `SKILL.md`.
   [README](opencode-tasklist/README.md).
 
 - **[test-audit](test-audit/README.md)**: a SystemOne classifier for the tests a
-  change adds. For each added test it asks the in-house typed-question endpoint
-  on Koishi the questions a reviewer asks, and reports a per-test verdict:
+  change adds. For each added test it asks a Jev-compatible typed-question
+  endpoint the questions a reviewer asks, and reports a per-test verdict:
   tautology, vacuous, shape-not-value, mock-only, name-only, and the rest of the
   house catalogue. Trust combines `mass`, a paraphrase pair, and the margin, so
-  an unstable judgment routes to a human instead of passing silently. It is an
-  inferential sensor beside the mutation check in `verify-prd-implemented`, not a
-  coverage tool. Ships a CLI and the `opencode-test-audit` plugin.
+  an unstable judgment routes to a human instead of passing silently. It points
+  at the arbiter on Koishi or a local Ollama decision model, and `--selftest
+  --targets` scores several models on one labelled corpus ([references
+  here](test-audit/references.md)). It is an inferential sensor beside the
+  mutation check in `verify-prd-implemented`, not a coverage tool. Ships a CLI
+  and the `opencode-test-audit` plugin.
 
 - **[opencode-test-audit](opencode-test-audit/README.md)**: an OpenCode 2 plugin
   that runs `test-audit` on a change. One command, `/test-audit`, and one
