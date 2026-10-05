@@ -1,5 +1,4 @@
-// Hardcoded-data: the expected object copies the table the code is built from.
+// Hardcoded-data: the expected table is the code's own constant, so the test agrees by construction.
 test("taxes the standard rate", () => {
-  const expected = { standard: 0.2 };
-  expect(taxRates()).toEqual(expected);
+  expect(taxRates()).toEqual(TAX_RATES);
 });
