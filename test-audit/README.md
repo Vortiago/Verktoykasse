@@ -32,7 +32,7 @@ The tool never breaks a tie, because a silent pass is the failure it hunts.
 
 ## The questions
 
-The tool asks 26 questions about one test. All questions share one state and
+The tool asks 27 questions about one test. All questions share one state and
 travel in one call.
 
 | Question | Type | Looks for |
@@ -42,6 +42,7 @@ travel in one call.
 | `can_fail_c` | yes/no | the same judgement, asked directly |
 | `asserts_a` | choice | behaviour, hardcoded data, shape only, interaction only, nothing |
 | `asserts_b` | choice, order swapped | the position control for `asserts_a` |
+| `positive` | yes/no | only-negative test: no assertion on the output that must exist |
 | `runs` | yes/no | a skipped, ignored, or focused test that does not run |
 | `type` | choice | unit, integration, regression, e2e, smoke, characterization |
 | `observable` | yes/no | implementation coupling: private internals, call order, exact collaborator interactions |
@@ -64,9 +65,9 @@ travel in one call.
 | `restores` | yes/no | test pollution: state left behind for the next test |
 | `verdict` | score | slop, weak, good, strong |
 
-Four answers carry the verdict: `runs`, the `can_fail_*` set, the `asserts_*`
-pair, and `verdict`. The other questions add a flag. A flag does not escalate a
-test on its own.
+Five answers carry the verdict: `positive`, `runs`, the `can_fail_*` set, the
+`asserts_*` pair, and `verdict`. The other questions add a flag. A flag does not
+escalate a test on its own.
 
 The three `can_fail_*` questions ask the same thing in different words. The tool
 aligns their polarity and compares them. A spread above
@@ -94,9 +95,8 @@ The descriptive questions raise these flags: `implementation-coupled`,
 `conditional`, `order-dependent`, `uncontrolled-resource`, `weak-assert`,
 `vague-name`, `non-deterministic`, `eager`, `name-mismatch`,
 `structure-dependent`, `silent-failure`, `general-fixture`, `slow`, `obscure`,
-`magic-number`, `asserts-input`, `manual`, and `state-leak`. A non-behaviour
-`asserts` answer adds its own flag. These flags report. They do not escalate; the
-verdict-carrying answers do.
+`magic-number`, `asserts-input`, `manual`, and `state-leak`. These flags report.
+They do not escalate; the verdict-carrying answers do.
 
 ## Endpoints and models
 
@@ -167,6 +167,7 @@ sources and which are house inferences.
 | Falsifiability (`can_fail_*`) | Beck, *Test Desiderata* (`Behavioral`); WPT review checklist, "fails when it's supposed to fail"; Meszaros, `Erratic Test`; the mutation-testing literature |
 | Assertion target (`asserts_*`) | testsmells.org, Open Catalog of Test Smells (`Redundant Assertion`, `Unknown Test`, `Sensitive Equality`, `Magic Number Test`); Meszaros, `Obscure Test`; Fowler, "Mocks Aren't Stubs" |
 | Runs (`runs`) | testsmells.org, `Ignored Test`; Meszaros, `Ignored Test`; the house catalogue, skipped / disabled / focused |
+| Only negative (`positive`) | the house catalogue, no negative/positive pair; the WPT checklist, "fails when it's supposed to fail" |
 | Implementation coupling (`observable`) | Meszaros, `Indirect Testing`; Fowler, "Mocks Aren't Stubs"; testsmells.org, `Redundant Assertion` |
 | Conditional logic (`conditional`) | Meszaros, `Conditional Test Logic`; testsmells.org, `Conditional Test Logic` |
 | Isolation (`isolated`) | Beck, `Isolated`; Meszaros, `Interacting Tests`, `Test Run War`, `Unrepeatable Test` |

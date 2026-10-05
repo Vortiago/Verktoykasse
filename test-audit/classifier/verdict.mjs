@@ -51,6 +51,7 @@ export function verdictFrom(test, answers, opts = {}) {
   const asserts = assertsTrusted ? assertsA : undefined;
 
   const runs = boolOf(answers.runs, cfg);
+  const positive = boolOf(answers.positive, cfg);
   const type = choiceOf(answers.type, cfg);
   const descriptive = {};
   for (const gate of DESCRIPTIVE_KEYS) descriptive[gate] = boolOf(answers[gate], cfg);
@@ -59,7 +60,7 @@ export function verdictFrom(test, answers, opts = {}) {
   const verdict = verdictIndex === undefined ? undefined : VERDICTS[verdictIndex];
 
   // The descriptive questions report as flags. The verdict-carrying answers
-  // (runs, can_fail, asserts, verdict) are what escalate.
+  // (runs, positive, can_fail, asserts, verdict) are what escalate.
   /** @type {string[]} */
   const flagList = [];
   if (asserts && asserts !== "behaviour") flagList.push(asserts);
@@ -78,6 +79,7 @@ export function verdictFrom(test, answers, opts = {}) {
     assertsB,
     asserts,
     runs,
+    positive,
     verdict,
   });
 
@@ -87,6 +89,7 @@ export function verdictFrom(test, answers, opts = {}) {
     canFail: { values, mean, spread, state: canFailState },
     asserts: { value: asserts, a: assertsA, b: assertsB, trust: assertsTrusted, agrees: assertsTrusted && assertsA === assertsB },
     runs,
+    positive,
     type,
     descriptive,
     score: { value: scoreValue, label: verdict },
@@ -115,7 +118,7 @@ function canFailStateOf(present, spread, band) {
  * The reasons a test escalates to a human. An empty list is the only pass.
  * @returns {string[]}
  */
-function escalate({ error, answered, canFailState, canFailMean, spread, assertsTrusted, assertsA, assertsB, asserts, runs, verdict }) {
+function escalate({ error, answered, canFailState, canFailMean, spread, assertsTrusted, assertsA, assertsB, asserts, runs, positive, verdict }) {
   const reasons = [];
   if (error) reasons.push(`no answers (${error})`);
   if (!answered) reasons.push("can_fail not fully answered");
@@ -130,9 +133,13 @@ function escalate({ error, answered, canFailState, canFailMean, spread, assertsT
   }
   if (runs === undefined) reasons.push("runs unclassified");
   else if (runs === false) reasons.push("does not run");
+  if (positive === undefined) reasons.push("positive unclassified");
+  else if (positive === false) reasons.push("no positive assertion");
+  // The assertion must check the behaviour. A shape, a hardcoded table, a mock
+  // call, or nothing at all is not a guard, so any other answer escalates.
   if (!assertsTrusted) reasons.push("asserts unclassified");
   else if (assertsA !== assertsB) reasons.push(`asserts unstable (${assertsA} vs ${assertsB})`);
-  else if (asserts === "nothing") reasons.push("asserts nothing");
+  else if (asserts !== "behaviour") reasons.push(`asserts ${asserts}`);
   if (verdict === undefined) reasons.push("verdict unclassified");
   else if (VERDICTS.indexOf(verdict) <= WEAK) reasons.push(`verdict ${verdict}`);
   return reasons;

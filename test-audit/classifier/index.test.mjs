@@ -25,6 +25,7 @@ function goodAnswers() {
     can_fail_c: noul(0.98),
     asserts_a: choice("behaviour"),
     asserts_b: choice("behaviour"),
+    positive: noul(0.99),
     runs: noul(0.99),
     type: choice("unit"),
     observable: noul(0.99),
@@ -51,7 +52,7 @@ function goodAnswers() {
 
 test("the battery carries the whole question set once", () => {
   const questions = batteryQuestions();
-  assert.deepEqual(Object.keys(questions), [...CAN_FAIL_KEYS, "asserts_a", "asserts_b", "runs", "type", ...DESCRIPTIVE_KEYS, "verdict"]);
+  assert.deepEqual(Object.keys(questions), [...CAN_FAIL_KEYS, "asserts_a", "asserts_b", "positive", "runs", "type", ...DESCRIPTIVE_KEYS, "verdict"]);
   assert.deepEqual(Object.keys(questions.asserts_b.criteria), [...Object.keys(questions.asserts_a.criteria)].reverse());
 });
 
@@ -101,15 +102,24 @@ test("an untrusted answer escalates rather than passing silently", () => {
   assert.match(result.reasons.join(" "), /can_fail not fully answered/);
 });
 
-test("asserts that disagree escalate, and asserts nothing escalates", () => {
+test("asserts that disagree escalate, and any non-behaviour assertion escalates", () => {
   const disagree = verdictFrom(TEST, { ...goodAnswers(), asserts_b: choice("shape-only") });
   assert.equal(disagree.asserts.trust, true);
   assert.equal(disagree.asserts.agrees, false);
   assert.match(disagree.reasons.join(" "), /asserts unstable/);
 
-  const nothing = verdictFrom(TEST, { ...goodAnswers(), asserts_a: choice("nothing"), asserts_b: choice("nothing") });
-  assert.match(nothing.reasons.join(" "), /asserts nothing/);
-  assert.ok(nothing.flags.includes("nothing"));
+  for (const kind of ["nothing", "shape-only", "hardcoded-data", "interaction-only"]) {
+    const result = verdictFrom(TEST, { ...goodAnswers(), asserts_a: choice(kind), asserts_b: choice(kind) });
+    assert.equal(result.needsEyes, true, kind);
+    assert.match(result.reasons.join(" "), new RegExp(`asserts ${kind}`));
+    assert.ok(result.flags.includes(kind));
+  }
+});
+
+test("a test with no positive assertion escalates", () => {
+  const result = verdictFrom(TEST, { ...goodAnswers(), positive: noul(0.1) });
+  assert.equal(result.needsEyes, true);
+  assert.match(result.reasons.join(" "), /no positive assertion/);
 });
 
 test("a weak or slop verdict escalates", () => {
@@ -178,6 +188,7 @@ test("answers without mass are accepted, so an Ollama response works", () => {
     can_fail_c: { noul: 0.98 },
     asserts_a: { choice: "behaviour" },
     asserts_b: { choice: "behaviour" },
+    positive: { noul: 0.99 },
     runs: { noul: 0.99 },
     type: { choice: "unit" },
     deterministic: { noul: 0.99 },

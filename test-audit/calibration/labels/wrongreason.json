@@ -21,18 +21,16 @@
       "test": "reports no booking for a free slot",
       "defect": "wrong-reason",
       "canFail": true,
-      "mustEscalate": true,
       "mixed": false,
-      "note": "The lookup is empty only because the fixture never creates the booking it queries."
+      "note": "The lookup is empty only because the fixture never creates the booking it queries. Only the mutation check proves this, so escalation is welcome but not required."
     },
     {
       "file": "cases/wrongreason-passthrough-argument.case.mjs",
       "test": "builds a job with the given name",
       "defect": "wrong-reason",
       "canFail": true,
-      "mustEscalate": true,
       "mixed": false,
-      "note": "The asserted field is copied from the argument, so a stub that only copies would pass."
+      "note": "The asserted field is copied from the argument, so a stub that only copies would pass. Only the mutation check proves this, so escalation is welcome but not required."
     },
     {
       "file": "cases/onlynegative-absent-key.case.mjs",

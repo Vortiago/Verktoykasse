@@ -47,9 +47,10 @@ a high margin, and it was wrong.
   `asserts` gate also swaps its answer order between phrasings, as a position
   control. The tool reads `confidence` as a margin, never as a probability of
   correctness.
-- **An untrusted or unstable verdict escalates.** A `runs` answer of no, an
-  unanswered or unstable `can_fail`, disagreeing `asserts`, or a `slop`/`weak`
-  verdict marks the test `needs-eyes`. The tool never tie-breaks a disagreement
+- **An untrusted or unstable verdict escalates.** A `runs` answer of no, a
+  `positive` answer of no, an unanswered or unstable `can_fail`, an `asserts`
+  answer that is not `behaviour`, or a `slop`/`weak` verdict marks the test
+  `needs-eyes`. The tool never tie-breaks a disagreement
   with a third phrasing. A human decides, because a silent pass is the failure
   this tool exists to catch. The descriptive questions report and do not
   escalate.

@@ -41,6 +41,8 @@ Falsifiable: a change to the code under test makes the test fail.
   Not falsifiable: a tautology (true === true, or both sides call the same code);
   a check that the result is merely defined, non-null, or the right shape;
   an assertion on data the code copies straight from its input.
+Positive assertion: the test asserts the behaviour that must exist, not only
+  that something is absent, empty, or does not throw.
 Runs: the test is not skipped, ignored, or narrowed to only or focus.
 Observable behaviour: output or effects a caller can observe. Private internals,
   call order, and that a mock was called are not observable behaviour.
@@ -106,6 +108,11 @@ export function batteryQuestions() {
     asserts_b: choice(
       "What does the test's assertion actually check?",
       Object.fromEntries([...ASSERT_KINDS].reverse().map((kind) => [kind, ASSERTS_MEANING[kind]])),
+    ),
+    positive: noul(
+      "Does this test include at least one positive assertion on the output the code under test produces, rather than only asserting that something is absent or does not throw?",
+      "it asserts the positive case",
+      "it asserts only an absence, an empty result, or a non-throw",
     ),
     runs: noul(
       "Does this test actually run in the suite, rather than being skipped, ignored, or narrowed by an only or focus marker?",
