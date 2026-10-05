@@ -154,7 +154,9 @@ and mixed cases that should escalate.
 
 The tool does not score a case that routed as unstable. The tool did not commit
 to a value, so it escalated. Record each run in [`BENCHMARK.md`](BENCHMARK.md).
-Run the selftest again when the model or a question changes.
+The reference run passes acceptance: no silent pass, every defect family
+escalates, and the mixed cases route to a human. Run the selftest again when the
+model or a question changes.
 
 ## References
 
