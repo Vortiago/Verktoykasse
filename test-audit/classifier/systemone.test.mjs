@@ -4,7 +4,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { noul, choice, score, trusted, tokensOf } from "./systemone.mjs";
+import { noul, choice, score, trusted, tokensOf, usageMeter } from "./systemone.mjs";
 
 test("the constructors emit the contract's question shapes", () => {
   assert.deepEqual(noul("is it?", "yes means this", "no means that"), {
@@ -33,4 +33,11 @@ test("tokensOf sums whichever usage shape the endpoint returns", () => {
   assert.equal(tokensOf({ total_tokens: 42 }), 42);
   assert.equal(tokensOf({ input_tokens: 120, output_tokens: 1 }), 121);
   assert.equal(tokensOf(undefined), 0);
+});
+
+test("usageMeter counts the calls and sums the tokens", () => {
+  const meter = usageMeter();
+  meter.onResponse({ usage: { input_tokens: 10, output_tokens: 2 } });
+  meter.onResponse({ usage: { total_tokens: 5 } });
+  assert.deepEqual(meter.usage, { calls: 2, tokens: 17 });
 });

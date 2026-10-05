@@ -3,7 +3,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { extractTests, isTestFile, splitDiff } from "./extract.mjs";
+import { extractTests, isTestFile, splitDiff, changeContext } from "./extract.mjs";
 
 test("isTestFile accepts the runners' naming conventions", () => {
   assert.equal(isTestFile("src/add.test.js"), true);
@@ -116,4 +116,18 @@ test("splitDiff separates the per-file sections", () => {
   );
   assert.match(sections[0].text, /^-a/m);
   assert.match(sections[1].text, /\+test/);
+});
+
+test("changeContext keeps the non-test sections and caps", () => {
+  const diff = ["diff --git a/src/add.js b/src/add.js", "+const x = 1;", "diff --git a/src/add.test.js b/src/add.test.js", "+test"].join("\n");
+  assert.equal(changeContext(diff, 10_000), "+const x = 1;");
+  assert.match(changeContext(diff, 4), /context truncated/);
+});
+
+test("an unterminated call does not stop the scan", () => {
+  const text = 'test("broken", () => { expect(1).toBe(1);\ntest("after", () => { expect(2).toBe(2); });';
+  assert.deepEqual(
+    extractTests(text, "x.test.mjs").map((found) => found.name),
+    ["after"],
+  );
 });

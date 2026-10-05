@@ -42,7 +42,11 @@ export function pad(text, width) {
   return value.padEnd(width);
 }
 
-/** Escape a markdown table cell, so a test name cannot break the table. */
+/**
+ * Escape a markdown table cell: a pipe would break the table, a backtick would
+ * break the code span around it, and a newline would break the row.
+ * @param {string} text
+ */
 export function escapeCell(text) {
-  return String(text).replaceAll("|", "\\|");
+  return String(text).replaceAll("|", "\\|").replaceAll("`", "'").replaceAll("\n", " ");
 }

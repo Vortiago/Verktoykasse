@@ -58,5 +58,5 @@ test("formatAudit picks the face, and an empty change reads the same in every fa
   const empty = { results: [], ref: "HEAD", model: "nimble", usage: { calls: 0, tokens: 0 } };
   assert.equal(formatAudit(empty, { format: "text" }), "Test audit: no tests in the change.");
   assert.equal(formatAudit(empty, { format: "markdown" }), "Test audit: no tests in the change.");
-  assert.equal(formatAudit(empty, { format: "json" }), "Test audit: no tests in the change.");
+  assert.deepEqual(JSON.parse(formatAudit(empty, { format: "json" })), { ref: "HEAD", model: "nimble", usage: { calls: 0, tokens: 0 }, results: [] });
 });

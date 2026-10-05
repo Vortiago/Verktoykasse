@@ -88,7 +88,8 @@
       "canFail": true,
       "mustEscalate": false,
       "note": "a clean unit guard",
-      "defect": "clean"
+      "defect": "clean",
+      "deterministic": true
     },
     {
       "file": "cases/good-unit-reverse.case.mjs",
@@ -96,7 +97,8 @@
       "canFail": true,
       "mustEscalate": false,
       "note": "a clean unit guard",
-      "defect": "clean"
+      "defect": "clean",
+      "deterministic": true
     },
     {
       "file": "cases/good-regression.case.mjs",

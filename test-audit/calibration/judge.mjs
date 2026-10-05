@@ -25,7 +25,6 @@ export function judge(rows, acceptance) {
     const { label, result } = row;
     if (!result) {
       unresolved += 1;
-      if (label.mustEscalate) silentPasses += 1;
       continue;
     }
     if (label.mustEscalate) {

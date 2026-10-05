@@ -46,11 +46,11 @@ const USAGE = `test-audit: a SystemOne classifier for the tests a change adds
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  if (args.benchmark && !args.selftest) throw new Error("--benchmark needs --selftest");
   if (args.help) {
     console.log(USAGE);
     return 0;
   }
+  if (args.benchmark && !args.selftest) throw new Error("--benchmark needs --selftest");
   if (args.selftest) {
     const { runSelftest } = await import("./calibration/index.mjs");
     const { text, code } = await runSelftest({
@@ -75,7 +75,7 @@ async function main() {
  * `--models` is a shorthand for several models on one URL. Neither given means
  * the configured URL and model.
  * @param {ReturnType<typeof parseArgs>} args
- * @returns {Array<{url: string, model: string, label: string}> | undefined}
+ * @returns {Array<{url: string, model: string, label: string}>}
  */
 function selftestTargets(args) {
   const fallbackUrl = args.url ?? config.baseUrl;

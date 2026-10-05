@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { extractTests } from "../change/index.mjs";
-import { ask, classify, usageMeter } from "../classifier/index.mjs";
+import { classify, usageMeter } from "../classifier/index.mjs";
 import { mapPool } from "../lib/pool.mjs";
 import { loadLabels } from "./labels.mjs";
 import { judge, rowStatus } from "./judge.mjs";

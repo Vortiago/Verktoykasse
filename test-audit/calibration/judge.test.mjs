@@ -86,3 +86,17 @@ test("loadLabels merges the baseline with every fragment", () => {
   }
   assert.ok(cases.some((label) => label.defect === "tautology"));
 });
+
+test("a label that resolves to no test fails the run", () => {
+  const rows = [{ label: { test: "missing", mustEscalate: true }, error: "test not found: missing" }];
+  const verdict = judge(rows, { canFailAgreement: 0.9 });
+  assert.equal(verdict.unresolved, 1);
+  assert.equal(verdict.pass, false);
+});
+
+test("agreement excludes a stable case with no mean", () => {
+  const rows = [row({ test: "a", canFail: true }, { mean: null, state: "stable" })];
+  const verdict = judge(rows, { canFailAgreement: 0.9 });
+  assert.equal(verdict.resolved, 0);
+  assert.equal(verdict.agreement, 1);
+});
