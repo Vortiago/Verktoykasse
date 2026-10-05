@@ -2,6 +2,7 @@
 // for several, and a per-test benchmark in markdown.
 
 import { canFailText, pad } from "../report/index.mjs";
+import { DESCRIPTIVE_KEYS } from "../classifier/index.mjs";
 import { rowStatus, shortStatus } from "./judge.mjs";
 
 /** The detailed view for one endpoint and model. */
@@ -55,13 +56,39 @@ export function formatMatrix(entries) {
   return lines.join("\n");
 }
 
+/** A short column name for each descriptive check, in the benchmark table. */
+const CHECK_ABBREVIATION = {
+  observable: "obs",
+  conditional: "cond",
+  isolated: "iso",
+  controlled: "ctl",
+  specific: "spec",
+  named: "name",
+  deterministic: "det",
+  one_thing: "one",
+  name_matches: "nm",
+  resilient: "res",
+  diagnostic: "diag",
+  fixture: "fix",
+  fast: "fast",
+  readable: "read",
+  magic_number: "magic",
+  reads_output: "out",
+  automated: "auto",
+  restores: "rest",
+  duplicate: "dup",
+  redundant_print: "print",
+};
+
 /**
  * The benchmark report: for every test, the result of every check, in markdown.
  * A `+` is a clean answer, a `-` is the smell the check looks for, and a `.` is
- * an unanswered check. The verdict-carrying checks are can_fail and asserts; the
- * rest are descriptive.
+ * an unanswered check. The columns come from the battery, so a new question
+ * appears here without an edit.
  */
 export function formatBenchmark(entries) {
+  const checks = DESCRIPTIVE_KEYS;
+  const header = ["Test", "Defect", "can_fail", "spread", "asserts", ...checks.map((key) => CHECK_ABBREVIATION[key] ?? key), "verdict", "eyes"];
   const lines = [`# test-audit benchmark`, ""];
   for (const entry of entries) {
     const { rows, verdict, usage, target } = entry;
@@ -72,18 +99,27 @@ export function formatBenchmark(entries) {
     lines.push("");
     lines.push(defectLine(verdict));
     lines.push("");
-    lines.push("| Test | Defect | can_fail | spread | asserts | obs | cond | iso | ctl | spec | name | det | one | nm | verdict | eyes |");
-    lines.push("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |");
+    lines.push(`| ${header.join(" | ")} |`);
+    lines.push(`| ${header.map(() => "---").join(" | ")} |`);
     for (const row of rows) {
       const { label, result, error } = row;
       if (!result) {
-        lines.push(`| ${md(label.test)} | ${label.defect ?? "-"} | ${md(error ?? "no answer")} | | | | | | | | | | | | | |`);
+        const blank = header.length - 3;
+        lines.push(`| ${md(label.test)} | ${label.defect ?? "-"} | ${md(error ?? "no answer")} |${" |".repeat(blank)}`);
         continue;
       }
       const d = result.descriptive;
-      lines.push(
-        `| ${md(label.test)} | ${label.defect ?? "-"} | ${canFailText(result.canFail)} | ${result.canFail.spread === null ? "-" : result.canFail.spread.toFixed(2)} | ${result.asserts.value ?? "unclassified"} | ${checkSymbol(d.observable)} | ${checkSymbol(d.conditional)} | ${checkSymbol(d.isolated)} | ${checkSymbol(d.controlled)} | ${checkSymbol(d.specific)} | ${checkSymbol(d.named)} | ${checkSymbol(d.deterministic)} | ${checkSymbol(d.one_thing)} | ${checkSymbol(d.name_matches)} | ${result.score.label ?? "unclassified"} | ${result.needsEyes ? "yes" : "-"} |`,
-      );
+      const cells = [
+        md(label.test),
+        label.defect ?? "-",
+        canFailText(result.canFail),
+        result.canFail.spread === null ? "-" : result.canFail.spread.toFixed(2),
+        result.asserts.value ?? "unclassified",
+        ...checks.map((key) => checkSymbol(d[key])),
+        result.score.label ?? "unclassified",
+        result.needsEyes ? "yes" : "-",
+      ];
+      lines.push(`| ${cells.join(" | ")} |`);
     }
     const eyes = rows.filter((row) => row.needsEyes);
     if (eyes.length) {
@@ -93,7 +129,8 @@ export function formatBenchmark(entries) {
     }
     lines.push("");
   }
-  lines.push("Legend: `+` clean, `-` the smell the check looks for, `.` unanswered. `can_fail` is the mean P(can fail) over three phrasings; `spread` above the band is instability. `obs` observable, `cond` conditional, `iso` isolated, `ctl` controlled, `spec` specific, `name` named, `det` deterministic, `one` one behaviour, `nm` name matches body.");
+  lines.push(`Checks, in column order: ${checks.map((key) => `\`${CHECK_ABBREVIATION[key] ?? key}\` ${key}`).join(", ")}.`);
+  lines.push("`+` clean, `-` the smell the check looks for, `.` unanswered. `can_fail` is the mean P(can fail) over three phrasings; `spread` above the band is instability.");
   return lines.join("\n");
 }
 

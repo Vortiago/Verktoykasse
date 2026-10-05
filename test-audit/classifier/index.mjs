@@ -10,6 +10,7 @@ import { verdictFrom } from "./verdict.mjs";
 import config from "../config.mjs";
 
 export { ask, tokensOf } from "./systemone.mjs";
+export { DESCRIPTIVE_KEYS } from "./battery.mjs";
 
 /**
  * The per-test state. The shared rubric comes first, so a truncation never drops
