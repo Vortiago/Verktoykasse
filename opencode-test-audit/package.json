@@ -1,0 +1,17 @@
+{
+  "name": "opencode-test-audit",
+  "version": "0.1.0",
+  "description": "An OpenCode 2 plugin that classifies the tests a change adds, one verdict per test.",
+  "type": "module",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@opencode/plugin": "2.0.22"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.4",
+    "typescript": "5.9.3"
+  }
+}

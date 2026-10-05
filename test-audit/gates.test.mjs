@@ -1,0 +1,145 @@
+// Unit tests for the battery and the verdict rules. Every answer is written by
+// hand, so the escalation logic is tested without the model: the property that
+// makes `classify` an injectable-ask function.
+
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { batteryQuestions, buildState, classify, verdictFrom, CAN_FAIL_KEYS } from "./gates.mjs";
+
+const TEST = { file: "add.test.mjs", line: 1, name: "add", path: [], source: 'test("add", () => { expect(add(1, 1)).toBe(2); });', fixtures: [], imports: [] };
+
+/** A trusted yes/no answer. */
+const noul = (value, mass = 0.99) => ({ type: "noul", probabilities: {}, confidence: 0.9, mass, noul: value });
+/** A trusted choice answer. */
+const choice = (value, mass = 0.99) => ({ type: "choice", probabilities: {}, confidence: 0.9, mass, choice: value });
+/** A trusted score answer. */
+const score = (value, mass = 0.99) => ({ type: "score", probabilities: {}, confidence: 0.9, mass, score: value });
+
+/** A passing battery: the test can fail, asserts behaviour, and scores strong. */
+function goodAnswers() {
+  return {
+    can_fail_a: noul(0.99),
+    can_fail_b: noul(0.01),
+    can_fail_c: noul(0.98),
+    asserts_a: choice("behaviour"),
+    asserts_b: choice("behaviour"),
+    type: choice("unit"),
+    deterministic: noul(0.99),
+    one_thing: noul(0.99),
+    name_matches: noul(0.99),
+    verdict: score(3),
+  };
+}
+
+test("the battery carries the whole question set once", () => {
+  const questions = batteryQuestions();
+  assert.deepEqual(Object.keys(questions), [...CAN_FAIL_KEYS, "asserts_a", "asserts_b", "type", "deterministic", "one_thing", "name_matches", "verdict"]);
+  assert.deepEqual(Object.keys(questions.asserts_b.criteria), [...Object.keys(questions.asserts_a.criteria)].reverse());
+});
+
+test("buildState carries the source and truncates under the cap", () => {
+  const full = buildState(TEST, "context", 10_000);
+  assert.match(full, /expect\(add\(1, 1\)\)/);
+  const capped = buildState(TEST, "context", 40);
+  assert.match(capped, /state truncated/);
+  assert.equal(capped.length <= 40 + "\n… [state truncated]".length, true);
+});
+
+test("a clean test does not escalate", () => {
+  const result = verdictFrom(TEST, goodAnswers());
+  assert.equal(result.needsEyes, false);
+  assert.deepEqual(result.reasons, []);
+  assert.equal(result.score.label, "strong");
+  assert.equal(result.canFail.state, "stable");
+  assert.equal(result.asserts.value, "behaviour");
+});
+
+test("a paraphrase spread above the band is instability, not a tie to break", () => {
+  // The tautology the live probe missed: one phrasing says yes, its twins say no.
+  const result = verdictFrom(TEST, { ...goodAnswers(), can_fail_a: noul(0.92), can_fail_b: noul(0.99), can_fail_c: noul(0.88) });
+  assert.equal(result.canFail.state, "unstable");
+  assert.equal(result.needsEyes, true);
+  assert.match(result.reasons.join(" "), /can_fail unstable/);
+});
+
+test("a small spread stays stable but a middle one is borderline", () => {
+  const stable = verdictFrom(TEST, { ...goodAnswers(), can_fail_c: noul(0.80) });
+  assert.equal(stable.canFail.state, "stable");
+  assert.equal(stable.needsEyes, false);
+  const borderline = verdictFrom(TEST, { ...goodAnswers(), can_fail_c: noul(0.65) });
+  assert.equal(borderline.canFail.state, "borderline");
+  assert.equal(borderline.needsEyes, true);
+});
+
+test("an untrusted answer escalates rather than passing silently", () => {
+  const result = verdictFrom(TEST, { ...goodAnswers(), can_fail_a: noul(0.99, 0.1) });
+  assert.equal(result.needsEyes, true);
+  assert.match(result.reasons.join(" "), /can_fail not fully answered/);
+});
+
+test("asserts that disagree escalate, and asserts nothing escalates", () => {
+  const disagree = verdictFrom(TEST, { ...goodAnswers(), asserts_b: choice("shape-only") });
+  assert.equal(disagree.asserts.trust, true);
+  assert.equal(disagree.asserts.agrees, false);
+  assert.match(disagree.reasons.join(" "), /asserts unstable/);
+
+  const nothing = verdictFrom(TEST, { ...goodAnswers(), asserts_a: choice("nothing"), asserts_b: choice("nothing") });
+  assert.match(nothing.reasons.join(" "), /asserts nothing/);
+  assert.ok(nothing.flags.includes("nothing"));
+});
+
+test("a weak or slop verdict escalates", () => {
+  assert.match(verdictFrom(TEST, { ...goodAnswers(), verdict: score(0) }).reasons.join(" "), /verdict slop/);
+  assert.match(verdictFrom(TEST, { ...goodAnswers(), verdict: score(1) }).reasons.join(" "), /verdict weak/);
+  assert.match(verdictFrom(TEST, { ...goodAnswers(), verdict: noul(0.5) }).reasons.join(" "), /verdict unclassified/);
+});
+
+test("a score between levels rounds to the nearest level", () => {
+  const result = verdictFrom(TEST, { ...goodAnswers(), verdict: score(2.25) });
+  assert.equal(result.score.label, "good");
+  assert.equal(result.needsEyes, false);
+  const low = verdictFrom(TEST, { ...goodAnswers(), verdict: score(0.4) });
+  assert.equal(low.score.label, "slop");
+  assert.equal(low.needsEyes, true);
+});
+
+test("a hard static flag escalates, an info flag does not", () => {
+  assert.match(verdictFrom(TEST, goodAnswers(), { smellFlags: ["skipped"] }).reasons.join(" "), /skipped/);
+  assert.equal(verdictFrom(TEST, goodAnswers(), { smellFlags: ["roulette"] }).needsEyes, false);
+});
+
+test("descriptive gates report as flags without escalating", () => {
+  const result = verdictFrom(TEST, { ...goodAnswers(), deterministic: noul(0.1), one_thing: noul(0.1), name_matches: noul(0.1) });
+  assert.equal(result.needsEyes, false);
+  assert.ok(result.flags.includes("non-deterministic"));
+  assert.ok(result.flags.includes("eager"));
+  assert.ok(result.flags.includes("name-mismatch"));
+});
+
+test("a good verdict beside a stable cannot-fail answer escalates", () => {
+  // The three phrasings agree the test cannot fail, yet the verdict says strong.
+  const result = verdictFrom(TEST, { ...goodAnswers(), can_fail_a: noul(0.2), can_fail_b: noul(0.8), can_fail_c: noul(0.25) });
+  assert.equal(result.canFail.state, "stable");
+  assert.equal(result.canFail.mean < 0.5, true);
+  assert.equal(result.needsEyes, true);
+  assert.match(result.reasons.join(" "), /can_fail contradicts the verdict/);
+});
+
+test("a transport failure is an audit failure", () => {
+  const result = verdictFrom(TEST, {}, { error: "systemone 503: busy" });
+  assert.equal(result.needsEyes, true);
+  assert.match(result.reasons.join(" "), /no answers/);
+});
+
+test("classify asks once with the state and the whole battery", async () => {
+  let seen;
+  const ask = async (state, questions) => {
+    seen = { state, questions };
+    return goodAnswers();
+  };
+  const result = await classify(TEST, { ask, changeContext: "the change" });
+  assert.match(seen.state, /add\.test\.mjs/);
+  assert.match(seen.state, /the change/);
+  assert.deepEqual(Object.keys(seen.questions), Object.keys(batteryQuestions()));
+  assert.equal(result.needsEyes, false);
+});

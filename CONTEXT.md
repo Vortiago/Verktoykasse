@@ -53,6 +53,27 @@ An issue whose resolution requires a prototype or measurement before an
 implement/close decision. Not committable work as filed.
 _Avoid_: spike (the outcome is a decision recorded on the issue, not code)
 
+**Test audit**:
+The per-test classification of a change produced by `test-audit`. One audit
+covers every test the change adds.
+_Avoid_: test scan, test review
+
+**Battery**:
+The set of typed SystemOne questions asked about one test. Every question of a
+battery shares one state read and travels in one call.
+
+**Paraphrase pair**:
+Two or more logically equivalent phrasings of one question, polarity
+normalised before comparison. Disagreement beyond the stable band is
+instability, not a tie to break.
+_Avoid_: reworded question, duplicate question
+
+**Needs-eyes**:
+The verdict of a test whose verdict-carrying answers are untrusted or unstable,
+or whose score lands at slop/weak. The audit escalates it to a human; it never
+passes it silently.
+_Avoid_: flagged, failed
+
 ### Web toolkit
 
 **Declarative face**:
