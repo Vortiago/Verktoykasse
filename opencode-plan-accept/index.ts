@@ -33,8 +33,10 @@ export default Plugin.define({
           const build = await ctx.agent.get({ agentID: "build" })
           const plan = newestPlan()
           await ctx.session.compact({ sessionID })
+          // Switching agent alone keeps the plan model, so the build model must
+          // be set too. agent.get wraps AgentInfo in `data`.
           await ctx.session.switchAgent({ sessionID, agent: "build" })
-          if (build?.model) await ctx.session.switchModel({ sessionID, model: build.model })
+          if (build.data.model) await ctx.session.switchModel({ sessionID, model: build.data.model })
           await ctx.session.prompt({
             sessionID,
             text: plan ? `Implement the plan in ${plan.path}:\n\n${plan.text}` : "Implement the plan.",
