@@ -4,7 +4,7 @@
 // spread, escalation) is unit-tested without the model.
 //
 // Trust is `mass` (was the model answering at all) plus the paraphrase spread
-// (does the judgment survive rewording). An untrusted or unstable
+// (does the judgement survive rewording). An untrusted or unstable
 // verdict-carrying answer escalates the test; it is never tie-broken.
 
 import { ask as systemoneAsk, noul, choice, score, trusted } from "./systemone.mjs";

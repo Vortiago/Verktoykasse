@@ -28,18 +28,11 @@ default a local Ollama 0.35 server) with the configured decision model
 ## Why advisory
 
 There is no git-commit event and no deny decision on plugin hooks, so this
-plugin cannot block a commit. That is the honest shape for v1: the corpus must
-prove the questions trustworthy before a blocking pre-push hook is worth wiring.
-Once it holds, the hook ships beside the tool, not in this plugin.
+plugin cannot block a commit. That is the honest shape for v1. A blocking
+pre-push hook ships only after the corpus proves the questions trustworthy.
+Once the corpus holds, the hook lives beside the tool, not in this plugin.
 
-## Layout
-
-```
-index.ts        the command and the tool
-tools/check.mjs the gate command (npm install + tsc --noEmit)
-```
-
-It imports the core `.mjs` modules from `../test-audit` directly and spawns no
+The plugin imports the core `.mjs` modules from `../test-audit` and spawns no
 shell.
 
 ## Licence

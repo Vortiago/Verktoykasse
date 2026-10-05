@@ -1,7 +1,7 @@
 # test-audit references
 
 What grounds each question in the battery and each named defect. The classifier is
-an inferential sensor: it suspects, it does not prove. The mutation check in
+a cheap sensor: it suspects, it does not prove. The mutation check in
 [`../verify-prd-implemented/test-patterns.md`](../verify-prd-implemented/test-patterns.md)
 stays the proof.
 
@@ -177,7 +177,7 @@ grounded in the sources but not stated by them:
   is an engineering choice, not a published finding.
 
 **In-house and unverified.** The SystemOne endpoint, the Jev-compatible typed
-question protocol, the `mass` reading (the softmax share the allowed answers
-held before the grammar), and the `confidence` margin are implementation
-details. They are described in `systemone.mjs` and `README.md`. No public
-primary source exists for them. `confidence` is explicitly not calibrated.
+question protocol, the `mass` reading (the share of the model's probability that
+the allowed answers held before the grammar), and the `confidence` margin are
+implementation details. They appear in `systemone.mjs` and `README.md`. No
+public primary source exists for them. `confidence` is not calibrated.

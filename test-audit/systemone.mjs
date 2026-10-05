@@ -5,12 +5,13 @@
 //   { "model", "state", "questions": { name: {type, instructions, criteria} } }
 //
 // The router reads `state` into a slot once, then answers every question in one
-// token and maps the letter back to the answer's name. Some servers add `mass`
-// to each answer: the share of the softmax the allowed answers held BEFORE the
-// grammar, so near 0 means the model was going to write something else and the
-// grammar forced a letter. A server that reports no `mass` (Ollama) is read as
-// trusted, and the paraphrase spread carries that trust instead. `confidence` is
-// a margin against the runner-up, and is NOT calibrated.
+// token and maps the letter back to the answer's name. Some endpoints add `mass`
+// to each answer. `mass` is the share of the model's probability that the allowed
+// answers held before the grammar, so near 0 means the model was going to write
+// something else and the grammar forced a letter. An endpoint that reports no
+// `mass` (Ollama) is read as trusted, and the paraphrase spread carries that
+// trust instead. `confidence` is a margin against the runner-up, and is NOT
+// calibrated.
 //
 // The whole battery for one test travels in one call, so the state is read once.
 
@@ -69,11 +70,11 @@ export const score = (instructions, levels) => ({
 });
 
 /**
- * Is the answer trustworthy? Where a server reports `mass`, it is the share of
- * the softmax the allowed answers held before the grammar: near 1 means the model
- * was answering, near 0 means the grammar did the choosing, and below `minMass`
- * the answer is unanswered and the caller escalates. A server that reports no
- * `mass` is trusted, so the paraphrase spread is then the guard.
+ * Is the answer trustworthy? Where an endpoint reports `mass`, it is the share of
+ * the model's probability that the allowed answers held before the grammar: near
+ * 1 means the model was answering, near 0 means the grammar did the choosing, and
+ * below `minMass` the answer is unanswered and the caller escalates. An endpoint
+ * that reports no `mass` is trusted, so the paraphrase spread is then the guard.
  * @param {Answer | undefined} answer
  * @param {number} [minMass]
  */

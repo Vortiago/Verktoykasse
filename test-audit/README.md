@@ -1,12 +1,13 @@
 # test-audit
 
-A SystemOne classifier for the tests a change adds. It asks any Jev-compatible
-typed-question endpoint the questions a reviewer asks, one verdict per test, and
-routes slop and unstable judgments to a human.
+test-audit checks the tests that a change adds. For each test, it asks a
+SystemOne endpoint the questions a reviewer asks, then prints one verdict per
+test. A test that needs a closer look goes to a human.
 
-It answers one question cheaply: *is this test a real guard, or fake safety?*
-It is an inferential sensor. It does not prove coverage. The mutation check in
-[`verify-prd-implemented`](../verify-prd-implemented/SKILL.md) stays the proof.
+The tool is a cheap sensor. It separates real guards from fake safety. It does
+not prove that a change is tested. For that proof, use
+[`verify-prd-implemented`](../verify-prd-implemented/SKILL.md). That skill breaks
+the behaviour of the code and checks that the named test fails.
 
 ## What it does
 
@@ -14,98 +15,110 @@ It is an inferential sensor. It does not prove coverage. The mutation check in
 git diff (base..head, the index, or the working tree)
   -> collect.mjs   read the diff and the touched files
   -> extract.mjs   find the test blocks (JS/TS)
-  -> smells.mjs    static flags that need no model
-  -> gates.mjs     one SystemOne call per test, the whole battery batched
-  -> report.mjs    per-test verdict, summary, exit code
+  -> smells.mjs    find the static flags, with no model
+  -> gates.mjs     ask one SystemOne call per test
+  -> report.mjs    print a verdict, a summary, and an exit code
 ```
 
-Trust is `mass` (was the model answering at all) plus the paraphrase spread
-(does the judgment survive rewording). An untrusted or unstable
-verdict-carrying answer escalates the test. A silent pass is the failure this
-tool hunts, so escalation is the only safe default.
+Trust has two parts: `mass` and the spread between paraphrases. `mass` says
+whether the endpoint answered at all. The spread says whether the judgement
+survives rewording. A test escalates for one of two reasons. The endpoint was
+unsure of a verdict-carrying answer, or the answers disagree with each other.
+The tool never breaks a tie, because a silent pass is the failure it hunts.
 
-### The battery
+## The questions
+
+The tool asks 16 questions about one test. All questions share one state and
+travel in one call.
 
 | Question | Type | Looks for |
 | --- | --- | --- |
-| `can_fail_a` | yes/no | tautology, vacuous, passes-with-zero |
-| `can_fail_b` | yes/no, negated twin | the same judgment, asked the other way |
-| `can_fail_c` | yes/no | the same judgment, phrased directly |
+| `can_fail_a` | yes/no | tautology, vacuous test, passes-with-zero |
+| `can_fail_b` | yes/no, negated twin | the same judgement, asked the other way |
+| `can_fail_c` | yes/no | the same judgement, asked directly |
 | `asserts_a` | choice | behaviour, hardcoded data, shape only, interaction only, nothing |
-| `asserts_b` | choice, order swapped | position control for `asserts_a` |
+| `asserts_b` | choice, order swapped | the position control for `asserts_a` |
 | `type` | choice | unit, integration, regression, e2e, smoke, characterization |
 | `observable` | yes/no | implementation coupling: private internals, call order, exact collaborator interactions |
-| `conditional` | yes/no | conditional test logic: a branch, loop, or catch can leave the assertion unrun |
+| `conditional` | yes/no | conditional logic: a branch, loop, or catch can leave the assertion unrun |
 | `isolated` | yes/no | interacting tests, test-run war, shared mutable state, order dependence |
 | `controlled` | yes/no | resource optimism and mystery guest: an assumed network, clock, filesystem, or environment |
-| `specific` | yes/no | a weak assertion where the most specific one is possible |
-| `named` | yes/no | an obscure test: a vague name that states no behaviour or result |
+| `specific` | yes/no | a weak assertion, where the most specific assertion is possible |
+| `named` | yes/no | an obscure test: a vague name that states no behaviour and no result |
 | `deterministic` | yes/no | sleep, time, network, order dependence |
 | `one_thing` | yes/no | eager test: several unrelated behaviours in one body |
 | `name_matches` | yes/no | name-only test: the body asserts something other than the name |
 | `verdict` | score | slop, weak, good, strong |
 
-The three `can_fail_*` phrasings are logically equivalent and polarity
-normalised. A spread above `TEST_AUDIT_STABLE_BAND` is instability, not a tie to
-break, so the test routes to a human instead of taking a coin-flip answer.
+Three questions carry the verdict: the `can_fail_*` set, the `asserts_*` pair,
+and `verdict`. The other questions add a flag. A flag does not escalate a test on
+its own.
 
-The `can_fail_*` answers, the `asserts_*` pair, and `verdict` carry the verdict.
-Every other question reports as a flag and never escalates alone.
+The three `can_fail_*` questions ask the same thing in different words. The tool
+aligns their polarity and compares them. A spread above
+`TEST_AUDIT_STABLE_BAND` means the judgement is unstable, so the test goes to a
+human.
 
-### What the model sees
+## What the endpoint sees
 
-One audit asks all 16 questions about one test in a single call. The shared
-`state` holds three parts: the rubric (the definitions above, so the model knows
-what each concept means), the test record (`file`, `path`, `name`, `source`,
-`fixtures`, `imports`), and a capped slice of the non-test diff. Each question
-adds only its own `instructions` and the `criteria` that say what each answer
-means, for example `{"true": "a change can make it fail", "false": "no change can
-make it fail"}`. The reply carries `probabilities` and `confidence`, and, on a
-server that reports it, `mass`.
+The state has three parts. The first part is the rubric. The rubric defines every
+concept the questions use, so the endpoint knows what "falsifiable" and
+"conditional logic" mean. The second part is the test: the file, the path, the
+name, the source, the fixtures, and the imports. The third part is a capped slice
+of the non-test diff.
 
-### Static flags
+Each question adds its own `instructions` and `criteria`. The `criteria` say what
+each answer means. For example, `{"true": "a change can make it fail", "false":
+"no change can make it fail"}`.
 
-`skipped` / `focused`, an empty body, no assertion at all, and a commented-out
-assertion escalate without a model call. `roulette` (several assertions, no
-message) is informational. The descriptive gates raise
-`implementation-coupled`, `conditional`, `order-dependent`,
-`uncontrolled-resource`, `weak-assert`, `vague-name`, `non-deterministic`,
-`eager`, and `name-mismatch`; those report and do not escalate.
+The reply holds `probabilities` and `confidence` for each answer. Some endpoints
+also report `mass`.
 
-### Endpoints and models
+## Static flags
 
-The client speaks the Jev SystemOne API, so any implementation works:
+Some defects need no model call. A skipped or focused test, an empty body, a test
+with no assertion, and a commented-out assertion escalate at once. `roulette`
+(several assertions and no message) is only a note.
 
-- **Ollama 0.35 or later**, the default at `http://127.0.0.1:11434`, which
-  serves `/v1/systemone` for local decision models such as `nimble` and `tev1`,
-  and `clef` / `clef-flash` with vision. Ollama rejects cloud models on this
-  endpoint, so pull the decision model first. It reports no `mass`.
+The descriptive questions raise these flags: `implementation-coupled`,
+`conditional`, `order-dependent`, `uncontrolled-resource`, `weak-assert`,
+`vague-name`, `non-deterministic`, `eager`, and `name-mismatch`. These flags
+report. They do not escalate.
+
+## Endpoints and models
+
+The client speaks the Jev SystemOne API, so it works with any compatible
+endpoint.
+
+- **Ollama 0.35 or later**, the default at `http://127.0.0.1:11434`. It serves
+  local decision models such as `nimble` and `tev1`, and `clef` or `clef-flash`
+  with vision. It rejects cloud models. It reports no `mass`.
 - **[llama-arbiter](https://github.com/Vortiago/llama-arbiter)**, a decision
-  server for Jev-compatible models. It reports `mass` on each answer.
-- **Ollaya** and any other TypeSafe-compatible server, at its own base URL.
+  endpoint for Jev-compatible models. It reports `mass` on each answer.
+- **Ollaya** and other TypeSafe-compatible endpoints, at their own base URL.
 
-Point at one with `--url` and `--model`, or compare several on the corpus with
-`--targets`. A target is `url|model`, or a bare `model` on the configured URL.
+Set one endpoint with `--url` and `--model`. Compare several on the corpus with
+`--targets`. A target is `url|model`, or a bare `model` for the configured URL.
 
 ## Use
 
 ```sh
 node test-audit/cli.mjs                     # the working tree against the default branch
-node test-audit/cli.mjs --base main         # the merge base of main and HEAD
+node test-audit/cli.mjs --base main         # the change since the merge base of main
 node test-audit/cli.mjs --staged            # the staged change
 node test-audit/cli.mjs --files a.test.mjs  # named files
 node test-audit/cli.mjs --json              # the full record
 node test-audit/cli.mjs --markdown          # a review comment
-node test-audit/cli.mjs --url http://127.0.0.1:11434 --model nimble   # an Ollama decision model
+node test-audit/cli.mjs --url http://127.0.0.1:11434 --model nimble   # one decision model
 node test-audit/cli.mjs --selftest          # live calibration over corpus/
 node test-audit/cli.mjs --selftest --targets "http://127.0.0.1:11434|nimble, http://127.0.0.1:11435|winnow:e4b"
 node test-audit/cli.mjs --selftest --models "nimble,tev1"   # several models on one URL
 node test-audit/cli.mjs --selftest --benchmark   # per-test results, in markdown
 ```
 
-Exit code `0` means every test was classified and none needs eyes. Exit `1`
-means a test is slop, weak, or unstable. Exit `2` means a usage or transport
-failure. A transport failure is an audit failure, not a skip.
+Exit code `0` means the tool classified every test and no test needs eyes. Exit
+code `1` means a test is slop, weak, or unstable. Exit code `2` means a usage or
+transport failure. A transport failure is an audit failure, not a skip.
 
 ## Config
 
@@ -116,27 +129,25 @@ failure. A transport failure is an audit failure, not a skip.
 | `TEST_AUDIT_MIN_MASS` | `0.5` | trust floor, when the endpoint reports `mass` |
 | `TEST_AUDIT_STABLE_BAND` | `0.25` | paraphrase spread ceiling |
 | `TEST_AUDIT_CONCURRENCY` | `3` | calls in flight |
-| `TEST_AUDIT_TIMEOUT_MS` | `120000` | per call |
-| `TEST_AUDIT_STATE_CAP` | `8000` | characters per test state |
+| `TEST_AUDIT_TIMEOUT_MS` | `120000` | timeout for one call |
+| `TEST_AUDIT_STATE_CAP` | `8000` | characters in one test state |
 | `TEST_AUDIT_CHANGE_CAP` | `3000` | characters of non-test diff context |
 
 ## Calibration
 
-`node cli.mjs --selftest` runs the labelled corpus in `corpus/` against the
-configured endpoint and reports agreement. The corpus draws on the house
-bad-test catalogue and the wider literature: a case for each named defect, clean
-tests of the common types, and deliberately mixed cases whose expected outcome
-is escalation.
+`--selftest` runs the labelled corpus against the configured endpoint and reports
+agreement. The corpus covers each named defect, clean tests of the common types,
+and mixed cases that should escalate.
 
-A case that routes as unstable is not scored for agreement: the tool did not
-commit to a value, it escalated. Re-run the selftest whenever the model or a
-phrasing changes, and record the run in [`BENCHMARK.md`](BENCHMARK.md).
+The tool does not score a case that routed as unstable. The tool did not commit
+to a value, so it escalated. Record each run in [`BENCHMARK.md`](BENCHMARK.md).
+Run the selftest again when the model or a question changes.
 
 ## References
 
-What each question looks for, and the source behind it. The full annotated list,
-including which claims are primary and which are house inferences, is in
-[`references.md`](references.md).
+The table maps each question to the source that grounds it. The list is longer in
+[`references.md`](references.md). That file also marks which claims are primary
+sources and which are house inferences.
 
 | Looking for | Grounded in |
 | --- | --- |
@@ -157,46 +168,23 @@ including which claims are primary and which are house inferences, is in
 | Paraphrase pair and position swap | self-consistency (Wang et al. 2023); MT-Bench and "not Fair Evaluators" on position bias |
 | The house defect catalogue | [`verify-prd-implemented/test-patterns.md`](../verify-prd-implemented/test-patterns.md) |
 
-## Honest limits
+## Limits
 
-- Paraphrase agreement is necessary, not sufficient. Correlated errors still
-  pass. The corpus and the escalation path carry that risk.
-- `passes-for-the-wrong-reason` is provable only by the mutation check. The
-  audit can suspect it (an interaction-only assertion, a remote fixture); it
+- Agreement between paraphrases is necessary, not sufficient. A shared error in
+  all phrasings still passes. The corpus and the escalation path carry that risk.
+- `passes-for-the-wrong-reason` needs the mutation check to prove it. The audit
+  can suspect it, through an interaction-only assertion or a remote fixture. It
   cannot prove it.
-- When the endpoint reports no `mass` (Ollama), the trust floor cannot apply, so
-  the paraphrase spread and the cross-question rule are the only guards.
-- The tool judges tests, not coverage. It never says a change is sufficiently
-  tested, only that each added test is a real guard.
-- The extractor reads `test`/`it` calls with a literal or computed name, folds a
-  `test.each` table into one test, and flags a computed name. The tagged-template
-  form (`test.each` with a backtick) and the generic form (`test.each<T>`) are
-  not matched.
-- The core modules are `.mjs` and sit outside the `tsc` gate, as
-  `searx-researcher/server` does: they import `node:*` and the gate carries no
-  `@types/node`. The `node --test` suite is their guard.
+- When the endpoint reports no `mass`, the trust floor cannot apply. The
+  paraphrase spread and the cross-question rule are then the only guard.
+- The tool judges tests, not coverage. It never says that a change is tested
+  enough. It says that each added test is a real guard.
+- The extractor reads `test` and `it` calls with a literal or a computed name. It
+  folds a `test.each` table into one test and flags a computed name. The
+  extractor does not match the tagged-template form or the generic form
+  (`test.each<T>`).
+- The core modules are `.mjs`, so the `tsc` gate does not check them. They import
+  `node:*`, and the gate carries no `@types/node`. The `node --test` suite guards
+  them instead.
 
-## Layout
-
-```
-cli.mjs        argument parsing and output
-audit.mjs      the pipeline, shared with the plugin
-collect.mjs    git diff and file reads          [the read half]
-extract.mjs    test detection and extraction    [the parse half]
-code.mjs       the code-only view (comments, strings, regex blanked)
-smells.mjs     static flags, no model
-gates.mjs      the battery and the verdict rules
-report.mjs     text, json, markdown, exit codes
-systemone.mjs  the typed-question client
-config.mjs     TEST_AUDIT_* defaults
-pool.mjs       bounded concurrency
-corpus.mjs     the live calibration runner
-corpus/        labelled fixtures and labels (labels/ holds one fragment per defect family)
-BENCHMARK.md   recorded calibration runs and per-test results
-references.md  the sources behind each question
-types.d.ts     the shared shapes, and the tsc gate's input
-tools/check.mjs  the gate command (from vanilla-web)
-tools/js-scan.mjs  the scanner helpers it shares
-```
-
-The OpenCode plugin lives in [`../opencode-test-audit`](../opencode-test-audit/README.md).
+An OpenCode plugin wraps this tool: [`../opencode-test-audit`](../opencode-test-audit).
