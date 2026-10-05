@@ -90,3 +90,18 @@ export function tokensOf(usage) {
   return Object.values(usage).filter((value) => typeof value === "number").reduce((sum, value) => sum + value, 0);
 }
 
+/**
+ * A running count of the calls a run made and the tokens they cost. Pass
+ * `onResponse` to every `ask` of the run, and read `usage` when it ends.
+ */
+export function usageMeter() {
+  const usage = { calls: 0, tokens: 0 };
+  return {
+    usage,
+    onResponse: (json) => {
+      usage.calls += 1;
+      usage.tokens += tokensOf(json.usage);
+    },
+  };
+}
+

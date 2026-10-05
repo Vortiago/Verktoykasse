@@ -14,7 +14,8 @@
       "canFail": true,
       "mustEscalate": false,
       "mixed": false,
-      "note": "A real guard on the retry count, but the fixed sleep makes the outcome depend on scheduling."
+      "note": "A real guard on the retry count, but the fixed sleep makes the outcome depend on scheduling.",
+      "deterministic": false
     },
     {
       "file": "cases/determinism-clock.case.mjs",
@@ -23,7 +24,8 @@
       "canFail": true,
       "mustEscalate": false,
       "mixed": false,
-      "note": "A real expiry check, but reading Date.now makes the result depend on when the test runs."
+      "note": "A real expiry check, but reading Date.now makes the result depend on when the test runs.",
+      "deterministic": false
     },
     {
       "file": "cases/determinism-network.case.mjs",
@@ -32,7 +34,8 @@
       "canFail": true,
       "mustEscalate": false,
       "mixed": false,
-      "note": "A real catalogue check, but a live fetch makes the result depend on the network."
+      "note": "A real catalogue check, but a live fetch makes the result depend on the network.",
+      "deterministic": false
     },
     {
       "file": "cases/determinism-randomness.case.mjs",
@@ -41,7 +44,8 @@
       "canFail": true,
       "mustEscalate": false,
       "mixed": false,
-      "note": "A real sorting property, but the random input makes a failure hard to reproduce."
+      "note": "A real sorting property, but the random input makes a failure hard to reproduce.",
+      "deterministic": false
     },
     {
       "file": "cases/determinism-order.case.mjs",
@@ -50,7 +54,8 @@
       "canFail": true,
       "mustEscalate": false,
       "mixed": false,
-      "note": "A real metrics check, but it pins key order that the structure does not guarantee."
+      "note": "A real metrics check, but it pins key order that the structure does not guarantee.",
+      "deterministic": false
     }
   ]
 }

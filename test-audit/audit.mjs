@@ -3,15 +3,15 @@
 // share one pipeline.
 
 import process from "node:process";
-import { collect, extractTests, isTestFile, splitDiff } from "./change/index.mjs";
-import { classify, tokensOf } from "./classifier/index.mjs";
+import { changeContext, collect, extractTests, isTestFile } from "./change/index.mjs";
+import { classify, tokensOf, usageMeter } from "./classifier/index.mjs";
 import { mapPool } from "./lib/pool.mjs";
 import config from "./config.mjs";
 
 /**
  * @param {{ base?: string, head?: string, staged?: boolean, files?: string[] }} [args]
- * @param {{ config?: object, cwd?: string, ask?: Function, signal?: AbortSignal }} [opts]
- * @returns {Promise<{ results: any[], ref: string, usage: { calls: number, tokens: number }, files: string[] }>}
+ * @param {{ config?: object, cwd?: string, ask?: Function, url?: string, model?: string, signal?: AbortSignal }} [opts]
+ * @returns {Promise<{ results: any[], ref: string, usage: { calls: number, tokens: number } }>}
  */
 export async function runAudit(args = {}, opts = {}) {
   const cfg = opts.config ?? config;
@@ -19,22 +19,15 @@ export async function runAudit(args = {}, opts = {}) {
   const change = collect({ base: args.base, head: args.head, staged: args.staged, files: args.files, cwd });
 
   const tests = [];
-  const audited = [];
   for (const file of change.files) {
     // A named file is trusted as a test file; a discovered one must look like one.
     if (!args.files && !isTestFile(file.path)) continue;
-    const found = extractTests(file.text, file.path);
-    if (found.length) audited.push(file.path);
-    for (const test of found) tests.push(test);
+    for (const test of extractTests(file.text, file.path)) tests.push(test);
   }
+  if (tests.length === 0) return { results: [], ref: change.ref, usage: { calls: 0, tokens: 0 } };
 
+  const meter = usageMeter();
   const context = changeContext(change.diff, cfg.changeContextCap);
-  const usage = { calls: 0, tokens: 0 };
-  const onResponse = (json) => {
-    usage.calls += 1;
-    usage.tokens += tokensOf(json.usage);
-  };
-
   const results = await mapPool(tests, cfg.concurrency, (test) =>
     classify(test, {
       ask: opts.ask,
@@ -42,24 +35,9 @@ export async function runAudit(args = {}, opts = {}) {
       url: opts.url,
       model: opts.model,
       changeContext: context,
-      onResponse,
+      onResponse: meter.onResponse,
       signal: opts.signal,
     }),
   );
-  return { results, ref: change.ref, usage, files: audited };
+  return { results, ref: change.ref, usage: meter.usage };
 }
-
-/**
- * The diff with its test-file sections removed: the reviewer's questions are
- * about the test, so the non-test part is the useful context.
- * @param {string} diff
- * @param {number} cap
- */
-export function changeContext(diff, cap) {
-  const text = splitDiff(diff)
-    .filter((section) => !isTestFile(section.path))
-    .map((section) => section.text)
-    .join("\n");
-  return text.length > cap ? `${text.slice(0, cap)}\n… [context truncated]` : text;
-}
-

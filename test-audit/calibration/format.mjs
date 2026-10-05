@@ -76,8 +76,6 @@ const CHECK_ABBREVIATION = {
   reads_output: "out",
   automated: "auto",
   restores: "rest",
-  duplicate: "dup",
-  redundant_print: "print",
 };
 
 /**
@@ -87,8 +85,7 @@ const CHECK_ABBREVIATION = {
  * appears here without an edit.
  */
 export function formatBenchmark(entries) {
-  const checks = DESCRIPTIVE_KEYS;
-  const header = ["Test", "Defect", "can_fail", "spread", "asserts", "runs", ...checks.map((key) => CHECK_ABBREVIATION[key] ?? key), "verdict", "eyes"];
+  const header = ["Test", "Defect", "can_fail", "spread", "asserts", "runs", ...DESCRIPTIVE_KEYS.map((key) => CHECK_ABBREVIATION[key] ?? key), "verdict", "eyes"];
   const lines = [`# test-audit benchmark`, ""];
   for (const entry of entries) {
     const { rows, verdict, usage, target } = entry;
@@ -116,21 +113,21 @@ export function formatBenchmark(entries) {
         result.canFail.spread === null ? "-" : result.canFail.spread.toFixed(2),
         result.asserts.value ?? "unclassified",
         result.runs === true ? "yes" : result.runs === false ? "-" : "?",
-        ...checks.map((key) => checkSymbol(d[key])),
+        ...DESCRIPTIVE_KEYS.map((key) => checkSymbol(d[key])),
         result.score.label ?? "unclassified",
         result.needsEyes ? "yes" : "-",
       ];
       lines.push(`| ${cells.join(" | ")} |`);
     }
-    const eyes = rows.filter((row) => row.needsEyes);
+    const eyes = rows.filter((row) => row.result?.needsEyes);
     if (eyes.length) {
       lines.push("");
       lines.push("Needs eyes:");
-      for (const row of eyes) lines.push(`- \`${row.label.test}\` (${row.label.defect ?? "-"}): ${row.reasons.join("; ")}`);
+      for (const row of eyes) lines.push(`- \`${row.label.test}\` (${row.label.defect ?? "-"}): ${row.result.reasons.join("; ")}`);
     }
     lines.push("");
   }
-  lines.push(`Checks, in column order: ${checks.map((key) => `\`${CHECK_ABBREVIATION[key] ?? key}\` ${key}`).join(", ")}.`);
+  lines.push(`Checks, in column order: ${DESCRIPTIVE_KEYS.map((key) => `\`${CHECK_ABBREVIATION[key] ?? key}\` ${key}`).join(", ")}.`);
   lines.push("`+` clean, `-` the smell the check looks for, `.` unanswered. `can_fail` is the mean P(can fail) over three phrasings; `spread` above the band is instability.");
   return lines.join("\n");
 }

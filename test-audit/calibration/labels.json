@@ -48,7 +48,7 @@
       "file": "cases/skipped.case.mjs",
       "test": "handles overflow",
       "mustEscalate": true,
-      "note": "skipped: the static scan flags it before any call",
+      "note": "skipped: the test never runs",
       "defect": "skipped"
     },
     {

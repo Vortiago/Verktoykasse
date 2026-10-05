@@ -5,7 +5,7 @@
 
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { isAbsolute, join } from "node:path";
+import { resolve } from "node:path";
 import process from "node:process";
 
 /**
@@ -90,7 +90,7 @@ function hasText(file) {
 /** @param {string} path @param {string} base */
 function readWorktree(path, base) {
   try {
-    return readFileSync(isAbsolute(path) ? path : join(base, path), "utf8");
+    return readFileSync(resolve(base, path), "utf8");
   } catch {
     return undefined;
   }

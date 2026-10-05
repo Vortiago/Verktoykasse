@@ -3,4 +3,4 @@
 // classifier/; this module only reads it.
 
 export { collect } from "./collect.mjs";
-export { extractTests, isTestFile, splitDiff } from "./extract.mjs";
+export { changeContext, extractTests, isTestFile, splitDiff } from "./extract.mjs";

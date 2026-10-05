@@ -1,7 +1,7 @@
 // The default face of an audit: a table, then the escalated tests with their
 // reasons, then the summary.
 
-import { canFailText, location, pad, summary } from "./format.mjs";
+import { canFailText, eyesResults, location, pad, summary } from "./format.mjs";
 
 /**
  * @param {any[]} results
@@ -28,7 +28,7 @@ export function formatText(results, meta = {}) {
     if (result.flags.length) lines.push(`${" ".repeat(8)}flags: ${result.flags.join(", ")}`);
   }
 
-  const escalatedResults = results.filter((result) => result.needsEyes);
+  const escalatedResults = eyesResults(results);
   if (escalatedResults.length) {
     lines.push("");
     lines.push("Needs eyes:");

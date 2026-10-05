@@ -2,7 +2,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { exitCode, formatText, formatJson, formatMarkdown } from "./index.mjs";
+import { exitCode, formatAudit, formatText, formatJson, formatMarkdown } from "./index.mjs";
 
 /** A minimal verdict record; only the fields the report reads are filled. */
 function result(overrides = {}) {
@@ -10,10 +10,9 @@ function result(overrides = {}) {
     test: { file: "add.test.mjs", line: 1, name: "adds", path: [] },
     canFail: { values: [0.99, 0.99, 0.98], mean: 0.99, spread: 0.01, state: "stable" },
     asserts: { value: "behaviour", a: "behaviour", b: "behaviour", trust: true, agrees: true },
+    runs: true,
     type: "unit",
-    deterministic: true,
-    oneThing: true,
-    nameMatches: true,
+    descriptive: {},
     score: { value: 3, label: "strong" },
     flags: [],
     needsEyes: false,
@@ -26,8 +25,6 @@ test("exitCode is 0 only when nothing escalates", () => {
   assert.equal(exitCode([result()]), 0);
   assert.equal(exitCode([result(), result()]), 0);
   assert.equal(exitCode([result({ needsEyes: true, reasons: ["x"] })]), 1);
-  assert.equal(exitCode([result({ score: { value: 1, label: "weak" } })]), 1);
-  assert.equal(exitCode([result({ score: { value: 0, label: "slop" } })]), 1);
 });
 
 test("formatText names the escalated test and its reasons", () => {
@@ -51,4 +48,15 @@ test("formatMarkdown emits a table and an escalation list", () => {
   assert.match(md, /\| Verdict \| Eyes \|/);
   assert.match(md, /### Needs eyes/);
   assert.match(md, /asserts nothing/);
+});
+
+test("formatAudit picks the face, and an empty change reads the same in every face", () => {
+  const audit = { results: [result()], ref: "HEAD", model: "nimble", usage: { calls: 1, tokens: 5 } };
+  assert.match(formatAudit(audit, { format: "text" }), /Audit of HEAD/);
+  assert.match(formatAudit(audit, { format: "markdown" }), /## Test audit/);
+  assert.match(formatAudit(audit, { format: "json" }), /"results"/);
+  const empty = { results: [], ref: "HEAD", model: "nimble", usage: { calls: 0, tokens: 0 } };
+  assert.equal(formatAudit(empty, { format: "text" }), "Test audit: no tests in the change.");
+  assert.equal(formatAudit(empty, { format: "markdown" }), "Test audit: no tests in the change.");
+  assert.equal(formatAudit(empty, { format: "json" }), "Test audit: no tests in the change.");
 });

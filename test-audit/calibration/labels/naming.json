@@ -38,7 +38,7 @@
       "defect": "skipped",
       "mustEscalate": true,
       "mixed": false,
-      "note": "The static scan flags the skip, so the test never runs."
+      "note": "The test is marked skipped, so it never runs."
     },
     {
       "file": "cases/disabled-xit-key.case.mjs",
@@ -46,7 +46,7 @@
       "defect": "skipped",
       "mustEscalate": true,
       "mixed": false,
-      "note": "The static scan flags the xit, so the test never runs."
+      "note": "The test is marked xit, so it never runs."
     },
     {
       "file": "cases/disabled-focus-draft.case.mjs",
@@ -71,7 +71,7 @@
       "canFail": false,
       "mustEscalate": true,
       "mixed": false,
-      "note": "The static scan flags the commented assertion that sits beside a tautology."
+      "note": "The real assertion is commented out, beside a tautology."
     },
     {
       "file": "cases/disabled-early-return-name.case.mjs",

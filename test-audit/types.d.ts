@@ -31,6 +31,7 @@ export interface AuditAnswer {
 /** Where one test's answers landed, and why it escalates. `needsEyes` is the only fail. */
 export interface AuditResult {
   test: Pick<AuditTest, "file" | "line" | "name" | "path">;
+  answers: Record<string, AuditAnswer>;
   canFail: { values: Array<number | null>; mean: number | null; spread: number | null; state: string };
   asserts: { value?: string; a?: string; b?: string; trust: boolean; agrees: boolean };
   /** Whether the test actually runs; undefined when unanswered. */

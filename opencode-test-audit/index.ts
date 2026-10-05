@@ -4,7 +4,7 @@
 // ../test-audit. See README.md.
 import { Plugin } from "@opencode/plugin"
 import { runAudit } from "../test-audit/audit.mjs"
-import { formatMarkdown } from "../test-audit/report/index.mjs"
+import { formatAudit } from "../test-audit/report/index.mjs"
 
 interface AuditArgs {
   base?: string
@@ -13,11 +13,15 @@ interface AuditArgs {
   files?: string[]
 }
 
-/** The markdown report for one audit, or the reason there is nothing to show. */
+/** The markdown report for one audit. */
 async function report(directory: string, args: AuditArgs): Promise<string> {
-  const results = await runAudit(args, { cwd: directory })
-  if (results.results.length === 0) return "Test audit: no tests in the change."
-  return formatMarkdown(results.results, { ref: results.ref, usage: results.usage })
+  const audit = await runAudit(args, { cwd: directory })
+  return formatAudit(audit, { format: "markdown" })
+}
+
+/** One line for a failed audit, the same in both faces. */
+function failureText(error: unknown): string {
+  return `Test audit failed: ${error instanceof Error ? error.message : String(error)}`
 }
 
 /** Read the tool input without trusting its shape. */
@@ -44,7 +48,7 @@ export default Plugin.define({
           try {
             text = await report(ctx.location.directory, {})
           } catch (error) {
-            text = `Test audit failed: ${error instanceof Error ? error.message : String(error)}`
+            text = failureText(error)
           }
           await ctx.session.prompt({ sessionID, text, delivery })
         },
@@ -71,7 +75,7 @@ export default Plugin.define({
           try {
             return { content: await report(ctx.location.directory, auditArgs(input)) }
           } catch (error) {
-            return { content: `Test audit failed: ${error instanceof Error ? error.message : String(error)}` }
+            return { content: failureText(error) }
           }
         },
       })

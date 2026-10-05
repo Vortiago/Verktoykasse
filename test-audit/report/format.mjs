@@ -17,6 +17,11 @@ export function eyesPhrase(eyes) {
   return `${eyes} ${eyes === 1 ? "needs" : "need"} eyes`;
 }
 
+/** The tests that escalate, in input order. */
+export function eyesResults(results) {
+  return results.filter((result) => result.needsEyes);
+}
+
 /** The closing line: counts by verdict, the unstable count, and the usage. */
 export function summary(results, meta) {
   const counts = {};
@@ -25,7 +30,7 @@ export function summary(results, meta) {
     counts[label] = (counts[label] ?? 0) + 1;
   }
   const parts = Object.entries(counts).map(([label, count]) => `${count} ${label}`);
-  const eyes = results.filter((result) => result.needsEyes).length;
+  const eyes = eyesResults(results).length;
   const unstable = results.filter((result) => result.canFail.state === "unstable" || result.canFail.state === "borderline").length;
   const usage = meta.usage ? ` ${meta.usage.calls} call${meta.usage.calls === 1 ? "" : "s"}, ${meta.usage.tokens} tokens.` : "";
   return `Summary: ${parts.join(", ") || "no tests"}. ${unstable} unstable. ${eyesPhrase(eyes)}.${usage}`;
@@ -35,4 +40,9 @@ export function summary(results, meta) {
 export function pad(text, width) {
   const value = text.length > width ? `${text.slice(0, width - 1)}…` : text;
   return value.padEnd(width);
+}
+
+/** Escape a markdown table cell, so a test name cannot break the table. */
+export function escapeCell(text) {
+  return String(text).replaceAll("|", "\\|");
 }

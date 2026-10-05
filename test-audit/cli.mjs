@@ -18,7 +18,7 @@
 
 import process from "node:process";
 import { runAudit } from "./audit.mjs";
-import { exitCode, formatJson, formatMarkdown, formatText } from "./report/index.mjs";
+import { exitCode, formatAudit } from "./report/index.mjs";
 import config from "./config.mjs";
 
 const USAGE = `test-audit: a SystemOne classifier for the tests a change adds
@@ -46,6 +46,7 @@ const USAGE = `test-audit: a SystemOne classifier for the tests a change adds
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
+  if (args.benchmark && !args.selftest) throw new Error("--benchmark needs --selftest");
   if (args.help) {
     console.log(USAGE);
     return 0;
@@ -63,12 +64,10 @@ async function main() {
     console.log(text);
     return code;
   }
-  const results = await runAudit(args, { cwd: process.cwd(), url: args.url, model: args.model });
-  const meta = { ref: results.ref, model: args.model ?? config.model, usage: results.usage };
-  if (args.json) console.log(formatJson(results.results, meta));
-  else if (args.markdown) console.log(formatMarkdown(results.results, meta));
-  else console.log(formatText(results.results, meta));
-  return exitCode(results.results);
+  const audit = await runAudit(args, { cwd: process.cwd(), url: args.url, model: args.model });
+  const format = args.json ? "json" : args.markdown ? "markdown" : "text";
+  console.log(formatAudit({ ...audit, model: args.model ?? config.model }, { format }));
+  return exitCode(audit.results);
 }
 
 /**
@@ -89,7 +88,8 @@ function selftestTargets(args) {
   if (args.models?.length) {
     return args.models.map((model) => ({ url: fallbackUrl, model, label: model }));
   }
-  return undefined;
+  const model = args.model ?? config.model;
+  return [{ url: fallbackUrl, model, label: model }];
 }
 
 /** @param {string} text @param {string} sep */

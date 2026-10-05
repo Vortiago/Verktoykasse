@@ -9,7 +9,10 @@ import { batteryQuestions, RUBRIC } from "./battery.mjs";
 import { verdictFrom } from "./verdict.mjs";
 import config from "../config.mjs";
 
-export { ask, tokensOf } from "./systemone.mjs";
+// The battery is static data, so it is built once, not once per test.
+const BATTERY = batteryQuestions();
+
+export { ask, tokensOf, usageMeter } from "./systemone.mjs";
 export { DESCRIPTIVE_KEYS } from "./battery.mjs";
 
 /**
@@ -53,7 +56,7 @@ export async function classify(test, opts = {}) {
   let answers = {};
   let error;
   try {
-    answers = await ask(state, batteryQuestions(), {
+    answers = await ask(state, BATTERY, {
       url: opts.url,
       model: opts.model,
       timeoutMs: cfg.timeoutMs,

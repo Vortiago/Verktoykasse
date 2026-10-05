@@ -177,7 +177,9 @@ grounded in the sources but not stated by them:
   "cannot fail" beside a `good` or `strong` verdict is a contradiction.
 - The `type` taxonomy and the exact six labels. Feathers grounds
   `characterization` alone.
-- The static regex smells in `change/smells.mjs` as approximations of the named smells.
+- The battery reads the test's source and judges the intent, so the same
+  questions work across runners. A static rule for one runner's assertion or
+  skip method would not fit the next runner, and was deliberately left out.
 - The position-swap control for `asserts_b` as a mitigation of position bias.
   That position bias exists is cited; that this swap removes it is an inference.
 - A small, fast model used as a one-token binary classifier per question. This

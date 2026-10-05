@@ -23,7 +23,12 @@ export function loadLabels() {
   }
   for (const name of readdirSync(join(HERE, "labels")).sort()) {
     if (!name.endsWith(".json")) continue;
-    const fragment = JSON.parse(readFileSync(join(HERE, "labels", name), "utf8"));
+    let fragment;
+    try {
+      fragment = JSON.parse(readFileSync(join(HERE, "labels", name), "utf8"));
+    } catch (err) {
+      throw new Error(`label fragment ${name} is not valid JSON: ${err instanceof Error ? err.message : err}`);
+    }
     if (Array.isArray(fragment.cases)) cases.push(...fragment.cases);
   }
   return { acceptance, cases };

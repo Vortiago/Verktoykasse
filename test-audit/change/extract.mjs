@@ -37,7 +37,9 @@ export function isTestFile(path) {
  */
 export function extractTests(text, file) {
   const out = [];
-  walk(text, 0, text.length, [], [], { file, imports: extractImports(text), out });
+  // The code-only view is one scan per file, not one per describe scope.
+  const code = codeOnly(text);
+  walk(text, code, 0, text.length, [], [], { file, imports: extractImports(text), out });
   return out;
 }
 
@@ -46,19 +48,20 @@ export function extractTests(text, file) {
  * and record each test. `findCalls` skips nested calls, so recursion is the
  * only path into a describe body.
  * @param {string} text
+ * @param {string} code
  * @param {number} start
  * @param {number} end
  * @param {string[]} path
  * @param {string[]} inherited
  * @param {{ file: string, imports: string[], out: object[] }} ctx
  */
-function walk(text, start, end, path, inherited, ctx) {
-  const calls = findCalls(text, start, end);
+function walk(text, code, start, end, path, inherited, ctx) {
+  const calls = findCalls(code, text, start, end);
   const fixtures = calls.filter((c) => FIXTURES.has(c.keyword)).map((c) => text.slice(c.callStart, c.callEnd));
   const scope = [...inherited, ...fixtures];
   for (const call of calls) {
     if (DESCRIBES.has(call.keyword)) {
-      if (call.body) walk(text, call.body.start, call.body.end, [...path, call.name], scope, ctx);
+      if (call.body) walk(text, code, call.body.start, call.body.end, [...path, call.name], scope, ctx);
       continue;
     }
     if (!TESTS.has(call.keyword)) continue;
@@ -79,6 +82,23 @@ function walk(text, start, end, path, inherited, ctx) {
   }
 }
 
+/** The head of a per-file section in a unified diff. */
+const DIFF_FILE = /^diff --git a\/(.+?) b\/(.+)$/;
+
+/**
+ * The diff with its test-file sections removed: the reviewer's questions are
+ * about the test, so the non-test part is the useful context.
+ * @param {string} diff
+ * @param {number} cap
+ */
+export function changeContext(diff, cap) {
+  const text = splitDiff(diff)
+    .filter((section) => !isTestFile(section.path))
+    .map((section) => section.text)
+    .join("\n");
+  return text.length > cap ? `${text.slice(0, cap)}\n… [context truncated]` : text;
+}
+
 /**
  * Split a unified diff into its per-file sections. The read half owns the git
  * call; this parse turns the diff text into `{ path, text }` sections so a
@@ -90,7 +110,7 @@ export function splitDiff(diff) {
   const sections = [];
   let current;
   for (const line of diff.split("\n")) {
-    const start = /^diff --git a\/(.+?) b\/(.+)$/.exec(line);
+    const start = DIFF_FILE.exec(line);
     if (start) {
       current = { path: start[2], lines: [] };
       sections.push(current);
@@ -105,18 +125,18 @@ export function splitDiff(diff) {
  * Every test/describe/hook call at the top level of `[start, end)`. A call's
  * whole span is skipped, so a nested describe's tests are found only when the
  * caller recurses into its body.
+ * @param {string} code
  * @param {string} text
  * @param {number} start
  * @param {number} end
  * @returns {Array<{ keyword: string, member: string, name: string, dynamicName: boolean, callStart: number, callEnd: number, body: {start: number, end: number} | null }>}
  */
-function findCalls(text, start, end) {
-  // Search the code-only view: comments, string, template, and regex bodies
-  // are blanked with offsets preserved, so a `test(...)` inside a fixture string
-  // or a regex is not mistaken for a real test. Spans are matched on the same
-  // view (its literals keep their delimiters), and text is sliced from the
-  // original. `start - 1` lets the boundary group see the enclosing brace.
-  const code = codeOnly(text);
+function findCalls(code, text, start, end) {
+  // Scan the code-only view: comments, string, template, and regex bodies are
+  // blanked with offsets preserved, so a `test(...)` inside a fixture string or
+  // a regex is not mistaken for a real test. Spans are matched on the same view
+  // (its literals keep their delimiters), and text is sliced from the original.
+  // `start - 1` lets the boundary group see the enclosing brace.
   const re = new RegExp(CALL.source, "g");
   re.lastIndex = Math.max(0, start - 1);
   const calls = [];
@@ -128,7 +148,11 @@ function findCalls(text, start, end) {
     const member = m[3] ?? "";
     let open = m.index + m[0].length - 1; // the "(" that ended the match
     let span = argSpan(code, open);
-    if (!span) break;
+    if (!span) {
+      // An unterminated call cannot end the scan: skip it and keep looking.
+      re.lastIndex = open + 1;
+      continue;
+    }
     // `test.each([...])("name", fn)`: take the second call as the real one.
     if (member === "each") {
       const next = code.slice(span.end).match(/^\s*\(/);

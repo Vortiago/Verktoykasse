@@ -1,8 +1,8 @@
-// The calibration rules. Only two things are hard: no labelled defect case
-// passes silently, and every mixed case routes to eyes. Agreement is measured
-// only where the tool committed to a can-fail value; an unstable case routed to a
-// human is the design working, not a wrong answer. Pure, so the scoring is tested
-// without a model.
+// The calibration rules. Only these are hard: no labelled defect case passes
+// silently, every mixed case routes to eyes, and every label resolves to a test.
+// Agreement is measured only where the tool committed to a can-fail value; an
+// unstable case routed to a human is the design working, not a wrong answer.
+// Pure, so the scoring is tested without a model.
 
 /**
  * @param {any[]} rows
@@ -18,19 +18,23 @@ export function judge(rows, acceptance) {
   let goodTotal = 0;
   let deterministicCorrect = 0;
   let deterministicTotal = 0;
+  let unresolved = 0;
   /** @type {Record<string, { total: number, escalated: number }>} */
   const defects = {};
   for (const row of rows) {
     const { label, result } = row;
-    const escalated = !!result && result.needsEyes;
+    if (!result) {
+      unresolved += 1;
+      if (label.mustEscalate) silentPasses += 1;
+      continue;
+    }
     if (label.mustEscalate) {
       const group = defects[label.defect ?? "other"] ?? { total: 0, escalated: 0 };
       group.total += 1;
-      if (escalated) group.escalated += 1;
+      if (result.needsEyes) group.escalated += 1;
+      else silentPasses += 1;
       defects[label.defect ?? "other"] = group;
-      if (!escalated) silentPasses += 1;
     }
-    if (!result) continue;
     if (label.mixed) {
       mixedTotal += 1;
       if (result.needsEyes) mixedRouted += 1;
@@ -43,9 +47,9 @@ export function judge(rows, acceptance) {
       deterministicTotal += 1;
       if (result.descriptive.deterministic === label.deterministic) deterministicCorrect += 1;
     }
-    if (label.canFail !== undefined && (result.canFail.state === "stable" || result.canFail.state === "single")) {
+    const said = saidCanFail(result);
+    if (label.canFail !== undefined && said !== undefined) {
       resolved += 1;
-      const said = result.canFail.mean !== null && result.canFail.mean > 0.5;
       if (said === label.canFail) correct += 1;
     }
   }
@@ -61,9 +65,17 @@ export function judge(rows, acceptance) {
     goodTotal,
     deterministicCorrect,
     deterministicTotal,
+    unresolved,
     defects,
-    pass: silentPasses === 0 && agreement >= acceptance.canFailAgreement && mixedRouted === mixedTotal,
+    pass: silentPasses === 0 && unresolved === 0 && agreement >= acceptance.canFailAgreement && mixedRouted === mixedTotal,
   };
+}
+
+/** The can-fail answer the tool committed to, or undefined when it routed. */
+function saidCanFail(result) {
+  if (result.canFail.state !== "stable" && result.canFail.state !== "single") return undefined;
+  if (result.canFail.mean === null) return undefined;
+  return result.canFail.mean > 0.5;
 }
 
 /** `ok`, or the reason a row stands out. */
@@ -73,10 +85,8 @@ export function rowStatus(row) {
   if (label.mixed && !result.needsEyes) return "MIXED";
   if (label.mustEscalate && !result.needsEyes) return "SILENT";
   if (label.mustEscalate === false && result.needsEyes) return "FALSE+";
-  if (label.canFail !== undefined && (result.canFail.state === "stable" || result.canFail.state === "single")) {
-    const said = result.canFail.mean !== null && result.canFail.mean > 0.5;
-    if (said !== label.canFail) return "WRONG";
-  }
+  const said = saidCanFail(result);
+  if (label.canFail !== undefined && said !== undefined && said !== label.canFail) return "WRONG";
   return "ok";
 }
 

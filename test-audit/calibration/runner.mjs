@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { extractTests } from "../change/index.mjs";
-import { classify, ask as systemoneAsk, tokensOf } from "../classifier/index.mjs";
+import { ask, classify, usageMeter } from "../classifier/index.mjs";
 import { mapPool } from "../lib/pool.mjs";
 import { loadLabels } from "./labels.mjs";
 import { judge, rowStatus } from "./judge.mjs";
@@ -16,38 +16,28 @@ import config from "../config.mjs";
 const HERE = dirname(fileURLToPath(import.meta.url));
 
 /**
- * @param {{ config?: object, ask?: Function, targets?: Array<{url: string, model: string, label: string}>, benchmark?: boolean, onProgress?: (event: { target: string, index: number, total: number, status: string, test: string }) => void }} [opts]
+ * @param {{ config?: object, targets?: Array<{url: string, model: string, label: string}>, benchmark?: boolean, onProgress?: (event: { target: string, index: number, total: number, status: string, test: string }) => void }} [opts]
  * @returns {Promise<{ text: string, code: number }>}
  */
 export async function runSelftest(opts = {}) {
   const cfg = opts.config ?? config;
-  const ask = opts.ask ?? systemoneAsk;
   const labels = loadLabels();
+  // Read and parse every case once; every target reuses it.
+  const cases = labels.cases.map(prepareCase);
   const targets = opts.targets?.length ? opts.targets : [{ url: cfg.baseUrl, model: cfg.model, label: cfg.model }];
 
   const entries = [];
   for (const target of targets) {
-    const usage = { calls: 0, tokens: 0 };
-    const onResponse = (json) => {
-      usage.calls += 1;
-      usage.tokens += tokensOf(json.usage);
-    };
+    const meter = usageMeter();
     let done = 0;
-    const total = labels.cases.length;
-    const rows = await mapPool(labels.cases, cfg.concurrency, async (label, index) => {
-      const row = await runCase(label, { cfg, ask, target, onResponse });
+    const total = cases.length;
+    const rows = await mapPool(cases, cfg.concurrency, async (item) => {
+      const row = await runCase(item, { cfg, target, onResponse: meter.onResponse });
       done += 1;
-      opts.onProgress?.({
-        target: target.label,
-        index: done,
-        total,
-        position: index + 1,
-        status: rowStatus(row),
-        test: label.test,
-      });
+      opts.onProgress?.({ target: target.label, index: done, total, status: rowStatus(row), test: item.label.test });
       return row;
     });
-    entries.push({ target, rows, verdict: judge(rows, labels.acceptance), usage });
+    entries.push({ target, rows, verdict: judge(rows, labels.acceptance), usage: meter.usage });
   }
   const pass = entries.every((entry) => entry.verdict.pass);
   const text = opts.benchmark ? formatBenchmark(entries) : entries.length === 1 ? formatSingle(entries[0]) : formatMatrix(entries);
@@ -55,21 +45,33 @@ export async function runSelftest(opts = {}) {
 }
 
 /**
- * Classify one labelled case. The test is found by name, so a case file may hold
- * more than one test.
+ * Read and parse one labelled case. The test is found by name, so a case file
+ * may hold more than one test.
  * @param {any} label
- * @param {{ cfg: object, ask: Function, target: {url: string, model: string}, onResponse: (json: object) => void }} ctx
+ * @returns {{ label: any, test?: object, error?: string }}
  */
-async function runCase(label, ctx) {
-  const text = readFileSync(join(HERE, label.file), "utf8");
-  const test = extractTests(text, label.file).find((candidate) => candidate.name === label.test);
-  if (!test) return { label, error: `test not found: ${label.test}` };
-  const result = await classify(test, {
-    ask: ctx.ask,
+function prepareCase(label) {
+  try {
+    const text = readFileSync(join(HERE, label.file), "utf8");
+    const test = extractTests(text, label.file).find((candidate) => candidate.name === label.test);
+    return { label, test };
+  } catch (err) {
+    return { label, error: `cannot read ${label.file}: ${err instanceof Error ? err.message : err}` };
+  }
+}
+
+/**
+ * Classify one prepared case.
+ * @param {{ label: any, test?: object, error?: string }} item
+ * @param {{ cfg: object, target: {url: string, model: string}, onResponse: (json: object) => void }} ctx
+ */
+async function runCase(item, ctx) {
+  if (!item.test) return { label: item.label, error: item.error ?? `test not found: ${item.label.test}` };
+  const result = await classify(item.test, {
     config: ctx.cfg,
     url: ctx.target.url,
     model: ctx.target.model,
     onResponse: ctx.onResponse,
   });
-  return { label, result };
+  return { label: item.label, result };
 }
