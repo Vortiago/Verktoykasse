@@ -39,6 +39,10 @@ jobs:
         if: ${{ !cancelled() }}
         working-directory: opencode-test-audit
         run: node tools/check.mjs
+      - name: gate — opencode-plan-accept
+        if: ${{ !cancelled() }}
+        working-directory: opencode-plan-accept
+        run: node tools/check.mjs
       - name: vendored-toolkit drift (sync-from-web.sh --check)
         if: ${{ !cancelled() }}
         working-directory: vanilla-components
