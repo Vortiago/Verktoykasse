@@ -198,8 +198,13 @@ const overviewCss = `/* Overview view — @scope'd to the view root so nothing l
 }
 `;
 
+const gitignore = `# tools/check.mjs installs @types/node here (typecheck-only) on its first run.
+node_modules/
+`;
+
 /** @type {Array<[string, string]>} [dest path, content] */
 const boilerplate = [
+  [".gitignore", gitignore],
   ["index.html", indexHtml],
   ["shell.css", shellCss],
   ["views/registry.js", registryJs],

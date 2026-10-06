@@ -34,7 +34,7 @@ import { createServer, request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
 import { readFile, stat } from "node:fs/promises";
 import { join, dirname, extname, normalize } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { gzip, brotliCompress, constants } from "node:zlib";
 import { promisify } from "node:util";
 
@@ -49,6 +49,7 @@ const PREVIEW = process.env.PREVIEW !== "off"; // on by default; PREVIEW=off to 
 const TEST = process.env.TEST === "1"; // gate the leak-suite hooks (inert in prod)
 const CACHE = Number(process.env.CACHE) || 0; // seconds; 0/unset → no-cache (always revalidate)
 
+/** @type {Record<string, string>} */
 const MIME = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
@@ -340,7 +341,11 @@ if (PREVIEW) {
   // reported instead of being mistaken for "no preview feature installed".
   if (await stat(scanPath).then(() => true, () => false)) {
     try {
-      const { default: scanPreviews } = await import("./previews/scan.mjs");
+      // Imported via the probed path, not a literal specifier: the generator is
+      // absent in a scaffolded app, and tsc resolves a literal even under a stat
+      // guard (TS2307). Deriving it from scanPath also keeps probe and import on
+      // one path by construction.
+      const { default: scanPreviews } = await import(pathToFileURL(scanPath).href);
       const n = await scanPreviews(ROOT);
       console.log(`  previews: ${n} component(s) catalogued`);
     } catch (err) {

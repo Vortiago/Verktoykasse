@@ -23,7 +23,8 @@ const _patchedNames = new WeakMap();
  * ONE restore — the first, which is the only one that knows the real prior
  * descriptor. Without that guard the second restore runs last (`t.after` hooks fire
  * in registration order) and puts the FIRST fake back on globalThis, where every
- * later test in the file inherits it. Silent, and miserable to trace back. */
+ * later test in the file inherits it. Silent, and miserable to trace back.
+ * @param {import("node:test").TestContext} t @param {string} name @param {unknown} value */
 export function patchGlobal(t, name, value) {
   const patched = _patchedNames.get(t) ?? new Set();
   _patchedNames.set(t, patched);
@@ -34,7 +35,7 @@ export function patchGlobal(t, name, value) {
   patched.add(name);
   t.after(() => {
     if (prevDescriptor) Object.defineProperty(globalThis, name, prevDescriptor);
-    else delete globalThis[name];
+    else delete /** @type {Record<string, unknown>} */ (globalThis)[name];
   });
 }
 
@@ -58,9 +59,10 @@ export function fakeEventTarget() {
     /** @param {string} type @param {Function} fn @param {{ signal?: AbortSignal, once?: boolean }} [opts] */
     addEventListener(type, fn, opts) {
       if (opts?.signal?.aborted) return; // mirror real EventTarget: a pre-aborted signal never registers
-      if (!listeners.has(type)) listeners.set(type, new Set());
+      let entries = listeners.get(type);
+      if (!entries) listeners.set(type, (entries = new Set()));
       const entry = { fn, once: !!opts?.once };
-      listeners.get(type).add(entry);
+      entries.add(entry);
       opts?.signal?.addEventListener("abort", () => listeners.get(type)?.delete(entry), { once: true });
     },
     /** @param {string} type @param {unknown} [event] */

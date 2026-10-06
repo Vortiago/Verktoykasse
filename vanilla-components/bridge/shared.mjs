@@ -8,7 +8,8 @@ import { readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
-/** kebab dir name → PascalCase component name (e.g. "list-row" → "ListRow"). */
+/** kebab dir name → PascalCase component name (e.g. "list-row" → "ListRow").
+ * @param {string} name */
 export const toPascal = (name) => name.split("-").map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join("");
 
 /** Discover the synced components by walking <root>/components — a real component

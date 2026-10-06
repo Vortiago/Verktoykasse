@@ -21,15 +21,16 @@ const ROOT = dirname(HERE);
 const COMPONENTS = join(ROOT, "components");
 const OUT = join(ROOT, ".design-sync", "previews");
 
-/** A variant key → a valid PascalCase React component name. */
+/** A variant key → a valid PascalCase React component name. @param {string} key */
 const sceneName = (key) => {
   const p = (key.charAt(0).toUpperCase() + key.slice(1)).replace(/[^A-Za-z0-9]/g, "");
   return /^[0-9]/.test(p) ? "V" + p : p;
 };
 /** A prop → a JSX attribute. `true` is shorthand; everything else is a JS expression
- *  (safe for strings with quotes/newlines, and for arrays/objects like menu items). */
+ *  (safe for strings with quotes/newlines, and for arrays/objects like menu items).
+ *  @param {string} k @param {unknown} v */
 const attr = (k, v) => (v === true ? k : `${k}={${JSON.stringify(v)}}`);
-const exists = (p) => stat(p).then(() => true, () => false);
+const exists = (/** @type {string} */ p) => stat(p).then(() => true, () => false);
 
 const kept = new Set();
 let n = 0;

@@ -22,23 +22,43 @@ const FAST = process.argv.includes("--fast");
 /** @type {Array<{name: string, cmd: string, args: string[]}>} */
 const halves = [];
 
-// 1. tsc --noEmit — use a locally resolvable typescript install when present
-// (an app with the one sanctioned devDependency), else the pinned npx fallback
-// that needs no package.json at all.
+// Run npm/npx's SCRIPT under this node, never the shim. On Windows the shim is
+// npx.cmd: spawnSync does no PATHEXT lookup (bare "npx" is ENOENT) and node
+// refuses to spawn a .cmd without a shell (CVE-2024-27980). `shell: true` would
+// hand ROOT to cmd.exe for a second round of quoting, and ROOT is not a path
+// this tool chooses.
+/** @param {"npm" | "npx"} tool */
+const cliFor = (tool) => {
+  const cli = join(dirname(process.execPath), "node_modules", "npm", "bin", `${tool}-cli.js`);
+  return existsSync(cli)
+    ? { cmd: process.execPath, args: [cli] }
+    : { cmd: tool, args: /** @type {string[]} */ ([]) };
+};
+
+const require_ = createRequire(join(ROOT, "noop.js"));
+
+// 1. tsc --noEmit over every .js and .mjs. Two typecheck-only dependencies
+// (SKILL.md): typescript, and @types/node for the .mjs tooling. tsc resolves
+// @types/* by walking up from the project, never from npx's cache, so npx
+// cannot supply it — it has to be on disk. node_modules/ is gitignored.
+try {
+  require_.resolve("@types/node/package.json");
+} catch {
+  console.log("── installing @types/node (typecheck-only, first run in this tree)");
+  const npm = cliFor("npm");
+  const args = [...npm.args, "install", "--no-save", "--prefix", ROOT, "@types/node@24"];
+  const r = spawnSync(npm.cmd, args, { cwd: ROOT, stdio: "inherit" });
+  if (r.status !== 0) console.error("  install failed — tsc will report TS2688 for 'node'");
+}
+
+// A locally resolvable typescript install when present (an app that pins it),
+// else the npx fallback that needs no package.json at all.
 const tsc = (() => {
   try {
-    const lib = createRequire(join(ROOT, "noop.js")).resolve("typescript");
+    const lib = require_.resolve("typescript");
     return { cmd: process.execPath, args: [join(dirname(lib), "..", "bin", "tsc")] };
   } catch {
-    // Run npx's SCRIPT under this node, never the shim. On Windows the shim is
-    // npx.cmd: spawnSync does no PATHEXT lookup (bare "npx" is ENOENT) and node
-    // refuses to spawn a .cmd without a shell (CVE-2024-27980). `shell: true`
-    // would hand ROOT to cmd.exe for a second round of quoting, and ROOT is not
-    // a path this tool chooses.
-    const cli = join(dirname(process.execPath), "node_modules", "npm", "bin", "npx-cli.js");
-    const via = existsSync(cli)
-      ? { cmd: process.execPath, args: [cli] }
-      : { cmd: "npx", args: /** @type {string[]} */ ([]) };
+    const via = cliFor("npx");
     return { cmd: via.cmd, args: [...via.args, "--yes", "--package", "typescript@5", "tsc"] };
   }
 })();

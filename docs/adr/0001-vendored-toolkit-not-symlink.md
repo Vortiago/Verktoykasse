@@ -22,8 +22,8 @@ drift, and an app could copy `templates.js` from either skill and get a differen
 
 Two hard constraints bound any fix:
 
-1. **No build step, no runtime deps.** Plain ES modules served statically. The only dev
-   dependency is `typescript`. Nothing may transform source between edit and run/ship.
+1. **No build step, no runtime deps.** Plain ES modules served statically. Dev dependencies
+   are typecheck-only. Nothing may transform source between edit and run/ship.
 2. **Skills install independently.** `install.sh` symlinks each skill into
    `~/.claude/skills/<name>` on its own, and apps vendor files *out of* a skill's tree. So
    `vanilla-components` must remain self-contained: it cannot reach across to
@@ -84,6 +84,23 @@ list.
 - **Do nothing (tolerate the duplication).** Rejected: the lockstep edit in `599fda3` shows
   the cost is already being paid, and silent drift between two upstream copies of the engine
   is a real correctness hazard for downstream apps.
+
+## Amendments
+
+- **2026-10-06**: constraint 1 said "the only dev dependency is `typescript`". That is a
+  tally, not a constraint, and it blocked typechecking the 67 `.mjs` files — every
+  `tools/check-*.mjs`, `new-app.mjs`, `serve.mjs` — which `tsconfig.json` had never
+  included. A dropped `//` in `serve.mjs` reached CI as a web server that would not start
+  (`bd231d2`), and nothing in the gate parsed the file. The constraint is now stated as
+  what it means: dev dependencies are typecheck-only. `@types/node` is the second, and
+  satisfies it exactly as `typescript` does — declarations consumed by `tsc --noEmit`,
+  never imported at runtime, never shipped, absent from a scaffolded app's running code.
+
+  It is not declared in a `package.json`, because the repo has none by design; the version
+  is pinned in `vanilla-web/tools/check.mjs`, which installs it into the tree's
+  `node_modules/` (gitignored) when it is not already resolvable. `npx` cannot supply it:
+  `tsc` resolves `@types/*` by walking up from the project directory, never from npx's
+  cache, so `npx --package @types/node tsc` fails with `TS2688`. Measured.
 
 ## Notes
 

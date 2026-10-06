@@ -1,0 +1,3 @@
+# The typecheck-only dev dependencies (tools/check.mjs installs @types/node here
+# when it is not already resolvable). Nothing here is edited, committed or shipped.
+node_modules/

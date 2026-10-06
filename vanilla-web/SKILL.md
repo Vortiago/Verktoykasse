@@ -5,10 +5,13 @@ description: Atle's conventions for building web UIs: vanilla ES modules, HTML <
 
 # vanilla-web: how websites get built here
 
-**No build step, no runtime deps**: plain ES modules served statically, and the
-only dev dependency is `typescript`. `node tools/check.mjs` runs the whole gate
-in one command (`tsc --noEmit`, the `check-*` halves, and `node --test`) with
-`--fast` to skip the `node --test` pass (→ `reference/modules.md`).
+**No build step, no runtime deps**: plain ES modules served statically. Dev
+dependencies are typecheck-only — `typescript` and `@types/node`, neither
+imported at runtime nor shipped; nothing transforms source between edit and
+run/ship. `node tools/check.mjs` runs the whole gate in one command
+(`tsc --noEmit`, the `check-*` halves, and `node --test`) with `--fast` to skip
+the `node --test` pass (→ `reference/modules.md`). It installs `@types/node`
+into `node_modules/` on its first run in a tree; that dir is gitignored.
 
 ## Decision rule
 
@@ -169,10 +172,13 @@ it needs it.
   signal are `store.subscribe(cb, signal)` and `loadCSS(url, path, signal)`.
   Guarded by `*.leak.test.mjs` (node) + `testing/tests/e2e/memory-*` (browser).
   → `reference/testing.md`
-- **The gate**: every module starts `// @ts-check` + JSDoc. `tsc --noEmit`, the
-  `check-*` halves (`check-css-vars` — an undefined `var(--x)` fails silently;
-  `check-css-tokens` — a raw colour outside a token definition never fails at
-  all; `check-conventions`; `check-slots`), and `node --test`. Run the lot with
+- **The gate**: every module starts `// @ts-check` + JSDoc. `tsc --noEmit` over
+  every `.js` and `.mjs` (`*.test.mjs` excluded — those pass deliberately wrong
+  shapes to exercise edge cases), the `check-*` halves (`check-css-vars` — an
+  undefined `var(--x)` fails silently; `check-css-tokens` — a raw colour outside
+  a token definition never fails at all; `check-syntax` — `node --check` over
+  every `.js`/`.mjs`, so a file that does not parse cannot reach CI;
+  `check-conventions`; `check-slots`), and `node --test`. Run the lot with
   `node tools/check.mjs` (`--fast` skips the `node --test` pass). A new half is a
   `tools/check-*.mjs` file drop — check.mjs discovers them.
   → `reference/modules.md`

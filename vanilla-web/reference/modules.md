@@ -35,6 +35,8 @@ shipped once). So the gate has two halves:
 - **Typing** — every module starts `// @ts-check` with JSDoc; shared shapes in
   `types.d.ts`. Copy `tsconfig.json` from the skill dir (`strict`, `checkJs`,
   `noUnusedLocals` turns stale imports into hard errors; unused bindings get `_`).
+  It covers `.mjs` as well as `.js`, so the tooling and `serve.mjs` are checked;
+  `*.test.mjs` is excluded, and `check-syntax` parses those instead.
 - **`check-css-vars`** — copy `tools/check-css-vars.mjs` verbatim (zero-dep, Node
   22+). Scans `web/**/*.{css,js}`, exits 1 on any required `var(--x)` never defined
   (`web/file:line  --name`). *Defined* = a CSS `--x:` decl OR a JS
