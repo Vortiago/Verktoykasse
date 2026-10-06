@@ -30,8 +30,10 @@ function goodAnswers() {
     can_fail_c: noul(0.97),
     asserts_a: choice("behaviour", 0.91),
     asserts_b: choice("behaviour", 0.88),
-    positive: noul(0.96),
-    runs: noul(0.99),
+    positive_a: noul(0.96),
+    positive_b: noul(0.04),
+    runs_a: noul(0.99),
+    runs_b: noul(0.01),
     type: choice("unit", 0.8),
     verdict: score(2.9),
   };
@@ -72,7 +74,7 @@ const SILENT = row(
 const SHAPE = row(
   { file: "cases/shape.case.mjs", test: "returns a list", defect: "shape-only", canFail: true, mustEscalate: true },
   "test(\"returns a list\", () => {\n  // ```\n  expect(Array.isArray(list())).toBe(true);\n})",
-  { ...goodAnswers(), can_fail_a: noul(0.9), can_fail_b: noul(0.8), asserts_a: choice("shape-only", 0.7), asserts_b: choice("shape-only", 0.6), named: noul(0.1), positive: noul(0.2), verdict: score(0.2) },
+  { ...goodAnswers(), can_fail_a: noul(0.9), can_fail_b: noul(0.8), asserts_a: choice("shape-only", 0.7), asserts_b: choice("shape-only", 0.6), named: noul(0.1), positive_a: noul(0.2), positive_b: noul(0.8), verdict: score(0.2) },
 );
 
 /** @param {CalibrationRow[]} rows @param {string[]} [missing] */
@@ -114,7 +116,8 @@ test("an escalated case ties each reason and flag to its question", () => {
   assert.ok(text.includes("````js\n"), "the fence is longer than the backtick run in the source");
   assert.match(text, /\| \*can_fail\* \| .* \| mean 0\.\d\d!, spread 0\.\d\d \(\w+\) \| escalates: can_fail \w+ \(spread 0\.\d\d\) \|/);
   assert.ok(text.includes("| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | shape-only | escalates: asserts shape-only |"));
-  assert.ok(text.includes("| `positive` | yes: it asserts the positive case | no (0.20) | escalates: no positive assertion |"));
+  assert.ok(text.includes("| `positive_a` | yes: it asserts an output that must be present | no (0.20) | - |"));
+  assert.ok(text.includes("| *positive* | `positive_a` and `positive_b` agree, after the negated one is flipped | no, spread 0.00 | escalates: no positive assertion |"));
   assert.ok(text.includes("| `named` | yes: the name states the behaviour and the expected result | no (0.10) | flag `vague-name` |"));
   assert.ok(text.includes("| `verdict` | scale: slop, weak, good, strong | slop (0.20) | escalates: verdict slop |"));
   assert.match(text, /- Needs eyes: \*\*yes\*\*\. Reasons: .*no positive assertion; asserts shape-only; verdict slop\./);
@@ -123,11 +126,11 @@ test("an escalated case ties each reason and flag to its question", () => {
 test("a record without raw answers shows its values, and 'not recorded' for what it lacks", () => {
   const result = { ...CLEAN.result, answers: {}, positive: undefined, type: undefined };
   const rebuilt = { ...CLEAN, result: /** @type {import("../types.d.ts").AuditResult} */ (result) };
-  const text = formatBenchmark([entry([rebuilt], ["can_fail_a", "positive", "type"])]);
+  const text = formatBenchmark([entry([rebuilt], ["can_fail_a", "positive_a", "positive_b", "type"])]);
   assert.ok(text.includes("| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |"));
-  assert.ok(text.includes("| `positive` | yes: it asserts the positive case | not recorded | - |"));
+  assert.ok(text.includes("| `positive_a` | yes: it asserts an output that must be present | not recorded | - |"));
   assert.ok(text.includes("| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |"));
-  assert.ok(text.includes("| `runs` | yes: it runs | yes | - |"));
+  assert.ok(text.includes("| *runs* | `runs_a` and `runs_b` agree, after the negated one is flipped | yes, spread 0.00 | - |"));
   assert.ok(text.includes("| `can_fail_b` | yes: it passes even when the behaviour is broken | unanswered | - |"));
 });
 

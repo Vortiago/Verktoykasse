@@ -65,8 +65,9 @@ A test escalates, and needs eyes, for each of these reasons:
 
 - The endpoint gave no answer, or a verdict-carrying answer is missing or
   untrusted.
-- The paraphrases disagree. The `can_fail_*` spread is above
-  `TEST_AUDIT_STABLE_BAND`, or `asserts_a` and `asserts_b` differ.
+- The paraphrases disagree. The spread of the `can_fail_*` set, the `runs_*`
+  pair, or the `positive_*` pair is above `TEST_AUDIT_STABLE_BAND`, or
+  `asserts_a` and `asserts_b` differ.
 - The test does not run.
 - The test has no positive assertion.
 - The test asserts something other than behaviour: hardcoded data, shape only,
@@ -152,7 +153,7 @@ also report `mass`.
 
 ### The battery
 
-The battery is 27 questions about one test. All questions share one state and
+The battery is 29 questions about one test. All questions share one state and
 travel in one call.
 
 | Question | Type | Looks for |
@@ -162,8 +163,10 @@ travel in one call.
 | `can_fail_c` | yes/no | the same judgement, asked directly |
 | `asserts_a` | choice | behaviour, hardcoded data, shape only, interaction only, nothing |
 | `asserts_b` | choice, order swapped | the position control for `asserts_a` |
-| `positive` | yes/no | only-negative test: no assertion on the output that must exist |
-| `runs` | yes/no | a skipped, ignored, or focused test that does not run |
+| `positive_a` | yes/no | only-negative test: no assertion on the output that must exist |
+| `positive_b` | yes/no, negated twin | the same judgement, asked the other way |
+| `runs_a` | yes/no | a skip, todo, only, or focus marker on the test, on a describe around it, or on another test in the file |
+| `runs_b` | yes/no, negated twin | the same judgement, asked the other way |
 | `type` | choice | unit, integration, regression, e2e, smoke, characterization |
 | `observable` | yes/no | implementation coupling: private internals, call order, exact collaborator interactions |
 | `conditional` | yes/no | conditional logic: a branch, loop, or catch can leave the assertion unrun |
@@ -185,8 +188,10 @@ travel in one call.
 | `restores` | yes/no | test pollution: state left behind for the next test |
 | `verdict` | score | slop, weak, good, strong |
 
-Five answers carry the verdict: `positive`, `runs`, the `can_fail_*` set, the
-`asserts_*` pair, and `verdict`. The other 18 questions are the descriptive
+Five answers carry the verdict: the `positive_*` pair, the `runs_*` pair, the
+`can_fail_*` set, the `asserts_*` pair, and `verdict`. Each pair holds one
+negated twin, so one confident wrong answer cannot pass a test alone. A pair
+whose phrasings disagree beyond the band escalates, like `can_fail`. The other 18 questions are the descriptive
 questions. Each one raises a flag.
 
 ### Trust
@@ -274,8 +279,8 @@ are primary sources and which are house inferences.
 | --- | --- |
 | Falsifiability (`can_fail_*`) | Beck, *Test Desiderata* (`Behavioral`); WPT review checklist, "fails when it's supposed to fail"; Meszaros, `Erratic Test`; the mutation-testing literature |
 | Assertion target (`asserts_*`) | testsmells.org, Open Catalog of Test Smells (`Redundant Assertion`, `Unknown Test`, `Sensitive Equality`, `Magic Number Test`); Meszaros, `Obscure Test`; Fowler, "Mocks Aren't Stubs" |
-| Runs (`runs`) | testsmells.org, `Ignored Test`; Meszaros, `Ignored Test`; the house catalogue, skipped / disabled / focused |
-| Only negative (`positive`) | the house catalogue, no negative/positive pair; the WPT checklist, "fails when it's supposed to fail" |
+| Runs (`runs_a`, `runs_b`) | testsmells.org, `Ignored Test`; Meszaros, `Ignored Test`; the house catalogue, skipped / disabled / focused |
+| Only negative (`positive_a`, `positive_b`) | the house catalogue, no negative/positive pair; the WPT checklist, "fails when it's supposed to fail" |
 | Implementation coupling (`observable`) | Meszaros, `Indirect Testing`; Fowler, "Mocks Aren't Stubs"; testsmells.org, `Redundant Assertion` |
 | Conditional logic (`conditional`) | Meszaros, `Conditional Test Logic`; testsmells.org, `Conditional Test Logic` |
 | Isolation (`isolated`) | Beck, `Isolated`; Meszaros, `Interacting Tests`, `Test Run War`, `Unrepeatable Test` |

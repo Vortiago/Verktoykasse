@@ -19,6 +19,7 @@ function result(overrides = {}) {
     canFail: { values: [0.99, 0.99, 0.98], mean: 0.99, spread: 0.01, state: "stable", unstable: false },
     asserts: { value: "behaviour", a: "behaviour", b: "behaviour", trust: true, agrees: true },
     runs: true,
+    pairs: {},
     type: "unit",
     descriptive: {},
     score: { value: 3, label: "strong" },

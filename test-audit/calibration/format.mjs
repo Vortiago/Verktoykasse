@@ -2,7 +2,7 @@
 // for several, and a per-case benchmark in markdown.
 
 import { canFailText, escapeCell, pad } from "../report/index.mjs";
-import { ASSERT_PASS, BATTERY, CAN_FAIL_KEYS, CAN_FAIL_NEGATED, ESCALATE_ON_FALSE, FLAG_BY_GATE, trusted } from "../classifier/index.mjs";
+import { ASSERT_PASS, BATTERY, CAN_FAIL_KEYS, ESCALATE_ON_FALSE, FLAG_BY_GATE, NEGATED, trusted } from "../classifier/index.mjs";
 import { rowStatus, saidCanFail, shortStatus } from "./judge.mjs";
 
 /** @typedef {import("../types.d.ts").AuditUsage} AuditUsage */
@@ -85,7 +85,12 @@ const STATUS = {
 /** The paraphrase pair for the assertion target. */
 const ASSERTS_KEYS = ["asserts_a", "asserts_b"];
 /** The verdict-carrying questions, in the order a reader checks them. */
-const VERDICT_KEYS = [...CAN_FAIL_KEYS, ...ASSERTS_KEYS, ...Object.keys(ESCALATE_ON_FALSE), "verdict"];
+const VERDICT_KEYS = [...CAN_FAIL_KEYS, ...ASSERTS_KEYS, ...Object.values(ESCALATE_ON_FALSE).flatMap((gate) => gate.keys), "verdict"];
+
+/** The gate a twin phrasing belongs to, such as `runs` for `runs_b`. @param {string} key */
+function gateOf(key) {
+  return Object.keys(ESCALATE_ON_FALSE).find((gate) => ESCALATE_ON_FALSE[/** @type {keyof typeof ESCALATE_ON_FALSE} */ (gate)].keys.includes(key));
+}
 /** Every other question, in battery order: `type`, the descriptive questions, and any new one. */
 const OTHER_KEYS = Object.keys(BATTERY).filter((key) => !VERDICT_KEYS.includes(key));
 /** The label fields the "known defect" paragraph states in its own words. */
@@ -195,7 +200,7 @@ function legend() {
     "- **Escalate**: the tool sends the test to a human. The test then **needs eyes**. Each **reason** says why.",
     "- **Verdict-carrying question**: a question whose answer can escalate the test.",
     '- **Descriptive question**: a question whose "no" raises a **flag**. A flag describes the test. It does not escalate the test.',
-    `- **can_fail**: the probability that a change to the code under test can make the test fail. The tool asks it three ways (${CAN_FAIL_KEYS.map(code).join(", ")}) and takes the mean. ${[...CAN_FAIL_NEGATED].map(code).join(", ")} asks the opposite, so its "no" means "can fail".`,
+    `- **can_fail**: the probability that a change to the code under test can make the test fail. The tool asks it three ways (${CAN_FAIL_KEYS.map(code).join(", ")}) and takes the mean. ${CAN_FAIL_KEYS.filter((key) => NEGATED.has(key)).map(code).join(", ")} asks the opposite, so its "no" means "can fail".`,
     "- **Spread**: the highest minus the lowest of the three can_fail values. A spread above `TEST_AUDIT_STABLE_BAND` makes the value unstable, and the test escalates. A `!` after a can_fail value marks this.",
     `- **asserts**: what the assertion checks. Only ${code(ASSERT_PASS)} is a real guard. ${ASSERTS_KEYS.map(code).join(" and ")} give the options in opposite order, and must agree.`,
     `- **Answer**: for a yes/no question, the number in brackets is the probability of yes. For a choice, it is the probability of the chosen option. For the verdict, it is the score from 0 (${levels[0]}) to ${levels.length - 1} (${levels[levels.length - 1]}).`,
@@ -275,6 +280,8 @@ function questionTable(keys, label, result, missing) {
     lines.push(`| ${code(key)} | ${escapeCell(checksText(question))} | ${escapeCell(answerText(key, question, result, missing))} | ${effectText(key, label, result, value)} |`);
     if (key === CAN_FAIL_KEYS[CAN_FAIL_KEYS.length - 1]) lines.push(canFailRow(label, result));
     if (key === ASSERTS_KEYS[ASSERTS_KEYS.length - 1]) lines.push(assertsRow(result));
+    const gate = gateOf(key);
+    if (gate && key === ESCALATE_ON_FALSE[/** @type {keyof typeof ESCALATE_ON_FALSE} */ (gate)].keys.at(-1)) lines.push(gateRow(gate, result));
   }
   return lines;
 }
@@ -313,10 +320,6 @@ function answerValue(key, question, result) {
 /** The value the result holds for one question, when the record has no raw answer. @param {string} key @param {AuditResult} result */
 function derivedValue(key, result) {
   if (key in FLAG_BY_GATE) return result.descriptive[key];
-  if (key in ESCALATE_ON_FALSE) {
-    const value = /** @type {Record<string, unknown>} */ (/** @type {unknown} */ (result))[key];
-    return typeof value === "boolean" ? value : undefined;
-  }
   if (key === ASSERTS_KEYS[0]) return result.asserts.a;
   if (key === ASSERTS_KEYS[1]) return result.asserts.b;
   if (key === "type") return result.type;
@@ -350,7 +353,7 @@ function effectText(key, label, result, value) {
     parts.push(value === expected ? "as expected" : `**not as expected** (label: ${valueText(expected)})`);
   }
   if (key in FLAG_BY_GATE && value === false) parts.push(`flag ${code(FLAG_BY_GATE[key])}`);
-  parts.push(...reasonsOf(key, result).map(escalates));
+  if (!gateOf(key)) parts.push(...reasonsOf(key, result).map(escalates));
   return parts.join("; ") || "-";
 }
 
@@ -360,7 +363,7 @@ function effectText(key, label, result, value) {
  * @returns {boolean | string | undefined}
  */
 function expectedAnswer(key, label) {
-  if (CAN_FAIL_KEYS.includes(key)) return label.canFail === undefined ? undefined : CAN_FAIL_NEGATED.has(key) ? !label.canFail : label.canFail;
+  if (CAN_FAIL_KEYS.includes(key)) return label.canFail === undefined ? undefined : NEGATED.has(key) ? !label.canFail : label.canFail;
   const value = /** @type {Record<string, unknown>} */ (/** @type {unknown} */ (label))[key];
   return typeof value === "boolean" || typeof value === "string" ? value : undefined;
 }
@@ -371,9 +374,10 @@ function expectedAnswer(key, label) {
  * @param {string} key @param {AuditResult} result
  */
 function reasonsOf(key, result) {
-  if (key in ESCALATE_ON_FALSE) {
-    const reason = /** @type {Record<string, string>} */ (ESCALATE_ON_FALSE)[key];
-    return result.reasons.filter((text) => text === reason || text === `${key} unclassified`);
+  const gate = gateOf(key);
+  if (gate) {
+    const { reason } = ESCALATE_ON_FALSE[/** @type {keyof typeof ESCALATE_ON_FALSE} */ (gate)];
+    return result.reasons.filter((text) => text === reason || text.startsWith(`${gate} `));
   }
   if (key === "verdict" || key === "can_fail" || key === "asserts") return result.reasons.filter((text) => text.startsWith(`${key} `));
   return [];
@@ -389,6 +393,17 @@ function canFailRow(label, result) {
     parts.unshift(said === label.canFail ? "matches the label" : `**WRONG**: the label says ${yesNo(label.canFail)}`);
   }
   return `| *can_fail* | the mean probability that the test can fail, over the ${CAN_FAIL_KEYS.length} phrasings, and their spread | ${escapeCell(answer)} | ${parts.join("; ") || "-"} |`;
+}
+
+/** The combined row for a twin gate: the value both phrasings agree on. @param {string} gate @param {AuditResult} result */
+function gateRow(gate, result) {
+  const { keys } = ESCALATE_ON_FALSE[/** @type {keyof typeof ESCALATE_ON_FALSE} */ (gate)];
+  const value = /** @type {Record<string, unknown>} */ (/** @type {unknown} */ (result))[gate];
+  const pair = result.pairs?.[gate];
+  const spread = pair && pair.spread !== null ? `, spread ${pair.spread.toFixed(2)}` : "";
+  const answer = typeof value === "boolean" ? `${yesNo(value)}${spread}` : "unanswered";
+  const parts = reasonsOf(keys[0], result).map(escalates);
+  return `| *${gate}* | ${keys.map(code).join(" and ")} agree, after the negated one is flipped | ${escapeCell(answer)} | ${parts.join("; ") || "-"} |`;
 }
 
 /** The combined asserts row: the pair must agree on the real guard. @param {AuditResult} result */

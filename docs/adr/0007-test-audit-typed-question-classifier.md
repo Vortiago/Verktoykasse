@@ -47,8 +47,8 @@ a high margin, and it was wrong.
   `asserts` gate also swaps its answer order between phrasings, as a position
   control. The tool reads `confidence` as a margin, never as a probability of
   correctness.
-- **An untrusted or unstable verdict escalates.** A `runs` answer of no, a
-  `positive` answer of no, an unanswered or unstable `can_fail`, an `asserts`
+- **An untrusted or unstable verdict escalates.** A `runs` pair that says no, a
+  `positive` pair that says no, a pair whose twins disagree, an unanswered or unstable `can_fail`, an `asserts`
   answer that is not `behaviour`, or a `slop`/`weak` verdict marks the test
   `needs-eyes`. The tool never tie-breaks a disagreement
   with a third phrasing. A human decides, because a silent pass is the failure

@@ -29,8 +29,10 @@ function goodAnswers() {
     can_fail_c: noul(0.98),
     asserts_a: choice("behaviour"),
     asserts_b: choice("behaviour"),
-    positive: noul(0.99),
-    runs: noul(0.99),
+    positive_a: noul(0.99),
+    positive_b: noul(0.01),
+    runs_a: noul(0.99),
+    runs_b: noul(0.01),
     type: choice("unit"),
     observable: noul(0.99),
     conditional: noul(0.99),
@@ -56,7 +58,7 @@ function goodAnswers() {
 
 test("the battery carries the whole question set once", () => {
   const questions = BATTERY;
-  assert.deepEqual(Object.keys(questions), [...CAN_FAIL_KEYS, "asserts_a", "asserts_b", "positive", "runs", "type", ...DESCRIPTIVE_KEYS, "verdict"]);
+  assert.deepEqual(Object.keys(questions), [...CAN_FAIL_KEYS, "asserts_a", "asserts_b", "positive_a", "positive_b", "runs_a", "runs_b", "type", ...DESCRIPTIVE_KEYS, "verdict"]);
   assert.deepEqual(Object.keys(questions.asserts_b.criteria), [...Object.keys(questions.asserts_a.criteria)].reverse());
 });
 
@@ -139,7 +141,7 @@ test("asserts that disagree escalate, and any non-behaviour assertion escalates"
 });
 
 test("a test with no positive assertion escalates", () => {
-  const result = verdictFrom(TEST, { ...goodAnswers(), positive: noul(0.1) });
+  const result = verdictFrom(TEST, { ...goodAnswers(), positive_a: noul(0.1), positive_b: noul(0.9) });
   assert.equal(result.needsEyes, true);
   assert.match(result.reasons.join(" "), /no positive assertion/);
 });
@@ -160,7 +162,7 @@ test("a score between levels rounds to the nearest level", () => {
 });
 
 test("a test that does not run escalates", () => {
-  const result = verdictFrom(TEST, { ...goodAnswers(), runs: noul(0.1) });
+  const result = verdictFrom(TEST, { ...goodAnswers(), runs_a: noul(0.1), runs_b: noul(0.9) });
   assert.equal(result.needsEyes, true);
   assert.match(result.reasons.join(" "), /does not run/);
 });
@@ -213,8 +215,10 @@ test("answers without mass are accepted, so an Ollama response works", () => {
     can_fail_c: { noul: 0.98 },
     asserts_a: { choice: "behaviour" },
     asserts_b: { choice: "behaviour" },
-    positive: { noul: 0.99 },
-    runs: { noul: 0.99 },
+    positive_a: { noul: 0.99 },
+    positive_b: { noul: 0.01 },
+    runs_a: { noul: 0.99 },
+    runs_b: { noul: 0.01 },
     type: { choice: "unit" },
     deterministic: { noul: 0.99 },
     one_thing: { noul: 0.99 },
@@ -232,4 +236,18 @@ test("the extractor's flags and the positive answer reach the result", () => {
   assert.ok(result.flags.includes("each"));
   assert.equal(result.positive, true);
   assert.equal(result.needsEyes, false);
+});
+
+test("a twin that disagrees escalates, so one confident wrong answer cannot pass alone", () => {
+  const result = verdictFrom(TEST, { ...goodAnswers(), positive_a: noul(0.92), positive_b: noul(0.9) });
+  assert.equal(result.positive, undefined);
+  assert.equal(result.needsEyes, true);
+  assert.match(result.reasons.join(" "), /positive unstable \(spread 0\.82\)/);
+});
+
+test("a twin with one phrasing unanswered escalates", () => {
+  const answers = Object.fromEntries(Object.entries(goodAnswers()).filter(([key]) => key !== "runs_b"));
+  const result = verdictFrom(TEST, answers);
+  assert.equal(result.runs, undefined);
+  assert.match(result.reasons.join(" "), /runs not fully answered/);
 });

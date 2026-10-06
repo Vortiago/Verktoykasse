@@ -68,6 +68,7 @@ function unreadResult(file) {
     answers: {},
     canFail: { values: [], mean: null, spread: null, state: "unanswered", unstable: false },
     asserts: { trust: false, agrees: false },
+    pairs: {},
     descriptive: {},
     score: {},
     flags: ["no-test-found"],

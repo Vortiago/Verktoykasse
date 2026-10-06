@@ -3,12 +3,13 @@
 // objects without the model.
 
 import { trusted } from "./systemone.mjs";
-import { ASSERT_PASS, CAN_FAIL_KEYS, CAN_FAIL_NEGATED, DESCRIPTIVE_KEYS, ESCALATE_ON_FALSE, FLAG_BY_GATE, VERDICTS } from "./battery.mjs";
+import { ASSERT_PASS, CAN_FAIL_KEYS, DESCRIPTIVE_KEYS, ESCALATE_ON_FALSE, FLAG_BY_GATE, NEGATED, VERDICTS } from "./battery.mjs";
 import config from "../config.mjs";
 
 /** @typedef {import("../types.d.ts").AuditTest} AuditTest */
 /** @typedef {import("../types.d.ts").AuditAnswer} AuditAnswer */
 /** @typedef {import("../types.d.ts").AuditResult} AuditResult */
+/** @typedef {import("../types.d.ts").Paraphrase} Paraphrase */
 
 /** Verdicts at or below this level escalate. */
 const WEAK = VERDICTS.indexOf("weak");
@@ -21,20 +22,22 @@ const WEAK = VERDICTS.indexOf("weak");
  * @returns {AuditResult}
  */
 export function verdictFrom(test, answers, opts = {}) {
-  const values = CAN_FAIL_KEYS.map((key) => canFailValue(key, answers[key]));
-  const present = values.filter((value) => value !== null);
-  const spread = present.length >= 2 ? Math.max(...present) - Math.min(...present) : null;
-  const mean = present.length ? present.reduce((sum, value) => sum + value, 0) / present.length : null;
-  const canFailState = canFailStateOf(present.length, spread, config.stableBand);
+  const canFail = paraphrase(CAN_FAIL_KEYS, answers);
 
   const assertsA = field(answers.asserts_a, "choice", "string");
   const assertsB = field(answers.asserts_b, "choice", "string");
   const assertsTrusted = assertsA !== undefined && assertsB !== undefined;
   const asserts = assertsTrusted ? assertsA : undefined;
 
+  // A gate's value counts only when both twins answered and agree.
+  /** @type {Record<string, Paraphrase>} */
+  const pairs = {};
   /** @type {Record<string, boolean | undefined>} */
   const gates = {};
-  for (const gate of Object.keys(ESCALATE_ON_FALSE)) gates[gate] = boolOf(answers[gate]);
+  for (const [gate, { keys }] of Object.entries(ESCALATE_ON_FALSE)) {
+    pairs[gate] = paraphrase(keys, answers);
+    gates[gate] = committed(pairs[gate], keys.length) ? /** @type {number} */ (pairs[gate].mean) >= 0.5 : undefined;
+  }
   const type = field(answers.type, "choice", "string");
   /** @type {Record<string, boolean | undefined>} */
   const descriptive = {};
@@ -53,28 +56,24 @@ export function verdictFrom(test, answers, opts = {}) {
     if (descriptive[gate] === false) flagList.push(FLAG_BY_GATE[gate]);
   }
   const flags = [...new Set(flagList)];
-  const canFailUnstable = canFailState === "borderline" || canFailState === "unstable";
   const reasons = escalate({
     error: opts.error,
-    answered: present.length === CAN_FAIL_KEYS.length,
-    canFailUnstable,
-    canFailState,
-    canFailMean: mean,
-    spread,
+    canFail,
     assertsTrusted,
     assertsA,
     assertsB,
     asserts,
-    gates,
+    pairs,
     verdictIndex,
   });
 
   return {
     test: { file: test.file, line: test.line, name: test.name, path: test.path },
     answers,
-    canFail: { values, mean, spread, state: canFailState, unstable: canFailUnstable },
+    canFail,
     asserts: { value: asserts, a: assertsA, b: assertsB, trust: assertsTrusted, agrees: assertsTrusted && assertsA === assertsB },
     ...gates,
+    pairs,
     type,
     descriptive,
     score: { value: scoreValue, label: verdict },
@@ -86,17 +85,31 @@ export function verdictFrom(test, answers, opts = {}) {
 }
 
 /**
- * P(can fail) from one phrasing, or null when the answer is not trusted.
- * @param {string} key @param {AuditAnswer | undefined} answer
+ * Several phrasings of one judgement, normalised to the same polarity: their
+ * values, mean, spread, and whether they agree within the band.
+ * @param {string[]} keys @param {Record<string, AuditAnswer>} answers
+ * @returns {Paraphrase}
  */
-function canFailValue(key, answer) {
-  const value = field(answer, "noul", "number");
-  if (value === undefined) return null;
-  return CAN_FAIL_NEGATED.has(key) ? 1 - value : value;
+function paraphrase(keys, answers) {
+  const values = keys.map((key) => {
+    const value = field(answers[key], "noul", "number");
+    if (value === undefined) return null;
+    return NEGATED.has(key) ? 1 - value : value;
+  });
+  const present = values.filter((value) => value !== null);
+  const spread = present.length >= 2 ? Math.max(...present) - Math.min(...present) : null;
+  const mean = present.length ? present.reduce((sum, value) => sum + value, 0) / present.length : null;
+  const state = stateOf(present.length, spread, config.stableBand);
+  return { values, mean, spread, state, unstable: state === "borderline" || state === "unstable" };
+}
+
+/** Every phrasing answered and they agree. @param {Paraphrase} group @param {number} size */
+function committed(group, size) {
+  return !group.unstable && group.values.every((value) => value !== null) && group.values.length === size;
 }
 
 /** @param {number} present @param {number | null} spread @param {number} band */
-function canFailStateOf(present, spread, band) {
+function stateOf(present, spread, band) {
   if (present === 0) return "unanswered";
   if (spread === null) return "single";
   if (spread <= band) return "stable";
@@ -105,25 +118,24 @@ function canFailStateOf(present, spread, band) {
 
 /**
  * The reasons a test escalates to a human. An empty list is the only pass.
- * @param {{ error: string | undefined, answered: boolean, canFailUnstable: boolean, canFailState: string, canFailMean: number | null, spread: number | null, assertsTrusted: boolean, assertsA: string | undefined, assertsB: string | undefined, asserts: string | undefined, gates: Record<string, boolean | undefined>, verdictIndex: number | undefined }} input
+ * @param {{ error: string | undefined, canFail: Paraphrase, assertsTrusted: boolean, assertsA: string | undefined, assertsB: string | undefined, asserts: string | undefined, pairs: Record<string, Paraphrase>, verdictIndex: number | undefined }} input
  * @returns {string[]}
  */
-function escalate({ error, answered, canFailUnstable, canFailState, canFailMean, spread, assertsTrusted, assertsA, assertsB, asserts, gates, verdictIndex }) {
+function escalate({ error, canFail, assertsTrusted, assertsA, assertsB, asserts, pairs, verdictIndex }) {
   const reasons = [];
   if (error) reasons.push(`no answers (${error})`);
-  if (!answered) reasons.push("can_fail not fully answered");
-  if (canFailUnstable) {
-    reasons.push(`can_fail ${canFailState} (spread ${spread === null ? "-" : spread.toFixed(2)})`);
-  }
+  reasons.push(...pairReasons("can_fail", canFail, CAN_FAIL_KEYS.length));
   // A confident "cannot fail" beside a good verdict is a contradiction: a guard
   // that never goes red cannot be good. The spread cannot see this, because the
   // three phrasings agree; only a cross-question rule catches it.
-  if (canFailMean !== null && canFailMean < 0.5 && verdictIndex !== undefined && verdictIndex > WEAK) {
+  if (canFail.mean !== null && canFail.mean < 0.5 && verdictIndex !== undefined && verdictIndex > WEAK) {
     reasons.push("can_fail contradicts the verdict");
   }
-  for (const [gate, reason] of Object.entries(ESCALATE_ON_FALSE)) {
-    if (gates[gate] === undefined) reasons.push(`${gate} unclassified`);
-    else if (gates[gate] === false) reasons.push(reason);
+  for (const [gate, { keys, reason }] of Object.entries(ESCALATE_ON_FALSE)) {
+    const pair = pairs[gate];
+    const own = pairReasons(gate, pair, keys.length);
+    reasons.push(...own);
+    if (own.length === 0 && /** @type {number} */ (pair.mean) < 0.5) reasons.push(reason);
   }
   // The assertion must check the behaviour. A shape, a hardcoded table, a mock
   // call, or nothing at all is not a guard, so any other answer escalates.
@@ -163,6 +175,18 @@ function scoreOf(answer) {
 function verdictIndexOf(score) {
   if (score === undefined || score < -0.5 || score >= VERDICTS.length - 0.5) return undefined;
   return Math.round(score);
+}
+
+/**
+ * Why a paraphrase group cannot be trusted: a phrasing went unanswered, or the
+ * phrasings disagree beyond the band.
+ * @param {string} name @param {Paraphrase} group @param {number} size
+ */
+function pairReasons(name, group, size) {
+  const reasons = [];
+  if (group.values.filter((value) => value !== null).length < size) reasons.push(`${name} not fully answered`);
+  if (group.unstable) reasons.push(`${name} ${group.state} (spread ${group.spread === null ? "-" : group.spread.toFixed(2)})`);
+  return reasons;
 }
 
 /** @param {AuditAnswer | undefined} answer @returns {boolean | undefined} */

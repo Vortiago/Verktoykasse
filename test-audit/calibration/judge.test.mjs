@@ -25,6 +25,7 @@ function row(label, { mean = 0.99, state = "stable", needsEyes = false, error } 
       answers: {},
       canFail: { mean, state, unstable: state === "borderline" || state === "unstable", values: [], spread: 0 },
       asserts: { trust: true, agrees: true },
+      pairs: {},
       descriptive: {},
       score: { label: needsEyes ? "weak" : "strong" },
       flags: [],

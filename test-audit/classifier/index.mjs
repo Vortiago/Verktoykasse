@@ -10,7 +10,7 @@ import { verdictFrom } from "./verdict.mjs";
 import config from "../config.mjs";
 
 export { trusted, usageMeter } from "./systemone.mjs";
-export { ASSERT_PASS, BATTERY, CAN_FAIL_KEYS, CAN_FAIL_NEGATED, ESCALATE_ON_FALSE, FLAG_BY_GATE } from "./battery.mjs";
+export { ASSERT_PASS, BATTERY, CAN_FAIL_KEYS, ESCALATE_ON_FALSE, FLAG_BY_GATE, NEGATED } from "./battery.mjs";
 
 /** @typedef {import("../types.d.ts").AuditTest} AuditTest */
 /** @typedef {import("../types.d.ts").AuditAnswer} AuditAnswer */

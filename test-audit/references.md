@@ -16,8 +16,10 @@ stays the proof.
 | `can_fail_c` | if the behaviour regresses, will it fail? | the same sources as `a`; WPT checklist |
 | `asserts_a` | behaviour, hardcoded-data, shape-only, interaction-only, nothing | testsmells.org (`Redundant Assertion`, `Unknown Test`, `Magic Number Test`, `Sensitive Equality`); Meszaros, `Obscure Test` (`Hard-Coded Test Data`, `Indirect Testing`); Fowler, "Mocks Aren't Stubs"; house catalogue |
 | `asserts_b` | the same, with the answer order reversed (position control) | MT-Bench (Zheng et al. 2023), position and verbosity bias; "Large Language Models are not Fair Evaluators" (Wang et al. 2023), balanced position calibration |
-| `positive` | at least one assertion on the output that must exist, not only an absence | house catalogue, no negative/positive pair; WPT checklist, "fails when it's supposed to fail" |
-| `runs` | does the test actually run, or is it skipped, ignored, or focused? | testsmells.org, `Ignored Test`; Meszaros, `Ignored Test`; house catalogue, skipped / disabled / focused |
+| `positive_a` | at least one assertion on the output that must exist, not only an absence | house catalogue, no negative/positive pair; WPT checklist, "fails when it's supposed to fail" |
+| `positive_b` | do all assertions check only an absence? (negated twin) | the same sources as `positive_a`; self-consistency (Wang et al. 2023) for the twin |
+| `runs_a` | is the test free of skip, todo, only, and focus markers, on itself, its describes, and the other tests in the file? | testsmells.org, `Ignored Test`; Meszaros, `Ignored Test`; house catalogue, skipped / disabled / focused |
+| `runs_b` | is there such a marker? (negated twin) | the same sources as `runs_a`; self-consistency (Wang et al. 2023) for the twin |
 | `type` | unit, integration, regression, e2e, smoke, characterization | Meszaros, `Test Organization` and `Test Strategy`; Feathers, characterization testing. The exact six labels are house choice (inference) |
 | `deterministic` | no time, order, network, or sleep | Beck, `Deterministic` and `Isolated`; Meszaros, `Erratic Test` (`Nondeterministic Test`, `Resource Optimism`, `Interacting Tests`, `Test Run War`); testsmells.org (`Sleepy Test`, `Mystery Guest`, `Resource Optimism`, `Conditional Test Logic`) |
 | `one_thing` | one behaviour, not an eager test | Meszaros, `Eager Test` (under `Obscure Test` and `Assertion Roulette`); testsmells.org, `Eager Test` |

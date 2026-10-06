@@ -9,7 +9,7 @@ export const VERDICTS = ["slop", "weak", "good", "strong"];
 /** The three logically equivalent phrasings of "can this test fail". */
 export const CAN_FAIL_KEYS = ["can_fail_a", "can_fail_b", "can_fail_c"];
 /** The phrasings whose yes and no are swapped; normalisation flips their value. */
-export const CAN_FAIL_NEGATED = new Set(["can_fail_b"]);
+export const NEGATED = new Set(["can_fail_b", "runs_b", "positive_b"]);
 
 /** The `asserts` answers, best first: the first kind is the one real guard. */
 const ASSERTS_MEANING = {
@@ -23,11 +23,12 @@ const ASSERTS_MEANING = {
 /** The one assert kind that is a real guard; every other kind escalates. */
 export const ASSERT_PASS = Object.keys(ASSERTS_MEANING)[0];
 
-/** The escalation reason a false answer to each verdict-carrying yes/no
- * question raises, keyed by the question's name. */
+/** The verdict-carrying yes/no gates. Each is asked as a twin pair, one of them
+ * negated, so one confident wrong answer cannot pass a test alone (ADR 0007).
+ * `reason` is the escalation a false answer raises. */
 export const ESCALATE_ON_FALSE = {
-  runs: "does not run",
-  positive: "no positive assertion",
+  runs: { keys: ["runs_a", "runs_b"], reason: "does not run" },
+  positive: { keys: ["positive_a", "positive_b"], reason: "no positive assertion" },
 };
 
 /** The flag a false answer to each descriptive question raises, keyed by the
@@ -80,7 +81,8 @@ Falsifiable: a change to the code under test makes the test fail.
   an assertion on data the code copies straight from its input.
 Positive assertion: the test asserts the behaviour that must exist, not only
   that something is absent, empty, or does not throw.
-Runs: the test is not skipped, ignored, or narrowed to only or focus.
+Runs: no skip, todo, only, or focus marker is on the test or on a describe
+  around it, and no only or focus marker is on another test in the file.
 Observable behaviour: output or effects a caller can observe. Private internals,
   call order, and that a mock was called are not observable behaviour.
 Conditional test logic: a branch, loop, or catch that can leave the assertion
@@ -145,15 +147,29 @@ export const BATTERY = {
     "What does the test's assertion actually check?",
     Object.fromEntries(Object.entries(ASSERTS_MEANING).reverse()),
   ),
-  positive: noul(
-    "Does this test include at least one positive assertion on the output the code under test produces, rather than only asserting that something is absent or does not throw?",
-    "it asserts the positive case",
-    "it asserts only an absence, an empty result, or a non-throw",
+  positive_a: noul(
+    "Does this test assert at least one output that the code under test must produce?",
+    "it asserts an output that must be present",
+    "it asserts only that something is absent, empty, or does not throw",
   ),
-  runs: noul(
-    "Does this test actually run in the suite, rather than being skipped, ignored, or narrowed by an only or focus marker?",
-    "it runs",
-    "it is skipped, ignored, or focused",
+  // The negated twin of `positive_a`.
+  positive_b: noul(
+    "Do all the assertions in this test check only that something is absent, empty, or did not throw?",
+    "it asserts only an absence, an empty result, or a non-throw",
+    "at least one assertion checks an output that must be present",
+  ),
+  // `scope` (the describe heads around the test) and the `focus-in-file` flag
+  // in the state are what let the model answer the "around it" parts.
+  runs_a: noul(
+    "Is this test free of markers that change whether it runs? Check the test, each describe around it, and the other tests in the file.",
+    "no skip, todo, only, or focus marker affects it",
+    "a skip, todo, only, or focus marker affects it",
+  ),
+  // The negated twin of `runs_a`.
+  runs_b: noul(
+    "Is there a skip, todo, only, or focus marker on this test or on a describe around it, or an only or focus marker on another test in the file?",
+    "a marker changes whether it runs",
+    "no marker changes whether it runs",
   ),
   type: choice("What type of test is this?", { ...TYPE_MEANING }),
   // The descriptive questions below report a smell as a flag; the verdict score

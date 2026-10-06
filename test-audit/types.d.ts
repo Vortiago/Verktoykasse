@@ -32,16 +32,29 @@ export interface AuditAnswer {
   noul?: number;
 }
 
+/** Several phrasings of one judgement, normalised to one polarity. */
+export interface Paraphrase {
+  values: Array<number | null>;
+  mean: number | null;
+  spread: number | null;
+  /** unanswered, single, stable, borderline, or unstable. */
+  state: string;
+  /** borderline or unstable: the phrasings disagree beyond the band. */
+  unstable: boolean;
+}
+
 /** Where one test's answers landed, and why it escalates. `needsEyes` is the only fail. */
 export interface AuditResult {
   test: Pick<AuditTest, "file" | "line" | "name" | "path">;
   answers: Record<string, AuditAnswer>;
-  canFail: { values: Array<number | null>; mean: number | null; spread: number | null; state: string; unstable: boolean };
+  canFail: Paraphrase;
   asserts: { value?: string; a?: string; b?: string; trust: boolean; agrees: boolean };
-  /** Whether the test actually runs; undefined when unanswered. */
+  /** Whether the test actually runs; undefined unless both twins answered and agree. */
   runs?: boolean;
-  /** Whether the test asserts a positive case; undefined when unanswered. */
+  /** Whether the test asserts a positive case; undefined unless both twins answered and agree. */
   positive?: boolean;
+  /** The twin pair behind each verdict-carrying yes/no gate, keyed by gate name. */
+  pairs: Record<string, Paraphrase>;
   type?: string;
   /** One boolean per descriptive gate (observable, conditional, isolated, …); undefined when unanswered. */
   descriptive: Record<string, boolean | undefined>;
