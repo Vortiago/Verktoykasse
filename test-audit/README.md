@@ -206,7 +206,7 @@ The tool trusts an answer in two ways:
 node test-audit/cli.mjs --selftest          # live calibration over the labelled corpus
 node test-audit/cli.mjs --selftest --targets "http://127.0.0.1:11434|nimble, http://127.0.0.1:11435|winnow:e4b"
 node test-audit/cli.mjs --selftest --models "nimble,tev1"   # several models on one URL
-node test-audit/cli.mjs --selftest --benchmark   # per-test results, in markdown
+node test-audit/cli.mjs --selftest --benchmark   # a per-case report, in markdown
 ```
 
 `--selftest` runs the labelled corpus in `calibration/` against the configured
@@ -226,8 +226,23 @@ The selftest exits `0` when every target passes acceptance, and `1` when one
 fails. The tool does not score the `can_fail` answer of a case that escalated as
 unstable, because the tool did not commit to a value.
 
+`--benchmark` prints the run as a markdown report. The report starts with a
+summary: the headline numbers, one row for each defect family, and links to the
+cases that are not OK. A legend explains the terms once. Then each case has its
+own section:
+
+1. The test source, as the extractor found it in the case file.
+2. The label in plain words: the known defect and the expected outcome.
+3. A table of the questions. Each row gives the answer, its probability, and its
+   effect: a match with the label, a flag, or an escalation reason. The
+   verdict-carrying questions come first.
+4. The outcome: the verdict, the escalation reasons, and the status against the
+   label.
+
 Run the selftest again when the model or a question changes. Record each run in
-[`BENCHMARK.md`](BENCHMARK.md). The reference run there passes acceptance.
+[`BENCHMARK.md`](BENCHMARK.md), with the command above the report. The recorded
+run there passes acceptance. The code has changed since that run, so its numbers
+are a baseline to run again.
 
 ## Limits
 

@@ -73,12 +73,18 @@ export interface CalibrationLabel {
   mixed?: boolean;
   /** The expected answer to the `deterministic` question. */
   deterministic?: boolean;
+  /** What the case shows, in prose. */
   note?: string;
+  /** The fragment in labels/ the case comes from, and the sources it cites. */
+  group?: string;
+  sources?: Array<{ name: string; url?: string }>;
 }
 
 /** One labelled case after a run: its result, or why it has none. */
 export interface CalibrationRow {
   label: CalibrationLabel;
+  /** The test the extractor found in the case file, as the endpoint saw it. */
+  test?: AuditTest;
   result?: AuditResult;
   error?: string;
 }

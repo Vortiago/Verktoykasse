@@ -24,7 +24,10 @@ export function loadLabels() {
     } catch (err) {
       throw new Error(`label fragment ${name} is not valid JSON: ${err instanceof Error ? err.message : err}`);
     }
-    if (Array.isArray(fragment.cases)) cases.push(...fragment.cases);
+    // Each case carries its fragment's group and sources, so a report can cite them.
+    if (Array.isArray(fragment.cases)) {
+      cases.push(...fragment.cases.map((/** @type {CalibrationLabel} */ label) => ({ group: fragment.group, sources: fragment.sources, ...label })));
+    }
   }
   return { acceptance, cases };
 }

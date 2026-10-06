@@ -61,7 +61,8 @@ export async function runSelftest(opts) {
     }),
   );
   const pass = entries.every((entry) => entry.verdict.pass);
-  const text = opts.benchmark ? formatBenchmark(entries) : entries.length === 1 ? formatSingle(entries[0]) : formatMatrix(entries);
+  const date = `Date: ${new Date().toISOString().slice(0, 10)}.`;
+  const text = opts.benchmark ? formatBenchmark(entries, { preamble: [date] }) : entries.length === 1 ? formatSingle(entries[0]) : formatMatrix(entries);
   return { text, code: pass ? 0 : 1 };
 }
 
@@ -94,5 +95,5 @@ async function runCase(item, ctx) {
     model: ctx.target.model,
     onResponse: ctx.onResponse,
   });
-  return { label: item.label, result };
+  return { label: item.label, test: item.test, result };
 }

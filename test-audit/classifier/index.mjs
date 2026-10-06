@@ -9,8 +9,8 @@ import { BATTERY, RUBRIC } from "./battery.mjs";
 import { verdictFrom } from "./verdict.mjs";
 import config from "../config.mjs";
 
-export { usageMeter } from "./systemone.mjs";
-export { DESCRIPTIVE_KEYS, VERDICTS } from "./battery.mjs";
+export { trusted, usageMeter } from "./systemone.mjs";
+export { ASSERT_PASS, BATTERY, CAN_FAIL_KEYS, CAN_FAIL_NEGATED, ESCALATE_ON_FALSE, FLAG_BY_GATE } from "./battery.mjs";
 
 /** @typedef {import("../types.d.ts").AuditTest} AuditTest */
 /** @typedef {import("../types.d.ts").AuditAnswer} AuditAnswer */

@@ -73,6 +73,7 @@ export function judge(rows, acceptance) {
     deterministicTotal,
     unresolved,
     defects,
+    minAgreement: acceptance.canFailAgreement,
     pass: silentPasses === 0 && unresolved === 0 && agreement >= acceptance.canFailAgreement && mixedRouted === mixedTotal,
   };
 }
@@ -93,7 +94,7 @@ function answered(result) {
  * escalates as "not fully answered"), and reads the mean as verdict.mjs does.
  * @param {AuditResult} result
  */
-function saidCanFail(result) {
+export function saidCanFail(result) {
   const { state, values, mean } = result.canFail;
   if (state !== "stable" || mean === null || values.some((value) => value === null)) return undefined;
   return mean >= 0.5;
