@@ -9,8 +9,9 @@ not prove that a change is tested. For that proof, use
 [`verify-prd-implemented`](../verify-prd-implemented/SKILL.md). That skill breaks
 the behaviour of the code and checks that the named test fails.
 
-The [OpenCode plugin](#opencode-plugin) in `opencode/` runs this tool inside
-OpenCode, and installs from this directory.
+The [OpenCode plugin](#opencode-plugin) in
+[`../opencode-test-audit`](../opencode-test-audit/README.md) runs this tool
+inside OpenCode.
 
 ## Layout
 
@@ -38,7 +39,6 @@ test-audit/
   classifier/             ask one SystemOne call per test, and apply the verdict rules
   report/                 print a verdict, a summary, and an exit code
   calibration/            run the cases against an endpoint, and judge the run
-  opencode/               the OpenCode plugin
 ```
 
 To change what the tool asks about a test, edit the `check.mjs` of that check.
@@ -157,39 +157,17 @@ below. To compare several endpoints, see [Calibrate](#calibrate).
 
 ## OpenCode plugin
 
-[`opencode/index.ts`](opencode/index.ts) is an [OpenCode](https://opencode.ai) 2
-plugin that runs this tool. The plugin installs from this directory, so it
-carries the core modules it imports:
+[`opencode-test-audit`](../opencode-test-audit/README.md) is an
+[OpenCode](https://opencode.ai) 2 plugin that runs this tool. OpenCode installs
+only the `path:` directory of a plugin, so the plugin carries a stamped copy of
+the modules the audit loads in `opencode-test-audit/core/`. This directory is
+the canon. After you change a module here, re-vendor it:
 
 ```sh
-opencode plugin add 'github:Vortiago/Verktoykasse#main::path:test-audit'
+opencode-test-audit/sync-from-test-audit.sh
 ```
 
-- Run `/test-audit`. It audits the working-tree change against the default
-  branch and posts the report into the chat.
-- Let the agent call the `test-audit` tool. The agent can set `base`, `head`,
-  `staged` or `files` to scope the audit. The tool returns the same markdown
-  report.
-
-The plugin audits the project directory of the session
-(`ctx.location.directory`) and reads the same environment variables as the CLI.
-It imports `audit.mjs` and `report/index.mjs` directly and spawns no shell.
-
-The plugin is advisory. It reports a verdict for each test, and it never blocks a
-run. OpenCode plugin hooks have no git-commit event and no deny decision, so the
-plugin cannot block a commit. A blocking pre-push hook ships only after the
-corpus proves the questions trustworthy, and it will live beside the CLI, not in
-the plugin.
-
-`package.json` lists the files an install needs in `files`: the runtime modules,
-`checks/index.mjs` and each `checks/<check>/check.mjs`, `opencode/index.ts`,
-`types.d.ts`, this README and the licence. The calibration cases, the benchmark
-and the tests stay out. The plugin has its own type gate, which
-installs `@opencode/plugin` into `node_modules/`:
-
-```sh
-cd test-audit && node opencode/check.mjs
-```
+CI runs `sync-from-test-audit.sh --check` and fails on a stale copy.
 
 ## How the tool judges a test
 

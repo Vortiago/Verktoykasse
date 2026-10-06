@@ -35,10 +35,10 @@ jobs:
         if: ${{ !cancelled() }}
         working-directory: test-audit
         run: node tools/check.mjs
-      - name: gate — test-audit OpenCode plugin
+      - name: gate — opencode-test-audit
         if: ${{ !cancelled() }}
-        working-directory: test-audit
-        run: node opencode/check.mjs
+        working-directory: opencode-test-audit
+        run: node tools/check.mjs
       - name: gate — opencode-plan-accept
         if: ${{ !cancelled() }}
         working-directory: opencode-plan-accept
@@ -47,6 +47,10 @@ jobs:
         if: ${{ !cancelled() }}
         working-directory: vanilla-components
         run: ./sync-from-web.sh --check
+      - name: vendored test-audit core drift (sync-from-test-audit.sh --check)
+        if: ${{ !cancelled() }}
+        working-directory: opencode-test-audit
+        run: ./sync-from-test-audit.sh --check
       - name: shell syntax (bash -n)
         if: ${{ !cancelled() }}
         # Discovered by glob, not a hardcoded list — a new .sh anywhere in the

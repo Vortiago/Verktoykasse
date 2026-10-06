@@ -1,3 +1,4 @@
+// canonical source: test-audit/report/index.mjs@4ba9d42 sha256:9948414bf560ea6957a8b38cdedf1c8c910c0e6b98ea5a68595173b31e447a4e - vendored copy, do not edit here
 // The report: the text, json, and markdown faces of one audit, plus the exit
 // code. Wording follows Simplified Technical English, like the rest of the repo.
 

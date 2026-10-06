@@ -1,23 +1,18 @@
 #!/usr/bin/env node
 // @ts-check
-// check — the gate command for the OpenCode plugin, one thing to run locally
-// and in CI, from test-audit/:
+// check — the gate command for this plugin, one thing to run locally and in CI:
 //
-//   node opencode/check.mjs
+//   node tools/check.mjs
 //
-// Installs the plugin's dependencies into test-audit/node_modules, then runs
-// `tsc --noEmit` against opencode/tsconfig.json. Paths derive from this file's
-// own location, so the same command works from any directory. test-audit's own
-// gate (tools/check.mjs) stays install-free and does not check this directory.
+// Installs the types the plugin needs, then runs `tsc --noEmit`. Paths derive
+// from this file's own location, so the same command works from any directory.
 import { existsSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-// ROOT is test-audit/, where package.json sits; HERE holds the plugin tsconfig.
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
-const HERE = fileURLToPath(new URL("./", import.meta.url));
 const require = createRequire(join(ROOT, "noop.js"));
 
 // A bare `npm` is ENOENT on Windows, and `npm.cmd` cannot be spawned without a
@@ -37,7 +32,7 @@ if (install.error || install.status !== 0) {
 }
 
 const tsc = join(dirname(require.resolve("typescript")), "..", "bin", "tsc");
-const check = spawnSync(process.execPath, [tsc, "--noEmit", "-p", HERE], { cwd: ROOT, stdio: "inherit" });
+const check = spawnSync(process.execPath, [tsc, "--noEmit", "-p", ROOT], { cwd: ROOT, stdio: "inherit" });
 if (check.error || check.status !== 0) {
   console.error("✗ gate: tsc --noEmit failed");
   process.exit(1);

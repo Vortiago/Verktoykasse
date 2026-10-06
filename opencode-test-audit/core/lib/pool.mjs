@@ -1,3 +1,4 @@
+// canonical source: test-audit/lib/pool.mjs@4ba9d42 sha256:4080f658f7d849d6d6b7fec9f9808bb57d24276401e939091ad036f0b43a73b6 - vendored copy, do not edit here
 // Bounded concurrency, used by both the CLI and the calibration run. An
 // endpoint may queue a turn behind other work, so calls go out a few at a time
 // rather than all at once.

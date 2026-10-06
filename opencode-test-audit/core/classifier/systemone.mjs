@@ -1,3 +1,4 @@
+// canonical source: test-audit/classifier/systemone.mjs@4ba9d42 sha256:4a089ed76ca07b6725c3148bd2bd418202a67ae2f791b11f823fcfe154463672 - vendored copy, do not edit here
 // SystemOne client for test-audit. One Jev-compatible typed-question endpoint:
 // a local Ollama 0.35 or later, llama-arbiter, Ollaya, or any TypeSafe server.
 //

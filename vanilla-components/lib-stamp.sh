@@ -56,7 +56,7 @@ stamped_sha256() {
 stamp_file() {
   local f=$1 text=$2 strip=$3 line
   case $f in
-    *.mjs|*.js) line="// $text" ;;
+    *.mjs|*.js|*.ts) line="// $text" ;;
     *.css)      line="/* $text */" ;;
     *.html)     line="<!-- $text -->" ;;
     *)          return ;;
