@@ -11,6 +11,8 @@
     "cli.mjs",
     "config.mjs",
     "change/",
+    "checks/index.mjs",
+    "checks/*/check.mjs",
     "classifier/",
     "lib/",
     "report/",

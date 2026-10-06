@@ -4,6 +4,47 @@
 // so each shape is written down once, here, instead of across ten files. The
 // Node API the modules use is declared in node.d.ts.
 
+import type { Question } from "./classifier/systemone.mjs";
+
+/** A source that grounds a check or a calibration case. */
+export interface Source {
+  name: string;
+  url?: string;
+}
+
+/** The fields every check has. */
+interface CheckBase {
+  /** The stem of the question keys, such as `can_fail` or `one_thing`. The folder name is its kebab-case form. */
+  name: string;
+  /** The questions the check asks, keyed by the name the endpoint answers under, in battery order. */
+  questions: Record<string, Question>;
+  /** The question keys whose yes and no are swapped. The verdict rules flip their value. */
+  negated?: string[];
+  /** The definition this check adds to the shared rubric, if any. */
+  rubric?: string;
+  /** What grounds the check. references.md holds the bibliography. */
+  sources: Source[];
+}
+
+/**
+ * One judgement the tool asks the model about a test: one question, or a set of
+ * phrasings of one judgement. `role` says what the verdict rules do with the
+ * answers:
+ * - `can-fail`: a paraphrase set. Its mean is the can-fail value.
+ * - `asserts`: a choice pair. Only the first kind is a real guard.
+ * - `gate`: a yes/no twin pair. A "no" escalates with `reason`.
+ * - `type`: a choice that the report shows and that never escalates.
+ * - `descriptive`: a yes/no question. A "no" raises `flag`.
+ * - `verdict`: the score, on `levels`, lowest first.
+ */
+export type Check =
+  | (CheckBase & { role: "can-fail" })
+  | (CheckBase & { role: "asserts"; kinds: Record<string, string> })
+  | (CheckBase & { role: "gate"; reason: string })
+  | (CheckBase & { role: "type" })
+  | (CheckBase & { role: "descriptive"; flag: string })
+  | (CheckBase & { role: "verdict"; levels: string[] });
+
 /** One test extracted from a test file. The unit of an audit. */
 export interface AuditTest {
   file: string;

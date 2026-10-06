@@ -5,7 +5,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { buildState, classify } from "./index.mjs";
-import { BATTERY, CAN_FAIL_KEYS, DESCRIPTIVE_KEYS, RUBRIC } from "./battery.mjs";
+import { BATTERY, CAN_FAIL_KEYS, DESCRIPTIVE_KEYS, RUBRIC } from "../checks/index.mjs";
 import { verdictFrom } from "./verdict.mjs";
 
 /** @typedef {import("../types.d.ts").AuditTest} AuditTest */

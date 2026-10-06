@@ -6,7 +6,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { formatBenchmark, formatMatrix, formatSingle } from "./format.mjs";
 import { judge } from "./judge.mjs";
-import { BATTERY, DESCRIPTIVE_KEYS } from "../classifier/battery.mjs";
+import { BATTERY, DESCRIPTIVE_KEYS } from "../checks/index.mjs";
 import { verdictFrom } from "../classifier/verdict.mjs";
 
 /** @typedef {import("../types.d.ts").AuditAnswer} AuditAnswer */

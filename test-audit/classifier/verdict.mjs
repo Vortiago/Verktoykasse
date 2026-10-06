@@ -3,7 +3,7 @@
 // objects without the model.
 
 import { trusted } from "./systemone.mjs";
-import { ASSERT_PASS, CAN_FAIL_KEYS, DESCRIPTIVE_KEYS, ESCALATE_ON_FALSE, FLAG_BY_GATE, NEGATED, VERDICTS } from "./battery.mjs";
+import { ASSERT_PASS, CAN_FAIL_KEYS, DESCRIPTIVE_KEYS, ESCALATE_ON_FALSE, FLAG_BY_GATE, NEGATED, VERDICTS } from "../checks/index.mjs";
 import config from "../config.mjs";
 
 /** @typedef {import("../types.d.ts").AuditTest} AuditTest */

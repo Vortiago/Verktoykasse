@@ -1,0 +1,28 @@
+// The type check: what kind of test is this, by what it actually exercises? The
+// report shows the answer. It never escalates, because a wrong label does little
+// harm (ADR 0007).
+
+import { choice } from "../../classifier/systemone.mjs";
+
+/** @type {import("../../types.d.ts").Check} */
+export default {
+  name: "type",
+  role: "type",
+  questions: {
+    type: choice("What type of test is this?", {
+      unit: "one small unit in isolation, with its collaborators mocked or absent",
+      integration: "several units together, such as code with a real database, filesystem, or module",
+      regression: "reproduces a specific past bug so it cannot return",
+      e2e: "drives the whole system through its public interface",
+      smoke: "only checks that something runs or exists, at a coarse level",
+      characterization: "pins current behaviour as a baseline before a change",
+    }),
+  },
+  rubric: `Type: unit, integration, regression, e2e, smoke, or characterization, by what it
+  actually exercises.`,
+  sources: [
+    { name: "Meszaros, xUnit Test Patterns: Test Organization and Test Strategy", url: "http://xunitpatterns.com/" },
+    { name: "Michael Feathers, Characterization Testing (2016)", url: "https://michaelfeathers.silvrback.com/characterization-testing" },
+    { name: "house choice: the exact six labels (inference)" },
+  ],
+};

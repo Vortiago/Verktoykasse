@@ -1,0 +1,246 @@
+{
+  "can_fail_a": {
+    "type": "noul",
+    "instructions": "Could you make this test fail by changing only the code under test?",
+    "criteria": {
+      "true": "a change to the code under test can make it fail",
+      "false": "no change to the code under test can make it fail"
+    }
+  },
+  "can_fail_b": {
+    "type": "noul",
+    "instructions": "Does this test pass regardless of whether the code under test is correct?",
+    "criteria": {
+      "true": "it passes even when the behaviour is broken",
+      "false": "broken behaviour makes it fail"
+    }
+  },
+  "can_fail_c": {
+    "type": "noul",
+    "instructions": "If the behaviour this test exercises regresses, will the test fail?",
+    "criteria": {
+      "true": "the assertion can catch a regression in the behaviour",
+      "false": "the assertion misses the regression and still passes"
+    }
+  },
+  "asserts_a": {
+    "type": "choice",
+    "instructions": "What does this test actually assert about the code under test?",
+    "criteria": {
+      "behaviour": "it checks the output value or observable behaviour the code produces, against a literal expected result",
+      "hardcoded-data": "it repeats the same data the code under test is built from, so it agrees by construction",
+      "shape-only": "it checks only the type, length, or keys of a result, not its content",
+      "interaction-only": "it checks only that a mock or spy was called, not the behaviour it stands in for",
+      "nothing": "it asserts nothing, or only a tautology such as true === true"
+    }
+  },
+  "asserts_b": {
+    "type": "choice",
+    "instructions": "What does the test's assertion actually check?",
+    "criteria": {
+      "nothing": "it asserts nothing, or only a tautology such as true === true",
+      "interaction-only": "it checks only that a mock or spy was called, not the behaviour it stands in for",
+      "shape-only": "it checks only the type, length, or keys of a result, not its content",
+      "hardcoded-data": "it repeats the same data the code under test is built from, so it agrees by construction",
+      "behaviour": "it checks the output value or observable behaviour the code produces, against a literal expected result"
+    }
+  },
+  "positive_a": {
+    "type": "noul",
+    "instructions": "Does this test assert at least one output that the code under test must produce?",
+    "criteria": {
+      "true": "it asserts an output that must be present",
+      "false": "it asserts only that something is absent, empty, or does not throw"
+    }
+  },
+  "positive_b": {
+    "type": "noul",
+    "instructions": "Do all the assertions in this test check only that something is absent, empty, or did not throw?",
+    "criteria": {
+      "true": "it asserts only an absence, an empty result, or a non-throw",
+      "false": "at least one assertion checks an output that must be present"
+    }
+  },
+  "runs_a": {
+    "type": "noul",
+    "instructions": "Is this test free of markers that change whether it runs? Check the test, each describe around it, and the other tests in the file.",
+    "criteria": {
+      "true": "no skip, todo, only, or focus marker affects it",
+      "false": "a skip, todo, only, or focus marker affects it"
+    }
+  },
+  "runs_b": {
+    "type": "noul",
+    "instructions": "Is there a skip, todo, only, or focus marker on this test or on a describe around it, or an only or focus marker on another test in the file?",
+    "criteria": {
+      "true": "a marker changes whether it runs",
+      "false": "no marker changes whether it runs"
+    }
+  },
+  "type": {
+    "type": "choice",
+    "instructions": "What type of test is this?",
+    "criteria": {
+      "unit": "one small unit in isolation, with its collaborators mocked or absent",
+      "integration": "several units together, such as code with a real database, filesystem, or module",
+      "regression": "reproduces a specific past bug so it cannot return",
+      "e2e": "drives the whole system through its public interface",
+      "smoke": "only checks that something runs or exists, at a coarse level",
+      "characterization": "pins current behaviour as a baseline before a change"
+    }
+  },
+  "observable": {
+    "type": "noul",
+    "instructions": "Does this test assert observable behaviour of the code under test, rather than private internals or internal call order?",
+    "criteria": {
+      "true": "it checks behaviour a caller could observe",
+      "false": "it checks private internals or internal call order"
+    }
+  },
+  "conditional": {
+    "type": "noul",
+    "instructions": "Does this test assert unconditionally, with no branch, loop, or catch that can leave the assertion unrun?",
+    "criteria": {
+      "true": "the assertion always runs",
+      "false": "a branch, loop, or catch can leave the assertion unrun"
+    }
+  },
+  "isolated": {
+    "type": "noul",
+    "instructions": "Does this test pass on its own and in any order, with no reliance on shared mutable state or another test?",
+    "criteria": {
+      "true": "it is independent of other tests and of run order",
+      "false": "it shares state with, or depends on the order of, other tests"
+    }
+  },
+  "controlled": {
+    "type": "noul",
+    "instructions": "Does the test control the external resources it needs, such as time, the network, the filesystem, or the environment, rather than assume they are present?",
+    "criteria": {
+      "true": "its inputs and resources are controlled",
+      "false": "it assumes an external resource is present"
+    }
+  },
+  "specific": {
+    "type": "noul",
+    "instructions": "Does the test use the most specific assertion that would catch the failure, rather than a weaker one that would also pass on wrong output?",
+    "criteria": {
+      "true": "the assertion is specific to the expected value",
+      "false": "a weaker assertion would also pass on wrong output"
+    }
+  },
+  "named": {
+    "type": "noul",
+    "instructions": "Does the test's name state the behaviour and its expected result, rather than a vague label such as works, test1, or should be fine?",
+    "criteria": {
+      "true": "the name states the behaviour and the expected result",
+      "false": "the name is vague"
+    }
+  },
+  "deterministic": {
+    "type": "noul",
+    "instructions": "Does this test give the same result on every run, with no reliance on time, order, the network, or a sleep?",
+    "criteria": {
+      "true": "it gives the same result every run",
+      "false": "it can pass or fail for reasons outside the code under test"
+    }
+  },
+  "one_thing": {
+    "type": "noul",
+    "instructions": "Does this test check one behaviour, rather than several unrelated behaviours at once?",
+    "criteria": {
+      "true": "it checks one behaviour",
+      "false": "it is an eager test that checks several unrelated things"
+    }
+  },
+  "name_matches": {
+    "type": "noul",
+    "instructions": "Does the test body assert the behaviour its name states?",
+    "criteria": {
+      "true": "the body asserts the behaviour the name promises",
+      "false": "the name promises one behaviour and the body asserts something else or something trivial"
+    }
+  },
+  "resilient": {
+    "type": "noul",
+    "instructions": "Would this test stay green through a refactor of the code under test that keeps the same behaviour?",
+    "criteria": {
+      "true": "the test checks behaviour, so a behaviour-preserving refactor keeps it green",
+      "false": "the test depends on the current structure, so a refactor breaks it"
+    }
+  },
+  "diagnostic": {
+    "type": "noul",
+    "instructions": "When this test fails, does it say which assertion failed and what was expected?",
+    "criteria": {
+      "true": "the failure names the assertion and the expected value",
+      "false": "a failure gives no clue which assertion failed or why"
+    }
+  },
+  "fixture": {
+    "type": "noul",
+    "instructions": "Does the test build only the data it needs, rather than a large shared fixture or values unrelated to the behaviour?",
+    "criteria": {
+      "true": "it builds only the data it needs",
+      "false": "it leans on a large or unrelated fixture"
+    }
+  },
+  "fast": {
+    "type": "noul",
+    "instructions": "Does the test run fast, with no sleep, no heavy I/O, and no large computation?",
+    "criteria": {
+      "true": "it runs fast",
+      "false": "it sleeps, waits, or does heavy work"
+    }
+  },
+  "readable": {
+    "type": "noul",
+    "instructions": "Can a reader tell what this test does and why, without opening the code under test?",
+    "criteria": {
+      "true": "the test reads clearly on its own",
+      "false": "the reader must open the code under test to understand it"
+    }
+  },
+  "magic_number": {
+    "type": "noul",
+    "instructions": "Does the assertion name its values, rather than use a bare number or string the reader must decode?",
+    "criteria": {
+      "true": "the values are named or self-explanatory",
+      "false": "a bare number or string must be decoded from the code under test"
+    }
+  },
+  "reads_output": {
+    "type": "noul",
+    "instructions": "Does the assertion read the value the code under test produced, rather than its own input, its setup, or only that no error was thrown?",
+    "criteria": {
+      "true": "it asserts the returned or observed output",
+      "false": "it asserts its own input, its setup, or merely that the call did not throw"
+    }
+  },
+  "automated": {
+    "type": "noul",
+    "instructions": "Does this test reach a pass or fail with no person doing or reading anything?",
+    "criteria": {
+      "true": "it is self-checking and unattended",
+      "false": "it needs a manual step, or a person to read the output"
+    }
+  },
+  "restores": {
+    "type": "noul",
+    "instructions": "Does the test restore every global, environment variable, timer, and spy that it changes, so it leaves nothing for the next test?",
+    "criteria": {
+      "true": "it clears or restores what it changes",
+      "false": "it leaves process or module state changed for the next test"
+    }
+  },
+  "verdict": {
+    "type": "score",
+    "instructions": "Overall, is this test a real guard against the behaviour it names? Weigh whether it can fail, what it asserts, and every smell the earlier questions name. It is a real guard only if it can fail when that behaviour breaks.",
+    "criteria": [
+      "slop",
+      "weak",
+      "good",
+      "strong"
+    ]
+  }
+}

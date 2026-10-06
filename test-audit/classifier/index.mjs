@@ -5,12 +5,11 @@
 // unstable verdict-carrying answer escalates the test, and never a tie-break.
 
 import { ask as systemoneAsk } from "./systemone.mjs";
-import { BATTERY, RUBRIC } from "./battery.mjs";
+import { BATTERY, RUBRIC } from "../checks/index.mjs";
 import { verdictFrom } from "./verdict.mjs";
 import config from "../config.mjs";
 
 export { trusted, usageMeter } from "./systemone.mjs";
-export { ASSERT_PASS, BATTERY, CAN_FAIL_KEYS, ESCALATE_ON_FALSE, FLAG_BY_GATE, NEGATED } from "./battery.mjs";
 
 /** @typedef {import("../types.d.ts").AuditTest} AuditTest */
 /** @typedef {import("../types.d.ts").AuditAnswer} AuditAnswer */

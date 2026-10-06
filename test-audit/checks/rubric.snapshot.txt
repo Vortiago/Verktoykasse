@@ -1,0 +1,44 @@
+Rubric for judging a test. Use these definitions for every question.
+
+Falsifiable: a change to the code under test makes the test fail.
+  Not falsifiable: a tautology (true === true, or both sides call the same code);
+  a check that the result is merely defined, non-null, or the right shape;
+  an assertion on data the code copies straight from its input.
+Positive assertion: the test asserts the behaviour that must exist, not only
+  that something is absent, empty, or does not throw.
+Runs: no skip, todo, only, or focus marker is on the test or on a describe
+  around it, and no only or focus marker is on another test in the file.
+Observable behaviour: output or effects a caller can observe. Private internals,
+  call order, and that a mock was called are not observable behaviour.
+Conditional test logic: a branch, loop, or catch that can leave the assertion
+  unrun, so the test may assert nothing on some inputs.
+Isolated: passes on its own and in any order, with no shared mutable state and no
+  dependence on another test.
+Controlled resources: the test fixes the time, network, filesystem, and
+  environment it needs; it does not assume they are present.
+Specific assertion: the strongest assertion that would catch the failure. Weaker
+  forms (toBeDefined, toBeTruthy, typeof, Array.isArray, a length) pass on wrong output.
+Name: states the behaviour and the expected result, not a vague label.
+Structure-insensitive: a refactor of the code under test that keeps the behaviour
+  does not break the test.
+Diagnostic: a failure names the assertion that failed and the expected value.
+Local fixture: the test builds only the data it needs, not a large shared fixture
+  or values unrelated to the behaviour.
+Fast: the test runs in milliseconds, with no sleep, heavy I/O, or large computation.
+Readable: a reader can tell what the test does and why without opening the code
+  under test.
+Magic number: the assertion names its values, rather than a bare number or string
+  the reader must decode.
+Asserts the output: the assertion reads the value the code under test produced,
+  not its own input, its setup, or merely that no error was thrown.
+Automated: the test reaches pass or fail with no person doing or reading anything.
+Restores state: the test clears or restores every global, environment variable,
+  timer, and spy it changes, so it leaves nothing for the next test.
+Deterministic: same result every run, with no sleep, clock, network, randomness, or
+  order dependence.
+One behaviour: the body checks one thing, not several unrelated behaviours.
+Type: unit, integration, regression, e2e, smoke, or characterization, by what it
+  actually exercises.
+Verdict: slop, weak, good, or strong. Slop is no real guard; weak is a guard with
+  a serious smell; good is a real guard; strong is a real guard with a specific
+  expected value that would fail loudly.

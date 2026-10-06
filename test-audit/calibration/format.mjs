@@ -2,7 +2,8 @@
 // for several, and a per-case benchmark in markdown.
 
 import { canFailText, escapeCell, pad } from "../report/index.mjs";
-import { ASSERT_PASS, BATTERY, CAN_FAIL_KEYS, ESCALATE_ON_FALSE, FLAG_BY_GATE, NEGATED, trusted } from "../classifier/index.mjs";
+import { trusted } from "../classifier/index.mjs";
+import { ASSERT_PASS, BATTERY, CAN_FAIL_KEYS, ESCALATE_ON_FALSE, FLAG_BY_GATE, NEGATED } from "../checks/index.mjs";
 import { rowStatus, saidCanFail, shortStatus } from "./judge.mjs";
 
 /** @typedef {import("../types.d.ts").AuditUsage} AuditUsage */
