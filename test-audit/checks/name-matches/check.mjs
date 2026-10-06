@@ -20,8 +20,7 @@
 
 import { noul } from "../../classifier/systemone.mjs";
 
-/** @type {import("../../types.d.ts").Check} */
-export default {
+export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   name: "name_matches",
   role: "descriptive",
   flag: "name-mismatch",
@@ -38,4 +37,4 @@ export default {
     { name: "Gerard Meszaros, xUnit Test Patterns (2007): Obscure Test", url: "http://xunitpatterns.com/Obscure%20Test.html" },
     { name: "the house catalogue, verify-prd-implemented/test-patterns.md: Name-only", url: "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md" },
   ],
-};
+});

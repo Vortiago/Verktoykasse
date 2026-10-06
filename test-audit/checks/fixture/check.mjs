@@ -11,8 +11,7 @@
 
 import { noul } from "../../classifier/systemone.mjs";
 
-/** @type {import("../../types.d.ts").Check} */
-export default {
+export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   name: "fixture",
   role: "descriptive",
   flag: "general-fixture",
@@ -28,4 +27,4 @@ export default {
   sources: [
     { name: "Gerard Meszaros, xUnit Test Patterns (2007): General Fixture, Irrelevant Information (in Obscure Test)", url: "http://xunitpatterns.com/Obscure%20Test.html" },
   ],
-};
+});

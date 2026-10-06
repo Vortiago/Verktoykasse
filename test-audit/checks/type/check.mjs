@@ -17,8 +17,7 @@
 
 import { choice } from "../../classifier/systemone.mjs";
 
-/** @type {import("../../types.d.ts").Check} */
-export default {
+export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   name: "type",
   role: "type",
   questions: {
@@ -38,4 +37,4 @@ export default {
     { name: "Michael Feathers, Characterization Testing (2016)", url: "https://michaelfeathers.silvrback.com/characterization-testing" },
     { name: "house choice: the exact six labels (inference)" },
   ],
-};
+});

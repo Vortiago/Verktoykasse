@@ -37,8 +37,7 @@ const KINDS = {
   nothing: "it asserts nothing, or only a tautology such as true === true",
 };
 
-/** @type {import("../../types.d.ts").Check} */
-export default {
+export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   name: "asserts",
   role: "asserts",
   kinds: KINDS,
@@ -53,4 +52,4 @@ export default {
     { name: "Martin Fowler, Mocks Aren't Stubs (2007)", url: "https://martinfowler.com/articles/mocksArentStubs.html" },
     { name: "the house catalogue, verify-prd-implemented/test-patterns.md: Shape-not-value", url: "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md" },
   ],
-};
+});

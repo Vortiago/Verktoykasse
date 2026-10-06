@@ -31,8 +31,7 @@
 
 import { noul } from "../../classifier/systemone.mjs";
 
-/** @type {import("../../types.d.ts").Check} */
-export default {
+export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   name: "can_fail",
   role: "can-fail",
   questions: {
@@ -66,4 +65,4 @@ export default {
     { name: "Goran Petrović and Marko Ivanković, State of Mutation Testing at Google (ICSE-SEIP 2018)", url: "https://research.google/pubs/state-of-mutation-testing-at-google/" },
     { name: "René Just et al., Are Mutants a Valid Substitute for Real Faults in Software Testing? (FSE 2014)", url: "https://doi.org/10.1145/2635868.2635929" },
   ],
-};
+});

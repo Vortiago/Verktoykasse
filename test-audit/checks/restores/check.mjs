@@ -12,8 +12,7 @@
 
 import { noul } from "../../classifier/systemone.mjs";
 
-/** @type {import("../../types.d.ts").Check} */
-export default {
+export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   name: "restores",
   role: "descriptive",
   flag: "state-leak",
@@ -30,4 +29,4 @@ export default {
     { name: "Kent Beck, Test Desiderata (2019): Isolated", url: "https://kentbeck.github.io/TestDesiderata/" },
     { name: "Gerard Meszaros, xUnit Test Patterns (2007): Interacting Tests, Test Run War (in Erratic Test)", url: "http://xunitpatterns.com/Erratic%20Test.html" },
   ],
-};
+});

@@ -13,8 +13,7 @@ import { score } from "../../classifier/systemone.mjs";
 /** The verdict levels, lowest first. A score answer's value is an index here. */
 const LEVELS = ["slop", "weak", "good", "strong"];
 
-/** @type {import("../../types.d.ts").Check} */
-export default {
+export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   name: "verdict",
   role: "verdict",
   levels: LEVELS,
@@ -30,4 +29,4 @@ export default {
   sources: [
     { name: "house rule: the four levels and the cross-question rule (inference)" },
   ],
-};
+});

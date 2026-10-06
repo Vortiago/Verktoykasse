@@ -22,7 +22,7 @@ the verdict, its sources, and the calibration cases meant to catch its defect.
 ```
 test-audit/
   checks/                 one folder per check
-    index.mjs             puts the checks together: the battery, the rubric, the role tables
+    index.mjs             puts the checks together: the battery and the rubric
     checks.test.mjs       keeps the folders, the battery, and the cases in step
     rubric.snapshot.txt   the rubric the model sees, byte for byte
     battery.snapshot.json the questions the model sees, byte for byte
@@ -122,10 +122,11 @@ descriptive questions raise these flags: `implementation-coupled`,
 `conditional`, `order-dependent`, `uncontrolled-resource`, `weak-assert`,
 `vague-name`, `non-deterministic`, `eager`, `name-mismatch`,
 `structure-dependent`, `silent-failure`, `general-fixture`, `slow`, `obscure`,
-`magic-number`, `asserts-input`, `manual`, and `state-leak`. An `asserts` answer
-other than `behaviour` is also a flag, for example `shape-only`. The extractor
-adds its own notes: `each` for a table test, `dynamic-name` for a computed name,
-and `focus-in-file` when an only or focus marker in the file narrows the run.
+`magic-number`, `asserts-input`, `manual`, and `state-leak`. An `asserts` kind
+other than `behaviour` is also a flag, for example `shape-only`, when both
+phrasings give it. The extractor adds its own notes: `each` for a table test,
+`dynamic-name` for a computed name, and `focus-in-file` when an only or focus
+marker in the file narrows the run.
 
 ## Choose an endpoint
 
@@ -225,7 +226,9 @@ also report `mass`.
 
 The battery is 29 questions about one test, from 24 checks. All questions share
 one state and travel in one call. Each check is a folder in `checks/`, and
-`checks/index.mjs` sets the order.
+`checks/index.mjs` sets the order. The role of a check tells the verdict rules
+in `classifier/verdict.mjs` what to do with its answers. So a new check needs
+only its folder and one line in `checks/index.mjs`.
 
 | Check | Questions | Role | Looks for | Cases |
 | --- | --- | --- | --- | --- |

@@ -17,8 +17,7 @@
 
 import { noul } from "../../classifier/systemone.mjs";
 
-/** @type {import("../../types.d.ts").Check} */
-export default {
+export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   name: "positive",
   role: "gate",
   reason: "no positive assertion",
@@ -42,4 +41,4 @@ export default {
     { name: "the house catalogue, verify-prd-implemented/test-patterns.md: No negative/positive pair", url: "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md" },
     { name: "Web Platform Tests, Review Checklist: \"The test fails when it's supposed to fail\"", url: "https://web-platform-tests.org/reviewing-tests/checklist.html" },
   ],
-};
+});

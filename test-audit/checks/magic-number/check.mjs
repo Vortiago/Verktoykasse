@@ -13,8 +13,7 @@
 
 import { noul } from "../../classifier/systemone.mjs";
 
-/** @type {import("../../types.d.ts").Check} */
-export default {
+export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   name: "magic_number",
   role: "descriptive",
   flag: "magic-number",
@@ -31,4 +30,4 @@ export default {
     { name: "testsmells.org, Open Catalog of Test Smells: Magic Number Test", url: "https://testsmells.org/pages/testsmells.html" },
     { name: "Gerard Meszaros, xUnit Test Patterns (2007): Hard-Coded Test Data (in Obscure Test)", url: "http://xunitpatterns.com/Obscure%20Test.html" },
   ],
-};
+});

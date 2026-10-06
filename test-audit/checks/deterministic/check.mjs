@@ -20,8 +20,7 @@
 
 import { noul } from "../../classifier/systemone.mjs";
 
-/** @type {import("../../types.d.ts").Check} */
-export default {
+export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   name: "deterministic",
   role: "descriptive",
   flag: "non-deterministic",
@@ -39,4 +38,4 @@ export default {
     { name: "Gerard Meszaros, xUnit Test Patterns (2007): Erratic Test (Nondeterministic Test, Resource Optimism, Interacting Tests, Test Run War)", url: "http://xunitpatterns.com/Erratic%20Test.html" },
     { name: "testsmells.org, Open Catalog of Test Smells: Sleepy Test, Mystery Guest, Resource Optimism", url: "https://testsmells.org/pages/testsmells.html" },
   ],
-};
+});

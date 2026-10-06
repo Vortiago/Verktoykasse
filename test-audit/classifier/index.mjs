@@ -10,6 +10,7 @@ import { verdictFrom } from "./verdict.mjs";
 import config from "../config.mjs";
 
 export { trusted, usageMeter } from "./systemone.mjs";
+export { questionValue, verdictFrom } from "./verdict.mjs";
 
 /** @typedef {import("../types.d.ts").AuditTest} AuditTest */
 /** @typedef {import("../types.d.ts").AuditAnswer} AuditAnswer */

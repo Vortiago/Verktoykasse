@@ -4,8 +4,8 @@
 // calibration cases meant to catch it.
 //
 // This module puts the checks together. It builds the battery (every question,
-// in one call), the shared rubric, and the tables the verdict rules read. The
-// questions are data. The rules over their answers are in classifier/verdict.mjs.
+// in one call) and the shared rubric. The questions are data. The rules over
+// their answers are in classifier/verdict.mjs, and they read each check's role.
 
 import canFail from "./can-fail/check.mjs";
 import asserts from "./asserts/check.mjs";
@@ -99,9 +99,6 @@ const RUBRIC_ORDER = [
   verdict,
 ];
 
-/** The twin gates, in the order their escalation reasons are listed. */
-const GATE_ORDER = [runs, positive];
-
 /**
  * The whole battery for one test. All questions travel in one call, so the state
  * is read once and each question costs one token.
@@ -128,53 +125,3 @@ export const RUBRIC = [
     return check.rubric;
   }),
 ].join("\n");
-
-/** The `verdict` score levels, lowest first. `.score` is their array index. */
-export const VERDICTS = only("verdict").levels;
-
-/** The phrasings of "can this test fail". */
-export const CAN_FAIL_KEYS = Object.keys(only("can-fail").questions);
-
-/** The phrasings whose yes and no are swapped. Normalisation flips their value. */
-export const NEGATED = new Set(CHECKS.flatMap((check) => check.negated ?? []));
-
-/** The one assert kind that is a real guard. Every other kind escalates. */
-export const ASSERT_PASS = Object.keys(only("asserts").kinds)[0];
-
-/**
- * The verdict-carrying yes/no gates. Each is asked as a twin pair, one of them
- * negated, so one confident wrong answer cannot pass a test alone (ADR 0007).
- * `reason` is the escalation a false answer raises.
- * @type {Record<string, { keys: string[], reason: string }>}
- */
-export const ESCALATE_ON_FALSE = {};
-for (const check of GATE_ORDER) {
-  if (check.role !== "gate") throw new Error(`check ${check.name} is not a gate`);
-  ESCALATE_ON_FALSE[check.name] = { keys: Object.keys(check.questions), reason: check.reason };
-}
-
-/**
- * The flag a false answer to each descriptive question raises, keyed by the
- * question's name.
- * @type {Record<string, string>}
- */
-export const FLAG_BY_GATE = {};
-for (const check of CHECKS) {
-  if (check.role === "descriptive") for (const key of Object.keys(check.questions)) FLAG_BY_GATE[key] = check.flag;
-}
-
-/** The descriptive questions, in report order. */
-export const DESCRIPTIVE_KEYS = Object.keys(FLAG_BY_GATE);
-
-/**
- * The one check with a role. The roles `can-fail`, `asserts` and `verdict` each
- * belong to exactly one check.
- * @template {"can-fail" | "asserts" | "verdict"} Role
- * @param {Role} role
- * @returns {Extract<Check, { role: Role }>}
- */
-function only(role) {
-  const found = CHECKS.filter((check) => check.role === role);
-  if (found.length !== 1) throw new Error(`${found.length} checks have the role ${role}, not 1`);
-  return /** @type {Extract<Check, { role: Role }>} */ (found[0]);
-}

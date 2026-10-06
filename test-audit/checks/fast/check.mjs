@@ -15,8 +15,7 @@
 
 import { noul } from "../../classifier/systemone.mjs";
 
-/** @type {import("../../types.d.ts").Check} */
-export default {
+export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   name: "fast",
   role: "descriptive",
   flag: "slow",
@@ -29,4 +28,4 @@ export default {
     { name: "Gerard Meszaros, xUnit Test Patterns (2007): Slow Tests", url: "http://xunitpatterns.com/" },
     { name: "testsmells.org, Open Catalog of Test Smells: Sleepy Test", url: "https://testsmells.org/pages/testsmells.html" },
   ],
-};
+});

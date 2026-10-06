@@ -73,35 +73,58 @@ export interface AuditAnswer {
   noul?: number;
 }
 
-/** Several phrasings of one judgement, normalised to one polarity. */
+/**
+ * Several phrasings of one judgement, aligned to one polarity: the answer to a
+ * negated yes/no phrasing is flipped. A yes/no phrasing gives P(yes); a choice
+ * gives its kind.
+ */
 export interface Paraphrase {
-  values: Array<number | null>;
+  /** One value per phrasing, in question order; null when unanswered or untrusted. */
+  values: Array<number | string | null>;
+  /** The mean of the yes/no values; null for choices, or when none answered. */
   mean: number | null;
+  /** The highest yes/no value minus the lowest; null for choices, or with fewer than two. */
   spread: number | null;
-  /** unanswered, single, stable, borderline, or unstable. */
+  /** unanswered, single, stable, borderline, or unstable. Choices are stable when they name one kind. */
   state: string;
-  /** borderline or unstable: the phrasings disagree beyond the band. */
+  /** borderline or unstable: the phrasings disagree. */
   unstable: boolean;
+}
+
+/** What the verdict rules make of one check's answers. */
+export interface CheckResult {
+  /**
+   * The value the check commits to: yes or no, an assert kind, a test type, or
+   * a verdict level. Undefined when a phrasing is unanswered, or when the
+   * phrasings disagree.
+   */
+  value?: boolean | string;
+  /** The phrasings behind the value, for a check asked in more than one. */
+  group?: Paraphrase;
+  /** Why the check escalates the test. Empty when it does not. */
+  reasons: string[];
+  /** The flags the check raises. They report, and do not escalate. */
+  flags: string[];
 }
 
 /** Where one test's answers landed, and why it escalates. `needsEyes` is the only fail. */
 export interface AuditResult {
   test: Pick<AuditTest, "file" | "line" | "name" | "path">;
   answers: Record<string, AuditAnswer>;
-  canFail: Paraphrase;
-  asserts: { value?: string; a?: string; b?: string; trust: boolean; agrees: boolean };
-  /** Whether the test actually runs; undefined unless both twins answered and agree. */
-  runs?: boolean;
-  /** Whether the test asserts a positive case; undefined unless both twins answered and agree. */
-  positive?: boolean;
-  /** The twin pair behind each verdict-carrying yes/no gate, keyed by gate name. */
-  pairs: Record<string, Paraphrase>;
+  /** One result for each check, keyed by the check's name, in battery order. */
+  checks: Record<string, CheckResult>;
+  /** The can-fail phrasings: the group of the can-fail check. The reports show its mean. */
+  canFail?: Paraphrase;
+  /** The assert kind both phrasings agree on: the value of the asserts check. */
+  asserts?: string;
+  /** The test type: the value of the type check. */
   type?: string;
-  /** One boolean per descriptive gate (observable, conditional, isolated, …); undefined when unanswered. */
-  descriptive: Record<string, boolean | undefined>;
+  /** The verdict: the raw score, and the level it rounds to. */
   score: { value?: number; label?: string };
+  /** The extractor's notes, then the flags of the checks, each once. */
   flags: string[];
   needsEyes: boolean;
+  /** The transport error, then the reasons of the checks: can-fail, the gates, asserts, and the verdict. */
   reasons: string[];
   error?: string;
 }

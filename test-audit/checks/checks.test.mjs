@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { BATTERY, CHECKS, ESCALATE_ON_FALSE, FLAG_BY_GATE, NEGATED, RUBRIC } from "./index.mjs";
+import { BATTERY, CHECKS, RUBRIC } from "./index.mjs";
 import { CASE_FILE, CODE_FILE, LABEL_FILE, loadLabels } from "../calibration/labels.mjs";
 import { extractTests } from "../change/index.mjs";
 import { buildState } from "../classifier/index.mjs";
@@ -29,6 +29,20 @@ const CASES = FOLDERS.flatMap((folder) => {
   if (!existsSync(cases)) return [];
   return readdirSync(cases).map((name) => `${folder}/${name}`);
 }).sort();
+
+/** Every label, loaded once. */
+const LABELS = loadLabels();
+
+/** The labels of each case file. */
+const LABELS_BY_FILE = Map.groupBy(LABELS, (label) => label.file);
+
+/** The text of each case file, and the tests the extractor finds in it, read once. */
+const CASE_TEXTS = new Map(
+  [...LABELS_BY_FILE.keys()].map((file) => {
+    const text = readFileSync(join(HERE, "..", file), "utf8");
+    return [file, { text, tests: extractTests(text, "example.test.mjs") }];
+  }),
+);
 
 /** The label fields a label.json may hold. The loader adds `check`, `file` and `code`. */
 const LABEL_FIELDS = new Set(["test", "defect", "canFail", "mustEscalate", "mixed", "deterministic", "note", "sources"]);
@@ -63,12 +77,6 @@ test("the battery is the snapshot, byte for byte", () => {
   assert.equal(`${JSON.stringify(BATTERY, null, 2)}\n`, readFileSync(join(HERE, "battery.snapshot.json"), "utf8"));
 });
 
-test("the battery asks each check's questions in check order, and no key twice", () => {
-  const keys = CHECKS.flatMap((check) => Object.keys(check.questions));
-  assert.equal(new Set(keys).size, keys.length, "a question key is defined twice");
-  assert.deepEqual(Object.keys(BATTERY), keys);
-});
-
 test("a question key is its check's name, or the name and a phrasing letter", () => {
   for (const check of CHECKS) {
     for (const key of Object.keys(check.questions)) assert.match(key, new RegExp(`^${check.name}(_[a-z])?$`), `${key} in ${check.name}`);
@@ -84,14 +92,11 @@ test("each rubric definition appears in the rubric once", () => {
   );
 });
 
-test("the role tables hold every check of their role", () => {
+test("a check negates only its own questions, and a descriptive check asks one question", () => {
   for (const check of CHECKS) {
-    if (check.role === "gate") assert.deepEqual(ESCALATE_ON_FALSE[check.name], { keys: Object.keys(check.questions), reason: check.reason });
-    if (check.role === "descriptive") assert.deepEqual(Object.keys(check.questions).map((key) => FLAG_BY_GATE[key]), [check.flag]);
     for (const key of check.negated ?? []) assert.ok(key in check.questions, `${check.name} negates ${key}, which it does not ask`);
+    if (check.role === "descriptive") assert.deepEqual(Object.keys(check.questions), [check.name]);
   }
-  assert.equal(Object.keys(ESCALATE_ON_FALSE).length, CHECKS.filter((check) => check.role === "gate").length);
-  assert.equal(NEGATED.size, CHECKS.flatMap((check) => check.negated ?? []).length);
 });
 
 test("every check names its sources", () => {
@@ -126,12 +131,11 @@ test("every case folder holds a case.mjs and a label.json, and at most a code.mj
 });
 
 test("every label names a test in its case file, and every test in a case file has a label", () => {
-  const labels = loadLabels();
   for (const folder of CASES) {
     const [check, name] = folder.split("/");
     const file = `checks/${check}/cases/${name}/${CASE_FILE}`;
-    const named = extractTests(readFileSync(join(HERE, "..", file), "utf8"), file).map((found) => found.name);
-    const labelled = labels.filter((label) => label.file === file).map((label) => label.test);
+    const named = CASE_TEXTS.get(file)?.tests.map((found) => found.name) ?? [];
+    const labelled = LABELS_BY_FILE.get(file)?.map((label) => label.test) ?? [];
     assert.ok(labelled.length > 0, `${folder} has no label`);
     assert.deepEqual([...named].sort(), [...labelled].sort(), `the tests in ${file} and their labels`);
     assert.equal(new Set(named).size, named.length, `two tests in ${file} share a name`);
@@ -139,15 +143,15 @@ test("every label names a test in its case file, and every test in a case file h
 });
 
 test("a label holds only the label fields, and names its defect", () => {
-  for (const label of loadLabels()) {
+  for (const label of LABELS) {
     for (const key of Object.keys(label)) assert.ok(LABEL_FIELDS.has(key) || ["check", "file", "code"].includes(key), `${label.file}: field ${key}`);
     assert.ok(typeof label.defect === "string" && label.defect.length > 0, `${label.file}: no defect`);
   }
 });
 
 test("each case's header comment says what it shows and names the sources of its label", () => {
-  for (const label of loadLabels()) {
-    const header = headerOf(readFileSync(join(HERE, "..", label.file), "utf8"));
+  for (const label of LABELS) {
+    const header = headerOf(CASE_TEXTS.get(label.file)?.text ?? "");
     assert.ok(header.length > 0, `${label.file} has no header comment`);
     assert.ok(label.sources?.length, `${label.file}: the label names no source`);
     for (const source of label.sources ?? []) {
@@ -158,9 +162,9 @@ test("each case's header comment says what it shows and names the sources of its
 });
 
 test("a case's header comment never reaches the model, and its code under test has no comment", () => {
-  for (const label of loadLabels()) {
-    const text = readFileSync(join(HERE, "..", label.file), "utf8");
-    const test = extractTests(text, "example.test.mjs").find((found) => found.name === label.test);
+  for (const label of LABELS) {
+    const text = CASE_TEXTS.get(label.file)?.text ?? "";
+    const test = CASE_TEXTS.get(label.file)?.tests.find((found) => found.name === label.test);
     assert.ok(test, `${label.file}: no test ${label.test}`);
     const code = label.code ? readFileSync(join(HERE, "..", label.code), "utf8") : "";
     // The code under test travels whole, so a comment in it would reach the model.

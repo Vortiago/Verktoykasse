@@ -14,8 +14,7 @@
 
 import { noul } from "../../classifier/systemone.mjs";
 
-/** @type {import("../../types.d.ts").Check} */
-export default {
+export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   name: "specific",
   role: "descriptive",
   flag: "weak-assert",
@@ -32,4 +31,4 @@ export default {
     { name: "Web Platform Tests, Review Checklist: \"The test uses the most specific asserts possible\"", url: "https://web-platform-tests.org/reviewing-tests/checklist.html" },
     { name: "testsmells.org, Open Catalog of Test Smells: Sensitive Equality", url: "https://testsmells.org/pages/testsmells.html" },
   ],
-};
+});

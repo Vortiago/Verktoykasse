@@ -17,8 +17,7 @@
 
 import { noul } from "../../classifier/systemone.mjs";
 
-/** @type {import("../../types.d.ts").Check} */
-export default {
+export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   name: "observable",
   role: "descriptive",
   flag: "implementation-coupled",
@@ -36,4 +35,4 @@ export default {
     { name: "Martin Fowler, Mocks Aren't Stubs (2007)", url: "https://martinfowler.com/articles/mocksArentStubs.html" },
     { name: "testsmells.org, Open Catalog of Test Smells: Redundant Assertion", url: "https://testsmells.org/pages/testsmells.html" },
   ],
-};
+});

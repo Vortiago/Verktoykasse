@@ -1,10 +1,10 @@
 {
-  "//": "Type gate for test-audit: `node tools/check.mjs` runs `tsc --noEmit` over every production and test .mjs, strict, with the types in JSDoc. No emit, no build. The modules run on Node, so lib is ES2022 without DOM, and node.d.ts declares the slice of the Node API they use: the gate needs no @types/node and no install. types.d.ts holds the shared shapes. Out of include: checks/*/cases/ (the calibration cases: deliberately bad tests, and code under test that imports what is not there), tools/ (byte-copies of vanilla-web/tools/, edited only there), opencode/ (the OpenCode plugin, checked by its own `node opencode/check.mjs` against the installed @opencode/plugin types) and node_modules/ (that check's install). tools/js-scan.mjs is still checked, because change/extract.mjs imports it.",
+  "//": "Type gate for test-audit: `node tools/check.mjs` runs `tsc --noEmit` over every production and test .mjs, strict, with the types in JSDoc. No emit, no build. The modules run on Node, so lib is ES2024 without DOM, and node.d.ts declares the slice of the Node API they use: the gate needs no @types/node and no install. types.d.ts holds the shared shapes. Out of include: checks/*/cases/ (the calibration cases: deliberately bad tests, and code under test that imports what is not there), tools/ (byte-copies of vanilla-web/tools/, edited only there), opencode/ (the OpenCode plugin, checked by its own `node opencode/check.mjs` against the installed @opencode/plugin types) and node_modules/ (that check's install). tools/js-scan.mjs is still checked, because change/extract.mjs imports it.",
   "compilerOptions": {
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "lib": ["ES2022"],
+    "lib": ["ES2024"],
     "allowJs": true,
     "checkJs": true,
     "noEmit": true,

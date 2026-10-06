@@ -2,23 +2,20 @@
 // for several, and a per-case benchmark in markdown.
 
 import { canFailText, escapeCell, pad } from "../report/index.mjs";
-import { trusted } from "../classifier/index.mjs";
-import { ASSERT_PASS, BATTERY, CAN_FAIL_KEYS, ESCALATE_ON_FALSE, FLAG_BY_GATE, NEGATED } from "../checks/index.mjs";
+import { questionValue, trusted } from "../classifier/index.mjs";
+import { BATTERY, CHECKS } from "../checks/index.mjs";
 import { rowStatus, saidCanFail, shortStatus } from "./judge.mjs";
 
 /** @typedef {import("../types.d.ts").AuditUsage} AuditUsage */
-/** @typedef {import("../types.d.ts").AuditAnswer} AuditAnswer */
 /** @typedef {import("../types.d.ts").AuditResult} AuditResult */
 /** @typedef {import("../types.d.ts").CalibrationLabel} CalibrationLabel */
 /** @typedef {import("../types.d.ts").CalibrationRow} CalibrationRow */
+/** @typedef {import("../types.d.ts").AuditAnswer} AuditAnswer */
+/** @typedef {import("../types.d.ts").Check} Check */
 /** @typedef {import("../classifier/systemone.mjs").Question} Question */
 /** @typedef {ReturnType<typeof import("./judge.mjs").judge>} Judgement */
-/**
- * One endpoint and model's run over the corpus. `missing` names the questions
- * whose answers the record does not hold, such as a run recorded by an older
- * version of the tool; the benchmark prints "not recorded" for them.
- * @typedef {{ target: { url: string, model: string }, rows: CalibrationRow[], verdict: Judgement, usage: AuditUsage, missing?: string[] }} CalibrationEntry
- */
+/** One endpoint and model's run over the corpus. @typedef {{ target: { url: string, model: string }, rows: CalibrationRow[], verdict: Judgement, usage: AuditUsage }} CalibrationEntry */
+/** One case in report order: its row, its number, and the anchor its links point at. @typedef {{ row: CalibrationRow, number: number, anchor: string }} NumberedRow */
 
 /** The detailed view for one endpoint and model. @param {CalibrationEntry} entry */
 export function formatSingle(entry) {
@@ -31,9 +28,9 @@ export function formatSingle(entry) {
       [
         pad(row.label.test, 34),
         pad(row.label.defect ?? "-", 18),
-        pad(row.label.canFail === undefined ? "-" : row.label.canFail ? "yes" : "no", 6),
+        pad(row.label.canFail === undefined ? "-" : valueText(row.label.canFail), 6),
         pad(result ? canFailText(result.canFail) : "-", 9),
-        pad(result ? result.canFail.state : row.error ?? "-", 11),
+        pad(result?.canFail?.state ?? row.error ?? "-", 11),
         pad(result ? result.score.label ?? "unclassified" : "-", 13),
         pad(result ? (result.needsEyes ? "yes" : "-") : "-", 5),
         rowStatus(row),
@@ -83,23 +80,14 @@ const STATUS = {
   "no-test": { name: "NO TEST", meaning: "the case file holds no test with this name. Acceptance fails." },
 };
 
-/** The paraphrase pair for the assertion target. */
-const ASSERTS_KEYS = ["asserts_a", "asserts_b"];
-/** The verdict-carrying questions. */
-const VERDICT_KEYS = [...CAN_FAIL_KEYS, ...ASSERTS_KEYS, ...Object.values(ESCALATE_ON_FALSE).flatMap((gate) => gate.keys), "verdict"];
-/** Every other question, in battery order: `type`, the descriptive questions, and any new one. */
-const OTHER_KEYS = Object.keys(BATTERY).filter((key) => !VERDICT_KEYS.includes(key));
-/** The label fields the "known defect" line states in its own words. */
-const LABEL_KEYS = new Set(["check", "file", "test", "defect", "canFail", "mustEscalate", "mixed", "note", "code", "sources"]);
-
 /**
  * The benchmark report in markdown. A summary for each target comes first: the
  * headline numbers, one row for each defect family, and links to the cases that
  * are not OK. Then one table row for each case, and one collapsible block for
  * each case: the test, the code under test, the label, the answers behind each
  * escalation, and the descriptive answers in one line. A legend and the list of
- * questions close the report. The questions come from the battery, so a new
- * question appears without an edit.
+ * questions close the report. The questions come from the checks, so a new
+ * check appears without an edit.
  * @param {CalibrationEntry[]} entries
  * @param {{ preamble?: string[] }} [opts] markdown lines that go under the title, such as the date and the command
  */
@@ -110,17 +98,23 @@ export function formatBenchmark(entries, opts = {}) {
     "This file records a calibration run of `test-audit` over the labelled corpus. Each case is one test with a known defect, or a clean test. The [legend](#legend) explains the terms.",
     "",
   );
-  const prefix = (/** @type {number} */ index) => (entries.length > 1 ? `t${index + 1}-` : "");
-  entries.forEach((entry, index) => lines.push(...summarySection(entry, prefix(index)), ""));
-  entries.forEach((entry, index) => lines.push(...glanceSection(entry, prefix(index)), "", ...detailsSection(entry, prefix(index)), ""));
+  const numbered = entries.map((entry, index) => numberedRows(entry.rows, entries.length > 1 ? `t${index + 1}-` : ""));
+  entries.forEach((entry, index) => lines.push(...summarySection(entry, numbered[index]), ""));
+  entries.forEach((entry, index) => lines.push(...glanceSection(entry, numbered[index]), "", ...detailsSection(entry, numbered[index]), ""));
   lines.push(...legend());
   return lines.join("\n").trimEnd();
 }
 
-/** The rows in report order: the cases that are not OK first, then by defect family and test name. @param {CalibrationRow[]} rows */
-function orderedRows(rows) {
+/**
+ * The rows in report order, numbered: the cases that are not OK first, then by
+ * defect family and test name.
+ * @param {CalibrationRow[]} rows @param {string} prefix the anchor prefix of the target
+ * @returns {NumberedRow[]}
+ */
+function numberedRows(rows, prefix) {
   const rank = (/** @type {CalibrationRow} */ row) => (rowStatus(row) === "ok" ? 1 : 0);
-  return [...rows].sort((a, b) => rank(a) - rank(b) || family(a).localeCompare(family(b)) || a.label.test.localeCompare(b.label.test));
+  const ordered = [...rows].sort((a, b) => rank(a) - rank(b) || family(a).localeCompare(family(b)) || a.label.test.localeCompare(b.label.test));
+  return ordered.map((row, index) => ({ row, number: index + 1, anchor: `${prefix}case-${index + 1}` }));
 }
 
 /** @param {CalibrationRow} row */
@@ -134,10 +128,14 @@ function statusName(row) {
   return STATUS[status]?.name ?? status;
 }
 
-/** The headline numbers, the defect families, and links to the cases that are not OK. @param {CalibrationEntry} entry @param {string} prefix */
-function summarySection(entry, prefix) {
+/** A share as a whole percent. @param {number} share */
+function percent(share) {
+  return `${Math.round(share * 100)}%`;
+}
+
+/** The headline numbers, the defect families, and links to the cases that are not OK. @param {CalibrationEntry} entry @param {NumberedRow[]} numbered */
+function summarySection(entry, numbered) {
   const { target, rows, verdict, usage } = entry;
-  const percent = (/** @type {number} */ share) => `${Math.round(share * 100)}%`;
   const lines = [`## Summary: ${target.model}`, ""];
   lines.push(`Endpoint ${code(target.url)}, model ${code(target.model)}. ${rows.length} cases, ${usage.calls} calls, ${usage.tokens} tokens.`, "");
   lines.push("| Measure | Result | Meaning |", "| --- | --- | --- |");
@@ -153,10 +151,7 @@ function summarySection(entry, prefix) {
   lines.push(`| Acceptance | **${verdict.pass ? "PASS" : "FAIL"}** | PASS when each "must" in this table holds. |`);
 
   lines.push("", "### Defect families", "", "| Family | Cases | Escalated | Expected | OK |", "| --- | --- | --- | --- | --- |");
-  /** @type {Map<string, CalibrationRow[]>} */
-  const families = new Map();
-  const byFamily = [...rows].sort((a, b) => family(a).localeCompare(family(b)));
-  for (const row of byFamily) families.set(family(row), [...(families.get(family(row)) ?? []), row]);
+  const families = Map.groupBy([...rows].sort((a, b) => family(a).localeCompare(family(b))), family);
   for (const [name, group] of families) {
     const escalated = group.filter((row) => row.result?.needsEyes).length;
     const bad = group.filter((row) => rowStatus(row) !== "ok");
@@ -164,22 +159,16 @@ function summarySection(entry, prefix) {
     lines.push(`| ${escapeCell(name)} | ${group.length} | ${escalated} | ${expectedText(group.map((row) => row.label))} | ${ok} |`);
   }
 
-  const numbered = orderedRows(rows).map((row, index) => ({ row, number: index + 1 }));
   const notOk = numbered.filter(({ row }) => rowStatus(row) !== "ok");
-  const links = notOk.map(({ row, number }) => `[${number}. ${code(row.label.test)}](#${prefix}case-${number}) ${statusName(row)}`);
+  const links = notOk.map(({ row, number, anchor }) => `[${number}. ${code(row.label.test)}](#${anchor}) ${statusName(row)}`);
   lines.push("", notOk.length ? `**Not OK:** ${links.join(" · ")}.` : "**Not OK:** none. Each case matches its label.");
   return lines;
 }
 
-/** What a family of labels expects: escalate, pass, either, or a count of each. @param {CalibrationLabel[]} labels */
+/** What a family of labels expects: one outcome, or a count of each. @param {CalibrationLabel[]} labels */
 function expectedText(labels) {
-  const counts = [
-    [labels.filter((label) => label.mustEscalate === true).length, "escalate"],
-    [labels.filter((label) => label.mustEscalate === false).length, "pass"],
-    [labels.filter((label) => label.mustEscalate === undefined).length, "either"],
-  ].filter(([count]) => count);
-  if (counts.length === 1) return String(counts[0][1]);
-  return counts.map(([count, word]) => `${count} ${word}`).join(", ");
+  const outcomes = labels.map(expectedOutcome);
+  return new Set(outcomes).size === 1 ? outcomes[0] : countText(outcomes);
 }
 
 /** "2 FALSE positive, 1 WRONG can_fail". @param {string[]} names */
@@ -190,20 +179,20 @@ function countText(names) {
   return [...counts].map(([name, count]) => `${count} ${name}`).join(", ");
 }
 
-/** The outcome one label expects, in one word. @param {CalibrationLabel} label */
+/** The outcome one label expects, in one word: escalate, pass, or either. A mixed case must escalate. @param {CalibrationLabel} label */
 function expectedOutcome(label) {
-  if (label.mixed) return "escalate (mixed)";
-  return label.mustEscalate === true ? "escalate" : label.mustEscalate === false ? "pass" : "either";
+  if (label.mixed || label.mustEscalate === true) return "escalate";
+  return label.mustEscalate === false ? "pass" : "either";
 }
 
-/** The verdict and whether the case escalated. @param {CalibrationRow} row */
-function resultText(row) {
-  if (!row.result) return "no result";
-  return `${row.result.score.label ?? "unclassified"}, ${row.result.needsEyes ? "needs eyes" : "passes"}`;
+/** The verdict and whether the case escalated. @param {AuditResult | undefined} result */
+function resultText(result) {
+  if (!result) return "no result";
+  return `${result.score.label ?? "unclassified"}, ${result.needsEyes ? "needs eyes" : "passes"}`;
 }
 
-/** One table row for each case, in report order. @param {CalibrationEntry} entry @param {string} prefix */
-function glanceSection(entry, prefix) {
+/** One table row for each case, in report order. @param {CalibrationEntry} entry @param {NumberedRow[]} numbered */
+function glanceSection(entry, numbered) {
   const lines = [
     `## Cases at a glance: ${entry.target.model}`,
     "",
@@ -212,12 +201,11 @@ function glanceSection(entry, prefix) {
     "| # | Test | Check | Known defect | Expected | Result | Status |",
     "| --- | --- | --- | --- | --- | --- | --- |",
   ];
-  orderedRows(entry.rows).forEach((row, index) => {
-    const number = index + 1;
+  for (const { row, number, anchor } of numbered) {
     const status = rowStatus(row) === "ok" ? "OK" : `**${statusName(row)}**`;
-    const test = `[${code(row.label.test).replaceAll("|", "\\|")}](#${prefix}case-${number})`;
-    lines.push(`| ${number} | ${test} | ${checkLink(row.label)} | ${escapeCell(family(row))} | ${expectedOutcome(row.label)} | ${escapeCell(resultText(row))} | ${status} |`);
-  });
+    const test = `[${code(row.label.test).replaceAll("|", "\\|")}](#${anchor})`;
+    lines.push(`| ${number} | ${test} | ${checkLink(row.label)} | ${escapeCell(family(row))} | ${expectedOutcome(row.label)} | ${escapeCell(resultText(row.result))} | ${status} |`);
+  }
   return lines;
 }
 
@@ -226,24 +214,23 @@ function checkLink(label) {
   return `[${code(label.check)}](checks/${label.check}/check.mjs)`;
 }
 
-/** One collapsible block for each case, in report order. @param {CalibrationEntry} entry @param {string} prefix */
-function detailsSection(entry, prefix) {
-  const missing = new Set(entry.missing ?? []);
+/** One collapsible block for each case, in report order. @param {CalibrationEntry} entry @param {NumberedRow[]} numbered */
+function detailsSection(entry, numbered) {
   const lines = [`## Case details: ${entry.target.model}`, "", "Click a case to open it. The cases that are not OK are open.", ""];
-  orderedRows(entry.rows).forEach((row, index) => lines.push(...caseBlock(row, index + 1, prefix, missing)));
+  for (const item of numbered) lines.push(...caseBlock(item));
   return lines;
 }
 
 /**
  * One case as a `<details>` block: the test source, the code under test, the
  * label, what decided the outcome, and the descriptive answers.
- * @param {CalibrationRow} row @param {number} number @param {string} prefix @param {Set<string>} missing
+ * @param {NumberedRow} item
  */
-function caseBlock(row, number, prefix, missing) {
+function caseBlock({ row, number, anchor }) {
   const { label, test, result } = row;
   const ok = rowStatus(row) === "ok";
   const status = ok ? "OK" : `<b>${html(statusName(row))}</b>`;
-  const summary = `<summary><a id="${prefix}case-${number}"></a>${number}. <code>${html(label.test)}</code> · ${html(family(row))} · ${status}</summary>`;
+  const summary = `<summary><a id="${anchor}"></a>${number}. <code>${html(label.test)}</code> · ${html(family(row))} · ${status}</summary>`;
   const lines = [`<details${ok ? "" : " open"}>${summary}`, ""];
   if (test) {
     lines.push(...fenced(test.source, languageOf(label.file)));
@@ -254,8 +241,9 @@ function caseBlock(row, number, prefix, missing) {
     lines.push(`Code under test${where}:`, "", ...fenced(row.code, languageOf(label.code ?? label.file)));
   }
   lines.push(`- ${knownDefect(row)}`);
-  if (result) lines.push(...decided(label, result, missing), `- ${descriptive(label, result, missing)}`);
-  else lines.push(`- **Status:** ${statusName(row)}, ${STATUS[rowStatus(row)]?.meaning ?? ""}${row.error ? ` Error: ${row.error}.` : ""}`);
+  const error = row.error ?? result?.error;
+  if (result && !error) lines.push(...decided(label, result), `- ${descriptive(label, result)}`);
+  else lines.push(`- **Status:** ${statusName(row)}, ${STATUS[rowStatus(row)]?.meaning ?? ""}${error ? ` Error: ${error}.` : ""}`);
   lines.push("</details>");
   return lines;
 }
@@ -266,13 +254,10 @@ function knownDefect(row) {
   const parts = [label.defect === "clean" ? "**Known defect:** none, a clean test." : `**Known defect:** ${label.defect ?? "not named"}.`];
   if (label.mixed) parts.push("It is a mixed case, so its answers can disagree.");
   parts.push(`**Check:** ${checkLink(label)}.`);
-  const expected = [label.mixed || label.mustEscalate === true ? "escalate" : label.mustEscalate === false ? "pass" : "escalate or pass"];
-  if (label.canFail !== undefined) expected.push(`${code("can_fail")} ${yesNo(label.canFail)}`);
+  const expected = [expectedOutcome(label)];
+  if (label.canFail !== undefined) expected.push(`${code("can_fail")} ${valueText(label.canFail)}`);
   for (const [key, value] of labelAnswers(label)) expected.push(`${code(key)} ${valueText(value)}`);
   parts.push(`**Expected:** ${expected.join(", ")}.`);
-  for (const [key, value] of Object.entries(label)) {
-    if (!LABEL_KEYS.has(key) && !(key in BATTERY) && value !== undefined) parts.push(`Label field ${code(key)}: ${valueText(/** @type {boolean | string} */ (value))}.`);
-  }
   if (label.note) parts.push(`Note: ${label.note}${/[.!?]$/.test(label.note) ? "" : "."}`);
   if (test) {
     const scope = test.scope?.length ? `, inside ${test.scope.map(code).join(" > ")}` : "";
@@ -286,139 +271,105 @@ function knownDefect(row) {
 }
 
 /**
- * The answers the label sets for questions of the battery, other than can_fail.
+ * The answers the label sets for questions of the battery, such as
+ * `deterministic`.
  * @param {CalibrationLabel} label
  * @returns {Array<[string, boolean | string]>}
  */
 function labelAnswers(label) {
-  return /** @type {Array<[string, boolean | string]>} */ (
-    Object.entries(label).filter(([key, value]) => !LABEL_KEYS.has(key) && key in BATTERY && (typeof value === "boolean" || typeof value === "string"))
-  );
+  /** @type {Array<[string, boolean | string]>} */
+  const answers = [];
+  for (const [key, value] of Object.entries(label)) {
+    if (key in BATTERY && (typeof value === "boolean" || typeof value === "string")) answers.push([key, value]);
+  }
+  return answers;
 }
 
 /**
- * What decided the outcome. Each verdict-carrying answer that escalates, or
- * that commits to the wrong can_fail value, gets its own line: the phrasings,
- * the value they give, and the reasons. One last line holds the other answers.
- * @param {CalibrationLabel} label @param {AuditResult} result @param {Set<string>} missing
+ * What decided the outcome. Each check that can escalate gets a sentence: its
+ * phrasings, the value they give, and its reasons. A check that escalates, or
+ * that commits to the wrong can_fail value, gets its own line. One last line
+ * holds the others. The type and the descriptive checks are in their own line.
+ * @param {CalibrationLabel} label @param {AuditResult} result
  */
-function decided(label, result, missing) {
-  /** @type {Set<string>} */
-  const claimed = new Set();
-  const take = (/** @type {(reason: string) => boolean} */ match) => {
-    const found = result.reasons.filter((reason) => !claimed.has(reason) && match(reason));
-    for (const reason of found) claimed.add(reason);
-    return found;
-  };
-  const said = saidCanFail(result);
-  const answers = [
-    {
-      text: answerSentence(CAN_FAIL_KEYS, `can_fail: ${canFailValue(result)}`, result, missing),
-      reasons: take((reason) => reason.startsWith("can_fail ")),
-      check: canFailLabel(label, result),
-      wrong: label.canFail !== undefined && said !== undefined && said !== label.canFail,
-    },
-    { text: answerSentence(ASSERTS_KEYS, `asserts: ${assertsValue(result)}`, result, missing), reasons: take((reason) => reason.startsWith("asserts ")) },
-    ...Object.entries(ESCALATE_ON_FALSE).map(([gate, { keys, reason }]) => ({
-      text: answerSentence(keys, `${gate}: ${gateValue(gate, keys, result, missing)}`, result, missing),
-      reasons: take((text) => text === reason || text.startsWith(`${gate} `)),
-    })),
-    { text: answerSentence(["verdict"], "", result, missing), reasons: take((reason) => reason.startsWith("verdict ")) },
-  ].map((answer) => ({ check: "", wrong: false, ...answer }));
-  const lines = [`- **What decided it:** ${result.score.label ?? "unclassified"}, ${result.needsEyes ? "needs eyes" : "passes"}.`];
-  const loud = answers.filter((answer) => answer.reasons.length || answer.wrong);
-  for (const answer of loud) {
-    const escalates = answer.reasons.length ? `**Escalates:** ${answer.reasons.join(", ")}.` : "";
-    lines.push(`  - ${[answer.text, escalates, answer.check].filter(Boolean).join(" ")}`);
+function decided(label, result) {
+  const lines = [`- **What decided it:** ${resultText(result)}.`];
+  /** @type {string[]} */
+  const quiet = [];
+  for (const check of CHECKS) {
+    if (check.role === "type" || check.role === "descriptive") continue;
+    const reasons = result.checks[check.name]?.reasons ?? [];
+    const note = check.role === "can-fail" ? canFailNote(label, result) : { text: "", wrong: false };
+    const escalates = reasons.length ? `**Escalates:** ${reasons.join(", ")}.` : "";
+    if (reasons.length || note.wrong) lines.push(`  - ${[answerSentence(check, result), escalates, note.text].filter(Boolean).join(" ")}`);
+    else quiet.push([answerSentence(check, result), note.text].filter(Boolean).join(" "));
   }
-  const rest = result.reasons.filter((reason) => !claimed.has(reason));
-  if (rest.length) lines.push(`  - **Escalates:** ${rest.join(", ")}.`);
-  const quiet = answers.filter((answer) => !loud.includes(answer));
-  if (quiet.length) lines.push(`  - No escalation: ${quiet.map((answer) => [answer.text, answer.check].filter(Boolean).join(" ")).join(" ")}`);
+  if (quiet.length) lines.push(`  - No escalation: ${quiet.join(" ")}`);
   return lines;
 }
 
 /**
- * One verdict-carrying answer as a sentence: each phrasing and its answer, then
- * the value they give.
- * @param {string[]} keys @param {string} combined @param {AuditResult} result @param {Set<string>} missing
+ * One check as a sentence: each phrasing and its answer, then the value they
+ * give, if the check asks more than one.
+ * @param {Check} check @param {AuditResult} result
  */
-function answerSentence(keys, combined, result, missing) {
-  const notRecorded = keys.every((key) => !result.answers[key] && missing.has(key));
-  const answers = notRecorded ? `${keys.map(code).join(" · ")} not recorded` : keys.map((key) => `${code(key)} ${answerText(key, BATTERY[key], result, missing)}`).join(" · ");
-  return combined ? `${answers} → ${combined}.` : `${answers}.`;
+function answerSentence(check, result) {
+  const answers = Object.keys(check.questions)
+    .map((key) => `${code(key)} ${answerText(key, result.answers[key])}`)
+    .join(" · ");
+  const { value, group } = result.checks[check.name] ?? {};
+  if (!group) return `${answers}.`;
+  // The can_fail mean also feeds the cross-question rule, so it shows with its spread.
+  const combined = check.role === "can-fail" ? canFailValue(group) : value === undefined ? group.state : valueText(value);
+  return `${answers} → ${check.name}: ${combined}.`;
 }
 
-/** The mean, the spread and the state of the can_fail phrasings. @param {AuditResult} result */
-function canFailValue(result) {
-  const { mean, spread, state } = result.canFail;
+/** The mean, the spread and the state of the can_fail phrasings. @param {import("../types.d.ts").Paraphrase} group */
+function canFailValue({ mean, spread, state }) {
   if (mean === null) return "unanswered";
   return `${mean.toFixed(2)}${spread === null ? "" : `, spread ${spread.toFixed(2)}`} (${state})`;
 }
 
-/** The can_fail value against the label: a match, WRONG, or not scored. @param {CalibrationLabel} label @param {AuditResult} result */
-function canFailLabel(label, result) {
-  if (label.canFail === undefined) return "";
-  const said = saidCanFail(result);
-  if (said === undefined) return `Label ${yesNo(label.canFail)}: not scored.`;
-  if (said === label.canFail) return `Label ${yesNo(label.canFail)}: match.`;
-  return `**WRONG can_fail:** label ${yesNo(label.canFail)}, tool ${canFailText(result.canFail)}.`;
-}
-
-/** The value both asserts phrasings agree on, or both values. @param {AuditResult} result */
-function assertsValue(result) {
-  const { trust, agrees, value, a, b } = result.asserts;
-  if (trust && agrees) return String(value);
-  if (a === undefined && b === undefined) return "unanswered";
-  return `${a ?? "unanswered"} versus ${b ?? "unanswered"}`;
-}
-
 /**
- * The value of a twin gate: yes or no when both phrasings agree, or why not.
- * @param {string} gate @param {string[]} keys @param {AuditResult} result @param {Set<string>} missing
+ * The can_fail value against the label: a match, WRONG, or not scored.
+ * @param {CalibrationLabel} label @param {AuditResult} result
+ * @returns {{ text: string, wrong: boolean }}
  */
-function gateValue(gate, keys, result, missing) {
-  const value = /** @type {Record<string, unknown>} */ (/** @type {unknown} */ (result))[gate];
-  if (typeof value === "boolean") return yesNo(value);
-  const pair = result.pairs?.[gate];
-  if (pair && pair.state !== "stable") return pair.state;
-  if (keys.every((key) => !result.answers[key] && missing.has(key))) return "not recorded";
-  return "unanswered";
+function canFailNote(label, result) {
+  if (label.canFail === undefined) return { text: "", wrong: false };
+  const said = saidCanFail(result);
+  const want = `Label ${valueText(label.canFail)}`;
+  if (said === undefined) return { text: `${want}: not scored.`, wrong: false };
+  if (said === label.canFail) return { text: `${want}: match.`, wrong: false };
+  return { text: `**WRONG can_fail:** label ${valueText(label.canFail)}, tool ${canFailText(result.canFail)}.`, wrong: true };
 }
 
 /**
  * The descriptive answers in one line: the clean count, each smell and its flag,
- * the questions with no answer, any other question, and the label checks.
- * @param {CalibrationLabel} label @param {AuditResult} result @param {Set<string>} missing
+ * the questions with no answer, the type, and the label checks.
+ * @param {CalibrationLabel} label @param {AuditResult} result
  */
-function descriptive(label, result, missing) {
+function descriptive(label, result) {
   /** @type {string[]} */
   const smells = [];
   /** @type {string[]} */
   const unanswered = [];
   /** @type {string[]} */
-  const notRecorded = [];
-  /** @type {string[]} */
   const others = [];
   let clean = 0;
-  for (const key of OTHER_KEYS) {
-    const question = BATTERY[key];
-    if (question.type !== "noul") {
-      others.push(`${code(key)} ${answerText(key, question, result, missing)}`);
-      continue;
+  for (const check of CHECKS) {
+    if (check.role === "type") {
+      for (const key of Object.keys(check.questions)) others.push(`${code(key)} ${answerText(key, result.answers[key])}`);
+    } else if (check.role === "descriptive") {
+      const value = result.checks[check.name]?.value;
+      if (value === true) clean += 1;
+      else if (value === false) smells.push(`${code(check.name)} (${check.flag})`);
+      else unanswered.push(code(check.name));
     }
-    const value = answerValue(key, question, result);
-    if (value === true) clean += 1;
-    else if (value === false) smells.push(key in FLAG_BY_GATE ? `${code(key)} (${FLAG_BY_GATE[key]})` : code(key));
-    else if (!result.answers[key] && missing.has(key)) notRecorded.push(code(key));
-    else unanswered.push(code(key));
   }
-  const parts = [`${clean} clean`, `smells: ${smells.join(", ") || "none"}`, `unanswered: ${unanswered.join(", ") || "none"}`];
-  if (notRecorded.length) parts.push(`not recorded: ${notRecorded.join(", ")}`);
-  parts.push(...others);
+  const parts = [`${clean} clean`, `smells: ${smells.join(", ") || "none"}`, `unanswered: ${unanswered.join(", ") || "none"}`, ...others];
   for (const [key, expected] of labelAnswers(label)) {
-    if (!OTHER_KEYS.includes(key)) continue;
-    const value = answerValue(key, BATTERY[key], result);
+    const value = questionValue(key, result.answers[key]);
     const want = `label ${code(key)} ${valueText(expected)}`;
     parts.push(value === undefined ? `${want}: no answer` : value === expected ? `${want}: match` : `**${want}, tool ${valueText(value)}**`);
   }
@@ -427,22 +378,26 @@ function descriptive(label, result, missing) {
 
 /** The terms, explained once, and the questions of the battery. */
 function legend() {
-  const levels = levelsOf(BATTERY.verdict);
-  const gates = Object.entries(ESCALATE_ON_FALSE).map(([gate, { keys }]) => `${code(gate)} (${keys.map(code).join(", ")})`);
+  const [canFail] = CHECKS.filter((check) => check.role === "can-fail");
+  const [asserts] = CHECKS.filter((check) => check.role === "asserts");
+  const [verdict] = CHECKS.filter((check) => check.role === "verdict");
+  const gates = CHECKS.filter((check) => check.role === "gate").map((check) => `${code(check.name)} (${Object.keys(check.questions).map(code).join(", ")})`);
+  const negated = CHECKS.flatMap((check) => check.negated ?? []);
+  const levels = verdict.levels;
   return [
     "## Legend",
     "",
     "- **Case**: one labelled test in `checks/<check>/cases/<case>/`. `case.mjs` holds the test, `label.json` states the known defect and the expected outcome, and `code.mjs`, if the case has one, holds the code under test.",
     "- **Check**: the check that the case is meant to catch, in `checks/<check>/check.mjs`. A clean case and a mixed case belong to the `verdict` check.",
     "- **Escalate**: the tool sends the test to a human, so the test **needs eyes**. Each reason says why. A test with no reason **passes**.",
-    `- **can_fail**: the probability that a change to the code under test can make the test fail. The tool asks it in ${CAN_FAIL_KEYS.length} phrasings and takes the mean. The **spread** is the highest value minus the lowest. A spread above \`TEST_AUDIT_STABLE_BAND\` makes the value borderline or unstable, and the test escalates.`,
+    `- **can_fail**: the probability that a change to the code under test can make the test fail. The tool asks it in ${Object.keys(canFail.questions).length} phrasings and takes the mean. The **spread** is the highest value minus the lowest. A spread above \`TEST_AUDIT_STABLE_BAND\` makes the value borderline or unstable, and the test escalates.`,
     `- **Twin pair**: ${gates.join(" and ")}. The tool asks each twice. The value counts only when both phrasings agree. A "no" escalates.`,
-    `- **Negated phrasing**: ${[...NEGATED].map(code).join(", ")} ask the opposite, so their "no" is the good answer.`,
-    `- **asserts**: what the assertion checks. Only ${code(ASSERT_PASS)} is a real guard. ${ASSERTS_KEYS.map(code).join(" and ")} list the options in opposite order, and must agree.`,
+    `- **Negated phrasing**: ${negated.map(code).join(", ")} ask the opposite, so their "no" is the good answer.`,
+    `- **asserts**: what the assertion checks. Only ${code(Object.keys(asserts.kinds)[0])} is a real guard. ${Object.keys(asserts.questions).map(code).join(" and ")} list the options in opposite order, and must agree.`,
     `- **verdict**: a score from 0 (${levels[0]}) to ${levels.length - 1} (${levels[levels.length - 1]}). A verdict of weak or lower escalates.`,
     '- **Descriptive question**: a "no" is a **smell**. It raises the flag in brackets. It does not escalate the test.',
     "- **Number in brackets**: for a yes/no question, the probability of yes. For a choice, the probability of the chosen option. For the verdict, the score.",
-    "- **not recorded**: the run did not record the value. **unanswered**: the endpoint gave no answer. **untrusted**: the answer has a `mass` below `TEST_AUDIT_MIN_MASS`. **not scored**: the tool did not commit to a can_fail value, so the agreement does not count the case.",
+    "- **unanswered**: the endpoint gave no answer. **untrusted**: the answer has a `mass` below `TEST_AUDIT_MIN_MASS`. **not scored**: the tool did not commit to a can_fail value, so the agreement does not count the case.",
     "- **Status** of a case:",
     ...Object.values(STATUS).map((status) => `  - **${status.name}**: ${status.meaning}`),
     "",
@@ -463,62 +418,26 @@ function checksText(question) {
   return `one of: ${Object.keys(question.criteria).join(", ")}`;
 }
 
-/** @param {Question} question */
-function levelsOf(question) {
-  return Array.isArray(question.criteria) ? question.criteria : [];
-}
-
 /**
- * The answer as a value: a boolean for yes/no, a string for a choice or a level.
- * A raw answer wins. A record without raw answers falls back to the result fields.
- * @param {string} key @param {Question} question @param {AuditResult} result
- * @returns {boolean | string | undefined}
+ * One answer as the benchmark shows it: its value and the number behind it, or
+ * why it has none. The number is P(yes), the probability of the chosen kind, or
+ * the score.
+ * @param {string} key @param {AuditAnswer | undefined} answer
  */
-function answerValue(key, question, result) {
-  const raw = result.answers[key];
-  if (!raw) return derivedValue(key, result);
-  if (!trusted(raw)) return undefined;
-  if (question.type === "noul" && typeof raw.noul === "number") return raw.noul >= 0.5;
-  if (question.type === "choice" && typeof raw.choice === "string") return raw.choice;
-  if (question.type === "score" && typeof raw.score === "number") {
-    const levels = levelsOf(question);
-    return levels[Math.round(raw.score)] ?? "off the scale";
-  }
-  return undefined;
+function answerText(key, answer) {
+  if (!answer) return "unanswered";
+  if (!trusted(answer)) return `untrusted (mass ${answer.mass?.toFixed(2)})`;
+  const type = BATTERY[key].type;
+  const number = type === "noul" ? answer.noul : type === "score" ? answer.score : answer.probabilities?.[String(answer.choice)];
+  const shown = typeof number === "number" ? ` (${number.toFixed(2)})` : "";
+  const value = questionValue(key, answer);
+  if (value !== undefined) return `${valueText(value)}${shown}`;
+  return type === "score" && shown ? `off the scale${shown}` : "unanswered";
 }
 
-/** The value the result holds for one question, when the record has no raw answer. @param {string} key @param {AuditResult} result */
-function derivedValue(key, result) {
-  if (key in FLAG_BY_GATE) return result.descriptive[key];
-  if (key === ASSERTS_KEYS[0]) return result.asserts.a;
-  if (key === ASSERTS_KEYS[1]) return result.asserts.b;
-  if (key === "type") return result.type;
-  if (key === "verdict") return result.score.label;
-  return undefined;
-}
-
-/**
- * The answer: the value and its number, or why there is none.
- * @param {string} key @param {Question} question @param {AuditResult} result @param {Set<string>} missing
- */
-function answerText(key, question, result, missing) {
-  const raw = result.answers[key];
-  const value = answerValue(key, question, result);
-  if (!raw) return value !== undefined ? valueText(value) : missing.has(key) ? "not recorded" : "unanswered";
-  if (!trusted(raw)) return `untrusted (mass ${raw.mass?.toFixed(2)})`;
-  if (value === undefined) return "unanswered";
-  const number = question.type === "noul" ? raw.noul : question.type === "choice" ? raw.probabilities?.[String(value)] : raw.score;
-  return typeof number === "number" ? `${valueText(value)} (${number.toFixed(2)})` : valueText(value);
-}
-
-/** @param {boolean | string} value */
+/** yes or no for a boolean; any other value as it is. @param {boolean | string} value */
 function valueText(value) {
-  return typeof value === "boolean" ? yesNo(value) : String(value);
-}
-
-/** @param {boolean} value */
-function yesNo(value) {
-  return value ? "yes" : "no";
+  return typeof value === "boolean" ? (value ? "yes" : "no") : String(value);
 }
 
 /** A markdown code span that survives a backtick in the text. @param {string} text */
@@ -547,7 +466,7 @@ function languageOf(file) {
 /** @param {Judgement} verdict */
 function summaryLine(verdict) {
   return (
-    `can_fail agreement: ${verdict.correct}/${verdict.resolved} resolved (${Math.round(verdict.agreement * 100)}%). ` +
+    `can_fail agreement: ${verdict.correct}/${verdict.resolved} resolved (${percent(verdict.agreement)}). ` +
     `Silent passes: ${verdict.silentPasses}. Mixed routed: ${verdict.mixedRouted}/${verdict.mixedTotal}. ` +
     `False positives: ${verdict.falsePositives}/${verdict.goodTotal}. ` +
     `deterministic: ${verdict.deterministicCorrect}/${verdict.deterministicTotal}.` +

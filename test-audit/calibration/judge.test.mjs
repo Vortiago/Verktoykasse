@@ -6,100 +6,95 @@ import assert from "node:assert/strict";
 import { judge, rowStatus } from "./judge.mjs";
 import { loadLabels } from "./labels.mjs";
 import { codeContext } from "./runner.mjs";
+import { verdictFrom } from "../classifier/verdict.mjs";
+import { goodAnswers, noul, score } from "../test-fixtures.mjs";
 
+/** @typedef {import("../types.d.ts").AuditAnswer} AuditAnswer */
 /** @typedef {import("../types.d.ts").CalibrationLabel} CalibrationLabel */
 /** @typedef {import("../types.d.ts").CalibrationRow} CalibrationRow */
 
 /**
- * A labelled row with a result whose can-fail mean and escalation are set. The
- * judge reads only those, so the rest of the result is empty, and the label's
- * check and case file are derived from its test name.
+ * A labelled row whose result the real verdict rules give for the answers. The
+ * label's check and case file are derived from its test name.
  * @param {Omit<CalibrationLabel, "check" | "file">} label
- * @param {{ mean?: number | null, state?: string, needsEyes?: boolean, error?: string }} [opts]
+ * @param {Record<string, AuditAnswer>} answers
+ * @param {string} [error] a transport failure
  * @returns {CalibrationRow}
  */
-function row(label, { mean = 0.99, state = "stable", needsEyes = false, error } = {}) {
-  return {
-    label: { check: "verdict", file: `checks/verdict/cases/${label.test}/case.mjs`, ...label },
-    result: {
-      test: { file: `${label.test}.test.mjs`, line: 1, name: label.test, path: [] },
-      answers: {},
-      canFail: { mean, state, unstable: state === "borderline" || state === "unstable", values: [], spread: 0 },
-      asserts: { trust: true, agrees: true },
-      pairs: {},
-      descriptive: {},
-      score: { label: needsEyes ? "weak" : "strong" },
-      flags: [],
-      needsEyes,
-      reasons: [],
-      error,
-    },
-  };
+function row(label, answers, error) {
+  const test = { file: `${label.test}.test.mjs`, line: 1, name: label.test, path: [], scope: [], source: "", fixtures: [], imports: [], flags: [] };
+  return { label: { check: "verdict", file: `checks/verdict/cases/${label.test}/case.mjs`, ...label }, result: verdictFrom(test, answers, { error }) };
 }
 
+/** A real guard: it can fail, and nothing escalates. */
+const GOOD = goodAnswers();
+/** A stable "cannot fail": the phrasings agree, so the tool commits to no. It escalates. */
+const CANNOT_FAIL = { ...GOOD, can_fail_a: noul(0.1), can_fail_b: noul(0.9), can_fail_c: noul(0.1) };
+/** A good can_fail beside a slop verdict: it escalates. */
+const SLOP = { ...GOOD, verdict: score(0) };
+/** Phrasings that disagree beyond the band: the tool commits to no value. */
+const UNSTABLE = { ...GOOD, can_fail_a: noul(0.9), can_fail_b: noul(0.9), can_fail_c: noul(0.1) };
+
 test("a clean run passes", () => {
-  const rows = [
-    row({ test: "slop", canFail: false, mustEscalate: true }, { mean: 0.1, needsEyes: true }),
-    row({ test: "good", canFail: true, mustEscalate: false }, { mean: 0.99, needsEyes: false }),
-  ];
-  const verdict = judge(rows, { canFailAgreement: 0.9 });
+  const rows = [row({ test: "slop", canFail: false, mustEscalate: true }, CANNOT_FAIL), row({ test: "good", canFail: true, mustEscalate: false }, GOOD)];
+  const verdict = judge(rows);
   assert.equal(verdict.pass, true);
   assert.equal(verdict.correct, 2);
   assert.equal(verdict.silentPasses, 0);
 });
 
 test("a silent pass fails the run", () => {
-  const rows = [row({ test: "slop", mustEscalate: true }, { needsEyes: false })];
-  const verdict = judge(rows, { canFailAgreement: 0.9 });
+  const verdict = judge([row({ test: "slop", mustEscalate: true }, GOOD)]);
   assert.equal(verdict.silentPasses, 1);
   assert.equal(verdict.pass, false);
 });
 
 test("an unrouted mixed case fails the run", () => {
-  const rows = [row({ test: "mixed", mixed: true, mustEscalate: true }, { needsEyes: false })];
-  const verdict = judge(rows, { canFailAgreement: 0.9 });
+  const verdict = judge([row({ test: "mixed", mixed: true, mustEscalate: true }, GOOD)]);
   assert.equal(verdict.mixedTotal, 1);
   assert.equal(verdict.mixedRouted, 0);
   assert.equal(verdict.pass, false);
 });
 
 test("agreement counts only the cases the tool resolved", () => {
-  const rows = [
-    row({ test: "a", canFail: true }, { mean: 0.99 }),
-    row({ test: "b", canFail: false }, { mean: 0.1 }),
-    row({ test: "c", canFail: true }, { mean: 0.3, state: "unstable", needsEyes: true }),
-  ];
-  const verdict = judge(rows, { canFailAgreement: 0.9 });
+  const rows = [row({ test: "a", canFail: true }, GOOD), row({ test: "b", canFail: false }, CANNOT_FAIL), row({ test: "c", canFail: true }, UNSTABLE)];
+  const verdict = judge(rows);
   assert.equal(verdict.resolved, 2);
   assert.equal(verdict.correct, 2);
   assert.equal(verdict.agreement, 1);
 });
 
 test("rowStatus names the notable rows", () => {
-  assert.equal(rowStatus(row({ test: "x" })), "ok");
-  assert.equal(rowStatus(row({ test: "x", mustEscalate: true }, { needsEyes: false })), "SILENT");
-  assert.equal(rowStatus(row({ test: "x", mixed: true, mustEscalate: true }, { needsEyes: false })), "MIXED");
-  assert.equal(rowStatus(row({ test: "x", mustEscalate: false }, { needsEyes: true })), "FALSE+");
-  assert.equal(rowStatus(row({ test: "x", canFail: true }, { mean: 0.2 })), "WRONG");
+  assert.equal(rowStatus(row({ test: "x" }, GOOD)), "ok");
+  assert.equal(rowStatus(row({ test: "x", mustEscalate: true }, GOOD)), "SILENT");
+  assert.equal(rowStatus(row({ test: "x", mixed: true, mustEscalate: true }, GOOD)), "MIXED");
+  assert.equal(rowStatus(row({ test: "x", mustEscalate: false }, SLOP)), "FALSE+");
+  assert.equal(rowStatus(row({ test: "x", canFail: true }, CANNOT_FAIL)), "WRONG");
 });
 
 test("judge groups escalation by defect, so a whole family that slips shows", () => {
   const rows = [
-    row({ test: "a", defect: "tautology", mustEscalate: true }, { needsEyes: true }),
-    row({ test: "b", defect: "tautology", mustEscalate: true }, { needsEyes: true }),
-    row({ test: "c", defect: "shape-only", mustEscalate: true }, { needsEyes: false }),
+    row({ test: "a", defect: "tautology", mustEscalate: true }, SLOP),
+    row({ test: "b", defect: "tautology", mustEscalate: true }, SLOP),
+    row({ test: "c", defect: "shape-only", mustEscalate: true }, GOOD),
   ];
-  const verdict = judge(rows, { canFailAgreement: 0.9 });
+  const verdict = judge(rows);
   assert.deepEqual(verdict.defects.tautology, { total: 2, escalated: 2 });
   assert.deepEqual(verdict.defects["shape-only"], { total: 1, escalated: 0 });
   assert.equal(verdict.silentPasses, 1);
   assert.equal(verdict.pass, false);
 });
 
-test("judge holds the run to the acceptance bar when the caller sets none", () => {
-  const rows = [row({ test: "a", canFail: true }, { mean: 0.99 }), row({ test: "b", canFail: true }, { mean: 0.2 })];
-  assert.equal(judge(rows).minAgreement, 0.9);
-  assert.equal(judge(rows).pass, false);
+test("judge holds the run to the acceptance bar", () => {
+  const verdict = judge([row({ test: "a", canFail: true }, GOOD), row({ test: "b", canFail: true }, CANNOT_FAIL)]);
+  assert.equal(verdict.minAgreement, 0.9);
+  assert.equal(verdict.pass, false);
+});
+
+test("the deterministic answer is scored against the label", () => {
+  const verdict = judge([row({ test: "a", deterministic: true }, GOOD), row({ test: "b", deterministic: true }, { ...GOOD, deterministic: noul(0.1) })]);
+  assert.equal(verdict.deterministicTotal, 2);
+  assert.equal(verdict.deterministicCorrect, 1);
 });
 
 test("loadLabels gives each label its check and its case file from the folder", () => {
@@ -114,53 +109,39 @@ test("loadLabels gives each label its check and its case file from the folder", 
 
 test("a label that resolves to no test fails the run", () => {
   const rows = [{ label: { check: "verdict", file: "checks/verdict/cases/missing/case.mjs", test: "missing", mustEscalate: true }, error: "test not found: missing" }];
-  const verdict = judge(rows, { canFailAgreement: 0.9 });
+  const verdict = judge(rows);
   assert.equal(verdict.unresolved, 1);
   assert.equal(verdict.pass, false);
-});
-
-test("agreement excludes a stable case with no mean", () => {
-  const rows = [row({ test: "a", canFail: true }, { mean: null, state: "stable" })];
-  const verdict = judge(rows, { canFailAgreement: 0.9 });
-  assert.equal(verdict.resolved, 0);
-  assert.equal(verdict.agreement, 1);
 });
 
 test("a reply with no trusted answer fails the run too", () => {
   // A 200 with an empty `answers`, or every answer below the mass floor.
-  const rows = [row({ test: "slop", canFail: false, mustEscalate: true }, { mean: null, state: "unanswered", needsEyes: true })];
-  const [only] = rows;
-  if (only.result) {
-    only.result.asserts = { trust: false, agrees: false };
-    only.result.score = {};
-  }
-  const verdict = judge(rows, { canFailAgreement: 0.9 });
-  assert.equal(verdict.unresolved, 1);
+  const untrusted = Object.fromEntries(Object.entries(GOOD).map(([key, answer]) => [key, { ...answer, mass: 0.01 }]));
+  const rows = [row({ test: "empty", canFail: false, mustEscalate: true }, {}), row({ test: "untrusted", canFail: false, mustEscalate: true }, untrusted)];
+  const verdict = judge(rows);
+  assert.equal(verdict.unresolved, 2);
   assert.equal(verdict.pass, false);
 });
 
 test("agreement counts a can-fail value only when every phrasing answered", () => {
-  const partial = row({ test: "a", canFail: false }, { mean: 0.92, state: "single" });
-  const twoOfThree = row({ test: "b", canFail: false }, { mean: 0.9, state: "stable" });
-  if (twoOfThree.result) twoOfThree.result.canFail.values = [0.9, 0.9, null];
-  const verdict = judge([partial, twoOfThree], { canFailAgreement: 0.9 });
+  const { can_fail_b: _b, can_fail_c: _c, ...single } = CANNOT_FAIL;
+  const { can_fail_c: _only, ...twoOfThree } = CANNOT_FAIL;
+  const partial = row({ test: "a", canFail: true }, single);
+  const verdict = judge([partial, row({ test: "b", canFail: true }, twoOfThree)]);
   assert.equal(verdict.resolved, 0);
   assert.equal(rowStatus(partial), "ok");
 });
 
 test("a mean of exactly 0.5 reads as can fail, as the audit reads it", () => {
-  const verdict = judge([row({ test: "a", canFail: true }, { mean: 0.5 })], { canFailAgreement: 0.9 });
+  const verdict = judge([row({ test: "a", canFail: true }, { ...GOOD, can_fail_a: noul(0.5), can_fail_b: noul(0.5), can_fail_c: noul(0.5) })]);
   assert.equal(verdict.correct, 1);
 });
 
 test("a case the endpoint never answered fails the run", () => {
   // A transport failure escalates, so without this rule a dead endpoint would
   // route every defect case and pass with 0/0 agreement.
-  const rows = [
-    row({ test: "slop", canFail: false, mustEscalate: true }, { mean: null, state: "unanswered", needsEyes: true, error: "fetch failed" }),
-    row({ test: "mixed", mixed: true, mustEscalate: true }, { mean: null, state: "unanswered", needsEyes: true, error: "fetch failed" }),
-  ];
-  const verdict = judge(rows, { canFailAgreement: 0.9 });
+  const rows = [row({ test: "slop", canFail: false, mustEscalate: true }, {}, "fetch failed"), row({ test: "mixed", mixed: true, mustEscalate: true }, {}, "fetch failed")];
+  const verdict = judge(rows);
   assert.equal(verdict.unresolved, 2);
   assert.equal(verdict.pass, false);
   assert.equal(rowStatus(rows[0]), "ERROR");

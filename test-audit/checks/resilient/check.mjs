@@ -14,8 +14,7 @@
 
 import { noul } from "../../classifier/systemone.mjs";
 
-/** @type {import("../../types.d.ts").Check} */
-export default {
+export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   name: "resilient",
   role: "descriptive",
   flag: "structure-dependent",
@@ -32,4 +31,4 @@ export default {
     { name: "Kent Beck, Test Desiderata (2019): Structure-insensitive", url: "https://kentbeck.github.io/TestDesiderata/" },
     { name: "Gerard Meszaros, xUnit Test Patterns (2007): Fragile Test, Sensitive Equality", url: "http://xunitpatterns.com/" },
   ],
-};
+});

@@ -17,8 +17,7 @@
 
 import { noul } from "../../classifier/systemone.mjs";
 
-/** @type {import("../../types.d.ts").Check} */
-export default {
+export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   name: "runs",
   role: "gate",
   reason: "does not run",
@@ -44,4 +43,4 @@ export default {
     { name: "testsmells.org, Open Catalog of Test Smells: Ignored Test", url: "https://testsmells.org/pages/testsmells.html" },
     { name: "the house catalogue, verify-prd-implemented/test-patterns.md: Skipped / disabled / focused", url: "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md" },
   ],
-};
+});

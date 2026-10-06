@@ -13,8 +13,7 @@
 
 import { noul } from "../../classifier/systemone.mjs";
 
-/** @type {import("../../types.d.ts").Check} */
-export default {
+export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   name: "diagnostic",
   role: "descriptive",
   flag: "silent-failure",
@@ -30,4 +29,4 @@ export default {
     { name: "Gerard Meszaros, xUnit Test Patterns (2007): Assertion Roulette (Missing Assertion Message)", url: "http://xunitpatterns.com/Assertion%20Roulette.html" },
     { name: "testsmells.org, Open Catalog of Test Smells: Assertion Roulette", url: "https://testsmells.org/pages/testsmells.html" },
   ],
-};
+});

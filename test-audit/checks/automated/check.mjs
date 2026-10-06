@@ -15,8 +15,7 @@
 
 import { noul } from "../../classifier/systemone.mjs";
 
-/** @type {import("../../types.d.ts").Check} */
-export default {
+export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   name: "automated",
   role: "descriptive",
   flag: "manual",
@@ -33,4 +32,4 @@ export default {
     { name: "Gerard Meszaros, xUnit Test Patterns (2007): Manual Intervention", url: "http://xunitpatterns.com/" },
     { name: "Web Platform Tests, Review Checklist: manual tests", url: "https://web-platform-tests.org/reviewing-tests/checklist.html" },
   ],
-};
+});

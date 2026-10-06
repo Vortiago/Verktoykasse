@@ -14,8 +14,7 @@
 
 import { noul } from "../../classifier/systemone.mjs";
 
-/** @type {import("../../types.d.ts").Check} */
-export default {
+export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   name: "one_thing",
   role: "descriptive",
   flag: "eager",
@@ -31,4 +30,4 @@ export default {
     { name: "Gerard Meszaros, xUnit Test Patterns (2007): Eager Test (in Obscure Test and Assertion Roulette)", url: "http://xunitpatterns.com/Obscure%20Test.html" },
     { name: "testsmells.org, Open Catalog of Test Smells: Eager Test", url: "https://testsmells.org/pages/testsmells.html" },
   ],
-};
+});

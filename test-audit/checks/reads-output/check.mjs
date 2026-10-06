@@ -17,8 +17,7 @@
 
 import { noul } from "../../classifier/systemone.mjs";
 
-/** @type {import("../../types.d.ts").Check} */
-export default {
+export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   name: "reads_output",
   role: "descriptive",
   flag: "asserts-input",
@@ -35,4 +34,4 @@ export default {
     { name: "the house catalogue, verify-prd-implemented/test-patterns.md: Passes for the wrong reason", url: "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md" },
     { name: "Yue Jia and Mark Harman, An Analysis and Survey of the Development of Mutation Testing (IEEE TSE 2011)", url: "https://doi.org/10.1109/TSE.2010.62" },
   ],
-};
+});

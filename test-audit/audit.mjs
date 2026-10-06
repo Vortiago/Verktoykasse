@@ -4,7 +4,7 @@
 
 import process from "node:process";
 import { changeContext, changedTests, collect, extractTests, isTestFile } from "./change/index.mjs";
-import { classify, usageMeter } from "./classifier/index.mjs";
+import { classify, usageMeter, verdictFrom } from "./classifier/index.mjs";
 import { mapPool } from "./lib/pool.mjs";
 import config from "./config.mjs";
 
@@ -58,21 +58,12 @@ export async function runAudit(args = {}, opts = {}) {
 }
 
 /**
- * The escalated result for a test file that yields no test.
+ * The escalated result for a test file that yields no test. It has no answers,
+ * so every check is unanswered; the one reason is the file's.
  * @param {string} file
  * @returns {AuditResult}
  */
 function unreadResult(file) {
-  return {
-    test: { file, line: 1, name: "(no test found)", path: [] },
-    answers: {},
-    canFail: { values: [], mean: null, spread: null, state: "unanswered", unstable: false },
-    asserts: { trust: false, agrees: false },
-    pairs: {},
-    descriptive: {},
-    score: {},
-    flags: ["no-test-found"],
-    needsEyes: true,
-    reasons: ["no test found: the file's tests use a form the extractor cannot read"],
-  };
+  const stub = { file, line: 1, name: "(no test found)", path: [], scope: [], source: "", fixtures: [], imports: [], flags: ["no-test-found"] };
+  return { ...verdictFrom(stub, {}), needsEyes: true, reasons: ["no test found: the file's tests use a form the extractor cannot read"] };
 }

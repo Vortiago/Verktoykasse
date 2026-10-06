@@ -12,8 +12,7 @@
 
 import { noul } from "../../classifier/systemone.mjs";
 
-/** @type {import("../../types.d.ts").Check} */
-export default {
+export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   name: "conditional",
   role: "descriptive",
   flag: "conditional",
@@ -30,4 +29,4 @@ export default {
     { name: "Gerard Meszaros, xUnit Test Patterns (2007): Conditional Test Logic", url: "http://xunitpatterns.com/Conditional%20Test%20Logic.html" },
     { name: "testsmells.org, Open Catalog of Test Smells: Conditional Test Logic", url: "https://testsmells.org/pages/testsmells.html" },
   ],
-};
+});

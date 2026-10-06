@@ -6,7 +6,7 @@
 
 /** A can-fail value, with `!` when the paraphrase spread is above the band. @param {AuditResult["canFail"]} canFail */
 export function canFailText(canFail) {
-  if (canFail.mean === null) return "-";
+  if (!canFail || canFail.mean === null) return "-";
   return `${canFail.mean.toFixed(2)}${canFail.unstable ? "!" : ""}`;
 }
 
@@ -22,7 +22,7 @@ export function rowCells(result) {
     result.needsEyes ? "yes" : "-",
     result.type ?? "unclassified",
     canFailText(result.canFail),
-    result.asserts.value ?? "unclassified",
+    result.asserts ?? "unclassified",
     location(result.test),
     result.test.name,
   ];
@@ -56,7 +56,7 @@ export function summary(results, meta) {
   }
   const parts = Object.entries(counts).map(([label, count]) => `${count} ${label}`);
   const eyes = eyesResults(results).length;
-  const unstable = results.filter((result) => result.canFail.unstable).length;
+  const unstable = results.filter((result) => result.canFail?.unstable).length;
   const usage = meta.usage ? ` ${plural(meta.usage.calls, "call")}, ${meta.usage.tokens} tokens.` : "";
   return `Summary: ${parts.join(", ") || "no tests"}. ${unstable} unstable. ${eyesPhrase(eyes)}.${usage}`;
 }
