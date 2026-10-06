@@ -175,8 +175,9 @@ curl -fsSL https://raw.githubusercontent.com/Vortiago/Verktoykasse/main/bootstra
   | bash -s -- clean-code simplified-technical-english
 ```
 
-Name what to install. Any skill name works too, and a later run adds its names
-to the ones already fetched. Set `VERKTOYKASSE_REF` to a branch, tag or full
-commit SHA to pin a version, and `VERKTOYKASSE_DIR` to move the checkout. The
-installed files are symlinks into the checkout. For `worktrees`, set
-`REPOS_ROOT` too, because its default is relative to the checkout.
+Name what to install. Any skill name works too. Set `VERKTOYKASSE_REF` to a
+branch, tag or full commit SHA to pin a version, and `VERKTOYKASSE_DIR` to move
+the checkout. The installed files are symlinks into the checkout. The script
+expects a new container: where a clone lives on, use it and `install.sh`. For
+`worktrees`, set `REPOS_ROOT` too, because its default is relative to the
+checkout.
