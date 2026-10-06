@@ -13,7 +13,7 @@ import { BATTERY, CHECKS, RUBRIC } from "./index.mjs";
 import { CASE_FILE, CODE_FILE, LABEL_FIELDS, LABEL_FILE, LOADED_FIELDS, ROOT, headerOf, loadLabels, sourcesOf } from "../calibration/labels.mjs";
 import { extractTests } from "../change/index.mjs";
 import { buildState } from "../classifier/index.mjs";
-import { codeContext } from "../calibration/runner.mjs";
+import { NEUTRAL_TEST_PATH, prepareCase } from "../calibration/case-state.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -40,7 +40,7 @@ const LABELS_BY_FILE = Map.groupBy(LABELS, (label) => label.file);
 const CASE_TEXTS = new Map(
   [...LABELS_BY_FILE.keys()].map((file) => {
     const text = readFileSync(join(ROOT, file), "utf8");
-    return [file, { text, tests: extractTests(text, "example.test.mjs") }];
+    return [file, { text, tests: extractTests(text, NEUTRAL_TEST_PATH) }];
   }),
 );
 
@@ -130,14 +130,12 @@ test("each case's header comment says what it shows and names its sources, each 
 
 test("a case's header comment never reaches the model, and its code under test has no comment", () => {
   for (const label of LABELS) {
-    const text = CASE_TEXTS.get(label.file)?.text ?? "";
-    const test = CASE_TEXTS.get(label.file)?.tests.find((found) => found.name === label.test);
-    assert.ok(test, `${label.file}: no test ${label.test}`);
-    const code = label.code ? readFileSync(join(HERE, "..", label.code), "utf8") : "";
+    const { test, code = "", context, error } = prepareCase(label);
+    assert.ok(test, `${label.file}: no test ${label.test} (${error ?? "not found"})`);
     // The code under test travels whole, so a comment in it would reach the model.
     assert.ok(!/\/\/|\/\*/.test(code), `${label.code} holds a comment`);
-    const state = buildState(test, code ? codeContext(code) : "", 1_000_000);
-    for (const line of headerOf(text)) {
+    const state = buildState(test, context, 1_000_000);
+    for (const line of headerOf(CASE_TEXTS.get(label.file)?.text ?? "")) {
       assert.ok(!state.includes(line.trim()), `${label.file}: the state holds its header line ${line}`);
     }
   }

@@ -5,7 +5,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { judge, rowStatus } from "./judge.mjs";
 import { loadLabels } from "./labels.mjs";
-import { codeContext } from "./runner.mjs";
+import { codeContext } from "./case-state.mjs";
 import { verdictFrom } from "../classifier/verdict.mjs";
 import { goodAnswers, noul, score } from "../test-fixtures.mjs";
 

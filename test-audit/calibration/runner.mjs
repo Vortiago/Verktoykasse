@@ -2,34 +2,23 @@
 // endpoints and report agreement. It needs the network, so it is not part of the
 // repo gate. `runSelftest` is the interface; the CLI imports it from here.
 
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-import { extractTests } from "../change/index.mjs";
 import { classify, usageMeter } from "../classifier/index.mjs";
 import { mapPool } from "../lib/pool.mjs";
-import { ROOT, loadLabels } from "./labels.mjs";
+import { loadLabels } from "./labels.mjs";
+import { prepareCase } from "./case-state.mjs";
 import { judge, rowStatus } from "./judge.mjs";
 import { formatBenchmark, formatMatrix, formatSingle } from "./format.mjs";
 import config from "../config.mjs";
 
-/** The file name the model sees for every case. A case's path states its label
- * (`checks/can-fail/cases/tautology-constant/`), so sending it would leak the
- * answer. */
-const NEUTRAL_TEST_PATH = "example.test.mjs";
-/** The neutral path the code under test sits at in the change context. */
-const NEUTRAL_CODE_PATH = "src/example.mjs";
-
-/** @typedef {import("../types.d.ts").AuditTest} AuditTest */
-/** @typedef {import("../types.d.ts").CalibrationLabel} CalibrationLabel */
 /** @typedef {import("../types.d.ts").CalibrationRow} CalibrationRow */
-/** @typedef {{ label: CalibrationLabel, test?: AuditTest, code?: string, error?: string }} PreparedCase */
+/** @typedef {import("./case-state.mjs").PreparedCase} PreparedCase */
 
 /**
  * @param {{ targets: Array<{url: string, model: string}>, benchmark?: boolean, onProgress?: (event: { target: string, index: number, total: number, status: string, test: string }) => void }} opts
  * @returns {Promise<{ text: string, code: number }>}
  */
 export async function runSelftest(opts) {
-  // Read and parse every case once; every target reuses it.
+  // Read and parse every case, and build its change context, once; every target reuses it.
   const cases = loadLabels().map(prepareCase);
 
   /** @param {{ url: string, model: string }} target */
@@ -66,46 +55,18 @@ export async function runSelftest(opts) {
 }
 
 /**
- * Read and parse one labelled case. The test is found by name, so a case file
- * may hold more than one test.
- * @param {CalibrationLabel} label
- * @returns {PreparedCase}
- */
-function prepareCase(label) {
-  try {
-    const text = readFileSync(join(ROOT, label.file), "utf8");
-    const test = extractTests(text, NEUTRAL_TEST_PATH).find((candidate) => candidate.name === label.test);
-    const code = label.code ? readFileSync(join(ROOT, label.code), "utf8") : undefined;
-    return { label, test, code };
-  } catch (err) {
-    return { label, error: `cannot read ${label.file}: ${err instanceof Error ? err.message : err}` };
-  }
-}
-
-/**
- * The code under test as the change context a real audit sends: the non-test
- * part of a diff. The path is neutral, because a case file's name states its
- * label.
- * @param {string} code
- */
-export function codeContext(code) {
-  const lines = code.replace(/\n$/, "").split("\n");
-  return [`diff --git a/${NEUTRAL_CODE_PATH} b/${NEUTRAL_CODE_PATH}`, "new file mode 100644", "--- /dev/null", `+++ b/${NEUTRAL_CODE_PATH}`, `@@ -0,0 +1,${lines.length} @@`, ...lines.map((line) => `+${line}`)].join("\n");
-}
-
-/**
  * Classify one prepared case.
  * @param {PreparedCase} item
  * @param {{ target: {url: string, model: string}, onResponse: (json: object) => void }} ctx
  * @returns {Promise<CalibrationRow>}
  */
 async function runCase(item, ctx) {
-  if (!item.test) return { label: item.label, error: item.error ?? `test not found: ${item.label.test}` };
+  if (!item.test) return { ...item, error: item.error ?? `test not found: ${item.label.test}` };
   const result = await classify(item.test, {
     url: ctx.target.url,
     model: ctx.target.model,
-    changeContext: item.code ? codeContext(item.code) : "",
+    changeContext: item.context,
     onResponse: ctx.onResponse,
   });
-  return { label: item.label, test: item.test, code: item.code, result };
+  return { ...item, result };
 }

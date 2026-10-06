@@ -169,8 +169,10 @@ export interface CalibrationRow {
   label: CalibrationLabel;
   /** The test the extractor found in the case file, as the endpoint saw it. */
   test?: AuditTest;
-  /** The code under test the endpoint saw as the change context, if the case has one. */
+  /** The code under test, if the case has one. */
   code?: string;
+  /** The change context the endpoint saw: the code under test as a capped diff, or empty. */
+  context?: string;
   result?: AuditResult;
   error?: string;
 }

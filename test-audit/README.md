@@ -290,7 +290,8 @@ types, and mixed cases that should escalate. A target in `--targets` is
 `url|model`, or a bare `model` for the configured URL.
 
 A case sends the model what a real audit sends: the test, and, when the case
-folder holds a `code.mjs`, the code under test as the change context. Give a
+folder holds a `code.mjs`, the code under test as the change context, through
+the same cap. `calibration/case-state.mjs` builds this once for each case. Give a
 case its `code.mjs` when the right answer depends on the code. For example, a
 test that asserts `taxRates()` equals `TAX_RATES` agrees by construction only if
 `taxRates()` returns that same constant. The model sees neutral paths
