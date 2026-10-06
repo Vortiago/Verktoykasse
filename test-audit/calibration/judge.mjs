@@ -9,7 +9,7 @@
 /** @typedef {import("../types.d.ts").CalibrationRow} CalibrationRow */
 
 /** The acceptance bar: the least share of committed can_fail answers that must match the label. */
-export const ACCEPTANCE = { canFailAgreement: 0.9 };
+const ACCEPTANCE = { canFailAgreement: 0.9 };
 
 /**
  * @param {CalibrationRow[]} rows

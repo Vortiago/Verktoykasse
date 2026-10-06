@@ -7,7 +7,7 @@
 // argument list on its top-level commas.
 
 import { argSpan, splitTop } from "../tools/js-scan.mjs";
-import { codeOnly } from "./code.mjs";
+import { codeOnly } from "./code-only.mjs";
 
 /** @typedef {import("../types.d.ts").AuditTest} AuditTest */
 
