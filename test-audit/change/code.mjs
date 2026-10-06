@@ -119,7 +119,7 @@ export function codeOnly(text) {
       i += 1;
       continue;
     }
-    if (char === "/" && canStartRegex(out)) {
+    if (char === "/" && canStartRegex(out, next)) {
       out += char;
       stack.push({ type: "regex", inClass: false });
       i += 1;
@@ -139,16 +139,34 @@ export function codeOnly(text) {
 /**
  * Does a `/` at this point open a regex? Look back over the code emitted so
  * far: after a value (identifier, number, closing bracket) a slash is division.
+ * A wrong "yes" blanks the rest of the line, its `)` with it, and the test is
+ * lost, so JSX tag ends (`</div>`, `</>`, `={x} />`) and postfix operators
+ * (`i++ /`, TypeScript's `total! /`) are read as what they are.
  * @param {string} out
+ * @param {string | undefined} next the character after the `/`
  */
-function canStartRegex(out) {
+function canStartRegex(out, next) {
   let end = out.length - 1;
-  while (end >= 0 && /[ \t\n]/.test(out[end])) end -= 1;
+  if (out[end] === "<") return false;
+  while (end >= 0 && /\s/.test(out[end])) end -= 1;
   if (end < 0) return true;
   const char = out[end];
+  if (char === "}" && next === ">") return false;
+  if ("+-!".includes(char) && isPostfix(out, end)) return false;
   if (REGEX_PUNCTUATION.includes(char)) return true;
   if (!/[\w$]/.test(char)) return false;
   let start = end;
   while (start >= 0 && /[\w$]/.test(out[start])) start -= 1;
   return REGEX_KEYWORDS.has(out.slice(start + 1, end + 1));
+}
+
+/**
+ * Is the operator ending at `end` a postfix one (`i++`, `i--`, TypeScript's
+ * non-null `total!`)? Then a value precedes the `/`, and the slash is division.
+ * @param {string} out @param {number} end
+ */
+function isPostfix(out, end) {
+  const char = out[end];
+  const before = char === "!" ? end - 1 : out[end - 1] === char ? end - 2 : -1;
+  return before >= 0 && /[\w$)\]]/.test(out[before]);
 }

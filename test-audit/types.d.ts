@@ -10,10 +10,12 @@ export interface AuditTest {
   line: number;
   name: string;
   path: string[];
+  /** The heads of the enclosing describe calls, outermost first, such as `describe.skip("parser", () => {`. */
+  scope: string[];
   source: string;
   fixtures: string[];
   imports: string[];
-  /** Extractor notes, such as `each` or `dynamic-name`; they join the result's flags. */
+  /** Extractor notes, such as `each`, `dynamic-name` or `focus-in-file`; they join the result's flags. */
   flags: string[];
 }
 

@@ -35,6 +35,12 @@ test("exitCode is 0 only when nothing escalates", () => {
   assert.equal(exitCode([result({ needsEyes: true, reasons: ["x"] })]), 1);
 });
 
+test("exitCode is 2 when a call failed, even beside a test that needs eyes", () => {
+  const failed = result({ needsEyes: true, reasons: ["no answers (fetch failed)"], error: "fetch failed" });
+  assert.equal(exitCode([result(), failed]), 2);
+  assert.equal(exitCode([result({ needsEyes: true, reasons: ["x"] }), failed]), 2);
+});
+
 test("formatText names the escalated test and its reasons", () => {
   const text = formatText([result(), result({ test: { file: "bar.test.mjs", line: 3, name: "sane", path: [] }, score: { value: 0, label: "slop" }, needsEyes: true, reasons: ["can_fail unstable (spread 0.91)"] })], { ref: "origin/main...HEAD" });
   assert.match(text, /Audit of origin\/main\.\.\.HEAD/);

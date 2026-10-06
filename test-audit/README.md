@@ -29,6 +29,9 @@ node test-audit/cli.mjs --help              # all options
 The working tree includes untracked files. The default branch is `origin/HEAD`.
 If `origin/HEAD` is not set, the tool uses `origin/main`, then `main`.
 
+In a test file that the change modifies, the tool audits only the tests whose
+lines the change adds or edits. A new, untracked, or named file counts whole.
+
 The exit code tells a script the result:
 
 | Exit code | Meaning |
@@ -70,6 +73,9 @@ A test escalates, and needs eyes, for each of these reasons:
   interaction only, or nothing.
 - The verdict is slop or weak.
 - A confident "cannot fail" sits beside a good or strong verdict.
+- A test file that the change touches holds no test the extractor can read. The
+  report shows it as `(no test found)`, so a form the extractor misses is never
+  a clean pass.
 
 The tool never breaks a tie between answers that disagree. A silent pass is the
 failure it hunts, so it escalates instead.
@@ -82,7 +88,9 @@ descriptive questions raise these flags: `implementation-coupled`,
 `vague-name`, `non-deterministic`, `eager`, `name-mismatch`,
 `structure-dependent`, `silent-failure`, `general-fixture`, `slow`, `obscure`,
 `magic-number`, `asserts-input`, `manual`, and `state-leak`. An `asserts` answer
-other than `behaviour` is also a flag, for example `shape-only`.
+other than `behaviour` is also a flag, for example `shape-only`. The extractor
+adds its own notes: `each` for a table test, `dynamic-name` for a computed name,
+and `focus-in-file` when an only or focus marker in the file narrows the run.
 
 ## Choose an endpoint
 
@@ -130,7 +138,9 @@ The state has three parts:
 1. The rubric. It defines every concept the questions use, so the endpoint knows
    what "falsifiable" and "conditional logic" mean.
 2. The test: the file, the path, the name, the source, the fixtures, and the
-   imports.
+   imports. When there are any, also the heads of the enclosing `describe`
+   calls and the extractor's notes (`each`, `dynamic-name`, `focus-in-file`), so
+   that `runs` can see a `describe.skip` or a focus marker in a sibling test.
 3. A capped slice of the non-test diff.
 
 Each question adds its own `instructions` and `criteria`. The `criteria` say what
@@ -208,7 +218,8 @@ A run passes acceptance when all of these are true:
 
 - No defect case passes silently.
 - Every mixed case escalates.
-- Every labelled case resolves to a test in its case file.
+- Every labelled case resolves to a test in its case file, and the endpoint
+  answers it. A transport failure is not a routed case.
 - The `can_fail` agreement is 90% or more (set in `calibration/labels.json`).
 
 The selftest exits `0` when every target passes acceptance, and `1` when one
@@ -229,10 +240,14 @@ Run the selftest again when the model or a question changes. Record each run in
   paraphrase spread and the cross-question rule are then the only guard.
 - The tool judges tests, not coverage. It never says that a change is tested
   enough. It says whether each added test is a real guard.
-- The extractor reads `test` and `it` calls with a literal or a computed name. It
+- The extractor reads `test` and `it` calls with a literal or a computed name,
+  with a member chain such as `test.skip.each` or `test.skipIf(cond)`, and
+  node:test's `suite`, `before` and `after` beside `describe` and its hooks. It
   folds a `test.each` table into one test and flags a computed name. The
   extractor does not match the tagged-template form, the generic form
-  (`test.each<T>`), or a test called on a runner object (`t.test(...)`).
+  (`test.each<T>`), or a test called on a runner object (`t.test(...)`). In JSX,
+  an apostrophe in element text (`<p>Don't</p>`) can still hide the test that
+  holds it.
 
 ## References
 

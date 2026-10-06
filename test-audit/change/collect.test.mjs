@@ -1,11 +1,16 @@
-// Unit test for the one pure helper in the read half. `collect` itself shells
-// out to git, so it is exercised by a manual run, not by the repo gate.
+// Unit tests for the parts of the read half that need no git: the path-list
+// parse, and the named-files branch of `collect`. The git modes shell out to
+// git, so a manual run exercises them, not the repo gate.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseNameOnly } from "./collect.mjs";
+import { collect, parseNameOnly } from "./collect.mjs";
 
-test("parseNameOnly drops blank lines and trims", () => {
-  assert.deepEqual(parseNameOnly("src/a.js\n\n src/b.test.js \n"), ["src/a.js", "src/b.test.js"]);
+test("parseNameOnly splits git's NUL-separated list and keeps each path exact", () => {
+  assert.deepEqual(parseNameOnly("src/a.js\0tests/kø.test.js\0tests/a b.test.js\0"), ["src/a.js", "tests/kø.test.js", "tests/a b.test.js"]);
   assert.deepEqual(parseNameOnly(""), []);
+});
+
+test("a named file that cannot be read fails the run instead of auditing nothing", () => {
+  assert.throws(() => collect({ files: ["no-such-dir/missing.test.mjs"] }), /cannot read no-such-dir\/missing\.test\.mjs/);
 });

@@ -11,8 +11,14 @@ export { canFailText, escapeCell, pad } from "./format.mjs";
 /** @typedef {import("../types.d.ts").AuditResult} AuditResult */
 /** @typedef {import("../types.d.ts").AuditUsage} AuditUsage */
 
-/** Exit 1 when any test escalates. A slop or weak verdict always escalates. @param {AuditResult[]} results */
+/**
+ * Exit 2 when a call failed, so a script can tell an unreachable endpoint from a
+ * test that needs eyes; else 1 when any test escalates (a slop or weak verdict
+ * always does); else 0. The failed test still escalates in the report.
+ * @param {AuditResult[]} results
+ */
 export function exitCode(results) {
+  if (results.some((result) => result.error)) return 2;
   return eyesResults(results).length ? 1 : 0;
 }
 

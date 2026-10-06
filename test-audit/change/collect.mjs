@@ -16,11 +16,12 @@ import process from "node:process";
 /**
  * The change to audit: the text of every touched file, and a reader for the
  * diff. The diff is read only on demand, because a change with no tests never
- * needs it. A file that cannot be read (deleted, binary) is dropped. Git resolves
- * paths against the repository root, so a run from a subdirectory still reads
- * every touched file.
+ * needs it. A discovered file that cannot be read (deleted, binary) is dropped.
+ * Git resolves paths against the repository root, so a run from a subdirectory
+ * still reads every touched file.
  * A `filter` drops discovered paths before their text is read; named files are
- * read unfiltered, because the caller named them on purpose.
+ * read unfiltered, because the caller named them on purpose, and one that
+ * cannot be read fails the run.
  * @param {{ base?: string, head?: string, staged?: boolean, files?: string[], cwd?: string, filter?: (path: string) => boolean }} [opts]
  * @returns {{ readDiff: () => string, files: Array<{ path: string, text: string }>, ref: string }}
  */
@@ -29,9 +30,14 @@ export function collect(opts = {}) {
   assertRef("--base", base);
   assertRef("--head", head);
 
-  // Named files are read relative to where the caller stands, not the root.
+  // Named files are read relative to where the caller stands, not the root. One
+  // that cannot be read fails the run: dropped, a typo would read as a clean audit.
   if (files && files.length) {
-    const out = files.map((path) => ({ path, text: readWorktree(path, cwd) })).filter(hasText);
+    const out = files.map((path) => {
+      const text = readWorktree(path, cwd);
+      if (text === undefined) throw new Error(`cannot read ${path}`);
+      return { path, text };
+    });
     return { readDiff: () => "", files: out, ref: "named files" };
   }
 
@@ -59,22 +65,28 @@ export function collect(opts = {}) {
 
   // A bad ref must fail loudly, not read as an empty change. `git` throws; the
   // optional probes (`merge-base`, untracked, a file at a ref) use tryGit.
-  let paths = parseNameOnly(git(["diff", "--name-only", "--diff-filter=ACMR", ...spec], root));
+  // `--` makes git read the spec as a revision: `--base src`, a directory and no
+  // ref, must fail, not narrow the diff to the paths under src/.
+  let paths = parseNameOnly(git(["diff", "--name-only", "-z", "--diff-filter=ACMR", ...spec, "--"], root));
   if (source === "worktree") {
-    const untracked = parseNameOnly(tryGit(["ls-files", "--others", "--exclude-standard"], root) ?? "");
+    const untracked = parseNameOnly(tryGit(["ls-files", "-z", "--others", "--exclude-standard"], root) ?? "");
     paths = [...new Set([...paths, ...untracked])];
   }
   const out = paths.filter((path) => !filter || filter(path)).map((path) => ({ path, text: readSource(source, path, root) })).filter(hasText);
-  return { readDiff: () => git(["diff", ...spec], root), files: out, ref };
+  // A fixed diff shape whatever the user's git config: no colour, no external
+  // driver, and the a/ b/ prefixes that the section and hunk parse expects.
+  const diffArgs = ["diff", "--no-color", "--no-ext-diff", "--src-prefix=a/", "--dst-prefix=b/", ...spec, "--"];
+  return { readDiff: () => git(diffArgs, root), files: out, ref };
 }
 
 /**
- * The newline-separated path list git prints for `--name-only`.
+ * The NUL-separated path list git prints for `--name-only -z` and `ls-files -z`:
+ * each path exact, never C-quoted, whatever characters it holds.
  * @param {string} text
  * @returns {string[]}
  */
 export function parseNameOnly(text) {
-  return text.split("\n").map((line) => line.trim()).filter(Boolean);
+  return text.split("\0").filter(Boolean);
 }
 
 /** @param {Source} source @param {string} path @param {string} root */
@@ -145,8 +157,10 @@ function tryGit(args, cwd) {
 
 /**
  * The spawn every git call shares: utf8 text, and a buffer that fits a big change.
+ * `core.quotePath=false` keeps a non-ASCII path in a diff header as text, so the
+ * header parse still finds it (`tests/kø.test.js`, not `"tests/k\303\270..."`).
  * @param {string[]} args @param {string} cwd
  */
 function runGit(args, cwd) {
-  return spawnSync("git", args, { cwd, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  return spawnSync("git", ["-c", "core.quotePath=false", ...args], { cwd, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
 }

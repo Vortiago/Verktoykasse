@@ -3,7 +3,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { extractTests, isTestFile, splitDiff, changeContext } from "./extract.mjs";
+import { extractTests, isTestFile, splitDiff, changeContext, changedTests } from "./extract.mjs";
 
 test("isTestFile accepts the runners' naming conventions", () => {
   assert.equal(isTestFile("src/add.test.js"), true);
@@ -134,5 +134,133 @@ test("an unterminated call does not stop the scan", () => {
   assert.deepEqual(
     extractTests(text, "x.test.mjs").map((found) => found.name),
     ["after"],
+  );
+});
+
+test("a JSX closing tag is not a regex, so the test that holds it is found", () => {
+  const text = [
+    'test("renders the label", () => {',
+    "  render(<Button>Save</Button>);",
+    '  expect(screen.getByRole("button")).toHaveTextContent("Save");',
+    "});",
+    'test("renders a fragment", () => {',
+    "  render(<>x</>);",
+    '  expect(screen.getByText("x")).toBeVisible();',
+    "});",
+    'test("renders a counter", () => {',
+    "  render(<Counter initial={0} />);",
+    '  expect(screen.getByRole("status")).toHaveTextContent("0");',
+    "});",
+  ].join("\n");
+  assert.deepEqual(
+    extractTests(text, "x.test.tsx").map((found) => found.name),
+    ["renders the label", "renders a fragment", "renders a counter"],
+  );
+});
+
+test("a postfix operator before a slash is division, not a regex", () => {
+  const text = [
+    'test("averages", () => {',
+    "  expect(total! / count).toBe(2);",
+    "  expect(`${i++ / 2}`).toBe(\"0.5\");",
+    "});",
+    'test("after", () => { expect(1).toBe(1); });',
+  ].join("\n");
+  assert.deepEqual(
+    extractTests(text, "x.test.ts").map((found) => found.name),
+    ["averages", "after"],
+  );
+});
+
+test("a regex that opens a CRLF line is still a regex", () => {
+  const text = 'test("throws", () => {\r\n  expect(() => f()).toThrow(\r\n    /unclosed \\(/,\r\n  );\r\n});\r\ntest("after", () => { expect(1).toBe(1); });\r\n';
+  assert.deepEqual(
+    extractTests(text, "x.test.mjs").map((found) => found.name),
+    ["throws", "after"],
+  );
+});
+
+test("a test carries the heads of its enclosing describes", () => {
+  const text = 'describe.skip("math", () => {\n  describe("add", () => {\n    it("adds", () => { expect(add(1, 2)).toBe(3); });\n  });\n});';
+  const [found] = extractTests(text, "x.test.mjs");
+  assert.deepEqual(found.path, ["math", "add"]);
+  assert.deepEqual(found.scope, ['describe.skip("math", () => {', 'describe("add", () => {']);
+});
+
+test("a focus marker anywhere notes every test in the file", () => {
+  const text = 'it.only("saves", () => { expect(save()).toBe(true); });\nit("loads", () => { expect(load()).toBe(1); });';
+  assert.deepEqual(
+    extractTests(text, "x.test.mjs").map((found) => found.flags),
+    [["focus-in-file"], ["focus-in-file"]],
+  );
+  assert.deepEqual(extractTests('it("loads", () => { expect(load()).toBe(1); });', "x.test.mjs")[0].flags, []);
+});
+
+test("a chained or curried call head is still a test", () => {
+  const text = [
+    'test.skip.each([[1, 2]])("adds %i", (a, b) => { expect(a + 1).toBe(b); });',
+    'test.skipIf(isWindows)("reads a link", () => { expect(read()).toBe("x"); });',
+    'it.concurrent("runs at once", async () => { expect(await f()).toBe(1); });',
+  ].join("\n");
+  const found = extractTests(text, "x.test.mjs");
+  assert.deepEqual(found.map((t) => t.name), ["adds %i", "reads a link", "runs at once"]);
+  assert.deepEqual(found[0].flags, ["each"]);
+  assert.match(found[0].source, /^test\.skip\.each/);
+});
+
+test("a describe with an expression body still yields its test", () => {
+  const [found] = extractTests('describe("d", () => test("a", () => { expect(1).toBe(1); }));', "x.test.mjs");
+  assert.equal(found?.name, "a");
+  assert.deepEqual(found?.path, ["d"]);
+});
+
+test("changedTests keeps only the tests whose lines the diff adds or edits", () => {
+  const text = 'test("old one", () => {\n  expect(add(1, 1)).toBe(2);\n});\n\ntest("old two", () => {\n  expect(add(2, 3)).toBe(5);\n});\n\ntest("new three", () => {\n  expect(add(3, 3)).toBe(6);\n});\n';
+  const tests = extractTests(text, "add.test.mjs");
+  const diff = [
+    "diff --git a/add.test.mjs b/add.test.mjs",
+    "--- a/add.test.mjs",
+    "+++ b/add.test.mjs",
+    "@@ -5,3 +5,3 @@",
+    ' test("old two", () => {',
+    "-  expect(add(2, 2)).toBe(4);",
+    "+  expect(add(2, 3)).toBe(5);",
+    " });",
+    "@@ -7,0 +8,4 @@",
+    "+",
+    '+test("new three", () => {',
+    "+  expect(add(3, 3)).toBe(6);",
+    "+});",
+  ].join("\n");
+  assert.deepEqual(changedTests(tests, diff).map((test) => test.name), ["old two", "new three"]);
+  // A file the diff does not name (untracked, or named on the command line) counts whole.
+  assert.deepEqual(changedTests(tests, "").map((test) => test.name), ["old one", "old two", "new three"]);
+  // A rename with no hunk adds no test.
+  assert.deepEqual(changedTests(tests, "diff --git a/old.test.mjs b/add.test.mjs\nsimilarity index 100%\nrename from old.test.mjs\nrename to add.test.mjs").length, 0);
+});
+
+test("suite and node:test's before and after are a describe and its hooks", () => {
+  const text = [
+    'suite.skip("clock", () => {',
+    "  beforeEach(() => mock.timers.enable());",
+    '  test("ticks", () => { assert.equal(tick(), 1); });',
+    "});",
+    'suite("tokens", () => {',
+    '  before(() => { process.env.SECRET = "x"; });',
+    '  test("reads", () => { assert.equal(read(), "x"); });',
+    "});",
+  ].join("\n");
+  const [ticks, reads] = extractTests(text, "x.test.mjs");
+  assert.deepEqual([ticks.path, reads.path], [["clock"], ["tokens"]]);
+  assert.match(ticks.scope[0], /^suite\.skip/);
+  assert.match(ticks.fixtures.join(""), /mock\.timers/);
+  assert.match(reads.fixtures.join(""), /^before\(/);
+});
+
+test("a function or method named after a call head is not a test", () => {
+  const text = 'function it(name, fn) { return fn(); }\nconst matcher = { test(value) { return value > 0; } };\ntest("real", () => { expect(1).toBe(1); });';
+  assert.deepEqual(
+    extractTests(text, "x.test.mjs").map((found) => found.name),
+    ["real"],
   );
 });

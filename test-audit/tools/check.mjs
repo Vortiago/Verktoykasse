@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// canonical source: vanilla-web/tools/check.mjs@0c55dad sha256:706e8dab61d51f01d316bbae6c9f3d7afebbb290d919fd6caa5a4de9828e96cb - vendored copy, do not edit here
 // @ts-check
 // check — THE gate command. One thing to run, locally and in CI, from any skill
 // or app dir that carries tools/:

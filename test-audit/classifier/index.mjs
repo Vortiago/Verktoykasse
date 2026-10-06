@@ -20,11 +20,16 @@ export { DESCRIPTIVE_KEYS, VERDICTS } from "./battery.mjs";
  * @typedef {(state: string, questions: Record<string, Question>, opts: { url?: string, model?: string, timeoutMs?: number, onResponse?: (json: object) => void }) => Promise<Record<string, AuditAnswer>>} Ask
  */
 
+/** The least change context worth sending; a shorter slice is only a hunk header. */
+const MIN_CONTEXT = 200;
+
 /**
  * The per-test state. The shared rubric comes first, so a truncation never drops
- * the definitions; then the test record, then the change context. The test JSON
- * is capped to leave room, and the source sits early in it so a hard test still
- * shows the assertion.
+ * the definitions; then the test record, then the change context. The test is
+ * the subject, so it takes the room first and the context gets what is left: a
+ * long test squeezes the context, not its own tail, where the assertions sit.
+ * The source sits early in the record, so a test longer than the cap still
+ * shows its head.
  * @param {AuditTest} test
  * @param {string} [changeContext]
  * @param {number} [cap]
@@ -36,6 +41,10 @@ export function buildState(test, changeContext = "", cap = config.stateCap) {
       line: test.line,
       name: test.name,
       path: test.path,
+      // A describe's skip or only and the extractor's notes are what `runs` needs
+      // beyond the test's own source; sent only when present.
+      ...(test.scope?.length ? { scope: test.scope } : {}),
+      ...(test.flags?.length ? { flags: test.flags } : {}),
       source: test.source,
       fixtures: test.fixtures,
       imports: test.imports,
@@ -43,10 +52,13 @@ export function buildState(test, changeContext = "", cap = config.stateCap) {
     null,
     2,
   );
-  const context = changeContext ? `\n\nChange context:\n${changeContext}` : "";
-  const room = Math.max(400, cap - RUBRIC.length - context.length - 32);
+  const room = Math.max(400, cap - RUBRIC.length - 32);
   const testText = record.length > room ? `${record.slice(0, room)}\n… [test truncated]` : record;
-  return `${RUBRIC}\n\nTest:\n${testText}${context}`;
+  const state = `${RUBRIC}\n\nTest:\n${testText}`;
+  const contextRoom = cap - state.length - 32;
+  if (!changeContext || contextRoom < MIN_CONTEXT) return state;
+  const context = changeContext.length > contextRoom ? `${changeContext.slice(0, contextRoom)}\n… [context truncated]` : changeContext;
+  return `${state}\n\nChange context:\n${context}`;
 }
 
 /**

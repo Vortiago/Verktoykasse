@@ -52,7 +52,7 @@ export function formatMatrix(entries) {
     );
   }
   lines.push("");
-  lines.push(". ok   S silent pass   M mixed not routed   F false positive   W wrong can_fail   ? no test");
+  lines.push(". ok   S silent pass   M mixed not routed   F false positive   W wrong can_fail   E no answer   ? no test");
   lines.push("");
   for (let index = 0; index < entries.length; index++) {
     const { target, verdict, usage } = entries[index];
@@ -132,7 +132,8 @@ function summaryLine(verdict) {
     `can_fail agreement: ${verdict.correct}/${verdict.resolved} resolved (${Math.round(verdict.agreement * 100)}%). ` +
     `Silent passes: ${verdict.silentPasses}. Mixed routed: ${verdict.mixedRouted}/${verdict.mixedTotal}. ` +
     `False positives: ${verdict.falsePositives}/${verdict.goodTotal}. ` +
-    `deterministic: ${verdict.deterministicCorrect}/${verdict.deterministicTotal}.`
+    `deterministic: ${verdict.deterministicCorrect}/${verdict.deterministicTotal}.` +
+    (verdict.unresolved ? ` Unresolved: ${verdict.unresolved}.` : "")
   );
 }
 

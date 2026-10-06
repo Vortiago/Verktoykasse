@@ -34,7 +34,7 @@ export async function ask(state, questions, opts = {}) {
   const body = { model, state, questions };
 
   const timeout = AbortSignal.timeout(timeoutMs);
-  const res = await fetch(`${url}/v1/systemone`, {
+  const res = await fetch(`${url.replace(/\/+$/, "")}/v1/systemone`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

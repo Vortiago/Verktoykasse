@@ -2,7 +2,8 @@
 // test-audit: classify the tests a change adds, per test, against the
 // questions a reviewer asks. The CLI reads a change, extracts its tests, asks
 // the SystemOne battery once per test, and prints a verdict. It is advisory:
-// exit 1 means "a test needs eyes", never "the gate blocked".
+// exit 1 means "a test needs eyes", never "the gate blocked", and exit 2 means
+// a usage or transport failure.
 //
 //   node cli.mjs                     audit the working tree against the default branch
 //   node cli.mjs --base main         audit against a named base commit
@@ -14,7 +15,7 @@
 //   node cli.mjs --selftest --targets "http://127.0.0.1:11434|nimble, http://127.0.0.1:11435|winnow:e4b"
 //
 // A transport failure is an audit failure, not a skip: the affected test
-// escalates like any other.
+// escalates like any other, and the run exits 2.
 
 import process from "node:process";
 import { parseArgs as parseArgv } from "node:util";

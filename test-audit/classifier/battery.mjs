@@ -204,7 +204,7 @@ export const BATTERY = {
     "the name promises one behaviour and the body asserts something else or something trivial",
   ),
   resilient: noul(
-    "Would a refactor of the code under test that keeps the same behaviour break this test?",
+    "Would this test stay green through a refactor of the code under test that keeps the same behaviour?",
     "the test checks behaviour, so a behaviour-preserving refactor keeps it green",
     "the test depends on the current structure, so a refactor breaks it",
   ),

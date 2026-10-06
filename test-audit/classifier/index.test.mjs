@@ -12,7 +12,7 @@ import { verdictFrom } from "./verdict.mjs";
 /** @typedef {import("../types.d.ts").AuditAnswer} AuditAnswer */
 
 /** @type {AuditTest} */
-const TEST = { file: "add.test.mjs", line: 1, name: "add", path: [], source: 'test("add", () => { expect(add(1, 1)).toBe(2); });', fixtures: [], imports: [], flags: [] };
+const TEST = { file: "add.test.mjs", line: 1, name: "add", path: [], scope: [], source: 'test("add", () => { expect(add(1, 1)).toBe(2); });', fixtures: [], imports: [], flags: [] };
 
 /** A trusted yes/no answer. @param {number} value @param {number} [mass] @returns {AuditAnswer} */
 const noul = (value, mass = 0.99) => ({ type: "noul", probabilities: {}, confidence: 0.9, mass, noul: value });
@@ -72,6 +72,24 @@ test("buildState keeps the rubric and truncates the test under pressure", () => 
   const capped = buildState(big, "", RUBRIC.length + 300);
   assert.match(capped, /Rubric for judging a test/);
   assert.match(capped, /test truncated/);
+});
+
+test("a long test keeps its assertion, and the change context gives way", () => {
+  const setup = Array.from({ length: 40 }, (_, i) => `  const v${i} = await setupThing${i}({ id: ${i}, name: "fixture-${i}" });`);
+  const long = { ...TEST, source: `test("long", async () => {\n${setup.join("\n")}\n  expect(total).toBe(4200);\n});` };
+  const state = buildState(long, "c".repeat(3000), 8000);
+  assert.match(state, /toBe\(4200\)/);
+  assert.equal(state.includes("test truncated"), false);
+  assert.match(state, /context truncated/);
+  assert.equal(state.length <= 8000 + "\n… [context truncated]".length, true);
+});
+
+test("buildState carries an enclosing describe head and the extractor's notes", () => {
+  const inside = { ...TEST, scope: ['describe.skip("math", () => {'], flags: ["focus-in-file"] };
+  const state = buildState(inside, "", 10_000);
+  assert.match(state, /describe\.skip\(\\"math\\"/);
+  assert.match(state, /focus-in-file/);
+  assert.equal(buildState(TEST, "", 10_000).includes('"scope"'), false);
 });
 
 test("a clean test does not escalate", () => {

@@ -1,5 +1,6 @@
 // The calibration rules. Only these are hard: no labelled defect case passes
-// silently, every mixed case routes to eyes, and every label resolves to a test.
+// silently, every mixed case routes to eyes, and every label resolves to a test
+// that the endpoint answered.
 // Agreement is measured only where the tool committed to a can-fail value; an
 // unstable case routed to a human is the design working, not a wrong answer.
 // Pure, so the scoring is tested without a model.
@@ -26,7 +27,10 @@ export function judge(rows, acceptance) {
   const defects = {};
   for (const row of rows) {
     const { label, result } = row;
-    if (!result) {
+    // No test, or no answer: a transport failure or a reply with no trusted
+    // answer escalates in an audit, but here it measured nothing, so it must not
+    // count as a routed defect case.
+    if (!result || !answered(result)) {
       unresolved += 1;
       continue;
     }
@@ -73,16 +77,33 @@ export function judge(rows, acceptance) {
   };
 }
 
-/** The can-fail answer the tool committed to, or undefined when it routed. @param {AuditResult} result */
+/**
+ * Did the endpoint answer: no transport failure, and at least one trusted
+ * verdict-carrying answer? @param {AuditResult} result
+ */
+function answered(result) {
+  if (result.error) return false;
+  const { canFail, asserts, score } = result;
+  return canFail.mean !== null || asserts.trust || asserts.a !== undefined || asserts.b !== undefined || score.value !== undefined || result.runs !== undefined || result.positive !== undefined;
+}
+
+/**
+ * The can-fail answer the tool committed to, or undefined when it routed. It
+ * commits only when every phrasing answered within the band (a partial answer
+ * escalates as "not fully answered"), and reads the mean as verdict.mjs does.
+ * @param {AuditResult} result
+ */
 function saidCanFail(result) {
-  if (result.canFail.unstable || result.canFail.mean === null) return undefined;
-  return result.canFail.mean > 0.5;
+  const { state, values, mean } = result.canFail;
+  if (state !== "stable" || mean === null || values.some((value) => value === null)) return undefined;
+  return mean >= 0.5;
 }
 
 /** `ok`, or the reason a row stands out. @param {CalibrationRow} row */
 export function rowStatus(row) {
   const { label, result } = row;
   if (!result) return "no-test";
+  if (!answered(result)) return "ERROR";
   if (label.mixed && !result.needsEyes) return "MIXED";
   if (label.mustEscalate && !result.needsEyes) return "SILENT";
   if (label.mustEscalate === false && result.needsEyes) return "FALSE+";
@@ -93,5 +114,5 @@ export function rowStatus(row) {
 
 /** A one-letter status for the comparison matrix. @param {CalibrationRow} row */
 export function shortStatus(row) {
-  return { ok: ".", "no-test": "?", SILENT: "S", MIXED: "M", "FALSE+": "F", WRONG: "W" }[rowStatus(row)] ?? "?";
+  return { ok: ".", "no-test": "?", ERROR: "E", SILENT: "S", MIXED: "M", "FALSE+": "F", WRONG: "W" }[rowStatus(row)] ?? "?";
 }

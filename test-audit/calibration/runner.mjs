@@ -15,6 +15,10 @@ import config from "../config.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
+/** The file name the model sees for every case. A case file's own name states
+ * its label (`tautology-constant.case.mjs`), so sending it would leak the answer. */
+const CASE_FILE = "example.test.mjs";
+
 /** @typedef {import("../types.d.ts").AuditTest} AuditTest */
 /** @typedef {import("../types.d.ts").CalibrationLabel} CalibrationLabel */
 /** @typedef {import("../types.d.ts").CalibrationRow} CalibrationRow */
@@ -29,21 +33,31 @@ export async function runSelftest(opts) {
   // Read and parse every case once; every target reuses it.
   const cases = labels.cases.map(prepareCase);
 
-  // The targets are independent endpoints, so their pools run side by side;
-  // each endpoint still takes `concurrency` calls at a time, no more than it
-  // would take alone.
-  const entries = await Promise.all(
-    opts.targets.map(async (target) => {
-      const meter = usageMeter();
-      let done = 0;
-      const total = cases.length;
-      const rows = await mapPool(cases, config.concurrency, async (item) => {
-        const row = await runCase(item, { target, onResponse: meter.onResponse });
-        done += 1;
-        opts.onProgress?.({ target: target.model, index: done, total, status: rowStatus(row), test: item.label.test });
-        return row;
-      });
-      return { target, rows, verdict: judge(rows, labels.acceptance), usage: meter.usage };
+  /** @param {{ url: string, model: string }} target */
+  const runTarget = async (target) => {
+    const meter = usageMeter();
+    let done = 0;
+    const total = cases.length;
+    const rows = await mapPool(cases, config.concurrency, async (item) => {
+      const row = await runCase(item, { target, onResponse: meter.onResponse });
+      done += 1;
+      opts.onProgress?.({ target: target.model, index: done, total, status: rowStatus(row), test: item.label.test });
+      return row;
+    });
+    return { target, rows, verdict: judge(rows, labels.acceptance), usage: meter.usage };
+  };
+
+  // One lane per URL. The targets on one URL (`--models`) share its endpoint,
+  // so they run one after another; distinct URLs run side by side. Either way an
+  // endpoint takes at most `concurrency` calls at a time.
+  /** @type {Map<string, number[]>} */
+  const lanes = new Map();
+  opts.targets.forEach((target, index) => lanes.set(target.url, [...(lanes.get(target.url) ?? []), index]));
+  /** @type {Array<Awaited<ReturnType<typeof runTarget>>>} */
+  const entries = new Array(opts.targets.length);
+  await Promise.all(
+    [...lanes.values()].map(async (indices) => {
+      for (const index of indices) entries[index] = await runTarget(opts.targets[index]);
     }),
   );
   const pass = entries.every((entry) => entry.verdict.pass);
@@ -60,7 +74,7 @@ export async function runSelftest(opts) {
 function prepareCase(label) {
   try {
     const text = readFileSync(join(HERE, label.file), "utf8");
-    const test = extractTests(text, label.file).find((candidate) => candidate.name === label.test);
+    const test = extractTests(text, CASE_FILE).find((candidate) => candidate.name === label.test);
     return { label, test };
   } catch (err) {
     return { label, error: `cannot read ${label.file}: ${err instanceof Error ? err.message : err}` };
