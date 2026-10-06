@@ -35,10 +35,10 @@ jobs:
         if: ${{ !cancelled() }}
         working-directory: test-audit
         run: node tools/check.mjs
-      - name: gate — opencode-test-audit
+      - name: gate — test-audit OpenCode plugin
         if: ${{ !cancelled() }}
-        working-directory: opencode-test-audit
-        run: node tools/check.mjs
+        working-directory: test-audit
+        run: node opencode/check.mjs
       - name: gate — opencode-plan-accept
         if: ${{ !cancelled() }}
         working-directory: opencode-plan-accept

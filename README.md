@@ -150,13 +150,11 @@ A directory is a skill when it holds a `SKILL.md`.
   labelled corpus ([references](test-audit/references.md),
   [results](test-audit/BENCHMARK.md)). The tool is a cheap sensor beside the
   mutation check in `verify-prd-implemented`, not a coverage tool. It ships a
-  CLI and the `opencode-test-audit` plugin.
-
-- **[opencode-test-audit](opencode-test-audit/README.md)**: an OpenCode 2 plugin
-  that runs `test-audit` on a change. It adds one command, `/test-audit`, and
-  one tool, `test-audit`. It is advisory: it reports and never blocks. Install
-  it with `opencode plugin add` from the path in its
-  [README](opencode-test-audit/README.md).
+  CLI and an OpenCode 2 plugin in the same directory. The plugin adds one
+  command, `/test-audit`, and one tool, `test-audit`. It is advisory: it reports
+  and never blocks. Install it with
+  `opencode plugin add 'github:Vortiago/Verktoykasse#main::path:test-audit'`
+  ([OpenCode plugin](test-audit/README.md#opencode-plugin)).
 
 ## Install
 

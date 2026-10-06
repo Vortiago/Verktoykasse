@@ -1,0 +1,32 @@
+{
+  "name": "test-audit",
+  "version": "0.1.0",
+  "description": "Classify the tests a change adds, one verdict per test. Ships the OpenCode 2 plugin in opencode/.",
+  "type": "module",
+  "exports": {
+    ".": "./opencode/index.ts"
+  },
+  "files": [
+    "audit.mjs",
+    "cli.mjs",
+    "config.mjs",
+    "change/",
+    "classifier/",
+    "lib/",
+    "report/",
+    "tools/js-scan.mjs",
+    "opencode/index.ts",
+    "types.d.ts",
+    "LICENSE",
+    "README.md",
+    "!**/*.test.mjs"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@opencode/plugin": "2.0.22"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.4",
+    "typescript": "5.9.3"
+  }
+}

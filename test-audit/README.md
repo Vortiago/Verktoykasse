@@ -9,8 +9,8 @@ not prove that a change is tested. For that proof, use
 [`verify-prd-implemented`](../verify-prd-implemented/SKILL.md). That skill breaks
 the behaviour of the code and checks that the named test fails.
 
-The [`opencode-test-audit`](../opencode-test-audit/README.md) plugin runs this
-tool inside OpenCode.
+The [OpenCode plugin](#opencode-plugin) in `opencode/` runs this tool inside
+OpenCode, and installs from this directory.
 
 ## Run an audit
 
@@ -117,6 +117,41 @@ below. To compare several endpoints, see [Calibrate](#calibrate).
 | `TEST_AUDIT_TIMEOUT_MS` | `120000` | timeout for one call |
 | `TEST_AUDIT_STATE_CAP` | `8000` | characters in one test state |
 | `TEST_AUDIT_CHANGE_CAP` | `3000` | characters of non-test diff context |
+
+## OpenCode plugin
+
+[`opencode/index.ts`](opencode/index.ts) is an [OpenCode](https://opencode.ai) 2
+plugin that runs this tool. The plugin installs from this directory, so it
+carries the core modules it imports:
+
+```sh
+opencode plugin add 'github:Vortiago/Verktoykasse#main::path:test-audit'
+```
+
+- Run `/test-audit`. It audits the working-tree change against the default
+  branch and posts the report into the chat.
+- Let the agent call the `test-audit` tool. The agent can set `base`, `head`,
+  `staged` or `files` to scope the audit. The tool returns the same markdown
+  report.
+
+The plugin audits the project directory of the session
+(`ctx.location.directory`) and reads the same environment variables as the CLI.
+It imports `audit.mjs` and `report/index.mjs` directly and spawns no shell.
+
+The plugin is advisory. It reports a verdict for each test, and it never blocks a
+run. OpenCode plugin hooks have no git-commit event and no deny decision, so the
+plugin cannot block a commit. A blocking pre-push hook ships only after the
+corpus proves the questions trustworthy, and it will live beside the CLI, not in
+the plugin.
+
+`package.json` lists the files an install needs in `files`: the runtime modules,
+`opencode/index.ts`, `types.d.ts`, this README and the licence. The corpus, the
+benchmark and the tests stay out. The plugin has its own type gate, which
+installs `@opencode/plugin` into `node_modules/`:
+
+```sh
+cd test-audit && node opencode/check.mjs
+```
 
 ## How the tool judges a test
 

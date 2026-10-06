@@ -1,0 +1,17 @@
+{
+  "//": "Type gate for the plugin. `node opencode/check.mjs`, run from test-audit/, is the whole gate — no emit, no build. allowJs lets index.ts import the core `.mjs` modules and read their JSDoc types. This gate does not check those modules (no checkJs): test-audit's own gate (tools/check.mjs) does, and that gate excludes this directory.",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "types": ["node"],
+    "strict": true,
+    "skipLibCheck": true,
+    "allowJs": true,
+    "noEmit": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
+  },
+  "include": ["index.ts"]
+}

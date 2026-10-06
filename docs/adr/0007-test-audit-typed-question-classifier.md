@@ -68,6 +68,9 @@ a high margin, and it was wrong.
 - **The first version is manual plus an OpenCode plugin, both advisory.** There
   is no git-commit event and no deny decision on plugin hooks, so nothing can
   block yet. A blocking pre-push hook waits until the corpus calibration holds.
+  The plugin lives in `test-audit/opencode/` and installs from `path:test-audit`.
+  OpenCode installs only the `path:` directory, so a plugin in a sibling
+  directory could not import the core modules.
 - **The calibration corpus is the evidence.** `cli.mjs --selftest` runs labelled
   fixtures against a live endpoint. Two rules are hard. No labelled slop test
   passes silently, and every mixed test escalates. The tool measures `can_fail`

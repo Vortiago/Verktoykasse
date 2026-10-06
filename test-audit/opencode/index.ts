@@ -1,10 +1,11 @@
 // An OpenCode 2 plugin that runs test-audit on the tests a change adds. It adds
 // a /test-audit command and a test-audit tool, both advisory: they report the
-// per-test verdict, and they never block a run. The classifier itself lives in
-// ../test-audit. See README.md.
+// per-test verdict, and they never block a run. The classifier itself is the
+// test-audit directory one level up, which this plugin ships with. See
+// ../README.md.
 import { Plugin } from "@opencode/plugin"
-import { runAudit } from "../test-audit/audit.mjs"
-import { formatAudit } from "../test-audit/report/index.mjs"
+import { runAudit } from "../audit.mjs"
+import { formatAudit } from "../report/index.mjs"
 
 interface AuditArgs {
   base?: string
