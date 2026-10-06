@@ -47,14 +47,14 @@ function auditTest(name, source) {
 }
 
 /**
- * One labelled row: the prepared test and the result the verdict rules give for
- * the answers.
- * @param {CalibrationLabel} label @param {string} source @param {Record<string, AuditAnswer>} answers
+ * One labelled row: the prepared test, the code under test if any, and the
+ * result the verdict rules give for the answers.
+ * @param {CalibrationLabel} label @param {string} source @param {Record<string, AuditAnswer>} answers @param {string} [code]
  * @returns {CalibrationRow}
  */
-function row(label, source, answers) {
+function row(label, source, answers, code) {
   const test = auditTest(label.test, source);
-  return { label, test, result: verdictFrom(test, answers) };
+  return { label, test, code, result: verdictFrom(test, answers) };
 }
 
 const CLEAN = row(
@@ -70,11 +70,12 @@ const SILENT = row(
   goodAnswers(),
 );
 
-/** A shape-only test that escalates, with an unstable can_fail and a smell. */
+/** A shape-only test that escalates, with an unstable can_fail, a twin pair that says no, two smells, and its code under test. */
 const SHAPE = row(
-  { file: "cases/shape.case.mjs", test: "returns a list", defect: "shape-only", canFail: true, mustEscalate: true },
+  { file: "cases/shape.case.mjs", test: "returns a list", defect: "shape-only", canFail: true, mustEscalate: true, code: "cases/shape.code.mjs" },
   "test(\"returns a list\", () => {\n  // ```\n  expect(Array.isArray(list())).toBe(true);\n})",
-  { ...goodAnswers(), can_fail_a: noul(0.9), can_fail_b: noul(0.8), asserts_a: choice("shape-only", 0.7), asserts_b: choice("shape-only", 0.6), named: noul(0.1), positive_a: noul(0.2), positive_b: noul(0.8), verdict: score(0.2) },
+  { ...goodAnswers(), can_fail_a: noul(0.9), can_fail_b: noul(0.8), asserts_a: choice("shape-only", 0.7), asserts_b: choice("shape-only", 0.6), named: noul(0.1), reads_output: noul(0.2), positive_a: noul(0.2), positive_b: noul(0.8), verdict: score(0.2) },
+  "export function list() {\n  return [1];\n}\n",
 );
 
 /** @param {CalibrationRow[]} rows @param {string[]} [missing] */
@@ -82,7 +83,14 @@ function entry(rows, missing) {
   return { target: { url: "http://127.0.0.1:11434", model: "nimble" }, rows, verdict: judge(rows, { canFailAgreement: 0.9 }), usage: { calls: rows.length, tokens: 1000 }, missing };
 }
 
-test("the benchmark starts with the summary, the families, and the index of the cases that are not OK", () => {
+/** The `<details>` block of one case, by its number. @param {string} text @param {number} number */
+function caseBlock(text, number) {
+  const start = text.indexOf(`<a id="case-${number}"></a>`);
+  assert.ok(start >= 0, `no case ${number}`);
+  return text.slice(start, text.indexOf("</details>", start));
+}
+
+test("the benchmark starts with the summary, the families, and the links to the cases that are not OK", () => {
   const text = formatBenchmark([entry([CLEAN, SILENT, SHAPE])], { preamble: ["Date: 2026-10-06."] });
   assert.ok(text.startsWith("# test-audit benchmark\n\nDate: 2026-10-06.\n"));
   assert.match(text, /\| Silent passes \| 1 \| Defect cases that did not escalate\. Must be 0\. \|/);
@@ -90,54 +98,87 @@ test("the benchmark starts with the summary, the families, and the index of the 
   assert.match(text, /\| Acceptance \| \*\*FAIL\*\* \|/);
   assert.match(text, /\| clean \| 1 \| 0 \| pass \| yes \|/);
   assert.match(text, /\| tautology \| 1 \| 0 \| escalate \| \*\*no\*\*: 1 SILENT pass \|/);
-  assert.match(text, /\*\*Not OK:\*\* \[3\. `the world is sane`\]\(#case-3\) SILENT pass\./);
-  assert.ok(text.indexOf("## Legend") < text.indexOf("## Cases: nimble"));
-  assert.ok(text.includes('<a id="case-3"></a>\n\n### 3. `the world is sane`: SILENT pass'));
+  assert.match(text, /\*\*Not OK:\*\* \[1\. `the world is sane`\]\(#case-1\) SILENT pass\./);
+  const order = ["## Summary: nimble", "## Cases at a glance: nimble", "## Case details: nimble", "## Legend", "### Questions"].map((heading) => text.indexOf(heading));
+  assert.deepEqual([...order].sort((a, b) => a - b), order, "the sections come in this order");
+  assert.ok(!order.includes(-1), "each section is present");
 });
 
-test("a case shows its source, its label in plain words, every question, and the outcome", () => {
-  const text = formatBenchmark([entry([CLEAN])]);
-  const section = text.slice(text.indexOf("### 1."));
-  assert.ok(section.includes("```js\ntest(\"adds two numbers\", () => {\n  expect(add(1, 2)).toBe(3);\n})\n```"));
-  assert.ok(section.includes("**Known defect: none.** It is a clean test. The tool should pass it, with no escalation. `can_fail` should be yes. Note: A real guard."));
-  assert.ok(section.includes("Sources: [Beck, Test Desiderata](https://example.org/desiderata)."));
-  for (const key of Object.keys(BATTERY)) assert.ok(section.includes(`| \`${key}\` |`), `no row for ${key}`);
-  assert.ok(section.indexOf("| `verdict` |") < section.indexOf("**Descriptive questions**"), "the verdict-carrying questions come first");
-  assert.ok(section.includes("| `can_fail_b` | yes: it passes even when the behaviour is broken | no (0.02) | as expected |"));
-  assert.ok(section.includes("| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | behaviour (0.91) | - |"));
-  assert.ok(section.includes("| `verdict` | scale: slop, weak, good, strong | strong (2.90) | - |"));
-  assert.ok(section.includes("| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.98, spread 0.02 (stable) | matches the label |"));
-  assert.ok(section.includes("- Needs eyes: **no**."));
-  assert.ok(section.includes("- Status: **OK**, the outcome matches the label."));
+test("the glance table has one row for each case, the cases that are not OK first, each linked to its details", () => {
+  const text = formatBenchmark([entry([CLEAN, SHAPE, SILENT])]);
+  assert.ok(text.includes("| # | Test | Known defect | Expected | Result | Status |"));
+  assert.ok(text.includes("| 1 | [`the world is sane`](#case-1) | tautology | escalate | strong, passes | **SILENT pass** |"));
+  assert.ok(text.includes("| 2 | [`adds two numbers`](#case-2) | clean | pass | strong, passes | OK |"));
+  assert.ok(text.includes("| 3 | [`returns a list`](#case-3) | shape-only | escalate | slop, needs eyes | OK |"));
 });
 
-test("an escalated case ties each reason and flag to its question", () => {
-  const text = formatBenchmark([entry([SHAPE])]);
-  assert.ok(text.includes("````js\n"), "the fence is longer than the backtick run in the source");
-  assert.match(text, /\| \*can_fail\* \| .* \| mean 0\.\d\d!, spread 0\.\d\d \(\w+\) \| escalates: can_fail \w+ \(spread 0\.\d\d\) \|/);
-  assert.ok(text.includes("| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | shape-only | escalates: asserts shape-only |"));
-  assert.ok(text.includes("| `positive_a` | yes: it asserts an output that must be present | no (0.20) | - |"));
-  assert.ok(text.includes("| *positive* | `positive_a` and `positive_b` agree, after the negated one is flipped | no, spread 0.00 | escalates: no positive assertion |"));
-  assert.ok(text.includes("| `named` | yes: the name states the behaviour and the expected result | no (0.10) | flag `vague-name` |"));
-  assert.ok(text.includes("| `verdict` | scale: slop, weak, good, strong | slop (0.20) | escalates: verdict slop |"));
-  assert.match(text, /- Needs eyes: \*\*yes\*\*\. Reasons: .*no positive assertion; asserts shape-only; verdict slop\./);
+test("a case that is not OK is an open details block, and an OK case is closed", () => {
+  const text = formatBenchmark([entry([CLEAN, SILENT])]);
+  assert.ok(text.includes('<details open><summary><a id="case-1"></a>1. <code>the world is sane</code> · tautology · <b>SILENT pass</b></summary>\n\n```js\n'));
+  assert.ok(text.includes('<details><summary><a id="case-2"></a>2. <code>adds two numbers</code> · clean · OK</summary>\n\n```js\n'));
+  assert.ok(caseBlock(text, 1).includes("**WRONG can_fail:** label no, tool 0.98."));
+});
+
+test("a case shows its source, its label in plain words, and what decided it", () => {
+  const block = caseBlock(formatBenchmark([entry([CLEAN])]), 1);
+  assert.ok(block.includes('```js\ntest("adds two numbers", () => {\n  expect(add(1, 2)).toBe(3);\n})\n```\n- **Known defect:** none, a clean test.'));
+  assert.ok(block.includes("**Expected:** pass, `can_fail` yes. Note: A real guard. Case file [`cases/good-add.case.mjs`](calibration/cases/good-add.case.mjs), line 2."));
+  assert.ok(block.includes("Sources: [Beck, Test Desiderata](https://example.org/desiderata)."));
+  assert.ok(block.includes("- **What decided it:** strong, passes.\n  - No escalation: `can_fail_a` yes (0.99) · `can_fail_b` no (0.02) · `can_fail_c` yes (0.97) → can_fail: 0.98, spread 0.02 (stable). Label yes: match."));
+  assert.ok(block.includes("`asserts_a` behaviour (0.91) · `asserts_b` behaviour (0.88) → asserts: behaviour."));
+  assert.ok(block.includes("`verdict` strong (2.90)."));
+  assert.ok(!block.includes("Code under test"), "no code block without code");
+});
+
+test("an escalated case ties each reason to the answers behind it, a twin pair with each phrasing", () => {
+  const block = caseBlock(formatBenchmark([entry([SHAPE])]), 1);
+  assert.ok(block.includes("````js\n"), "the fence is longer than the backtick run in the source");
+  assert.match(block, /\n {2}- `can_fail_a` yes \(0\.90\) · `can_fail_b` yes \(0\.80\) · `can_fail_c` yes \(0\.97\) → can_fail: 0\.\d\d, spread 0\.\d\d \(\w+\)\. \*\*Escalates:\*\* can_fail \w+ \(spread 0\.\d\d\)\. Label yes: not scored\.\n/);
+  assert.ok(block.includes("\n  - `asserts_a` shape-only (0.70) · `asserts_b` shape-only (0.60) → asserts: shape-only. **Escalates:** asserts shape-only.\n"));
+  assert.ok(block.includes("\n  - `positive_a` no (0.20) · `positive_b` yes (0.80) → positive: no. **Escalates:** no positive assertion.\n"));
+  assert.ok(block.includes("\n  - `verdict` slop (0.20). **Escalates:** verdict slop.\n"));
+  assert.ok(block.includes("\n  - No escalation: `runs_a` yes (0.99) · `runs_b` no (0.01) → runs: yes.\n"));
+});
+
+test("the descriptive answers fit in one line", () => {
+  const block = caseBlock(formatBenchmark([entry([SHAPE])]), 1);
+  assert.ok(block.includes("\n- **Descriptive:** 16 clean · smells: `named` (vague-name), `reads_output` (asserts-input) · unanswered: none · `type` unit (0.80).\n"));
+});
+
+test("a case with code under test shows it in its own block", () => {
+  const block = caseBlock(formatBenchmark([entry([SHAPE])]), 1);
+  assert.ok(block.includes("\n````\nCode under test, [`cases/shape.code.mjs`](calibration/cases/shape.code.mjs):\n\n```js\nexport function list() {\n  return [1];\n}\n```\n- **Known defect:** shape-only."));
 });
 
 test("a record without raw answers shows its values, and 'not recorded' for what it lacks", () => {
-  const result = { ...CLEAN.result, answers: {}, positive: undefined, type: undefined };
+  const result = { ...CLEAN.result, answers: {}, positive: undefined, pairs: {}, type: undefined };
   const rebuilt = { ...CLEAN, result: /** @type {import("../types.d.ts").AuditResult} */ (result) };
-  const text = formatBenchmark([entry([rebuilt], ["can_fail_a", "positive_a", "positive_b", "type"])]);
-  assert.ok(text.includes("| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |"));
-  assert.ok(text.includes("| `positive_a` | yes: it asserts an output that must be present | not recorded | - |"));
-  assert.ok(text.includes("| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |"));
-  assert.ok(text.includes("| *runs* | `runs_a` and `runs_b` agree, after the negated one is flipped | yes, spread 0.00 | - |"));
-  assert.ok(text.includes("| `can_fail_b` | yes: it passes even when the behaviour is broken | unanswered | - |"));
+  const block = caseBlock(formatBenchmark([entry([rebuilt], ["can_fail_a", "can_fail_b", "can_fail_c", "runs_a", "runs_b", "positive_a", "positive_b", "type"])]), 1);
+  assert.ok(block.includes("`can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.98, spread 0.02 (stable)."));
+  assert.ok(block.includes("`asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour."));
+  assert.ok(block.includes("`runs_a` · `runs_b` not recorded → runs: yes."));
+  assert.ok(block.includes("`positive_a` · `positive_b` not recorded → positive: not recorded."));
+  assert.ok(block.includes("· `type` not recorded."));
+  const partial = caseBlock(formatBenchmark([entry([rebuilt], ["can_fail_a"])]), 1);
+  assert.ok(partial.includes("`can_fail_a` not recorded · `can_fail_b` unanswered · `can_fail_c` unanswered → can_fail:"));
+});
+
+test("the legend lists each question of the battery once", () => {
+  const text = formatBenchmark([entry([CLEAN])]);
+  const questions = text.slice(text.indexOf("### Questions"));
+  for (const [key, question] of Object.entries(BATTERY)) assert.ok(questions.includes(`| \`${key}\` | ${question.instructions} |`), `no row for ${key}`);
+});
+
+test("a test name is escaped in the summary line", () => {
+  const odd = { ...CLEAN, label: { ...CLEAN.label, test: 'keeps <b> & "quotes"' } };
+  assert.ok(formatBenchmark([entry([odd])]).includes("<code>keeps &lt;b&gt; &amp; &quot;quotes&quot;</code>"));
 });
 
 test("several targets get their own summary and their own anchors", () => {
   const text = formatBenchmark([entry([CLEAN, SILENT]), entry([CLEAN, SILENT])]);
-  assert.ok(text.includes("](#t2-case-2) SILENT pass"));
-  assert.ok(text.includes('<a id="t2-case-2"></a>'));
+  assert.ok(text.includes("](#t2-case-1) SILENT pass"));
+  assert.ok(text.includes('<a id="t2-case-1"></a>'));
+  assert.ok(text.indexOf("## Summary: nimble", text.indexOf("## Summary: nimble") + 1) < text.indexOf("## Cases at a glance"), "the summaries come first");
   assert.equal(text.split("## Legend").length, 2, "one legend");
 });
 

@@ -1,21 +1,21 @@
 # test-audit benchmark
 
-Date: 2026-10-06.
-
-Command:
+Date: 2026-10-06. Command:
 
 ```sh
 TEST_AUDIT_CONCURRENCY=3 TEST_AUDIT_TIMEOUT_MS=600000 node cli.mjs --selftest --benchmark \
   --targets "http://koishi.tail6defbc.ts.net:8090|qwen3.8-flash-next-mtp"
 ```
 
-> **Re-rendered from the recorded run.** A script rendered this file in the current layout from the results of the run above. It changed no result.
-> The recorded run kept no probabilities, so an answer shows no number. It also kept no answer for `positive`, `type`, or each `can_fail` phrasing. These show as "not recorded". The `positive` row still shows its recorded escalation reason.
-> The next `node cli.mjs --selftest --benchmark` run fills in the missing values.
+> **Re-rendered from the recorded run, as a baseline.** A script rendered this file in the current layout from the run above. It changed no result.
+> The code has changed since the run, so run the benchmark again for the current result.
 >
-> **The numbers are a baseline, not the current result.** The code has changed since the recorded run. The test state no longer carries the case file name, and the `resilient` question has new words. Run the benchmark again to get the current result.
+> The run predates the twin questions and the code under test as context. It asked `runs` and `positive` once each, and sent only the test.
+> A code block under a test shows the code under test that a run now sends.
+> The run kept no probabilities, and no answer for each phrasing, for `positive` or for `type`. These show as "not recorded".
+> Since the run, the test state no longer carries the case file name, and the `resilient` question has new words.
 
-This file records a calibration run of `test-audit` over the labelled corpus. Each case is one test with a known defect, or a clean test. The legend under the summary explains the terms.
+This file records a calibration run of `test-audit` over the labelled corpus. Each case is one test with a known defect, or a clean test. The [legend](#legend) explains the terms.
 
 ## Summary: qwen3.8-flash-next-mtp
 
@@ -55,35 +55,168 @@ Endpoint `http://koishi.tail6defbc.ts.net:8090`, model `qwen3.8-flash-next-mtp`.
 | vacuous | 2 | 2 | escalate | yes |
 | wrong-reason | 4 | 3 | 2 escalate, 2 either | **no**: 1 WRONG can_fail |
 
-**Not OK:** [35. `the remote catalogue lists the widget`](#case-35) FALSE positive · [36. `the retry lands within the window`](#case-36) FALSE positive · [37. `the sorter keeps every random value`](#case-37) FALSE positive · [38. `the token has not expired yet`](#case-38) FALSE positive · [60. `normalise keeps the title text`](#case-60) WRONG can_fail.
+**Not OK:** [1. `the remote catalogue lists the widget`](#case-1) FALSE positive · [2. `the retry lands within the window`](#case-2) FALSE positive · [3. `the sorter keeps every random value`](#case-3) FALSE positive · [4. `the token has not expired yet`](#case-4) FALSE positive · [5. `normalise keeps the title text`](#case-5) WRONG can_fail.
 
-## Legend
+## Cases at a glance: qwen3.8-flash-next-mtp
 
-- **Case**: one labelled test in `calibration/cases/`. Its **label** in `calibration/labels/` states the known defect and the expected outcome.
-- **Escalate**: the tool sends the test to a human. The test then **needs eyes**. Each **reason** says why.
-- **Verdict-carrying question**: a question whose answer can escalate the test.
-- **Descriptive question**: a question whose "no" raises a **flag**. A flag describes the test. It does not escalate the test.
-- **can_fail**: the probability that a change to the code under test can make the test fail. The tool asks it three ways (`can_fail_a`, `can_fail_b`, `can_fail_c`) and takes the mean. `can_fail_b` asks the opposite, so its "no" means "can fail".
-- **Spread**: the highest minus the lowest of the three can_fail values. A spread above `TEST_AUDIT_STABLE_BAND` makes the value unstable, and the test escalates. A `!` after a can_fail value marks this.
-- **asserts**: what the assertion checks. Only `behaviour` is a real guard. `asserts_a` and `asserts_b` give the options in opposite order, and must agree.
-- **Answer**: for a yes/no question, the number in brackets is the probability of yes. For a choice, it is the probability of the chosen option. For the verdict, it is the score from 0 (slop) to 3 (strong).
-- **not recorded**: the run did not record this value. **unanswered**: the endpoint gave no answer. **untrusted**: the answer has a `mass` below `TEST_AUDIT_MIN_MASS`.
-- **Status** of a case:
-  - **OK**: the outcome matches the label.
-  - **SILENT pass**: a defect case did not escalate. Acceptance fails.
-  - **MIXED not routed**: a mixed case did not escalate. Acceptance fails.
-  - **FALSE positive**: a case that should pass escalated.
-  - **WRONG can_fail**: the tool committed to the wrong can_fail value.
-  - **NO ANSWER**: the endpoint gave no trusted answer. Acceptance fails.
-  - **NO TEST**: the case file holds no test with this name. Acceptance fails.
+The cases that are not OK come first, then the others by defect family. A test name links to its details.
 
-## Cases: qwen3.8-flash-next-mtp
+| # | Test | Known defect | Expected | Result | Status |
+| --- | --- | --- | --- | --- | --- |
+| 1 | [`the remote catalogue lists the widget`](#case-1) | non-deterministic | pass | weak, needs eyes | **FALSE positive** |
+| 2 | [`the retry lands within the window`](#case-2) | non-deterministic | pass | weak, needs eyes | **FALSE positive** |
+| 3 | [`the sorter keeps every random value`](#case-3) | non-deterministic | pass | good, needs eyes | **FALSE positive** |
+| 4 | [`the token has not expired yet`](#case-4) | non-deterministic | pass | weak, needs eyes | **FALSE positive** |
+| 5 | [`normalise keeps the title text`](#case-5) | wrong-reason | escalate | slop, needs eyes | **WRONG can_fail** |
+| 6 | [`builds the graph`](#case-6) | ambiguous | escalate (mixed) | weak, needs eyes | OK |
+| 7 | [`collects the graph nodes`](#case-7) | ambiguous | escalate (mixed) | weak, needs eyes | OK |
+| 8 | [`retries once`](#case-8) | ambiguous | escalate (mixed) | weak, needs eyes | OK |
+| 9 | [`the schema is sound`](#case-9) | ambiguous | escalate (mixed) | slop, needs eyes | OK |
+| 10 | [`the world is sane`](#case-10) | ambiguous | escalate (mixed) | slop, needs eyes | OK |
+| 11 | [`add handles negatives`](#case-11) | clean | pass | strong, passes | OK |
+| 12 | [`converts minutes to seconds`](#case-12) | clean | pass | strong, passes | OK |
+| 13 | [`formats a receipt line`](#case-13) | clean | pass | strong, passes | OK |
+| 14 | [`regression #42: a single import resolves`](#case-14) | clean | pass | strong, passes | OK |
+| 15 | [`regression #77: a trimmed name keeps its inner spaces`](#case-15) | clean | pass | strong, passes | OK |
+| 16 | [`reverses a string`](#case-16) | clean | pass | strong, passes | OK |
+| 17 | [`slugs a display name`](#case-17) | clean | pass | strong, passes | OK |
+| 18 | [`store round trips a value`](#case-18) | clean | pass | strong, passes | OK |
+| 19 | [`the cache returns a stored value`](#case-19) | clean | pass | strong, passes | OK |
+| 20 | [`the server answers health`](#case-20) | clean | pass | strong, passes | OK |
+| 21 | [`the service reports its version`](#case-21) | clean | pass | strong, passes | OK |
+| 22 | [`merges the options`](#case-22) | commented-out | escalate | slop, needs eyes | OK |
+| 23 | [`parses config`](#case-23) | commented-out | escalate | slop, needs eyes | OK |
+| 24 | [`creating a user validates, stores and notifies`](#case-24) | eager | pass | strong, passes | OK |
+| 25 | [`the pipeline parses, formats and lints`](#case-25) | eager | pass | strong, passes | OK |
+| 26 | [`rejects a blank name`](#case-26) | early-return | escalate | slop, needs eyes | OK |
+| 27 | [`loads the draft`](#case-27) | focused | escalate | good, needs eyes | OK |
+| 28 | [`saves the draft`](#case-28) | focused | escalate | weak, needs eyes | OK |
+| 29 | [`resolves the status labels`](#case-29) | hardcoded-data | escalate | good, needs eyes | OK |
+| 30 | [`taxes the standard rate`](#case-30) | hardcoded-data | escalate | slop, needs eyes | OK |
+| 31 | [`forwards the payload`](#case-31) | interaction-only | escalate | weak, needs eyes | OK |
+| 32 | [`notifies the listener`](#case-32) | interaction-only | escalate | weak, needs eyes | OK |
+| 33 | [`publishes twice`](#case-33) | interaction-only | escalate | weak, needs eyes | OK |
+| 34 | [`computes the tax`](#case-34) | name-only | escalate | slop, needs eyes | OK |
+| 35 | [`computes the tax due`](#case-35) | name-only | escalate | slop, needs eyes | OK |
+| 36 | [`sorts rows by name`](#case-36) | name-only | escalate | slop, needs eyes | OK |
+| 37 | [`validates email addresses`](#case-37) | name-only | escalate | weak, needs eyes | OK |
+| 38 | [`debounce fires once`](#case-38) | non-deterministic | either | good, passes | OK |
+| 39 | [`the metric keys keep their insertion order`](#case-39) | non-deterministic | pass | strong, passes | OK |
+| 40 | [`finds no imports in an empty file`](#case-40) | only-negative | escalate | strong, needs eyes | OK |
+| 41 | [`no edge for a comment`](#case-41) | only-negative | escalate | strong, needs eyes | OK |
+| 42 | [`parses a well formed header`](#case-42) | only-negative | escalate | slop, needs eyes | OK |
+| 43 | [`returns null for an unknown setting`](#case-43) | only-negative | escalate | strong, needs eyes | OK |
+| 44 | [`events are dispatched`](#case-44) | passes-with-zero | escalate | slop, needs eyes | OK |
+| 45 | [`imports are folded`](#case-45) | passes-with-zero | escalate | slop, needs eyes | OK |
+| 46 | [`parse is stable`](#case-46) | self-reference | escalate | slop, needs eyes | OK |
+| 47 | [`reader round trips`](#case-47) | self-reference | escalate | slop, needs eyes | OK |
+| 48 | [`the two totals match`](#case-48) | self-reference | escalate | slop, needs eyes | OK |
+| 49 | [`builds three steps`](#case-49) | shape-only | escalate | weak, needs eyes | OK |
+| 50 | [`loads the profile fields`](#case-50) | shape-only | escalate | good, needs eyes | OK |
+| 51 | [`planner returns roads`](#case-51) | shape-only | escalate | weak, needs eyes | OK |
+| 52 | [`returns a list of routes`](#case-52) | shape-only | escalate | slop, needs eyes | OK |
+| 53 | [`handles overflow`](#case-53) | skipped | escalate | slop, needs eyes | OK |
+| 54 | [`parses a dotted key`](#case-54) | skipped | escalate | slop, needs eyes | OK |
+| 55 | [`rejects a stale token`](#case-55) | skipped | escalate | slop, needs eyes | OK |
+| 56 | [`the build is green`](#case-56) | tautology | escalate | slop, needs eyes | OK |
+| 57 | [`the world is sane`](#case-57) | tautology | escalate | slop, needs eyes | OK |
+| 58 | [`the queue is not negative`](#case-58) | vacuous | escalate | slop, needs eyes | OK |
+| 59 | [`the summary is produced`](#case-59) | vacuous | escalate | slop, needs eyes | OK |
+| 60 | [`builds a job with the given name`](#case-60) | wrong-reason | either | strong, passes | OK |
+| 61 | [`reports no booking for a free slot`](#case-61) | wrong-reason | either | good, needs eyes | OK |
+| 62 | [`saves the user`](#case-62) | wrong-reason | escalate | slop, needs eyes | OK |
 
-<a id="case-1"></a>
+## Case details: qwen3.8-flash-next-mtp
 
-### 1. `builds the graph`: OK
+Click a case to open it. The cases that are not OK are open.
 
-Case file: [`calibration/cases/mixed-shape.case.mjs`](calibration/cases/mixed-shape.case.mjs), line 2. Label group: `baseline`.
+<details open><summary><a id="case-1"></a>1. <code>the remote catalogue lists the widget</code> · non-deterministic · <b>FALSE positive</b></summary>
+
+```js
+test("the remote catalogue lists the widget", async () => {
+  const response = await fetch("https://example.test/catalogue");
+  const items = await response.json();
+  expect(items).toContain("widget");
+})
+```
+- **Known defect:** non-deterministic. **Expected:** pass, `can_fail` yes, `deterministic` no. Note: A real catalogue check, but a live fetch makes the result depend on the network. Case file [`cases/determinism-network.case.mjs`](calibration/cases/determinism-network.case.mjs), line 2. Sources: [Kent Beck, Test Desiderata (deterministic)](https://kentbeck.github.io/TestDesiderata/).
+- **What decided it:** weak, needs eyes.
+  - `verdict` weak. **Escalates:** verdict weak.
+  - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.84, spread 0.20 (stable). Label yes: match. `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded.
+- **Descriptive:** 15 clean · smells: `controlled` (uncontrolled-resource), `deterministic` (non-deterministic), `fast` (slow) · unanswered: none · `type` not recorded · label `deterministic` no: match.
+</details>
+<details open><summary><a id="case-2"></a>2. <code>the retry lands within the window</code> · non-deterministic · <b>FALSE positive</b></summary>
+
+```js
+test("the retry lands within the window", async () => {
+  const attempts = [];
+  retryOnFailure(() => attempts.push(1));
+  await sleep(50);
+  expect(attempts.length).toBe(2);
+})
+```
+- **Known defect:** non-deterministic. **Expected:** pass, `can_fail` yes, `deterministic` no. Note: A real guard on the retry count, but the fixed sleep makes the outcome depend on scheduling. Case file [`cases/determinism-timer.case.mjs`](calibration/cases/determinism-timer.case.mjs), line 2. Sources: [Kent Beck, Test Desiderata (deterministic)](https://kentbeck.github.io/TestDesiderata/).
+- **What decided it:** weak, needs eyes.
+  - `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.76, spread 0.60 (unstable). **Escalates:** can_fail unstable (spread 0.60). Label yes: not scored.
+  - `asserts_a` behaviour · `asserts_b` shape-only → asserts: behaviour versus shape-only. **Escalates:** asserts unstable (behaviour vs shape-only).
+  - `verdict` weak. **Escalates:** verdict weak.
+  - No escalation: `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded.
+- **Descriptive:** 10 clean · smells: `observable` (implementation-coupled), `controlled` (uncontrolled-resource), `deterministic` (non-deterministic), `resilient` (structure-dependent), `fast` (slow), `readable` (obscure), `magic_number` (magic-number), `restores` (state-leak) · unanswered: none · `type` not recorded · label `deterministic` no: match.
+</details>
+<details open><summary><a id="case-3"></a>3. <code>the sorter keeps every random value</code> · non-deterministic · <b>FALSE positive</b></summary>
+
+```js
+test("the sorter keeps every random value", () => {
+  const input = Array.from({ length: 5 }, () => Math.floor(Math.random() * 100));
+  expect(sortNumbers(input)).toEqual([...input].sort((a, b) => a - b));
+})
+```
+- **Known defect:** non-deterministic. **Expected:** pass, `can_fail` yes, `deterministic` no. Note: A real sorting property, but the random input makes a failure hard to reproduce. Case file [`cases/determinism-randomness.case.mjs`](calibration/cases/determinism-randomness.case.mjs), line 2. Sources: [Kent Beck, Test Desiderata (deterministic)](https://kentbeck.github.io/TestDesiderata/).
+- **What decided it:** good, needs eyes.
+  - `asserts_a` hardcoded-data · `asserts_b` behaviour → asserts: hardcoded-data versus behaviour. **Escalates:** asserts unstable (hardcoded-data vs behaviour).
+  - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.96, spread 0.06 (stable). Label yes: match. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded. `verdict` good.
+- **Descriptive:** 17 clean · smells: `controlled` (uncontrolled-resource) · unanswered: none · `type` not recorded · **label `deterministic` no, tool yes**.
+</details>
+<details open><summary><a id="case-4"></a>4. <code>the token has not expired yet</code> · non-deterministic · <b>FALSE positive</b></summary>
+
+```js
+test("the token has not expired yet", () => {
+  const token = issueToken({ ttlMs: 60_000 });
+  expect(token.expiresAt).toBeGreaterThan(Date.now());
+})
+```
+- **Known defect:** non-deterministic. **Expected:** pass, `can_fail` yes, `deterministic` no. Note: A real expiry check, but reading Date.now makes the result depend on when the test runs. Case file [`cases/determinism-clock.case.mjs`](calibration/cases/determinism-clock.case.mjs), line 2. Sources: [Kent Beck, Test Desiderata (deterministic)](https://kentbeck.github.io/TestDesiderata/).
+- **What decided it:** weak, needs eyes.
+  - `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.87, spread 0.28 (borderline). **Escalates:** can_fail borderline (spread 0.28). Label yes: not scored.
+  - `verdict` weak. **Escalates:** verdict weak.
+  - No escalation: `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded.
+- **Descriptive:** 16 clean · smells: `controlled` (uncontrolled-resource), `deterministic` (non-deterministic) · unanswered: none · `type` not recorded · label `deterministic` no: match.
+</details>
+<details open><summary><a id="case-5"></a>5. <code>normalise keeps the title text</code> · wrong-reason · <b>WRONG can_fail</b></summary>
+
+```js
+test("normalise keeps the title text", () => {
+  const input = { title: "  hello  " };
+  normalise(input);
+  expect(input.title).toBe("  hello  ");
+})
+```
+Code under test, [`cases/wrongreason-asserts-input.code.mjs`](calibration/cases/wrongreason-asserts-input.code.mjs):
+
+```js
+export function normalise(record) {
+  return { ...record, title: record.title.trim() };
+}
+```
+- **Known defect:** wrong-reason. **Expected:** escalate, `can_fail` yes. Note: The assertion holds because it reads the input object, not the value the code returned. Case file [`cases/wrongreason-asserts-input.case.mjs`](calibration/cases/wrongreason-asserts-input.case.mjs), line 2. Sources: [verify-prd-implemented test-patterns (Passes for the wrong reason; No negative/positive pair)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
+- **What decided it:** slop, needs eyes.
+  - `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.05, spread 0.05 (stable). **WRONG can_fail:** label yes, tool 0.05.
+  - `asserts_a` hardcoded-data · `asserts_b` hardcoded-data → asserts: hardcoded-data. **Escalates:** asserts hardcoded-data.
+  - `verdict` slop. **Escalates:** verdict slop.
+  - No escalation: `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded.
+- **Descriptive:** 15 clean · smells: `name_matches` (name-mismatch), `resilient` (structure-dependent), `reads_output` (asserts-input) · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-6"></a>6. <code>builds the graph</code> · ambiguous · OK</summary>
 
 ```js
 test("builds the graph", () => {
@@ -92,60 +225,15 @@ test("builds the graph", () => {
   expect(graph.nodes.length).toBeGreaterThan(0);
 })
 ```
-
-**Known defect: ambiguous.** It is a mixed case. Its answers can disagree, so the tool should escalate it. The label sets no `can_fail` value. Note: two shape assertions.
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.34!, spread 0.96 (unstable) | escalates: can_fail unstable (spread 0.96) |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | shape-only | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | shape-only | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | shape-only | escalates: asserts shape-only |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | weak | escalates: verdict weak |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | no | flag `weak-assert` |
-| `named` | yes: the name states the behaviour and the expected result | no | flag `vague-name` |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | no | flag `name-mismatch` |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | no | flag `obscure` |
-| `magic_number` | yes: the values are named or self-explanatory | no | flag `magic-number` |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **weak**.
-- Needs eyes: **yes**. Reasons: can_fail unstable (spread 0.96); asserts shape-only; verdict weak.
-- Expected: escalate (a mixed case).
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-2"></a>
-
-### 2. `collects the graph nodes`: OK
-
-Case file: [`calibration/cases/mixed-graph-shapes.case.mjs`](calibration/cases/mixed-graph-shapes.case.mjs), line 2. Label group: `mixed`.
+- **Known defect:** ambiguous. It is a mixed case, so its answers can disagree. **Expected:** escalate. Note: two shape assertions. Case file [`cases/mixed-shape.case.mjs`](calibration/cases/mixed-shape.case.mjs), line 2.
+- **What decided it:** weak, needs eyes.
+  - `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.34, spread 0.96 (unstable). **Escalates:** can_fail unstable (spread 0.96).
+  - `asserts_a` shape-only · `asserts_b` shape-only → asserts: shape-only. **Escalates:** asserts shape-only.
+  - `verdict` weak. **Escalates:** verdict weak.
+  - No escalation: `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded.
+- **Descriptive:** 13 clean · smells: `specific` (weak-assert), `named` (vague-name), `name_matches` (name-mismatch), `readable` (obscure), `magic_number` (magic-number) · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-7"></a>7. <code>collects the graph nodes</code> · ambiguous · OK</summary>
 
 ```js
 test("collects the graph nodes", () => {
@@ -154,62 +242,15 @@ test("collects the graph nodes", () => {
   expect(nodes.length).toBeGreaterThan(0);
 })
 ```
-
-**Known defect: ambiguous.** It is a mixed case. Its answers can disagree, so the tool should escalate it. The label sets no `can_fail` value. Note: Both assertions check the shape and never the node values, so the paraphrased gates disagree.
-
-Sources: [self-consistency: paraphrased gates](https://kentbeck.github.io/TestDesiderata/).
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.33!, spread 0.96 (unstable) | escalates: can_fail unstable (spread 0.96) |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | shape-only | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | shape-only | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | shape-only | escalates: asserts shape-only |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | weak | escalates: verdict weak |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | no | flag `weak-assert` |
-| `named` | yes: the name states the behaviour and the expected result | no | flag `vague-name` |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | no | flag `name-mismatch` |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | no | flag `obscure` |
-| `magic_number` | yes: the values are named or self-explanatory | no | flag `magic-number` |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **weak**.
-- Needs eyes: **yes**. Reasons: can_fail unstable (spread 0.96); asserts shape-only; verdict weak.
-- Expected: escalate (a mixed case).
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-3"></a>
-
-### 3. `retries once`: OK
-
-Case file: [`calibration/cases/mixed-mock.case.mjs`](calibration/cases/mixed-mock.case.mjs), line 2. Label group: `baseline`.
+- **Known defect:** ambiguous. It is a mixed case, so its answers can disagree. **Expected:** escalate. Note: Both assertions check the shape and never the node values, so the paraphrased gates disagree. Case file [`cases/mixed-graph-shapes.case.mjs`](calibration/cases/mixed-graph-shapes.case.mjs), line 2. Sources: [self-consistency: paraphrased gates](https://kentbeck.github.io/TestDesiderata/).
+- **What decided it:** weak, needs eyes.
+  - `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.33, spread 0.96 (unstable). **Escalates:** can_fail unstable (spread 0.96).
+  - `asserts_a` shape-only · `asserts_b` shape-only → asserts: shape-only. **Escalates:** asserts shape-only.
+  - `verdict` weak. **Escalates:** verdict weak.
+  - No escalation: `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded.
+- **Descriptive:** 13 clean · smells: `specific` (weak-assert), `named` (vague-name), `name_matches` (name-mismatch), `readable` (obscure), `magic_number` (magic-number) · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-8"></a>8. <code>retries once</code> · ambiguous · OK</summary>
 
 ```js
 test("retries once", () => {
@@ -218,60 +259,16 @@ test("retries once", () => {
   expect(fn).toHaveBeenCalledTimes(2);
 })
 ```
-
-**Known defect: ambiguous.** It is a mixed case. Its answers can disagree, so the tool should escalate it. The label sets no `can_fail` value. Note: interaction assertion with a specific count.
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.79!, spread 0.41 (borderline) | escalates: can_fail borderline (spread 0.41) |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | interaction-only | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | interaction-only | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | interaction-only | escalates: asserts interaction-only |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | escalates: no positive assertion |
-| `verdict` | scale: slop, weak, good, strong | weak | escalates: verdict weak |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | no | flag `implementation-coupled` |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | yes | - |
-| `named` | yes: the name states the behaviour and the expected result | yes | - |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | no | flag `name-mismatch` |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | no | flag `structure-dependent` |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | no | flag `obscure` |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | no | flag `asserts-input` |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **weak**.
-- Needs eyes: **yes**. Reasons: can_fail borderline (spread 0.41); no positive assertion; asserts interaction-only; verdict weak.
-- Expected: escalate (a mixed case).
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-4"></a>
-
-### 4. `the schema is sound`: OK
-
-Case file: [`calibration/cases/mixed-world-shape.case.mjs`](calibration/cases/mixed-world-shape.case.mjs), line 2. Label group: `mixed`.
+- **Known defect:** ambiguous. It is a mixed case, so its answers can disagree. **Expected:** escalate. Note: interaction assertion with a specific count. Case file [`cases/mixed-mock.case.mjs`](calibration/cases/mixed-mock.case.mjs), line 2.
+- **What decided it:** weak, needs eyes.
+  - `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.79, spread 0.41 (borderline). **Escalates:** can_fail borderline (spread 0.41).
+  - `asserts_a` interaction-only · `asserts_b` interaction-only → asserts: interaction-only. **Escalates:** asserts interaction-only.
+  - `positive_a` · `positive_b` not recorded → positive: not recorded. **Escalates:** no positive assertion.
+  - `verdict` weak. **Escalates:** verdict weak.
+  - No escalation: `runs_a` · `runs_b` not recorded → runs: yes.
+- **Descriptive:** 13 clean · smells: `observable` (implementation-coupled), `name_matches` (name-mismatch), `resilient` (structure-dependent), `readable` (obscure), `reads_output` (asserts-input) · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-9"></a>9. <code>the schema is sound</code> · ambiguous · OK</summary>
 
 ```js
 test("the schema is sound", () => {
@@ -279,62 +276,15 @@ test("the schema is sound", () => {
   expect(schema.fields.length).toBeGreaterThan(0);
 })
 ```
-
-**Known defect: ambiguous.** It is a mixed case. Its answers can disagree, so the tool should escalate it. The label sets no `can_fail` value. Note: A tautology sits beside a weak shape assertion, so the paraphrased gates disagree.
-
-Sources: [self-consistency: paraphrased gates](https://kentbeck.github.io/TestDesiderata/).
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.19!, spread 0.54 (unstable) | escalates: can_fail unstable (spread 0.54) |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | nothing | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | shape-only | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | nothing versus shape-only | escalates: asserts unstable (nothing vs shape-only) |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | slop | escalates: verdict slop |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | no | flag `weak-assert` |
-| `named` | yes: the name states the behaviour and the expected result | no | flag `vague-name` |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | no | flag `eager` |
-| `name_matches` | yes: the body asserts the behaviour the name promises | no | flag `name-mismatch` |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | no | flag `structure-dependent` |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | no | flag `obscure` |
-| `magic_number` | yes: the values are named or self-explanatory | no | flag `magic-number` |
-| `reads_output` | yes: it asserts the returned or observed output | no | flag `asserts-input` |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **slop**.
-- Needs eyes: **yes**. Reasons: can_fail unstable (spread 0.54); asserts unstable (nothing vs shape-only); verdict slop.
-- Expected: escalate (a mixed case).
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-5"></a>
-
-### 5. `the world is sane`: OK
-
-Case file: [`calibration/cases/mixed-tautology.case.mjs`](calibration/cases/mixed-tautology.case.mjs), line 2. Label group: `baseline`.
+- **Known defect:** ambiguous. It is a mixed case, so its answers can disagree. **Expected:** escalate. Note: A tautology sits beside a weak shape assertion, so the paraphrased gates disagree. Case file [`cases/mixed-world-shape.case.mjs`](calibration/cases/mixed-world-shape.case.mjs), line 2. Sources: [self-consistency: paraphrased gates](https://kentbeck.github.io/TestDesiderata/).
+- **What decided it:** slop, needs eyes.
+  - `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.19, spread 0.54 (unstable). **Escalates:** can_fail unstable (spread 0.54).
+  - `asserts_a` nothing · `asserts_b` shape-only → asserts: nothing versus shape-only. **Escalates:** asserts unstable (nothing vs shape-only).
+  - `verdict` slop. **Escalates:** verdict slop.
+  - No escalation: `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded.
+- **Descriptive:** 10 clean · smells: `specific` (weak-assert), `named` (vague-name), `one_thing` (eager), `name_matches` (name-mismatch), `resilient` (structure-dependent), `readable` (obscure), `magic_number` (magic-number), `reads_output` (asserts-input) · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-10"></a>10. <code>the world is sane</code> · ambiguous · OK</summary>
 
 ```js
 test("the world is sane", () => {
@@ -342,488 +292,98 @@ test("the world is sane", () => {
   expect(add.length).toBeGreaterThan(0);
 })
 ```
-
-**Known defect: ambiguous.** It is a mixed case. Its answers can disagree, so the tool should escalate it. The label sets no `can_fail` value. Note: half tautology, half weak shape assertion.
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.01, spread 0.01 (stable) | - |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | nothing | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | nothing | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | nothing | escalates: asserts nothing |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | slop | escalates: verdict slop |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | no | flag `implementation-coupled` |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | no | flag `weak-assert` |
-| `named` | yes: the name states the behaviour and the expected result | no | flag `vague-name` |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | no | flag `eager` |
-| `name_matches` | yes: the body asserts the behaviour the name promises | no | flag `name-mismatch` |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | no | flag `structure-dependent` |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | no | flag `obscure` |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | no | flag `asserts-input` |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **slop**.
-- Needs eyes: **yes**. Reasons: asserts nothing; verdict slop.
-- Expected: escalate (a mixed case).
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-6"></a>
-
-### 6. `add handles negatives`: OK
-
-Case file: [`calibration/cases/good-unit-add.case.mjs`](calibration/cases/good-unit-add.case.mjs), line 2. Label group: `baseline`.
+- **Known defect:** ambiguous. It is a mixed case, so its answers can disagree. **Expected:** escalate. Note: half tautology, half weak shape assertion. Case file [`cases/mixed-tautology.case.mjs`](calibration/cases/mixed-tautology.case.mjs), line 2.
+- **What decided it:** slop, needs eyes.
+  - `asserts_a` nothing · `asserts_b` nothing → asserts: nothing. **Escalates:** asserts nothing.
+  - `verdict` slop. **Escalates:** verdict slop.
+  - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.01, spread 0.01 (stable). `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded.
+- **Descriptive:** 10 clean · smells: `observable` (implementation-coupled), `specific` (weak-assert), `named` (vague-name), `one_thing` (eager), `name_matches` (name-mismatch), `resilient` (structure-dependent), `readable` (obscure), `reads_output` (asserts-input) · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-11"></a>11. <code>add handles negatives</code> · clean · OK</summary>
 
 ```js
 test("add handles negatives", () => {
   expect(add(-2, -3)).toBe(-5);
 })
 ```
-
-**Known defect: none.** It is a clean test. The tool should pass it, with no escalation. `can_fail` should be yes. `deterministic` should be yes. Note: a clean unit guard.
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 1.00, spread 0.00 (stable) | matches the label |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | behaviour | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | behaviour | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | behaviour | - |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | strong | - |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | yes | - |
-| `named` | yes: the name states the behaviour and the expected result | yes | - |
-| `deterministic` | yes: it gives the same result every run | yes | as expected |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | yes | - |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | yes | - |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **strong**.
-- Needs eyes: **no**.
-- Expected: pass.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-7"></a>
-
-### 7. `converts minutes to seconds`: OK
-
-Case file: [`calibration/cases/good-unit-seconds.case.mjs`](calibration/cases/good-unit-seconds.case.mjs), line 2. Label group: `good`.
+- **Known defect:** none, a clean test. **Expected:** pass, `can_fail` yes, `deterministic` yes. Note: a clean unit guard. Case file [`cases/good-unit-add.case.mjs`](calibration/cases/good-unit-add.case.mjs), line 2.
+- **What decided it:** strong, passes.
+  - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded. `verdict` strong.
+- **Descriptive:** 18 clean · smells: none · unanswered: none · `type` not recorded · label `deterministic` yes: match.
+</details>
+<details><summary><a id="case-12"></a>12. <code>converts minutes to seconds</code> · clean · OK</summary>
 
 ```js
 test("converts minutes to seconds", () => {
   expect(toSeconds(3)).toBe(180);
 })
 ```
-
-**Known defect: none.** It is a clean test. The tool should pass it, with no escalation. `can_fail` should be yes. Note: a real guard.
-
-Sources: [Kent Beck, Test Desiderata](https://kentbeck.github.io/TestDesiderata/).
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 1.00, spread 0.00 (stable) | matches the label |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | behaviour | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | behaviour | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | behaviour | - |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | strong | - |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | yes | - |
-| `named` | yes: the name states the behaviour and the expected result | yes | - |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | yes | - |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | yes | - |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **strong**.
-- Needs eyes: **no**.
-- Expected: pass.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-8"></a>
-
-### 8. `formats a receipt line`: OK
-
-Case file: [`calibration/cases/good-characterization-receipt.case.mjs`](calibration/cases/good-characterization-receipt.case.mjs), line 2. Label group: `good`.
+- **Known defect:** none, a clean test. **Expected:** pass, `can_fail` yes. Note: a real guard. Case file [`cases/good-unit-seconds.case.mjs`](calibration/cases/good-unit-seconds.case.mjs), line 2. Sources: [Kent Beck, Test Desiderata](https://kentbeck.github.io/TestDesiderata/).
+- **What decided it:** strong, passes.
+  - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded. `verdict` strong.
+- **Descriptive:** 18 clean · smells: none · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-13"></a>13. <code>formats a receipt line</code> · clean · OK</summary>
 
 ```js
 test("formats a receipt line", () => {
   expect(formatReceiptLine("Coffee", 2, 3.5)).toBe("Coffee x2 @ 3.50 = 7.00");
 })
 ```
-
-**Known defect: none.** It is a clean test. The tool should pass it, with no escalation. `can_fail` should be yes. Note: a real guard.
-
-Sources: [Kent Beck, Test Desiderata](https://kentbeck.github.io/TestDesiderata/).
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 1.00, spread 0.00 (stable) | matches the label |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | behaviour | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | behaviour | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | behaviour | - |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | strong | - |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | yes | - |
-| `named` | yes: the name states the behaviour and the expected result | yes | - |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | yes | - |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | yes | - |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **strong**.
-- Needs eyes: **no**.
-- Expected: pass.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-9"></a>
-
-### 9. `regression #42: a single import resolves`: OK
-
-Case file: [`calibration/cases/good-regression.case.mjs`](calibration/cases/good-regression.case.mjs), line 2. Label group: `baseline`.
+- **Known defect:** none, a clean test. **Expected:** pass, `can_fail` yes. Note: a real guard. Case file [`cases/good-characterization-receipt.case.mjs`](calibration/cases/good-characterization-receipt.case.mjs), line 2. Sources: [Kent Beck, Test Desiderata](https://kentbeck.github.io/TestDesiderata/).
+- **What decided it:** strong, passes.
+  - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded. `verdict` strong.
+- **Descriptive:** 18 clean · smells: none · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-14"></a>14. <code>regression #42: a single import resolves</code> · clean · OK</summary>
 
 ```js
 test("regression #42: a single import resolves", () => {
   expect(parseImports('import a from "b";')).toEqual([{ name: "a", from: "b" }]);
 })
 ```
-
-**Known defect: none.** It is a clean test. The tool should pass it, with no escalation. `can_fail` should be yes. Note: a clean regression guard.
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 1.00, spread 0.00 (stable) | matches the label |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | behaviour | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | behaviour | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | behaviour | - |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | strong | - |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | yes | - |
-| `named` | yes: the name states the behaviour and the expected result | yes | - |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | yes | - |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | yes | - |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **strong**.
-- Needs eyes: **no**.
-- Expected: pass.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-10"></a>
-
-### 10. `regression #77: a trimmed name keeps its inner spaces`: OK
-
-Case file: [`calibration/cases/good-regression-whitespace.case.mjs`](calibration/cases/good-regression-whitespace.case.mjs), line 2. Label group: `good`.
+- **Known defect:** none, a clean test. **Expected:** pass, `can_fail` yes. Note: a clean regression guard. Case file [`cases/good-regression.case.mjs`](calibration/cases/good-regression.case.mjs), line 2.
+- **What decided it:** strong, passes.
+  - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded. `verdict` strong.
+- **Descriptive:** 18 clean · smells: none · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-15"></a>15. <code>regression #77: a trimmed name keeps its inner spaces</code> · clean · OK</summary>
 
 ```js
 test("regression #77: a trimmed name keeps its inner spaces", () => {
   expect(trimName("  Ada  Lovelace  ")).toBe("Ada  Lovelace");
 })
 ```
-
-**Known defect: none.** It is a clean test. The tool should pass it, with no escalation. `can_fail` should be yes. Note: a real guard.
-
-Sources: [Kent Beck, Test Desiderata](https://kentbeck.github.io/TestDesiderata/).
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 1.00, spread 0.00 (stable) | matches the label |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | behaviour | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | behaviour | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | behaviour | - |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | strong | - |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | yes | - |
-| `named` | yes: the name states the behaviour and the expected result | yes | - |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | yes | - |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | yes | - |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **strong**.
-- Needs eyes: **no**.
-- Expected: pass.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-11"></a>
-
-### 11. `reverses a string`: OK
-
-Case file: [`calibration/cases/good-unit-reverse.case.mjs`](calibration/cases/good-unit-reverse.case.mjs), line 2. Label group: `baseline`.
+- **Known defect:** none, a clean test. **Expected:** pass, `can_fail` yes. Note: a real guard. Case file [`cases/good-regression-whitespace.case.mjs`](calibration/cases/good-regression-whitespace.case.mjs), line 2. Sources: [Kent Beck, Test Desiderata](https://kentbeck.github.io/TestDesiderata/).
+- **What decided it:** strong, passes.
+  - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded. `verdict` strong.
+- **Descriptive:** 18 clean · smells: none · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-16"></a>16. <code>reverses a string</code> · clean · OK</summary>
 
 ```js
 test("reverses a string", () => {
   expect(reverse("abc")).toBe("cba");
 })
 ```
-
-**Known defect: none.** It is a clean test. The tool should pass it, with no escalation. `can_fail` should be yes. `deterministic` should be yes. Note: a clean unit guard.
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 1.00, spread 0.00 (stable) | matches the label |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | behaviour | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | behaviour | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | behaviour | - |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | strong | - |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | yes | - |
-| `named` | yes: the name states the behaviour and the expected result | yes | - |
-| `deterministic` | yes: it gives the same result every run | yes | as expected |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | yes | - |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | yes | - |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **strong**.
-- Needs eyes: **no**.
-- Expected: pass.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-12"></a>
-
-### 12. `slugs a display name`: OK
-
-Case file: [`calibration/cases/good-unit-slug.case.mjs`](calibration/cases/good-unit-slug.case.mjs), line 2. Label group: `good`.
+- **Known defect:** none, a clean test. **Expected:** pass, `can_fail` yes, `deterministic` yes. Note: a clean unit guard. Case file [`cases/good-unit-reverse.case.mjs`](calibration/cases/good-unit-reverse.case.mjs), line 2.
+- **What decided it:** strong, passes.
+  - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded. `verdict` strong.
+- **Descriptive:** 18 clean · smells: none · unanswered: none · `type` not recorded · label `deterministic` yes: match.
+</details>
+<details><summary><a id="case-17"></a>17. <code>slugs a display name</code> · clean · OK</summary>
 
 ```js
 test("slugs a display name", () => {
   expect(slugify("Hello, World")).toBe("hello-world");
 })
 ```
-
-**Known defect: none.** It is a clean test. The tool should pass it, with no escalation. `can_fail` should be yes. Note: a real guard.
-
-Sources: [Kent Beck, Test Desiderata](https://kentbeck.github.io/TestDesiderata/).
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 1.00, spread 0.00 (stable) | matches the label |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | behaviour | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | behaviour | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | behaviour | - |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | strong | - |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | yes | - |
-| `named` | yes: the name states the behaviour and the expected result | yes | - |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | yes | - |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | yes | - |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **strong**.
-- Needs eyes: **no**.
-- Expected: pass.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-13"></a>
-
-### 13. `store round trips a value`: OK
-
-Case file: [`calibration/cases/good-integration.case.mjs`](calibration/cases/good-integration.case.mjs), line 2. Label group: `baseline`.
+- **Known defect:** none, a clean test. **Expected:** pass, `can_fail` yes. Note: a real guard. Case file [`cases/good-unit-slug.case.mjs`](calibration/cases/good-unit-slug.case.mjs), line 2. Sources: [Kent Beck, Test Desiderata](https://kentbeck.github.io/TestDesiderata/).
+- **What decided it:** strong, passes.
+  - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded. `verdict` strong.
+- **Descriptive:** 18 clean · smells: none · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-18"></a>18. <code>store round trips a value</code> · clean · OK</summary>
 
 ```js
 test("store round trips a value", async () => {
@@ -832,60 +392,12 @@ test("store round trips a value", async () => {
   expect(await store.get("k")).toBe("v");
 })
 ```
-
-**Known defect: none.** It is a clean test. The tool should pass it, with no escalation. `can_fail` should be yes. Note: a clean integration guard.
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 1.00, spread 0.00 (stable) | matches the label |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | behaviour | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | behaviour | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | behaviour | - |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | strong | - |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | no | flag `uncontrolled-resource` |
-| `specific` | yes: the assertion is specific to the expected value | yes | - |
-| `named` | yes: the name states the behaviour and the expected result | yes | - |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | yes | - |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | yes | - |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | no | flag `state-leak` |
-
-**Outcome**
-
-- Verdict: **strong**.
-- Needs eyes: **no**.
-- Expected: pass.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-14"></a>
-
-### 14. `the cache returns a stored value`: OK
-
-Case file: [`calibration/cases/good-integration-cache.case.mjs`](calibration/cases/good-integration-cache.case.mjs), line 2. Label group: `good`.
+- **Known defect:** none, a clean test. **Expected:** pass, `can_fail` yes. Note: a clean integration guard. Case file [`cases/good-integration.case.mjs`](calibration/cases/good-integration.case.mjs), line 2.
+- **What decided it:** strong, passes.
+  - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded. `verdict` strong.
+- **Descriptive:** 16 clean · smells: `controlled` (uncontrolled-resource), `restores` (state-leak) · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-19"></a>19. <code>the cache returns a stored value</code> · clean · OK</summary>
 
 ```js
 test("the cache returns a stored value", async () => {
@@ -894,62 +406,12 @@ test("the cache returns a stored value", async () => {
   expect(await cache.get("session")).toBe("abc123");
 })
 ```
-
-**Known defect: none.** It is a clean test. The tool should pass it, with no escalation. `can_fail` should be yes. Note: a real guard.
-
-Sources: [Kent Beck, Test Desiderata](https://kentbeck.github.io/TestDesiderata/).
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 1.00, spread 0.00 (stable) | matches the label |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | behaviour | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | behaviour | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | behaviour | - |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | strong | - |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | yes | - |
-| `named` | yes: the name states the behaviour and the expected result | yes | - |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | yes | - |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | yes | - |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | no | flag `state-leak` |
-
-**Outcome**
-
-- Verdict: **strong**.
-- Needs eyes: **no**.
-- Expected: pass.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-15"></a>
-
-### 15. `the server answers health`: OK
-
-Case file: [`calibration/cases/good-e2e.case.mjs`](calibration/cases/good-e2e.case.mjs), line 2. Label group: `baseline`.
+- **Known defect:** none, a clean test. **Expected:** pass, `can_fail` yes. Note: a real guard. Case file [`cases/good-integration-cache.case.mjs`](calibration/cases/good-integration-cache.case.mjs), line 2. Sources: [Kent Beck, Test Desiderata](https://kentbeck.github.io/TestDesiderata/).
+- **What decided it:** strong, passes.
+  - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded. `verdict` strong.
+- **Descriptive:** 17 clean · smells: `restores` (state-leak) · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-20"></a>20. <code>the server answers health</code> · clean · OK</summary>
 
 ```js
 test("the server answers health", async () => {
@@ -957,60 +419,12 @@ test("the server answers health", async () => {
   expect(await res.text()).toBe("ok");
 })
 ```
-
-**Known defect: none.** It is a clean test. The tool should pass it, with no escalation. `can_fail` should be yes. Note: a clean end-to-end guard.
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 1.00, spread 0.00 (stable) | matches the label |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | behaviour | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | behaviour | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | behaviour | - |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | strong | - |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | no | flag `uncontrolled-resource` |
-| `specific` | yes: the assertion is specific to the expected value | yes | - |
-| `named` | yes: the name states the behaviour and the expected result | yes | - |
-| `deterministic` | yes: it gives the same result every run | no | flag `non-deterministic` |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | yes | - |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | yes | - |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **strong**.
-- Needs eyes: **no**.
-- Expected: pass.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-16"></a>
-
-### 16. `the service reports its version`: OK
-
-Case file: [`calibration/cases/good-e2e-version.case.mjs`](calibration/cases/good-e2e-version.case.mjs), line 2. Label group: `good`.
+- **Known defect:** none, a clean test. **Expected:** pass, `can_fail` yes. Note: a clean end-to-end guard. Case file [`cases/good-e2e.case.mjs`](calibration/cases/good-e2e.case.mjs), line 2.
+- **What decided it:** strong, passes.
+  - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded. `verdict` strong.
+- **Descriptive:** 16 clean · smells: `controlled` (uncontrolled-resource), `deterministic` (non-deterministic) · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-21"></a>21. <code>the service reports its version</code> · clean · OK</summary>
 
 ```js
 test("the service reports its version", async () => {
@@ -1018,62 +432,12 @@ test("the service reports its version", async () => {
   expect(await res.text()).toBe("2.4.1");
 })
 ```
-
-**Known defect: none.** It is a clean test. The tool should pass it, with no escalation. `can_fail` should be yes. Note: a real guard.
-
-Sources: [Kent Beck, Test Desiderata](https://kentbeck.github.io/TestDesiderata/).
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 1.00, spread 0.00 (stable) | matches the label |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | behaviour | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | behaviour | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | behaviour | - |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | strong | - |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | no | flag `uncontrolled-resource` |
-| `specific` | yes: the assertion is specific to the expected value | yes | - |
-| `named` | yes: the name states the behaviour and the expected result | yes | - |
-| `deterministic` | yes: it gives the same result every run | no | flag `non-deterministic` |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | yes | - |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | yes | - |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **strong**.
-- Needs eyes: **no**.
-- Expected: pass.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-17"></a>
-
-### 17. `merges the options`: OK
-
-Case file: [`calibration/cases/disabled-comment-merge.case.mjs`](calibration/cases/disabled-comment-merge.case.mjs), line 2. Label group: `naming`.
+- **Known defect:** none, a clean test. **Expected:** pass, `can_fail` yes. Note: a real guard. Case file [`cases/good-e2e-version.case.mjs`](calibration/cases/good-e2e-version.case.mjs), line 2. Sources: [Kent Beck, Test Desiderata](https://kentbeck.github.io/TestDesiderata/).
+- **What decided it:** strong, passes.
+  - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded. `verdict` strong.
+- **Descriptive:** 16 clean · smells: `controlled` (uncontrolled-resource), `deterministic` (non-deterministic) · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-22"></a>22. <code>merges the options</code> · commented-out · OK</summary>
 
 ```js
 test("merges the options", () => {
@@ -1081,62 +445,15 @@ test("merges the options", () => {
   expect(true).toBe(true);
 })
 ```
-
-**Known defect: commented-out.** The tool should escalate it. `can_fail` should be no. Note: The real assertion is commented out, beside a tautology.
-
-Sources: [Meszaros, xUnit Test Patterns (Obscure Test)](http://xunitpatterns.com/); [verify-prd-implemented test-patterns (Skipped / disabled / focused)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.00, spread 0.00 (stable) | matches the label |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | nothing | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | nothing | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | nothing | escalates: asserts nothing |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | escalates: no positive assertion |
-| `verdict` | scale: slop, weak, good, strong | slop | escalates: verdict slop |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | no | flag `weak-assert` |
-| `named` | yes: the name states the behaviour and the expected result | no | flag `vague-name` |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | no | flag `name-mismatch` |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | no | flag `obscure` |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | no | flag `asserts-input` |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **slop**.
-- Needs eyes: **yes**. Reasons: no positive assertion; asserts nothing; verdict slop.
-- Expected: escalate.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-18"></a>
-
-### 18. `parses config`: OK
-
-Case file: [`calibration/cases/commented-out.case.mjs`](calibration/cases/commented-out.case.mjs), line 2. Label group: `baseline`.
+- **Known defect:** commented-out. **Expected:** escalate, `can_fail` no. Note: The real assertion is commented out, beside a tautology. Case file [`cases/disabled-comment-merge.case.mjs`](calibration/cases/disabled-comment-merge.case.mjs), line 2. Sources: [Meszaros, xUnit Test Patterns (Obscure Test)](http://xunitpatterns.com/); [verify-prd-implemented test-patterns (Skipped / disabled / focused)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
+- **What decided it:** slop, needs eyes.
+  - `asserts_a` nothing · `asserts_b` nothing → asserts: nothing. **Escalates:** asserts nothing.
+  - `positive_a` · `positive_b` not recorded → positive: not recorded. **Escalates:** no positive assertion.
+  - `verdict` slop. **Escalates:** verdict slop.
+  - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.00, spread 0.00 (stable). Label no: match. `runs_a` · `runs_b` not recorded → runs: yes.
+- **Descriptive:** 13 clean · smells: `specific` (weak-assert), `named` (vague-name), `name_matches` (name-mismatch), `readable` (obscure), `reads_output` (asserts-input) · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-23"></a>23. <code>parses config</code> · commented-out · OK</summary>
 
 ```js
 test("parses config", () => {
@@ -1144,60 +461,15 @@ test("parses config", () => {
   expect(true).toBe(true);
 })
 ```
-
-**Known defect: commented-out.** The tool should escalate it. The label sets no `can_fail` value. Note: commented-out assertion beside a tautology.
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.00, spread 0.00 (stable) | - |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | nothing | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | nothing | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | nothing | escalates: asserts nothing |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | escalates: no positive assertion |
-| `verdict` | scale: slop, weak, good, strong | slop | escalates: verdict slop |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | no | flag `weak-assert` |
-| `named` | yes: the name states the behaviour and the expected result | no | flag `vague-name` |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | no | flag `name-mismatch` |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | no | flag `silent-failure` |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | no | flag `obscure` |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | no | flag `asserts-input` |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **slop**.
-- Needs eyes: **yes**. Reasons: no positive assertion; asserts nothing; verdict slop.
-- Expected: escalate.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-19"></a>
-
-### 19. `creating a user validates, stores and notifies`: OK
-
-Case file: [`calibration/cases/scope-unrelated.case.mjs`](calibration/cases/scope-unrelated.case.mjs), line 2. Label group: `scope`.
+- **Known defect:** commented-out. **Expected:** escalate. Note: commented-out assertion beside a tautology. Case file [`cases/commented-out.case.mjs`](calibration/cases/commented-out.case.mjs), line 2.
+- **What decided it:** slop, needs eyes.
+  - `asserts_a` nothing · `asserts_b` nothing → asserts: nothing. **Escalates:** asserts nothing.
+  - `positive_a` · `positive_b` not recorded → positive: not recorded. **Escalates:** no positive assertion.
+  - `verdict` slop. **Escalates:** verdict slop.
+  - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.00, spread 0.00 (stable). `runs_a` · `runs_b` not recorded → runs: yes.
+- **Descriptive:** 12 clean · smells: `specific` (weak-assert), `named` (vague-name), `name_matches` (name-mismatch), `diagnostic` (silent-failure), `readable` (obscure), `reads_output` (asserts-input) · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-24"></a>24. <code>creating a user validates, stores and notifies</code> · eager · OK</summary>
 
 ```js
 test("creating a user validates, stores and notifies", async () => {
@@ -1209,62 +481,12 @@ test("creating a user validates, stores and notifies", async () => {
   expect(notifier.sent).toHaveLength(1);
 })
 ```
-
-**Known defect: eager.** The tool should pass it, with no escalation. `can_fail` should be yes. Note: A real user-creation check, but validation, storage and notification are three unrelated behaviours.
-
-Sources: [Meszaros, xUnit Test Patterns (Eager Test)](http://xunitpatterns.com/).
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.99, spread 0.02 (stable) | matches the label |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | behaviour | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | behaviour | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | behaviour | - |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | strong | - |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | yes | - |
-| `named` | yes: the name states the behaviour and the expected result | yes | - |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | no | flag `eager` |
-| `name_matches` | yes: the body asserts the behaviour the name promises | yes | - |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | yes | - |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **strong**.
-- Needs eyes: **no**.
-- Expected: pass.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-20"></a>
-
-### 20. `the pipeline parses, formats and lints`: OK
-
-Case file: [`calibration/cases/scope-three-features.case.mjs`](calibration/cases/scope-three-features.case.mjs), line 2. Label group: `scope`.
+- **Known defect:** eager. **Expected:** pass, `can_fail` yes. Note: A real user-creation check, but validation, storage and notification are three unrelated behaviours. Case file [`cases/scope-unrelated.case.mjs`](calibration/cases/scope-unrelated.case.mjs), line 2. Sources: [Meszaros, xUnit Test Patterns (Eager Test)](http://xunitpatterns.com/).
+- **What decided it:** strong, passes.
+  - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.99, spread 0.02 (stable). Label yes: match. `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded. `verdict` strong.
+- **Descriptive:** 17 clean · smells: `one_thing` (eager) · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-25"></a>25. <code>the pipeline parses, formats and lints</code> · eager · OK</summary>
 
 ```js
 test("the pipeline parses, formats and lints", () => {
@@ -1276,62 +498,12 @@ test("the pipeline parses, formats and lints", () => {
   expect(warnings).toEqual([]);
 })
 ```
-
-**Known defect: eager.** The tool should pass it, with no escalation. `can_fail` should be yes. Note: A real pipeline check, but parse, format and lint are three features asserted in one body.
-
-Sources: [Meszaros, xUnit Test Patterns (Eager Test)](http://xunitpatterns.com/).
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 1.00, spread 0.00 (stable) | matches the label |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | behaviour | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | behaviour | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | behaviour | - |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | strong | - |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | yes | - |
-| `named` | yes: the name states the behaviour and the expected result | no | flag `vague-name` |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | no | flag `eager` |
-| `name_matches` | yes: the body asserts the behaviour the name promises | yes | - |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | yes | - |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **strong**.
-- Needs eyes: **no**.
-- Expected: pass.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-21"></a>
-
-### 21. `rejects a blank name`: OK
-
-Case file: [`calibration/cases/disabled-early-return-name.case.mjs`](calibration/cases/disabled-early-return-name.case.mjs), line 2. Label group: `naming`.
+- **Known defect:** eager. **Expected:** pass, `can_fail` yes. Note: A real pipeline check, but parse, format and lint are three features asserted in one body. Case file [`cases/scope-three-features.case.mjs`](calibration/cases/scope-three-features.case.mjs), line 2. Sources: [Meszaros, xUnit Test Patterns (Eager Test)](http://xunitpatterns.com/).
+- **What decided it:** strong, passes.
+  - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded. `verdict` strong.
+- **Descriptive:** 16 clean · smells: `named` (vague-name), `one_thing` (eager) · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-26"></a>26. <code>rejects a blank name</code> · early-return · OK</summary>
 
 ```js
 test("rejects a blank name", () => {
@@ -1339,314 +511,89 @@ test("rejects a blank name", () => {
   expect(validateName("")).toBe(false);
 })
 ```
-
-**Known defect: early-return.** The tool should escalate it. `can_fail` should be no. Note: The early return makes the assertion unreachable, so the test cannot fail.
-
-Sources: [Meszaros, xUnit Test Patterns (Obscure Test)](http://xunitpatterns.com/); [verify-prd-implemented test-patterns (Skipped / disabled / focused)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.01, spread 0.01 (stable) | matches the label |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | nothing | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | nothing | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | nothing | escalates: asserts nothing |
-| `runs` | yes: it runs | no | escalates: does not run |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | slop | escalates: verdict slop |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | no | flag `conditional` |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | yes | - |
-| `named` | yes: the name states the behaviour and the expected result | yes | - |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | no | flag `name-mismatch` |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | no | flag `silent-failure` |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | yes | - |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **slop**.
-- Needs eyes: **yes**. Reasons: does not run; asserts nothing; verdict slop.
-- Expected: escalate.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-22"></a>
-
-### 22. `loads the draft`: OK
-
-Case file: [`calibration/cases/disabled-focus-draft.case.mjs`](calibration/cases/disabled-focus-draft.case.mjs), line 6. Label group: `naming`.
+- **Known defect:** early-return. **Expected:** escalate, `can_fail` no. Note: The early return makes the assertion unreachable, so the test cannot fail. Case file [`cases/disabled-early-return-name.case.mjs`](calibration/cases/disabled-early-return-name.case.mjs), line 2. Sources: [Meszaros, xUnit Test Patterns (Obscure Test)](http://xunitpatterns.com/); [verify-prd-implemented test-patterns (Skipped / disabled / focused)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
+- **What decided it:** slop, needs eyes.
+  - `asserts_a` nothing · `asserts_b` nothing → asserts: nothing. **Escalates:** asserts nothing.
+  - `runs_a` · `runs_b` not recorded → runs: no. **Escalates:** does not run.
+  - `verdict` slop. **Escalates:** verdict slop.
+  - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.01, spread 0.01 (stable). Label no: match. `positive_a` · `positive_b` not recorded → positive: not recorded.
+- **Descriptive:** 15 clean · smells: `conditional` (conditional), `name_matches` (name-mismatch), `diagnostic` (silent-failure) · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-27"></a>27. <code>loads the draft</code> · focused · OK</summary>
 
 ```js
 it("loads the draft", () => {
   expect(loadDraft("draft")).toEqual("draft");
 })
 ```
-
-Extractor notes: `focus-in-file`.
-
-**Known defect: focused.** The tool should escalate it. The label sets no `can_fail` value. Note: The plain test inherits the file-level focus from it.only.
-
-Sources: [Meszaros, xUnit Test Patterns (Obscure Test)](http://xunitpatterns.com/); [verify-prd-implemented test-patterns (Skipped / disabled / focused)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.84!, spread 0.32 (borderline) | escalates: can_fail borderline (spread 0.32) |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | hardcoded-data | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | behaviour | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | hardcoded-data versus behaviour | escalates: asserts unstable (hardcoded-data vs behaviour) |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | good | - |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | yes | - |
-| `named` | yes: the name states the behaviour and the expected result | no | flag `vague-name` |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | yes | - |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | yes | - |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **good**.
-- Needs eyes: **yes**. Reasons: can_fail borderline (spread 0.32); asserts unstable (hardcoded-data vs behaviour).
-- Expected: escalate.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-23"></a>
-
-### 23. `saves the draft`: OK
-
-Case file: [`calibration/cases/disabled-focus-draft.case.mjs`](calibration/cases/disabled-focus-draft.case.mjs), line 2. Label group: `naming`.
+- **Known defect:** focused. **Expected:** escalate. Note: The plain test inherits the file-level focus from it.only. Case file [`cases/disabled-focus-draft.case.mjs`](calibration/cases/disabled-focus-draft.case.mjs), line 6. Extractor notes: `focus-in-file`. Sources: [Meszaros, xUnit Test Patterns (Obscure Test)](http://xunitpatterns.com/); [verify-prd-implemented test-patterns (Skipped / disabled / focused)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
+- **What decided it:** good, needs eyes.
+  - `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.84, spread 0.32 (borderline). **Escalates:** can_fail borderline (spread 0.32).
+  - `asserts_a` hardcoded-data · `asserts_b` behaviour → asserts: hardcoded-data versus behaviour. **Escalates:** asserts unstable (hardcoded-data vs behaviour).
+  - No escalation: `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded. `verdict` good.
+- **Descriptive:** 17 clean · smells: `named` (vague-name) · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-28"></a>28. <code>saves the draft</code> · focused · OK</summary>
 
 ```js
 it.only("saves the draft", () => {
   expect(saveDraft("draft")).toBe(true);
 })
 ```
-
-Extractor notes: `focus-in-file`.
-
-**Known defect: focused.** The tool should escalate it. The label sets no `can_fail` value. Note: The it.only focuses the file and narrows the whole run.
-
-Sources: [Meszaros, xUnit Test Patterns (Obscure Test)](http://xunitpatterns.com/); [verify-prd-implemented test-patterns (Skipped / disabled / focused)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.97, spread 0.05 (stable) | - |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | behaviour | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | behaviour | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | behaviour | - |
-| `runs` | yes: it runs | no | escalates: does not run |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | weak | escalates: verdict weak |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | yes | - |
-| `named` | yes: the name states the behaviour and the expected result | yes | - |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | yes | - |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | yes | - |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **weak**.
-- Needs eyes: **yes**. Reasons: does not run; verdict weak.
-- Expected: escalate.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-24"></a>
-
-### 24. `resolves the status labels`: OK
-
-Case file: [`calibration/cases/asserts-status-table.case.mjs`](calibration/cases/asserts-status-table.case.mjs), line 2. Label group: `asserts`.
+- **Known defect:** focused. **Expected:** escalate. Note: The it.only focuses the file and narrows the whole run. Case file [`cases/disabled-focus-draft.case.mjs`](calibration/cases/disabled-focus-draft.case.mjs), line 2. Extractor notes: `focus-in-file`. Sources: [Meszaros, xUnit Test Patterns (Obscure Test)](http://xunitpatterns.com/); [verify-prd-implemented test-patterns (Skipped / disabled / focused)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
+- **What decided it:** weak, needs eyes.
+  - `runs_a` · `runs_b` not recorded → runs: no. **Escalates:** does not run.
+  - `verdict` weak. **Escalates:** verdict weak.
+  - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.97, spread 0.05 (stable). `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `positive_a` · `positive_b` not recorded → positive: not recorded.
+- **Descriptive:** 18 clean · smells: none · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-29"></a>29. <code>resolves the status labels</code> · hardcoded-data · OK</summary>
 
 ```js
 test("resolves the status labels", () => {
   expect(statusLabels()).toEqual(STATUS_LABELS);
 })
 ```
+Code under test, [`cases/asserts-status-table.code.mjs`](calibration/cases/asserts-status-table.code.mjs):
 
-**Known defect: hardcoded-data.** The tool should escalate it. `can_fail` should be no. Note: The expected value is the code under test own constant, so the test agrees by construction and cannot fail.
+```js
+export const STATUS_LABELS = { open: "Open", blocked: "Blocked", done: "Done" };
 
-Sources: [testsmells.org, Open Catalog of Test Smells](https://testsmells.org/).
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.87!, spread 0.30 (borderline) | escalates: can_fail borderline (spread 0.30) |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | hardcoded-data | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | hardcoded-data | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | hardcoded-data | escalates: asserts hardcoded-data |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | good | - |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | yes | - |
-| `named` | yes: the name states the behaviour and the expected result | no | flag `vague-name` |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | yes | - |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | yes | - |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **good**.
-- Needs eyes: **yes**. Reasons: can_fail borderline (spread 0.30); asserts hardcoded-data.
-- Expected: escalate.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-25"></a>
-
-### 25. `taxes the standard rate`: OK
-
-Case file: [`calibration/cases/asserts-constant-copy.case.mjs`](calibration/cases/asserts-constant-copy.case.mjs), line 2. Label group: `asserts`.
+export function statusLabels() {
+  return STATUS_LABELS;
+}
+```
+- **Known defect:** hardcoded-data. **Expected:** escalate, `can_fail` no. Note: The expected value is the code under test own constant, so the test agrees by construction and cannot fail. Case file [`cases/asserts-status-table.case.mjs`](calibration/cases/asserts-status-table.case.mjs), line 2. Sources: [testsmells.org, Open Catalog of Test Smells](https://testsmells.org/).
+- **What decided it:** good, needs eyes.
+  - `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.87, spread 0.30 (borderline). **Escalates:** can_fail borderline (spread 0.30). Label no: not scored.
+  - `asserts_a` hardcoded-data · `asserts_b` hardcoded-data → asserts: hardcoded-data. **Escalates:** asserts hardcoded-data.
+  - No escalation: `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded. `verdict` good.
+- **Descriptive:** 17 clean · smells: `named` (vague-name) · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-30"></a>30. <code>taxes the standard rate</code> · hardcoded-data · OK</summary>
 
 ```js
 test("taxes the standard rate", () => {
   expect(taxRates()).toEqual(TAX_RATES);
 })
 ```
+Code under test, [`cases/asserts-constant-copy.code.mjs`](calibration/cases/asserts-constant-copy.code.mjs):
 
-**Known defect: hardcoded-data.** The tool should escalate it. `can_fail` should be no. Note: The expected value is the code under test own constant, so the test agrees by construction and cannot fail.
+```js
+export const TAX_RATES = { standard: 0.25, reduced: 0.15, food: 0.15, zero: 0 };
 
-Sources: [testsmells.org, Open Catalog of Test Smells](https://testsmells.org/).
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.12, spread 0.19 (stable) | matches the label |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | hardcoded-data | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | hardcoded-data | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | hardcoded-data | escalates: asserts hardcoded-data |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | slop | escalates: verdict slop |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | yes | - |
-| `named` | yes: the name states the behaviour and the expected result | yes | - |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | no | flag `name-mismatch` |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | no | flag `obscure` |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **slop**.
-- Needs eyes: **yes**. Reasons: asserts hardcoded-data; verdict slop.
-- Expected: escalate.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-26"></a>
-
-### 26. `forwards the payload`: OK
-
-Case file: [`calibration/cases/asserts-mock-argument.case.mjs`](calibration/cases/asserts-mock-argument.case.mjs), line 2. Label group: `asserts`.
+export function taxRates() {
+  return TAX_RATES;
+}
+```
+- **Known defect:** hardcoded-data. **Expected:** escalate, `can_fail` no. Note: The expected value is the code under test own constant, so the test agrees by construction and cannot fail. Case file [`cases/asserts-constant-copy.case.mjs`](calibration/cases/asserts-constant-copy.case.mjs), line 2. Sources: [testsmells.org, Open Catalog of Test Smells](https://testsmells.org/).
+- **What decided it:** slop, needs eyes.
+  - `asserts_a` hardcoded-data · `asserts_b` hardcoded-data → asserts: hardcoded-data. **Escalates:** asserts hardcoded-data.
+  - `verdict` slop. **Escalates:** verdict slop.
+  - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.12, spread 0.19 (stable). Label no: match. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded.
+- **Descriptive:** 16 clean · smells: `name_matches` (name-mismatch), `readable` (obscure) · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-31"></a>31. <code>forwards the payload</code> · interaction-only · OK</summary>
 
 ```js
 test("forwards the payload", () => {
@@ -1655,62 +602,15 @@ test("forwards the payload", () => {
   expect(spy.mock.calls[0][0]).toMatchObject({ id: expect.any(String) });
 })
 ```
-
-**Known defect: interaction-only.** The tool should escalate it. `can_fail` should be yes. Note: The mock argument shape can change and fail the test, while the real output stays unchecked.
-
-Sources: [testsmells.org, Open Catalog of Test Smells](https://testsmells.org/).
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.55!, spread 0.63 (unstable) | escalates: can_fail unstable (spread 0.63) |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | interaction-only | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | interaction-only | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | interaction-only | escalates: asserts interaction-only |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | weak | escalates: verdict weak |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | no | flag `implementation-coupled` |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | no | flag `weak-assert` |
-| `named` | yes: the name states the behaviour and the expected result | yes | - |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | no | flag `name-mismatch` |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | no | flag `structure-dependent` |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | yes | - |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | no | flag `state-leak` |
-
-**Outcome**
-
-- Verdict: **weak**.
-- Needs eyes: **yes**. Reasons: can_fail unstable (spread 0.63); asserts interaction-only; verdict weak.
-- Expected: escalate.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-27"></a>
-
-### 27. `notifies the listener`: OK
-
-Case file: [`calibration/cases/asserts-spy-called.case.mjs`](calibration/cases/asserts-spy-called.case.mjs), line 2. Label group: `asserts`.
+- **Known defect:** interaction-only. **Expected:** escalate, `can_fail` yes. Note: The mock argument shape can change and fail the test, while the real output stays unchecked. Case file [`cases/asserts-mock-argument.case.mjs`](calibration/cases/asserts-mock-argument.case.mjs), line 2. Sources: [testsmells.org, Open Catalog of Test Smells](https://testsmells.org/).
+- **What decided it:** weak, needs eyes.
+  - `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.55, spread 0.63 (unstable). **Escalates:** can_fail unstable (spread 0.63). Label yes: not scored.
+  - `asserts_a` interaction-only · `asserts_b` interaction-only → asserts: interaction-only. **Escalates:** asserts interaction-only.
+  - `verdict` weak. **Escalates:** verdict weak.
+  - No escalation: `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded.
+- **Descriptive:** 13 clean · smells: `observable` (implementation-coupled), `specific` (weak-assert), `name_matches` (name-mismatch), `resilient` (structure-dependent), `restores` (state-leak) · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-32"></a>32. <code>notifies the listener</code> · interaction-only · OK</summary>
 
 ```js
 test("notifies the listener", () => {
@@ -1719,62 +619,15 @@ test("notifies the listener", () => {
   expect(spy).toHaveBeenCalled();
 })
 ```
-
-**Known defect: interaction-only.** The tool should escalate it. `can_fail` should be yes. Note: A missing call fails the test, though the mock stands in for behaviour it never verifies.
-
-Sources: [testsmells.org, Open Catalog of Test Smells](https://testsmells.org/).
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.76!, spread 0.52 (unstable) | escalates: can_fail unstable (spread 0.52) |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | interaction-only | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | interaction-only | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | interaction-only | escalates: asserts interaction-only |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | weak | escalates: verdict weak |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | no | flag `implementation-coupled` |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | no | flag `weak-assert` |
-| `named` | yes: the name states the behaviour and the expected result | yes | - |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | yes | - |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | no | flag `structure-dependent` |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | no | flag `obscure` |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | no | flag `asserts-input` |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | no | flag `state-leak` |
-
-**Outcome**
-
-- Verdict: **weak**.
-- Needs eyes: **yes**. Reasons: can_fail unstable (spread 0.52); asserts interaction-only; verdict weak.
-- Expected: escalate.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-28"></a>
-
-### 28. `publishes twice`: OK
-
-Case file: [`calibration/cases/asserts-spy-count.case.mjs`](calibration/cases/asserts-spy-count.case.mjs), line 2. Label group: `asserts`.
+- **Known defect:** interaction-only. **Expected:** escalate, `can_fail` yes. Note: A missing call fails the test, though the mock stands in for behaviour it never verifies. Case file [`cases/asserts-spy-called.case.mjs`](calibration/cases/asserts-spy-called.case.mjs), line 2. Sources: [testsmells.org, Open Catalog of Test Smells](https://testsmells.org/).
+- **What decided it:** weak, needs eyes.
+  - `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.76, spread 0.52 (unstable). **Escalates:** can_fail unstable (spread 0.52). Label yes: not scored.
+  - `asserts_a` interaction-only · `asserts_b` interaction-only → asserts: interaction-only. **Escalates:** asserts interaction-only.
+  - `verdict` weak. **Escalates:** verdict weak.
+  - No escalation: `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded.
+- **Descriptive:** 12 clean · smells: `observable` (implementation-coupled), `specific` (weak-assert), `resilient` (structure-dependent), `readable` (obscure), `reads_output` (asserts-input), `restores` (state-leak) · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-33"></a>33. <code>publishes twice</code> · interaction-only · OK</summary>
 
 ```js
 test("publishes twice", () => {
@@ -1783,62 +636,14 @@ test("publishes twice", () => {
   expect(spy).toHaveBeenCalledTimes(2);
 })
 ```
-
-**Known defect: interaction-only.** The tool should escalate it. `can_fail` should be yes. Note: A changed call count fails the test, yet the payload of each call is never asserted.
-
-Sources: [testsmells.org, Open Catalog of Test Smells](https://testsmells.org/).
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.95, spread 0.11 (stable) | matches the label |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | interaction-only | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | interaction-only | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | interaction-only | escalates: asserts interaction-only |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | weak | escalates: verdict weak |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | no | flag `implementation-coupled` |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | yes | - |
-| `named` | yes: the name states the behaviour and the expected result | yes | - |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | yes | - |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | no | flag `structure-dependent` |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | yes | - |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | no | flag `asserts-input` |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | no | flag `state-leak` |
-
-**Outcome**
-
-- Verdict: **weak**.
-- Needs eyes: **yes**. Reasons: asserts interaction-only; verdict weak.
-- Expected: escalate.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-29"></a>
-
-### 29. `computes the tax`: OK
-
-Case file: [`calibration/cases/name-only.case.mjs`](calibration/cases/name-only.case.mjs), line 2. Label group: `baseline`.
+- **Known defect:** interaction-only. **Expected:** escalate, `can_fail` yes. Note: A changed call count fails the test, yet the payload of each call is never asserted. Case file [`cases/asserts-spy-count.case.mjs`](calibration/cases/asserts-spy-count.case.mjs), line 2. Sources: [testsmells.org, Open Catalog of Test Smells](https://testsmells.org/).
+- **What decided it:** weak, needs eyes.
+  - `asserts_a` interaction-only · `asserts_b` interaction-only → asserts: interaction-only. **Escalates:** asserts interaction-only.
+  - `verdict` weak. **Escalates:** verdict weak.
+  - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.95, spread 0.11 (stable). Label yes: match. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded.
+- **Descriptive:** 14 clean · smells: `observable` (implementation-coupled), `resilient` (structure-dependent), `reads_output` (asserts-input), `restores` (state-leak) · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-34"></a>34. <code>computes the tax</code> · name-only · OK</summary>
 
 ```js
 test("computes the tax", () => {
@@ -1846,60 +651,15 @@ test("computes the tax", () => {
   expect(tax).toBeDefined();
 })
 ```
-
-**Known defect: name-only.** The tool should escalate it. `can_fail` should be no. Note: name-only: toBeDefined is true for any defined value.
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.03, spread 0.09 (stable) | matches the label |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | shape-only | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | shape-only | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | shape-only | escalates: asserts shape-only |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | escalates: no positive assertion |
-| `verdict` | scale: slop, weak, good, strong | slop | escalates: verdict slop |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | no | flag `weak-assert` |
-| `named` | yes: the name states the behaviour and the expected result | no | flag `vague-name` |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | no | flag `name-mismatch` |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | no | flag `silent-failure` |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | no | flag `obscure` |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **slop**.
-- Needs eyes: **yes**. Reasons: no positive assertion; asserts shape-only; verdict slop.
-- Expected: escalate.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-30"></a>
-
-### 30. `computes the tax due`: OK
-
-Case file: [`calibration/cases/naming-tax-defined.case.mjs`](calibration/cases/naming-tax-defined.case.mjs), line 2. Label group: `naming`.
+- **Known defect:** name-only. **Expected:** escalate, `can_fail` no. Note: name-only: toBeDefined is true for any defined value. Case file [`cases/name-only.case.mjs`](calibration/cases/name-only.case.mjs), line 2.
+- **What decided it:** slop, needs eyes.
+  - `asserts_a` shape-only · `asserts_b` shape-only → asserts: shape-only. **Escalates:** asserts shape-only.
+  - `positive_a` · `positive_b` not recorded → positive: not recorded. **Escalates:** no positive assertion.
+  - `verdict` slop. **Escalates:** verdict slop.
+  - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.03, spread 0.09 (stable). Label no: match. `runs_a` · `runs_b` not recorded → runs: yes.
+- **Descriptive:** 13 clean · smells: `specific` (weak-assert), `named` (vague-name), `name_matches` (name-mismatch), `diagnostic` (silent-failure), `readable` (obscure) · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-35"></a>35. <code>computes the tax due</code> · name-only · OK</summary>
 
 ```js
 test("computes the tax due", () => {
@@ -1907,62 +667,15 @@ test("computes the tax due", () => {
   expect(tax).toBeDefined();
 })
 ```
-
-**Known defect: name-only.** The tool should escalate it. `can_fail` should be no. Note: The name promises a tax value, while toBeDefined is true for any defined value.
-
-Sources: [Meszaros, xUnit Test Patterns (Obscure Test)](http://xunitpatterns.com/); [verify-prd-implemented test-patterns (Skipped / disabled / focused)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.01, spread 0.03 (stable) | matches the label |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | shape-only | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | shape-only | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | shape-only | escalates: asserts shape-only |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | escalates: no positive assertion |
-| `verdict` | scale: slop, weak, good, strong | slop | escalates: verdict slop |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | no | flag `weak-assert` |
-| `named` | yes: the name states the behaviour and the expected result | no | flag `vague-name` |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | no | flag `name-mismatch` |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | no | flag `silent-failure` |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | no | flag `obscure` |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **slop**.
-- Needs eyes: **yes**. Reasons: no positive assertion; asserts shape-only; verdict slop.
-- Expected: escalate.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-31"></a>
-
-### 31. `sorts rows by name`: OK
-
-Case file: [`calibration/cases/naming-sort-length.case.mjs`](calibration/cases/naming-sort-length.case.mjs), line 2. Label group: `naming`.
+- **Known defect:** name-only. **Expected:** escalate, `can_fail` no. Note: The name promises a tax value, while toBeDefined is true for any defined value. Case file [`cases/naming-tax-defined.case.mjs`](calibration/cases/naming-tax-defined.case.mjs), line 2. Sources: [Meszaros, xUnit Test Patterns (Obscure Test)](http://xunitpatterns.com/); [verify-prd-implemented test-patterns (Skipped / disabled / focused)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
+- **What decided it:** slop, needs eyes.
+  - `asserts_a` shape-only · `asserts_b` shape-only → asserts: shape-only. **Escalates:** asserts shape-only.
+  - `positive_a` · `positive_b` not recorded → positive: not recorded. **Escalates:** no positive assertion.
+  - `verdict` slop. **Escalates:** verdict slop.
+  - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.01, spread 0.03 (stable). Label no: match. `runs_a` · `runs_b` not recorded → runs: yes.
+- **Descriptive:** 13 clean · smells: `specific` (weak-assert), `named` (vague-name), `name_matches` (name-mismatch), `diagnostic` (silent-failure), `readable` (obscure) · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-36"></a>36. <code>sorts rows by name</code> · name-only · OK</summary>
 
 ```js
 test("sorts rows by name", () => {
@@ -1970,124 +683,30 @@ test("sorts rows by name", () => {
   expect(rows).toHaveLength(2);
 })
 ```
-
-**Known defect: name-only.** The tool should escalate it. `can_fail` should be no. Note: The name promises a sort, while the length check holds for any permutation.
-
-Sources: [Meszaros, xUnit Test Patterns (Obscure Test)](http://xunitpatterns.com/); [verify-prd-implemented test-patterns (Skipped / disabled / focused)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.18!, spread 0.53 (unstable) | escalates: can_fail unstable (spread 0.53) |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | shape-only | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | shape-only | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | shape-only | escalates: asserts shape-only |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | slop | escalates: verdict slop |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | no | flag `weak-assert` |
-| `named` | yes: the name states the behaviour and the expected result | yes | - |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | no | flag `name-mismatch` |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | yes | - |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **slop**.
-- Needs eyes: **yes**. Reasons: can_fail unstable (spread 0.53); asserts shape-only; verdict slop.
-- Expected: escalate.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-32"></a>
-
-### 32. `validates email addresses`: OK
-
-Case file: [`calibration/cases/naming-email-truthy.case.mjs`](calibration/cases/naming-email-truthy.case.mjs), line 2. Label group: `naming`.
+- **Known defect:** name-only. **Expected:** escalate, `can_fail` no. Note: The name promises a sort, while the length check holds for any permutation. Case file [`cases/naming-sort-length.case.mjs`](calibration/cases/naming-sort-length.case.mjs), line 2. Sources: [Meszaros, xUnit Test Patterns (Obscure Test)](http://xunitpatterns.com/); [verify-prd-implemented test-patterns (Skipped / disabled / focused)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
+- **What decided it:** slop, needs eyes.
+  - `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.18, spread 0.53 (unstable). **Escalates:** can_fail unstable (spread 0.53). Label no: not scored.
+  - `asserts_a` shape-only · `asserts_b` shape-only → asserts: shape-only. **Escalates:** asserts shape-only.
+  - `verdict` slop. **Escalates:** verdict slop.
+  - No escalation: `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded.
+- **Descriptive:** 16 clean · smells: `specific` (weak-assert), `name_matches` (name-mismatch) · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-37"></a>37. <code>validates email addresses</code> · name-only · OK</summary>
 
 ```js
 test("validates email addresses", () => {
   expect(isValidEmail("a@b.com")).toBeTruthy();
 })
 ```
-
-**Known defect: name-only.** The tool should escalate it. `can_fail` should be no. Note: The name promises validation, while a truthy check passes for any non-empty value.
-
-Sources: [Meszaros, xUnit Test Patterns (Obscure Test)](http://xunitpatterns.com/); [verify-prd-implemented test-patterns (Skipped / disabled / focused)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.69!, spread 0.80 (unstable) | escalates: can_fail unstable (spread 0.80) |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | shape-only | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | shape-only | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | shape-only | escalates: asserts shape-only |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | weak | escalates: verdict weak |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | no | flag `weak-assert` |
-| `named` | yes: the name states the behaviour and the expected result | no | flag `vague-name` |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | no | flag `name-mismatch` |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | yes | - |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **weak**.
-- Needs eyes: **yes**. Reasons: can_fail unstable (spread 0.80); asserts shape-only; verdict weak.
-- Expected: escalate.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-33"></a>
-
-### 33. `debounce fires once`: OK
-
-Case file: [`calibration/cases/flaky.case.mjs`](calibration/cases/flaky.case.mjs), line 2. Label group: `baseline`.
+- **Known defect:** name-only. **Expected:** escalate, `can_fail` no. Note: The name promises validation, while a truthy check passes for any non-empty value. Case file [`cases/naming-email-truthy.case.mjs`](calibration/cases/naming-email-truthy.case.mjs), line 2. Sources: [Meszaros, xUnit Test Patterns (Obscure Test)](http://xunitpatterns.com/); [verify-prd-implemented test-patterns (Skipped / disabled / focused)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
+- **What decided it:** weak, needs eyes.
+  - `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.69, spread 0.80 (unstable). **Escalates:** can_fail unstable (spread 0.80). Label no: not scored.
+  - `asserts_a` shape-only · `asserts_b` shape-only → asserts: shape-only. **Escalates:** asserts shape-only.
+  - `verdict` weak. **Escalates:** verdict weak.
+  - No escalation: `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded.
+- **Descriptive:** 15 clean · smells: `specific` (weak-assert), `named` (vague-name), `name_matches` (name-mismatch) · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-38"></a>38. <code>debounce fires once</code> · non-deterministic · OK</summary>
 
 ```js
 test("debounce fires once", async () => {
@@ -2098,60 +717,12 @@ test("debounce fires once", async () => {
   expect(calls.length).toBe(1);
 })
 ```
-
-**Known defect: non-deterministic.** The label does not say if the tool should escalate it. `can_fail` should be yes. `deterministic` should be no. Note: a real guard, but timer-bound; reported, not escalated.
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.99, spread 0.02 (stable) | matches the label |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | behaviour | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | behaviour | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | behaviour | - |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | good | - |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | no | flag `uncontrolled-resource` |
-| `specific` | yes: the assertion is specific to the expected value | yes | - |
-| `named` | yes: the name states the behaviour and the expected result | yes | - |
-| `deterministic` | yes: it gives the same result every run | no | as expected; flag `non-deterministic` |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | yes | - |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | no | flag `slow` |
-| `readable` | yes: the test reads clearly on its own | yes | - |
-| `magic_number` | yes: the values are named or self-explanatory | no | flag `magic-number` |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **good**.
-- Needs eyes: **no**.
-- Expected: either (the label does not say).
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-34"></a>
-
-### 34. `the metric keys keep their insertion order`: OK
-
-Case file: [`calibration/cases/determinism-order.case.mjs`](calibration/cases/determinism-order.case.mjs), line 2. Label group: `determinism`.
+- **Known defect:** non-deterministic. **Expected:** escalate or pass, `can_fail` yes, `deterministic` no. Note: a real guard, but timer-bound; reported, not escalated. Case file [`cases/flaky.case.mjs`](calibration/cases/flaky.case.mjs), line 2.
+- **What decided it:** good, passes.
+  - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.99, spread 0.02 (stable). Label yes: match. `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded. `verdict` good.
+- **Descriptive:** 14 clean · smells: `controlled` (uncontrolled-resource), `deterministic` (non-deterministic), `fast` (slow), `magic_number` (magic-number) · unanswered: none · `type` not recorded · label `deterministic` no: match.
+</details>
+<details><summary><a id="case-39"></a>39. <code>the metric keys keep their insertion order</code> · non-deterministic · OK</summary>
 
 ```js
 test("the metric keys keep their insertion order", () => {
@@ -2159,439 +730,38 @@ test("the metric keys keep their insertion order", () => {
   expect(Object.keys(metrics)).toEqual(["z", "a"]);
 })
 ```
-
-**Known defect: non-deterministic.** The tool should pass it, with no escalation. `can_fail` should be yes. `deterministic` should be no. Note: A real metrics check, but it pins key order that the structure does not guarantee.
-
-Sources: [Kent Beck, Test Desiderata (deterministic)](https://kentbeck.github.io/TestDesiderata/).
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.99, spread 0.01 (stable) | matches the label |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | behaviour | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | behaviour | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | behaviour | - |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | strong | - |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | yes | - |
-| `named` | yes: the name states the behaviour and the expected result | yes | - |
-| `deterministic` | yes: it gives the same result every run | yes | **not as expected** (label: no) |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | yes | - |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | yes | - |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **strong**.
-- Needs eyes: **no**.
-- Expected: pass.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-35"></a>
-
-### 35. `the remote catalogue lists the widget`: FALSE positive
-
-Case file: [`calibration/cases/determinism-network.case.mjs`](calibration/cases/determinism-network.case.mjs), line 2. Label group: `determinism`.
-
-```js
-test("the remote catalogue lists the widget", async () => {
-  const response = await fetch("https://example.test/catalogue");
-  const items = await response.json();
-  expect(items).toContain("widget");
-})
-```
-
-**Known defect: non-deterministic.** The tool should pass it, with no escalation. `can_fail` should be yes. `deterministic` should be no. Note: A real catalogue check, but a live fetch makes the result depend on the network.
-
-Sources: [Kent Beck, Test Desiderata (deterministic)](https://kentbeck.github.io/TestDesiderata/).
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.84, spread 0.20 (stable) | matches the label |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | behaviour | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | behaviour | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | behaviour | - |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | weak | escalates: verdict weak |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | no | flag `uncontrolled-resource` |
-| `specific` | yes: the assertion is specific to the expected value | yes | - |
-| `named` | yes: the name states the behaviour and the expected result | yes | - |
-| `deterministic` | yes: it gives the same result every run | no | as expected; flag `non-deterministic` |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | yes | - |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | no | flag `slow` |
-| `readable` | yes: the test reads clearly on its own | yes | - |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **weak**.
-- Needs eyes: **yes**. Reasons: verdict weak.
-- Expected: pass.
-- Status: **FALSE positive**, a case that should pass escalated.
-
-<a id="case-36"></a>
-
-### 36. `the retry lands within the window`: FALSE positive
-
-Case file: [`calibration/cases/determinism-timer.case.mjs`](calibration/cases/determinism-timer.case.mjs), line 2. Label group: `determinism`.
-
-```js
-test("the retry lands within the window", async () => {
-  const attempts = [];
-  retryOnFailure(() => attempts.push(1));
-  await sleep(50);
-  expect(attempts.length).toBe(2);
-})
-```
-
-**Known defect: non-deterministic.** The tool should pass it, with no escalation. `can_fail` should be yes. `deterministic` should be no. Note: A real guard on the retry count, but the fixed sleep makes the outcome depend on scheduling.
-
-Sources: [Kent Beck, Test Desiderata (deterministic)](https://kentbeck.github.io/TestDesiderata/).
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.76!, spread 0.60 (unstable) | escalates: can_fail unstable (spread 0.60) |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | behaviour | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | shape-only | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | behaviour versus shape-only | escalates: asserts unstable (behaviour vs shape-only) |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | weak | escalates: verdict weak |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | no | flag `implementation-coupled` |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | no | flag `uncontrolled-resource` |
-| `specific` | yes: the assertion is specific to the expected value | yes | - |
-| `named` | yes: the name states the behaviour and the expected result | yes | - |
-| `deterministic` | yes: it gives the same result every run | no | as expected; flag `non-deterministic` |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | yes | - |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | no | flag `structure-dependent` |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | no | flag `slow` |
-| `readable` | yes: the test reads clearly on its own | no | flag `obscure` |
-| `magic_number` | yes: the values are named or self-explanatory | no | flag `magic-number` |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | no | flag `state-leak` |
-
-**Outcome**
-
-- Verdict: **weak**.
-- Needs eyes: **yes**. Reasons: can_fail unstable (spread 0.60); asserts unstable (behaviour vs shape-only); verdict weak.
-- Expected: pass.
-- Status: **FALSE positive**, a case that should pass escalated.
-
-<a id="case-37"></a>
-
-### 37. `the sorter keeps every random value`: FALSE positive
-
-Case file: [`calibration/cases/determinism-randomness.case.mjs`](calibration/cases/determinism-randomness.case.mjs), line 2. Label group: `determinism`.
-
-```js
-test("the sorter keeps every random value", () => {
-  const input = Array.from({ length: 5 }, () => Math.floor(Math.random() * 100));
-  expect(sortNumbers(input)).toEqual([...input].sort((a, b) => a - b));
-})
-```
-
-**Known defect: non-deterministic.** The tool should pass it, with no escalation. `can_fail` should be yes. `deterministic` should be no. Note: A real sorting property, but the random input makes a failure hard to reproduce.
-
-Sources: [Kent Beck, Test Desiderata (deterministic)](https://kentbeck.github.io/TestDesiderata/).
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.96, spread 0.06 (stable) | matches the label |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | hardcoded-data | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | behaviour | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | hardcoded-data versus behaviour | escalates: asserts unstable (hardcoded-data vs behaviour) |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | good | - |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | no | flag `uncontrolled-resource` |
-| `specific` | yes: the assertion is specific to the expected value | yes | - |
-| `named` | yes: the name states the behaviour and the expected result | yes | - |
-| `deterministic` | yes: it gives the same result every run | yes | **not as expected** (label: no) |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | yes | - |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | yes | - |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **good**.
-- Needs eyes: **yes**. Reasons: asserts unstable (hardcoded-data vs behaviour).
-- Expected: pass.
-- Status: **FALSE positive**, a case that should pass escalated.
-
-<a id="case-38"></a>
-
-### 38. `the token has not expired yet`: FALSE positive
-
-Case file: [`calibration/cases/determinism-clock.case.mjs`](calibration/cases/determinism-clock.case.mjs), line 2. Label group: `determinism`.
-
-```js
-test("the token has not expired yet", () => {
-  const token = issueToken({ ttlMs: 60_000 });
-  expect(token.expiresAt).toBeGreaterThan(Date.now());
-})
-```
-
-**Known defect: non-deterministic.** The tool should pass it, with no escalation. `can_fail` should be yes. `deterministic` should be no. Note: A real expiry check, but reading Date.now makes the result depend on when the test runs.
-
-Sources: [Kent Beck, Test Desiderata (deterministic)](https://kentbeck.github.io/TestDesiderata/).
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.87!, spread 0.28 (borderline) | escalates: can_fail borderline (spread 0.28) |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | behaviour | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | behaviour | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | behaviour | - |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | weak | escalates: verdict weak |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | no | flag `uncontrolled-resource` |
-| `specific` | yes: the assertion is specific to the expected value | yes | - |
-| `named` | yes: the name states the behaviour and the expected result | yes | - |
-| `deterministic` | yes: it gives the same result every run | no | as expected; flag `non-deterministic` |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | yes | - |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | yes | - |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **weak**.
-- Needs eyes: **yes**. Reasons: can_fail borderline (spread 0.28); verdict weak.
-- Expected: pass.
-- Status: **FALSE positive**, a case that should pass escalated.
-
-<a id="case-39"></a>
-
-### 39. `finds no imports in an empty file`: OK
-
-Case file: [`calibration/cases/onlynegative-empty-array.case.mjs`](calibration/cases/onlynegative-empty-array.case.mjs), line 2. Label group: `wrongreason`.
+- **Known defect:** non-deterministic. **Expected:** pass, `can_fail` yes, `deterministic` no. Note: A real metrics check, but it pins key order that the structure does not guarantee. Case file [`cases/determinism-order.case.mjs`](calibration/cases/determinism-order.case.mjs), line 2. Sources: [Kent Beck, Test Desiderata (deterministic)](https://kentbeck.github.io/TestDesiderata/).
+- **What decided it:** strong, passes.
+  - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.99, spread 0.01 (stable). Label yes: match. `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded. `verdict` strong.
+- **Descriptive:** 18 clean · smells: none · unanswered: none · `type` not recorded · **label `deterministic` no, tool yes**.
+</details>
+<details><summary><a id="case-40"></a>40. <code>finds no imports in an empty file</code> · only-negative · OK</summary>
 
 ```js
 test("finds no imports in an empty file", () => {
   expect(findImports("")).toEqual([]);
 })
 ```
-
-**Known defect: only-negative.** The tool should escalate it. `can_fail` should be yes. Note: Only the empty result is checked, so a finder that never finds anything would pass.
-
-Sources: [verify-prd-implemented test-patterns (Passes for the wrong reason; No negative/positive pair)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 1.00, spread 0.00 (stable) | matches the label |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | behaviour | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | behaviour | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | behaviour | - |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | escalates: no positive assertion |
-| `verdict` | scale: slop, weak, good, strong | strong | - |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | yes | - |
-| `named` | yes: the name states the behaviour and the expected result | yes | - |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | yes | - |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | yes | - |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **strong**.
-- Needs eyes: **yes**. Reasons: no positive assertion.
-- Expected: escalate.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-40"></a>
-
-### 40. `no edge for a comment`: OK
-
-Case file: [`calibration/cases/only-negative.case.mjs`](calibration/cases/only-negative.case.mjs), line 2. Label group: `baseline`.
+- **Known defect:** only-negative. **Expected:** escalate, `can_fail` yes. Note: Only the empty result is checked, so a finder that never finds anything would pass. Case file [`cases/onlynegative-empty-array.case.mjs`](calibration/cases/onlynegative-empty-array.case.mjs), line 2. Sources: [verify-prd-implemented test-patterns (Passes for the wrong reason; No negative/positive pair)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
+- **What decided it:** strong, needs eyes.
+  - `positive_a` · `positive_b` not recorded → positive: not recorded. **Escalates:** no positive assertion.
+  - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `runs_a` · `runs_b` not recorded → runs: yes. `verdict` strong.
+- **Descriptive:** 18 clean · smells: none · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-41"></a>41. <code>no edge for a comment</code> · only-negative · OK</summary>
 
 ```js
 test("no edge for a comment", () => {
   expect(resolveEdges("// comment")).toBeNull();
 })
 ```
-
-**Known defect: only-negative.** The tool should escalate it. `can_fail` should be yes. Note: no positive/negative pair.
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.98, spread 0.04 (stable) | matches the label |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | behaviour | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | behaviour | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | behaviour | - |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | escalates: no positive assertion |
-| `verdict` | scale: slop, weak, good, strong | strong | - |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | yes | - |
-| `named` | yes: the name states the behaviour and the expected result | yes | - |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | yes | - |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | yes | - |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **strong**.
-- Needs eyes: **yes**. Reasons: no positive assertion.
-- Expected: escalate.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-41"></a>
-
-### 41. `parses a well formed header`: OK
-
-Case file: [`calibration/cases/onlynegative-no-throw.case.mjs`](calibration/cases/onlynegative-no-throw.case.mjs), line 2. Label group: `wrongreason`.
+- **Known defect:** only-negative. **Expected:** escalate, `can_fail` yes. Note: no positive/negative pair. Case file [`cases/only-negative.case.mjs`](calibration/cases/only-negative.case.mjs), line 2.
+- **What decided it:** strong, needs eyes.
+  - `positive_a` · `positive_b` not recorded → positive: not recorded. **Escalates:** no positive assertion.
+  - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.98, spread 0.04 (stable). Label yes: match. `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `runs_a` · `runs_b` not recorded → runs: yes. `verdict` strong.
+- **Descriptive:** 18 clean · smells: none · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-42"></a>42. <code>parses a well formed header</code> · only-negative · OK</summary>
 
 ```js
 test("parses a well formed header", () => {
@@ -2599,124 +769,29 @@ test("parses a well formed header", () => {
   expect(run).not.toThrow();
 })
 ```
-
-**Known defect: only-negative.** The tool should escalate it. `can_fail` should be yes. Note: Only that the call does not throw is checked, and the parsed output is never asserted.
-
-Sources: [verify-prd-implemented test-patterns (Passes for the wrong reason; No negative/positive pair)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.25!, spread 0.70 (unstable) | escalates: can_fail unstable (spread 0.70) |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | nothing | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | nothing | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | nothing | escalates: asserts nothing |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | escalates: no positive assertion |
-| `verdict` | scale: slop, weak, good, strong | slop | escalates: verdict slop |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | no | flag `weak-assert` |
-| `named` | yes: the name states the behaviour and the expected result | yes | - |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | no | flag `name-mismatch` |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | yes | - |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | no | flag `asserts-input` |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **slop**.
-- Needs eyes: **yes**. Reasons: can_fail unstable (spread 0.70); no positive assertion; asserts nothing; verdict slop.
-- Expected: escalate.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-42"></a>
-
-### 42. `returns null for an unknown setting`: OK
-
-Case file: [`calibration/cases/onlynegative-absent-key.case.mjs`](calibration/cases/onlynegative-absent-key.case.mjs), line 2. Label group: `wrongreason`.
+- **Known defect:** only-negative. **Expected:** escalate, `can_fail` yes. Note: Only that the call does not throw is checked, and the parsed output is never asserted. Case file [`cases/onlynegative-no-throw.case.mjs`](calibration/cases/onlynegative-no-throw.case.mjs), line 2. Sources: [verify-prd-implemented test-patterns (Passes for the wrong reason; No negative/positive pair)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
+- **What decided it:** slop, needs eyes.
+  - `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.25, spread 0.70 (unstable). **Escalates:** can_fail unstable (spread 0.70). Label yes: not scored.
+  - `asserts_a` nothing · `asserts_b` nothing → asserts: nothing. **Escalates:** asserts nothing.
+  - `positive_a` · `positive_b` not recorded → positive: not recorded. **Escalates:** no positive assertion.
+  - `verdict` slop. **Escalates:** verdict slop.
+  - No escalation: `runs_a` · `runs_b` not recorded → runs: yes.
+- **Descriptive:** 15 clean · smells: `specific` (weak-assert), `name_matches` (name-mismatch), `reads_output` (asserts-input) · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-43"></a>43. <code>returns null for an unknown setting</code> · only-negative · OK</summary>
 
 ```js
 test("returns null for an unknown setting", () => {
   expect(readSetting({ theme: "dark" }, "font")).toBeNull();
 })
 ```
-
-**Known defect: only-negative.** The tool should escalate it. `can_fail` should be yes. Note: Only the absent lookup is checked, so a reader that always returns null would pass.
-
-Sources: [verify-prd-implemented test-patterns (Passes for the wrong reason; No negative/positive pair)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 1.00, spread 0.01 (stable) | matches the label |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | behaviour | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | behaviour | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | behaviour | - |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | escalates: no positive assertion |
-| `verdict` | scale: slop, weak, good, strong | strong | - |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | yes | - |
-| `named` | yes: the name states the behaviour and the expected result | yes | - |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | yes | - |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | yes | - |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **strong**.
-- Needs eyes: **yes**. Reasons: no positive assertion.
-- Expected: escalate.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-43"></a>
-
-### 43. `events are dispatched`: OK
-
-Case file: [`calibration/cases/falsifiability-empty-dispatch.case.mjs`](calibration/cases/falsifiability-empty-dispatch.case.mjs), line 2. Label group: `falsifiability`.
+- **Known defect:** only-negative. **Expected:** escalate, `can_fail` yes. Note: Only the absent lookup is checked, so a reader that always returns null would pass. Case file [`cases/onlynegative-absent-key.case.mjs`](calibration/cases/onlynegative-absent-key.case.mjs), line 2. Sources: [verify-prd-implemented test-patterns (Passes for the wrong reason; No negative/positive pair)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
+- **What decided it:** strong, needs eyes.
+  - `positive_a` · `positive_b` not recorded → positive: not recorded. **Escalates:** no positive assertion.
+  - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 1.00, spread 0.01 (stable). Label yes: match. `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `runs_a` · `runs_b` not recorded → runs: yes. `verdict` strong.
+- **Descriptive:** 18 clean · smells: none · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-44"></a>44. <code>events are dispatched</code> · passes-with-zero · OK</summary>
 
 ```js
 test("events are dispatched", () => {
@@ -2724,62 +799,15 @@ test("events are dispatched", () => {
   expect(dispatched).toBeDefined();
 })
 ```
-
-**Known defect: passes-with-zero.** The tool should escalate it. `can_fail` should be no. Note: The check only asks whether the collection is defined, so no dispatch passes.
-
-Sources: [Kent Beck, Test Desiderata](https://kentbeck.github.io/TestDesiderata/).
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.01, spread 0.01 (stable) | matches the label |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | nothing | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | shape-only | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | nothing versus shape-only | escalates: asserts unstable (nothing vs shape-only) |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | escalates: no positive assertion |
-| `verdict` | scale: slop, weak, good, strong | slop | escalates: verdict slop |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | no | flag `weak-assert` |
-| `named` | yes: the name states the behaviour and the expected result | no | flag `vague-name` |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | no | flag `name-mismatch` |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | no | flag `silent-failure` |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | no | flag `obscure` |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | no | flag `asserts-input` |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **slop**.
-- Needs eyes: **yes**. Reasons: no positive assertion; asserts unstable (nothing vs shape-only); verdict slop.
-- Expected: escalate.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-44"></a>
-
-### 44. `imports are folded`: OK
-
-Case file: [`calibration/cases/vacuous-zero.case.mjs`](calibration/cases/vacuous-zero.case.mjs), line 2. Label group: `baseline`.
+- **Known defect:** passes-with-zero. **Expected:** escalate, `can_fail` no. Note: The check only asks whether the collection is defined, so no dispatch passes. Case file [`cases/falsifiability-empty-dispatch.case.mjs`](calibration/cases/falsifiability-empty-dispatch.case.mjs), line 2. Sources: [Kent Beck, Test Desiderata](https://kentbeck.github.io/TestDesiderata/).
+- **What decided it:** slop, needs eyes.
+  - `asserts_a` nothing · `asserts_b` shape-only → asserts: nothing versus shape-only. **Escalates:** asserts unstable (nothing vs shape-only).
+  - `positive_a` · `positive_b` not recorded → positive: not recorded. **Escalates:** no positive assertion.
+  - `verdict` slop. **Escalates:** verdict slop.
+  - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.01, spread 0.01 (stable). Label no: match. `runs_a` · `runs_b` not recorded → runs: yes.
+- **Descriptive:** 12 clean · smells: `specific` (weak-assert), `named` (vague-name), `name_matches` (name-mismatch), `diagnostic` (silent-failure), `readable` (obscure), `reads_output` (asserts-input) · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-45"></a>45. <code>imports are folded</code> · passes-with-zero · OK</summary>
 
 ```js
 test("imports are folded", () => {
@@ -2787,244 +815,57 @@ test("imports are folded", () => {
   expect(commit.imports).toBeDefined();
 })
 ```
-
-**Known defect: passes-with-zero.** The tool should escalate it. `can_fail` should be no. Note: vacuous: passes when the feature produces nothing.
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.02, spread 0.07 (stable) | matches the label |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | shape-only | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | shape-only | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | shape-only | escalates: asserts shape-only |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | escalates: no positive assertion |
-| `verdict` | scale: slop, weak, good, strong | slop | escalates: verdict slop |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | no | flag `weak-assert` |
-| `named` | yes: the name states the behaviour and the expected result | yes | - |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | no | flag `name-mismatch` |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | no | flag `silent-failure` |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | no | flag `obscure` |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **slop**.
-- Needs eyes: **yes**. Reasons: no positive assertion; asserts shape-only; verdict slop.
-- Expected: escalate.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-45"></a>
-
-### 45. `parse is stable`: OK
-
-Case file: [`calibration/cases/falsifiability-self-parse.case.mjs`](calibration/cases/falsifiability-self-parse.case.mjs), line 2. Label group: `falsifiability`.
+- **Known defect:** passes-with-zero. **Expected:** escalate, `can_fail` no. Note: vacuous: passes when the feature produces nothing. Case file [`cases/vacuous-zero.case.mjs`](calibration/cases/vacuous-zero.case.mjs), line 2.
+- **What decided it:** slop, needs eyes.
+  - `asserts_a` shape-only · `asserts_b` shape-only → asserts: shape-only. **Escalates:** asserts shape-only.
+  - `positive_a` · `positive_b` not recorded → positive: not recorded. **Escalates:** no positive assertion.
+  - `verdict` slop. **Escalates:** verdict slop.
+  - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.02, spread 0.07 (stable). Label no: match. `runs_a` · `runs_b` not recorded → runs: yes.
+- **Descriptive:** 14 clean · smells: `specific` (weak-assert), `name_matches` (name-mismatch), `diagnostic` (silent-failure), `readable` (obscure) · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-46"></a>46. <code>parse is stable</code> · self-reference · OK</summary>
 
 ```js
 test("parse is stable", () => {
   expect(parse(src)).toEqual(parse(src));
 })
 ```
-
-**Known defect: self-reference.** The tool should escalate it. `can_fail` should be no. Note: Both sides call the same production function, so the comparison is true by construction.
-
-Sources: [Kent Beck, Test Desiderata](https://kentbeck.github.io/TestDesiderata/).
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.00, spread 0.01 (stable) | matches the label |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | nothing | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | nothing | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | nothing | escalates: asserts nothing |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | slop | escalates: verdict slop |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | no | flag `weak-assert` |
-| `named` | yes: the name states the behaviour and the expected result | no | flag `vague-name` |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | no | flag `name-mismatch` |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | no | flag `obscure` |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **slop**.
-- Needs eyes: **yes**. Reasons: asserts nothing; verdict slop.
-- Expected: escalate.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-46"></a>
-
-### 46. `reader round trips`: OK
-
-Case file: [`calibration/cases/tautology-selfreference.case.mjs`](calibration/cases/tautology-selfreference.case.mjs), line 2. Label group: `baseline`.
+- **Known defect:** self-reference. **Expected:** escalate, `can_fail` no. Note: Both sides call the same production function, so the comparison is true by construction. Case file [`cases/falsifiability-self-parse.case.mjs`](calibration/cases/falsifiability-self-parse.case.mjs), line 2. Sources: [Kent Beck, Test Desiderata](https://kentbeck.github.io/TestDesiderata/).
+- **What decided it:** slop, needs eyes.
+  - `asserts_a` nothing · `asserts_b` nothing → asserts: nothing. **Escalates:** asserts nothing.
+  - `verdict` slop. **Escalates:** verdict slop.
+  - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.00, spread 0.01 (stable). Label no: match. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded.
+- **Descriptive:** 14 clean · smells: `specific` (weak-assert), `named` (vague-name), `name_matches` (name-mismatch), `readable` (obscure) · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-47"></a>47. <code>reader round trips</code> · self-reference · OK</summary>
 
 ```js
 test("reader round trips", () => {
   expect(parse(source)).toEqual(parse(source));
 })
 ```
-
-**Known defect: self-reference.** The tool should escalate it. `can_fail` should be no. Note: tautology: both sides call the same production code.
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.00, spread 0.01 (stable) | matches the label |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | nothing | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | nothing | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | nothing | escalates: asserts nothing |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | slop | escalates: verdict slop |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | no | flag `uncontrolled-resource` |
-| `specific` | yes: the assertion is specific to the expected value | no | flag `weak-assert` |
-| `named` | yes: the name states the behaviour and the expected result | no | flag `vague-name` |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | no | flag `name-mismatch` |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | no | flag `obscure` |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | no | flag `asserts-input` |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **slop**.
-- Needs eyes: **yes**. Reasons: asserts nothing; verdict slop.
-- Expected: escalate.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-47"></a>
-
-### 47. `the two totals match`: OK
-
-Case file: [`calibration/cases/falsifiability-helper-agreement.case.mjs`](calibration/cases/falsifiability-helper-agreement.case.mjs), line 2. Label group: `falsifiability`.
+- **Known defect:** self-reference. **Expected:** escalate, `can_fail` no. Note: tautology: both sides call the same production code. Case file [`cases/tautology-selfreference.case.mjs`](calibration/cases/tautology-selfreference.case.mjs), line 2.
+- **What decided it:** slop, needs eyes.
+  - `asserts_a` nothing · `asserts_b` nothing → asserts: nothing. **Escalates:** asserts nothing.
+  - `verdict` slop. **Escalates:** verdict slop.
+  - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.00, spread 0.01 (stable). Label no: match. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded.
+- **Descriptive:** 12 clean · smells: `controlled` (uncontrolled-resource), `specific` (weak-assert), `named` (vague-name), `name_matches` (name-mismatch), `readable` (obscure), `reads_output` (asserts-input) · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-48"></a>48. <code>the two totals match</code> · self-reference · OK</summary>
 
 ```js
 test("the two totals match", () => {
   expect(total(rows)).toBe(total(rows));
 })
 ```
-
-**Known defect: self-reference.** The tool should escalate it. `can_fail` should be no. Note: One helper backs both sides, so any change to it moves both sides together.
-
-Sources: [Kent Beck, Test Desiderata](https://kentbeck.github.io/TestDesiderata/).
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.00, spread 0.00 (stable) | matches the label |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | nothing | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | nothing | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | nothing | escalates: asserts nothing |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | slop | escalates: verdict slop |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | no | flag `weak-assert` |
-| `named` | yes: the name states the behaviour and the expected result | yes | - |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | no | flag `name-mismatch` |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | no | flag `obscure` |
-| `magic_number` | yes: the values are named or self-explanatory | no | flag `magic-number` |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **slop**.
-- Needs eyes: **yes**. Reasons: asserts nothing; verdict slop.
-- Expected: escalate.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-48"></a>
-
-### 48. `builds three steps`: OK
-
-Case file: [`calibration/cases/asserts-result-length.case.mjs`](calibration/cases/asserts-result-length.case.mjs), line 2. Label group: `asserts`.
+- **Known defect:** self-reference. **Expected:** escalate, `can_fail` no. Note: One helper backs both sides, so any change to it moves both sides together. Case file [`cases/falsifiability-helper-agreement.case.mjs`](calibration/cases/falsifiability-helper-agreement.case.mjs), line 2. Sources: [Kent Beck, Test Desiderata](https://kentbeck.github.io/TestDesiderata/).
+- **What decided it:** slop, needs eyes.
+  - `asserts_a` nothing · `asserts_b` nothing → asserts: nothing. **Escalates:** asserts nothing.
+  - `verdict` slop. **Escalates:** verdict slop.
+  - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.00, spread 0.00 (stable). Label no: match. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded.
+- **Descriptive:** 14 clean · smells: `specific` (weak-assert), `name_matches` (name-mismatch), `readable` (obscure), `magic_number` (magic-number) · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-49"></a>49. <code>builds three steps</code> · shape-only · OK</summary>
 
 ```js
 test("builds three steps", () => {
@@ -3032,62 +873,14 @@ test("builds three steps", () => {
   expect(steps.length).toBe(3);
 })
 ```
-
-**Known defect: shape-only.** The tool should escalate it. `can_fail` should be yes. Note: A wrong count fails the test, yet the step contents are never checked.
-
-Sources: [testsmells.org, Open Catalog of Test Smells](https://testsmells.org/).
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.88, spread 0.22 (stable) | matches the label |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | shape-only | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | shape-only | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | shape-only | escalates: asserts shape-only |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | weak | escalates: verdict weak |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | no | flag `weak-assert` |
-| `named` | yes: the name states the behaviour and the expected result | yes | - |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | yes | - |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | yes | - |
-| `magic_number` | yes: the values are named or self-explanatory | no | flag `magic-number` |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **weak**.
-- Needs eyes: **yes**. Reasons: asserts shape-only; verdict weak.
-- Expected: escalate.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-49"></a>
-
-### 49. `loads the profile fields`: OK
-
-Case file: [`calibration/cases/asserts-result-keys.case.mjs`](calibration/cases/asserts-result-keys.case.mjs), line 2. Label group: `asserts`.
+- **Known defect:** shape-only. **Expected:** escalate, `can_fail` yes. Note: A wrong count fails the test, yet the step contents are never checked. Case file [`cases/asserts-result-length.case.mjs`](calibration/cases/asserts-result-length.case.mjs), line 2. Sources: [testsmells.org, Open Catalog of Test Smells](https://testsmells.org/).
+- **What decided it:** weak, needs eyes.
+  - `asserts_a` shape-only · `asserts_b` shape-only → asserts: shape-only. **Escalates:** asserts shape-only.
+  - `verdict` weak. **Escalates:** verdict weak.
+  - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.88, spread 0.22 (stable). Label yes: match. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded.
+- **Descriptive:** 16 clean · smells: `specific` (weak-assert), `magic_number` (magic-number) · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-50"></a>50. <code>loads the profile fields</code> · shape-only · OK</summary>
 
 ```js
 test("loads the profile fields", () => {
@@ -3095,62 +888,13 @@ test("loads the profile fields", () => {
   expect(Object.keys(profile)).toEqual(["name", "email", "age"]);
 })
 ```
-
-**Known defect: shape-only.** The tool should escalate it. `can_fail` should be yes. Note: The keys can change and fail the test, but the field values pass unexamined.
-
-Sources: [testsmells.org, Open Catalog of Test Smells](https://testsmells.org/).
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.97, spread 0.07 (stable) | matches the label |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | shape-only | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | shape-only | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | shape-only | escalates: asserts shape-only |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | good | - |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | no | flag `uncontrolled-resource` |
-| `specific` | yes: the assertion is specific to the expected value | yes | - |
-| `named` | yes: the name states the behaviour and the expected result | no | flag `vague-name` |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | yes | - |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | yes | - |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **good**.
-- Needs eyes: **yes**. Reasons: asserts shape-only.
-- Expected: escalate.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-50"></a>
-
-### 50. `planner returns roads`: OK
-
-Case file: [`calibration/cases/shape-not-value.case.mjs`](calibration/cases/shape-not-value.case.mjs), line 2. Label group: `baseline`.
+- **Known defect:** shape-only. **Expected:** escalate, `can_fail` yes. Note: The keys can change and fail the test, but the field values pass unexamined. Case file [`cases/asserts-result-keys.case.mjs`](calibration/cases/asserts-result-keys.case.mjs), line 2. Sources: [testsmells.org, Open Catalog of Test Smells](https://testsmells.org/).
+- **What decided it:** good, needs eyes.
+  - `asserts_a` shape-only · `asserts_b` shape-only → asserts: shape-only. **Escalates:** asserts shape-only.
+  - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.97, spread 0.07 (stable). Label yes: match. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded. `verdict` good.
+- **Descriptive:** 16 clean · smells: `controlled` (uncontrolled-resource), `named` (vague-name) · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-51"></a>51. <code>planner returns roads</code> · shape-only · OK</summary>
 
 ```js
 test("planner returns roads", () => {
@@ -3159,60 +903,15 @@ test("planner returns roads", () => {
   expect(roads.length).toBe(3);
 })
 ```
-
-**Known defect: shape-only.** The tool should escalate it. `can_fail` should be yes. Note: shape-not-value: a shape change can fail it, the content is never checked.
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.63!, spread 0.85 (unstable) | escalates: can_fail unstable (spread 0.85) |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | shape-only | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | shape-only | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | shape-only | escalates: asserts shape-only |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | weak | escalates: verdict weak |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | no | flag `weak-assert` |
-| `named` | yes: the name states the behaviour and the expected result | no | flag `vague-name` |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | no | flag `name-mismatch` |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | no | flag `obscure` |
-| `magic_number` | yes: the values are named or self-explanatory | no | flag `magic-number` |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **weak**.
-- Needs eyes: **yes**. Reasons: can_fail unstable (spread 0.85); asserts shape-only; verdict weak.
-- Expected: escalate.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-51"></a>
-
-### 51. `returns a list of routes`: OK
-
-Case file: [`calibration/cases/asserts-result-array.case.mjs`](calibration/cases/asserts-result-array.case.mjs), line 2. Label group: `asserts`.
+- **Known defect:** shape-only. **Expected:** escalate, `can_fail` yes. Note: shape-not-value: a shape change can fail it, the content is never checked. Case file [`cases/shape-not-value.case.mjs`](calibration/cases/shape-not-value.case.mjs), line 2.
+- **What decided it:** weak, needs eyes.
+  - `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.63, spread 0.85 (unstable). **Escalates:** can_fail unstable (spread 0.85). Label yes: not scored.
+  - `asserts_a` shape-only · `asserts_b` shape-only → asserts: shape-only. **Escalates:** asserts shape-only.
+  - `verdict` weak. **Escalates:** verdict weak.
+  - No escalation: `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded.
+- **Descriptive:** 13 clean · smells: `specific` (weak-assert), `named` (vague-name), `name_matches` (name-mismatch), `readable` (obscure), `magic_number` (magic-number) · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-52"></a>52. <code>returns a list of routes</code> · shape-only · OK</summary>
 
 ```js
 test("returns a list of routes", () => {
@@ -3220,430 +919,102 @@ test("returns a list of routes", () => {
   expect(Array.isArray(routes)).toBe(true);
 })
 ```
-
-**Known defect: shape-only.** The tool should escalate it. `can_fail` should be yes. Note: The array check can fail when the return type changes, but no route value is ever asserted.
-
-Sources: [testsmells.org, Open Catalog of Test Smells](https://testsmells.org/).
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.27!, spread 0.80 (unstable) | escalates: can_fail unstable (spread 0.80) |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | shape-only | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | shape-only | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | shape-only | escalates: asserts shape-only |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | slop | escalates: verdict slop |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | no | flag `weak-assert` |
-| `named` | yes: the name states the behaviour and the expected result | yes | - |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | no | flag `name-mismatch` |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | yes | - |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **slop**.
-- Needs eyes: **yes**. Reasons: can_fail unstable (spread 0.80); asserts shape-only; verdict slop.
-- Expected: escalate.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-52"></a>
-
-### 52. `handles overflow`: OK
-
-Case file: [`calibration/cases/skipped.case.mjs`](calibration/cases/skipped.case.mjs), line 2. Label group: `baseline`.
+- **Known defect:** shape-only. **Expected:** escalate, `can_fail` yes. Note: The array check can fail when the return type changes, but no route value is ever asserted. Case file [`cases/asserts-result-array.case.mjs`](calibration/cases/asserts-result-array.case.mjs), line 2. Sources: [testsmells.org, Open Catalog of Test Smells](https://testsmells.org/).
+- **What decided it:** slop, needs eyes.
+  - `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.27, spread 0.80 (unstable). **Escalates:** can_fail unstable (spread 0.80). Label yes: not scored.
+  - `asserts_a` shape-only · `asserts_b` shape-only → asserts: shape-only. **Escalates:** asserts shape-only.
+  - `verdict` slop. **Escalates:** verdict slop.
+  - No escalation: `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded.
+- **Descriptive:** 16 clean · smells: `specific` (weak-assert), `name_matches` (name-mismatch) · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-53"></a>53. <code>handles overflow</code> · skipped · OK</summary>
 
 ```js
 test.skip("handles overflow", () => {
   expect(add(Number.MAX_SAFE_INTEGER, 1)).toBe(Number.MAX_SAFE_INTEGER + 1);
 })
 ```
-
-**Known defect: skipped.** The tool should escalate it. The label sets no `can_fail` value. Note: skipped: the test never runs.
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.10, spread 0.16 (stable) | - |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | behaviour | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | behaviour | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | behaviour | - |
-| `runs` | yes: it runs | no | escalates: does not run |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | slop | escalates: verdict slop |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | yes | - |
-| `named` | yes: the name states the behaviour and the expected result | no | flag `vague-name` |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | yes | - |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | yes | - |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **slop**.
-- Needs eyes: **yes**. Reasons: does not run; verdict slop.
-- Expected: escalate.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-53"></a>
-
-### 53. `parses a dotted key`: OK
-
-Case file: [`calibration/cases/disabled-xit-key.case.mjs`](calibration/cases/disabled-xit-key.case.mjs), line 2. Label group: `naming`.
+- **Known defect:** skipped. **Expected:** escalate. Note: skipped: the test never runs. Case file [`cases/skipped.case.mjs`](calibration/cases/skipped.case.mjs), line 2.
+- **What decided it:** slop, needs eyes.
+  - `runs_a` · `runs_b` not recorded → runs: no. **Escalates:** does not run.
+  - `verdict` slop. **Escalates:** verdict slop.
+  - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.10, spread 0.16 (stable). `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `positive_a` · `positive_b` not recorded → positive: not recorded.
+- **Descriptive:** 17 clean · smells: `named` (vague-name) · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-54"></a>54. <code>parses a dotted key</code> · skipped · OK</summary>
 
 ```js
 xit("parses a dotted key", () => {
   expect(parseKey("a.b")).toEqual(["a", "b"]);
 })
 ```
-
-**Known defect: skipped.** The tool should escalate it. The label sets no `can_fail` value. Note: The test is marked xit, so it never runs.
-
-Sources: [Meszaros, xUnit Test Patterns (Obscure Test)](http://xunitpatterns.com/); [verify-prd-implemented test-patterns (Skipped / disabled / focused)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.39!, spread 0.51 (unstable) | escalates: can_fail unstable (spread 0.51) |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | behaviour | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | behaviour | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | behaviour | - |
-| `runs` | yes: it runs | no | escalates: does not run |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | slop | escalates: verdict slop |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | yes | - |
-| `named` | yes: the name states the behaviour and the expected result | yes | - |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | yes | - |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | yes | - |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **slop**.
-- Needs eyes: **yes**. Reasons: can_fail unstable (spread 0.51); does not run; verdict slop.
-- Expected: escalate.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-54"></a>
-
-### 54. `rejects a stale token`: OK
-
-Case file: [`calibration/cases/disabled-skip-token.case.mjs`](calibration/cases/disabled-skip-token.case.mjs), line 2. Label group: `naming`.
+- **Known defect:** skipped. **Expected:** escalate. Note: The test is marked xit, so it never runs. Case file [`cases/disabled-xit-key.case.mjs`](calibration/cases/disabled-xit-key.case.mjs), line 2. Sources: [Meszaros, xUnit Test Patterns (Obscure Test)](http://xunitpatterns.com/); [verify-prd-implemented test-patterns (Skipped / disabled / focused)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
+- **What decided it:** slop, needs eyes.
+  - `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.39, spread 0.51 (unstable). **Escalates:** can_fail unstable (spread 0.51).
+  - `runs_a` · `runs_b` not recorded → runs: no. **Escalates:** does not run.
+  - `verdict` slop. **Escalates:** verdict slop.
+  - No escalation: `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `positive_a` · `positive_b` not recorded → positive: not recorded.
+- **Descriptive:** 18 clean · smells: none · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-55"></a>55. <code>rejects a stale token</code> · skipped · OK</summary>
 
 ```js
 test.skip("rejects a stale token", () => {
   expect(verifyToken("expired")).toBe(false);
 })
 ```
-
-**Known defect: skipped.** The tool should escalate it. The label sets no `can_fail` value. Note: The test is marked skipped, so it never runs.
-
-Sources: [Meszaros, xUnit Test Patterns (Obscure Test)](http://xunitpatterns.com/); [verify-prd-implemented test-patterns (Skipped / disabled / focused)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.04, spread 0.08 (stable) | - |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | nothing | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | behaviour | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | nothing versus behaviour | escalates: asserts unstable (nothing vs behaviour) |
-| `runs` | yes: it runs | no | escalates: does not run |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | slop | escalates: verdict slop |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | yes | - |
-| `named` | yes: the name states the behaviour and the expected result | yes | - |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | yes | - |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | yes | - |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **slop**.
-- Needs eyes: **yes**. Reasons: does not run; asserts unstable (nothing vs behaviour); verdict slop.
-- Expected: escalate.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-55"></a>
-
-### 55. `the build is green`: OK
-
-Case file: [`calibration/cases/falsifiability-constant-truth.case.mjs`](calibration/cases/falsifiability-constant-truth.case.mjs), line 2. Label group: `falsifiability`.
+- **Known defect:** skipped. **Expected:** escalate. Note: The test is marked skipped, so it never runs. Case file [`cases/disabled-skip-token.case.mjs`](calibration/cases/disabled-skip-token.case.mjs), line 2. Sources: [Meszaros, xUnit Test Patterns (Obscure Test)](http://xunitpatterns.com/); [verify-prd-implemented test-patterns (Skipped / disabled / focused)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
+- **What decided it:** slop, needs eyes.
+  - `asserts_a` nothing · `asserts_b` behaviour → asserts: nothing versus behaviour. **Escalates:** asserts unstable (nothing vs behaviour).
+  - `runs_a` · `runs_b` not recorded → runs: no. **Escalates:** does not run.
+  - `verdict` slop. **Escalates:** verdict slop.
+  - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.04, spread 0.08 (stable). `positive_a` · `positive_b` not recorded → positive: not recorded.
+- **Descriptive:** 18 clean · smells: none · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-56"></a>56. <code>the build is green</code> · tautology · OK</summary>
 
 ```js
 test("the build is green", () => {
   expect(true).toBe(true);
 })
 ```
-
-**Known defect: tautology.** The tool should escalate it. `can_fail` should be no. Note: The assertion holds for every build, so breaking the code cannot fail it.
-
-Sources: [Kent Beck, Test Desiderata](https://kentbeck.github.io/TestDesiderata/).
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.00, spread 0.00 (stable) | matches the label |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | nothing | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | nothing | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | nothing | escalates: asserts nothing |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | slop | escalates: verdict slop |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | no | flag `weak-assert` |
-| `named` | yes: the name states the behaviour and the expected result | no | flag `vague-name` |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | no | flag `name-mismatch` |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | yes | - |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | no | flag `asserts-input` |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **slop**.
-- Needs eyes: **yes**. Reasons: asserts nothing; verdict slop.
-- Expected: escalate.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-56"></a>
-
-### 56. `the world is sane`: OK
-
-Case file: [`calibration/cases/tautology-constant.case.mjs`](calibration/cases/tautology-constant.case.mjs), line 2. Label group: `baseline`.
+- **Known defect:** tautology. **Expected:** escalate, `can_fail` no. Note: The assertion holds for every build, so breaking the code cannot fail it. Case file [`cases/falsifiability-constant-truth.case.mjs`](calibration/cases/falsifiability-constant-truth.case.mjs), line 2. Sources: [Kent Beck, Test Desiderata](https://kentbeck.github.io/TestDesiderata/).
+- **What decided it:** slop, needs eyes.
+  - `asserts_a` nothing · `asserts_b` nothing → asserts: nothing. **Escalates:** asserts nothing.
+  - `verdict` slop. **Escalates:** verdict slop.
+  - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.00, spread 0.00 (stable). Label no: match. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded.
+- **Descriptive:** 14 clean · smells: `specific` (weak-assert), `named` (vague-name), `name_matches` (name-mismatch), `reads_output` (asserts-input) · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-57"></a>57. <code>the world is sane</code> · tautology · OK</summary>
 
 ```js
 test("the world is sane", () => {
   expect(true).toBe(true);
 })
 ```
-
-**Known defect: tautology.** The tool should escalate it. `can_fail` should be no. Note: tautology: true === true.
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.00, spread 0.00 (stable) | matches the label |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | nothing | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | nothing | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | nothing | escalates: asserts nothing |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | slop | escalates: verdict slop |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | no | flag `implementation-coupled` |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | no | flag `weak-assert` |
-| `named` | yes: the name states the behaviour and the expected result | no | flag `vague-name` |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | no | flag `name-mismatch` |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | yes | - |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | no | flag `asserts-input` |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **slop**.
-- Needs eyes: **yes**. Reasons: asserts nothing; verdict slop.
-- Expected: escalate.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-57"></a>
-
-### 57. `the queue is not negative`: OK
-
-Case file: [`calibration/cases/falsifiability-count-nonnegative.case.mjs`](calibration/cases/falsifiability-count-nonnegative.case.mjs), line 2. Label group: `falsifiability`.
+- **Known defect:** tautology. **Expected:** escalate, `can_fail` no. Note: tautology: true === true. Case file [`cases/tautology-constant.case.mjs`](calibration/cases/tautology-constant.case.mjs), line 2.
+- **What decided it:** slop, needs eyes.
+  - `asserts_a` nothing · `asserts_b` nothing → asserts: nothing. **Escalates:** asserts nothing.
+  - `verdict` slop. **Escalates:** verdict slop.
+  - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.00, spread 0.00 (stable). Label no: match. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded.
+- **Descriptive:** 13 clean · smells: `observable` (implementation-coupled), `specific` (weak-assert), `named` (vague-name), `name_matches` (name-mismatch), `reads_output` (asserts-input) · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-58"></a>58. <code>the queue is not negative</code> · vacuous · OK</summary>
 
 ```js
 test("the queue is not negative", () => {
   expect(queue.length).toBeGreaterThanOrEqual(0);
 })
 ```
-
-**Known defect: vacuous.** The tool should escalate it. `can_fail` should be no. Note: A length is never negative, so the bound is always true.
-
-Sources: [Kent Beck, Test Desiderata](https://kentbeck.github.io/TestDesiderata/).
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.03, spread 0.02 (stable) | matches the label |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | shape-only | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | shape-only | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | shape-only | escalates: asserts shape-only |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | escalates: no positive assertion |
-| `verdict` | scale: slop, weak, good, strong | slop | escalates: verdict slop |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | no | flag `weak-assert` |
-| `named` | yes: the name states the behaviour and the expected result | yes | - |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | yes | - |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | no | flag `obscure` |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **slop**.
-- Needs eyes: **yes**. Reasons: no positive assertion; asserts shape-only; verdict slop.
-- Expected: escalate.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-58"></a>
-
-### 58. `the summary is produced`: OK
-
-Case file: [`calibration/cases/falsifiability-aggregate-exists.case.mjs`](calibration/cases/falsifiability-aggregate-exists.case.mjs), line 2. Label group: `falsifiability`.
+- **Known defect:** vacuous. **Expected:** escalate, `can_fail` no. Note: A length is never negative, so the bound is always true. Case file [`cases/falsifiability-count-nonnegative.case.mjs`](calibration/cases/falsifiability-count-nonnegative.case.mjs), line 2. Sources: [Kent Beck, Test Desiderata](https://kentbeck.github.io/TestDesiderata/).
+- **What decided it:** slop, needs eyes.
+  - `asserts_a` shape-only · `asserts_b` shape-only → asserts: shape-only. **Escalates:** asserts shape-only.
+  - `positive_a` · `positive_b` not recorded → positive: not recorded. **Escalates:** no positive assertion.
+  - `verdict` slop. **Escalates:** verdict slop.
+  - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.03, spread 0.02 (stable). Label no: match. `runs_a` · `runs_b` not recorded → runs: yes.
+- **Descriptive:** 16 clean · smells: `specific` (weak-assert), `readable` (obscure) · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-59"></a>59. <code>the summary is produced</code> · vacuous · OK</summary>
 
 ```js
 test("the summary is produced", () => {
@@ -3651,62 +1022,15 @@ test("the summary is produced", () => {
   expect(summary.totals).toBeDefined();
 })
 ```
-
-**Known defect: vacuous.** The tool should escalate it. `can_fail` should be no. Note: The aggregate exists, but no value inside it is ever read.
-
-Sources: [Kent Beck, Test Desiderata](https://kentbeck.github.io/TestDesiderata/).
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.16!, spread 0.44 (borderline) | escalates: can_fail borderline (spread 0.44) |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | shape-only | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | shape-only | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | shape-only | escalates: asserts shape-only |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | slop | escalates: verdict slop |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | no | flag `weak-assert` |
-| `named` | yes: the name states the behaviour and the expected result | no | flag `vague-name` |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | no | flag `name-mismatch` |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | no | flag `obscure` |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **slop**.
-- Needs eyes: **yes**. Reasons: can_fail borderline (spread 0.44); asserts shape-only; verdict slop.
-- Expected: escalate.
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-59"></a>
-
-### 59. `builds a job with the given name`: OK
-
-Case file: [`calibration/cases/wrongreason-passthrough-argument.case.mjs`](calibration/cases/wrongreason-passthrough-argument.case.mjs), line 2. Label group: `wrongreason`.
+- **Known defect:** vacuous. **Expected:** escalate, `can_fail` no. Note: The aggregate exists, but no value inside it is ever read. Case file [`cases/falsifiability-aggregate-exists.case.mjs`](calibration/cases/falsifiability-aggregate-exists.case.mjs), line 2. Sources: [Kent Beck, Test Desiderata](https://kentbeck.github.io/TestDesiderata/).
+- **What decided it:** slop, needs eyes.
+  - `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.16, spread 0.44 (borderline). **Escalates:** can_fail borderline (spread 0.44). Label no: not scored.
+  - `asserts_a` shape-only · `asserts_b` shape-only → asserts: shape-only. **Escalates:** asserts shape-only.
+  - `verdict` slop. **Escalates:** verdict slop.
+  - No escalation: `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded.
+- **Descriptive:** 14 clean · smells: `specific` (weak-assert), `named` (vague-name), `name_matches` (name-mismatch), `readable` (obscure) · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-60"></a>60. <code>builds a job with the given name</code> · wrong-reason · OK</summary>
 
 ```js
 test("builds a job with the given name", () => {
@@ -3714,126 +1038,19 @@ test("builds a job with the given name", () => {
   expect(job.name).toBe("nightly");
 })
 ```
-
-**Known defect: wrong-reason.** The label does not say if the tool should escalate it. `can_fail` should be yes. Note: The asserted field is copied from the argument, so a stub that only copies would pass. Only the mutation check proves this, so escalation is welcome but not required.
-
-Sources: [verify-prd-implemented test-patterns (Passes for the wrong reason; No negative/positive pair)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 1.00, spread 0.01 (stable) | matches the label |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | behaviour | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | behaviour | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | behaviour | - |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | strong | - |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | yes | - |
-| `named` | yes: the name states the behaviour and the expected result | yes | - |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | yes | - |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | yes | - |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **strong**.
-- Needs eyes: **no**.
-- Expected: either (the label does not say).
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-60"></a>
-
-### 60. `normalise keeps the title text`: WRONG can_fail
-
-Case file: [`calibration/cases/wrongreason-asserts-input.case.mjs`](calibration/cases/wrongreason-asserts-input.case.mjs), line 2. Label group: `wrongreason`.
+Code under test, [`cases/wrongreason-passthrough-argument.code.mjs`](calibration/cases/wrongreason-passthrough-argument.code.mjs):
 
 ```js
-test("normalise keeps the title text", () => {
-  const input = { title: "  hello  " };
-  normalise(input);
-  expect(input.title).toBe("  hello  ");
-})
+export function buildJob({ name, steps }) {
+  return { name, steps, status: "queued", createdAt: Date.now() };
+}
 ```
-
-**Known defect: wrong-reason.** The tool should escalate it. `can_fail` should be yes. Note: The assertion holds because it reads the input object, not the value the code returned.
-
-Sources: [verify-prd-implemented test-patterns (Passes for the wrong reason; No negative/positive pair)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
-
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.05, spread 0.05 (stable) | **WRONG**: the label says yes |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | hardcoded-data | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | hardcoded-data | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | hardcoded-data | escalates: asserts hardcoded-data |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | slop | escalates: verdict slop |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | yes | - |
-| `named` | yes: the name states the behaviour and the expected result | yes | - |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | no | flag `name-mismatch` |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | no | flag `structure-dependent` |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | yes | - |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | no | flag `asserts-input` |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **slop**.
-- Needs eyes: **yes**. Reasons: asserts hardcoded-data; verdict slop.
-- Expected: escalate.
-- Status: **WRONG can_fail**, the tool committed to the wrong can_fail value.
-
-<a id="case-61"></a>
-
-### 61. `reports no booking for a free slot`: OK
-
-Case file: [`calibration/cases/wrongreason-absent-record.case.mjs`](calibration/cases/wrongreason-absent-record.case.mjs), line 2. Label group: `wrongreason`.
+- **Known defect:** wrong-reason. **Expected:** escalate or pass, `can_fail` yes. Note: The asserted field is copied from the argument, so a stub that only copies would pass. Only the mutation check proves this, so escalation is welcome but not required. Case file [`cases/wrongreason-passthrough-argument.case.mjs`](calibration/cases/wrongreason-passthrough-argument.case.mjs), line 2. Sources: [verify-prd-implemented test-patterns (Passes for the wrong reason; No negative/positive pair)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
+- **What decided it:** strong, passes.
+  - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 1.00, spread 0.01 (stable). Label yes: match. `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded. `verdict` strong.
+- **Descriptive:** 18 clean · smells: none · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-61"></a>61. <code>reports no booking for a free slot</code> · wrong-reason · OK</summary>
 
 ```js
 test("reports no booking for a free slot", () => {
@@ -3841,62 +1058,29 @@ test("reports no booking for a free slot", () => {
   expect(calendar.bookingAt("2026-11-01T09:00")).toBeNull();
 })
 ```
+Code under test, [`cases/wrongreason-absent-record.code.mjs`](calibration/cases/wrongreason-absent-record.code.mjs):
 
-**Known defect: wrong-reason.** The label does not say if the tool should escalate it. `can_fail` should be yes. Note: The lookup is empty only because the fixture never creates the booking it queries. Only the mutation check proves this, so escalation is welcome but not required.
+```js
+export class Calendar {
+  #bookings = new Map();
 
-Sources: [verify-prd-implemented test-patterns (Passes for the wrong reason; No negative/positive pair)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
+  book(slot, who) {
+    if (this.#bookings.has(slot)) throw new Error(`${slot} is taken`);
+    this.#bookings.set(slot, { slot, who });
+  }
 
-**Verdict-carrying questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.97, spread 0.06 (stable) | matches the label |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | behaviour | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | behaviour | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | behaviour | - |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | escalates: no positive assertion |
-| `verdict` | scale: slop, weak, good, strong | good | - |
-
-**Descriptive questions**
-
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | yes | - |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | yes | - |
-| `named` | yes: the name states the behaviour and the expected result | yes | - |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | yes | - |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | yes | - |
-| `diagnostic` | yes: the failure names the assertion and the expected value | yes | - |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | yes | - |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | yes | - |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | yes | - |
-
-**Outcome**
-
-- Verdict: **good**.
-- Needs eyes: **yes**. Reasons: no positive assertion.
-- Expected: either (the label does not say).
-- Status: **OK**, the outcome matches the label.
-
-<a id="case-62"></a>
-
-### 62. `saves the user`: OK
-
-Case file: [`calibration/cases/wrong-reason-mock.case.mjs`](calibration/cases/wrong-reason-mock.case.mjs), line 2. Label group: `baseline`.
+  bookingAt(slot) {
+    return this.#bookings.get(slot) ?? null;
+  }
+}
+```
+- **Known defect:** wrong-reason. **Expected:** escalate or pass, `can_fail` yes. Note: The lookup is empty only because the fixture never creates the booking it queries. Only the mutation check proves this, so escalation is welcome but not required. Case file [`cases/wrongreason-absent-record.case.mjs`](calibration/cases/wrongreason-absent-record.case.mjs), line 2. Sources: [verify-prd-implemented test-patterns (Passes for the wrong reason; No negative/positive pair)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
+- **What decided it:** good, needs eyes.
+  - `positive_a` · `positive_b` not recorded → positive: not recorded. **Escalates:** no positive assertion.
+  - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.97, spread 0.06 (stable). Label yes: match. `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `runs_a` · `runs_b` not recorded → runs: yes. `verdict` good.
+- **Descriptive:** 18 clean · smells: none · unanswered: none · `type` not recorded.
+</details>
+<details><summary><a id="case-62"></a>62. <code>saves the user</code> · wrong-reason · OK</summary>
 
 ```js
 test("saves the user", () => {
@@ -3905,51 +1089,78 @@ test("saves the user", () => {
   expect(spy).toHaveBeenCalled();
 })
 ```
+Code under test, [`cases/wrong-reason-mock.code.mjs`](calibration/cases/wrong-reason-mock.code.mjs):
 
-**Known defect: wrong-reason.** The tool should escalate it. `can_fail` should be yes. Note: passes for the wrong reason: only the mock call is checked.
+```js
+import { saveUser } from "./store.mjs";
 
-**Verdict-carrying questions**
+export function save(user) {
+  if (!user.email) throw new Error("a user needs an email");
+  return saveUser({ ...user, email: user.email.toLowerCase() });
+}
+```
+- **Known defect:** wrong-reason. **Expected:** escalate, `can_fail` yes. Note: passes for the wrong reason: only the mock call is checked. Case file [`cases/wrong-reason-mock.case.mjs`](calibration/cases/wrong-reason-mock.case.mjs), line 2.
+- **What decided it:** slop, needs eyes.
+  - `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.47, spread 0.59 (unstable). **Escalates:** can_fail unstable (spread 0.59). Label yes: not scored.
+  - `asserts_a` interaction-only · `asserts_b` interaction-only → asserts: interaction-only. **Escalates:** asserts interaction-only.
+  - `verdict` slop. **Escalates:** verdict slop.
+  - No escalation: `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded.
+- **Descriptive:** 10 clean · smells: `observable` (implementation-coupled), `specific` (weak-assert), `name_matches` (name-mismatch), `resilient` (structure-dependent), `diagnostic` (silent-failure), `readable` (obscure), `reads_output` (asserts-input), `restores` (state-leak) · unanswered: none · `type` not recorded.
+</details>
 
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `can_fail_a` | yes: a change to the code under test can make it fail | not recorded | - |
-| `can_fail_b` | yes: it passes even when the behaviour is broken | not recorded | - |
-| `can_fail_c` | yes: the assertion can catch a regression in the behaviour | not recorded | - |
-| *can_fail* | the mean probability that the test can fail, over the 3 phrasings, and their spread | mean 0.47!, spread 0.59 (unstable) | escalates: can_fail unstable (spread 0.59) |
-| `asserts_a` | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing | interaction-only | - |
-| `asserts_b` | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour | interaction-only | - |
-| *asserts* | `asserts_a` and `asserts_b` agree on `behaviour` | interaction-only | escalates: asserts interaction-only |
-| `runs` | yes: it runs | yes | - |
-| `positive` | yes: it asserts the positive case | not recorded | - |
-| `verdict` | scale: slop, weak, good, strong | slop | escalates: verdict slop |
+## Legend
 
-**Descriptive questions**
+- **Case**: one labelled test in `calibration/cases/`. Its label in `calibration/labels/` states the known defect and the expected outcome.
+- **Escalate**: the tool sends the test to a human, so the test **needs eyes**. Each reason says why. A test with no reason **passes**.
+- **can_fail**: the probability that a change to the code under test can make the test fail. The tool asks it in 3 phrasings and takes the mean. The **spread** is the highest value minus the lowest. A spread above `TEST_AUDIT_STABLE_BAND` makes the value borderline or unstable, and the test escalates.
+- **Twin pair**: `runs` (`runs_a`, `runs_b`) and `positive` (`positive_a`, `positive_b`). The tool asks each twice. The value counts only when both phrasings agree. A "no" escalates.
+- **Negated phrasing**: `can_fail_b`, `runs_b`, `positive_b` ask the opposite, so their "no" is the good answer.
+- **asserts**: what the assertion checks. Only `behaviour` is a real guard. `asserts_a` and `asserts_b` list the options in opposite order, and must agree.
+- **verdict**: a score from 0 (slop) to 3 (strong). A verdict of weak or lower escalates.
+- **Descriptive question**: a "no" is a **smell**. It raises the flag in brackets. It does not escalate the test.
+- **Number in brackets**: for a yes/no question, the probability of yes. For a choice, the probability of the chosen option. For the verdict, the score.
+- **not recorded**: the run did not record the value. **unanswered**: the endpoint gave no answer. **untrusted**: the answer has a `mass` below `TEST_AUDIT_MIN_MASS`. **not scored**: the tool did not commit to a can_fail value, so the agreement does not count the case.
+- **Status** of a case:
+  - **OK**: the outcome matches the label.
+  - **SILENT pass**: a defect case did not escalate. Acceptance fails.
+  - **MIXED not routed**: a mixed case did not escalate. Acceptance fails.
+  - **FALSE positive**: a case that should pass escalated.
+  - **WRONG can_fail**: the tool committed to the wrong can_fail value.
+  - **NO ANSWER**: the endpoint gave no trusted answer. Acceptance fails.
+  - **NO TEST**: the case file holds no test with this name. Acceptance fails.
 
-| Question | Checks | Answer | Effect |
-| --- | --- | --- | --- |
-| `type` | one of: unit, integration, regression, e2e, smoke, characterization | not recorded | - |
-| `observable` | yes: it checks behaviour a caller could observe | no | flag `implementation-coupled` |
-| `conditional` | yes: the assertion always runs | yes | - |
-| `isolated` | yes: it is independent of other tests and of run order | yes | - |
-| `controlled` | yes: its inputs and resources are controlled | yes | - |
-| `specific` | yes: the assertion is specific to the expected value | no | flag `weak-assert` |
-| `named` | yes: the name states the behaviour and the expected result | yes | - |
-| `deterministic` | yes: it gives the same result every run | yes | - |
-| `one_thing` | yes: it checks one behaviour | yes | - |
-| `name_matches` | yes: the body asserts the behaviour the name promises | no | flag `name-mismatch` |
-| `resilient` | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green | no | flag `structure-dependent` |
-| `diagnostic` | yes: the failure names the assertion and the expected value | no | flag `silent-failure` |
-| `fixture` | yes: it builds only the data it needs | yes | - |
-| `fast` | yes: it runs fast | yes | - |
-| `readable` | yes: the test reads clearly on its own | no | flag `obscure` |
-| `magic_number` | yes: the values are named or self-explanatory | yes | - |
-| `reads_output` | yes: it asserts the returned or observed output | no | flag `asserts-input` |
-| `automated` | yes: it is self-checking and unattended | yes | - |
-| `restores` | yes: it clears or restores what it changes | no | flag `state-leak` |
+### Questions
 
-**Outcome**
+The tool asks each test these questions in one call.
 
-- Verdict: **slop**.
-- Needs eyes: **yes**. Reasons: can_fail unstable (spread 0.59); asserts interaction-only; verdict slop.
-- Expected: escalate.
-- Status: **OK**, the outcome matches the label.
+| Question | Asks | Answer |
+| --- | --- | --- |
+| `can_fail_a` | Could you make this test fail by changing only the code under test? | yes: a change to the code under test can make it fail |
+| `can_fail_b` | Does this test pass regardless of whether the code under test is correct? | yes: it passes even when the behaviour is broken |
+| `can_fail_c` | If the behaviour this test exercises regresses, will the test fail? | yes: the assertion can catch a regression in the behaviour |
+| `asserts_a` | What does this test actually assert about the code under test? | one of: behaviour, hardcoded-data, shape-only, interaction-only, nothing |
+| `asserts_b` | What does the test's assertion actually check? | one of: nothing, interaction-only, shape-only, hardcoded-data, behaviour |
+| `positive_a` | Does this test assert at least one output that the code under test must produce? | yes: it asserts an output that must be present |
+| `positive_b` | Do all the assertions in this test check only that something is absent, empty, or did not throw? | yes: it asserts only an absence, an empty result, or a non-throw |
+| `runs_a` | Is this test free of markers that change whether it runs? Check the test, each describe around it, and the other tests in the file. | yes: no skip, todo, only, or focus marker affects it |
+| `runs_b` | Is there a skip, todo, only, or focus marker on this test or on a describe around it, or an only or focus marker on another test in the file? | yes: a marker changes whether it runs |
+| `type` | What type of test is this? | one of: unit, integration, regression, e2e, smoke, characterization |
+| `observable` | Does this test assert observable behaviour of the code under test, rather than private internals or internal call order? | yes: it checks behaviour a caller could observe |
+| `conditional` | Does this test assert unconditionally, with no branch, loop, or catch that can leave the assertion unrun? | yes: the assertion always runs |
+| `isolated` | Does this test pass on its own and in any order, with no reliance on shared mutable state or another test? | yes: it is independent of other tests and of run order |
+| `controlled` | Does the test control the external resources it needs, such as time, the network, the filesystem, or the environment, rather than assume they are present? | yes: its inputs and resources are controlled |
+| `specific` | Does the test use the most specific assertion that would catch the failure, rather than a weaker one that would also pass on wrong output? | yes: the assertion is specific to the expected value |
+| `named` | Does the test's name state the behaviour and its expected result, rather than a vague label such as works, test1, or should be fine? | yes: the name states the behaviour and the expected result |
+| `deterministic` | Does this test give the same result on every run, with no reliance on time, order, the network, or a sleep? | yes: it gives the same result every run |
+| `one_thing` | Does this test check one behaviour, rather than several unrelated behaviours at once? | yes: it checks one behaviour |
+| `name_matches` | Does the test body assert the behaviour its name states? | yes: the body asserts the behaviour the name promises |
+| `resilient` | Would this test stay green through a refactor of the code under test that keeps the same behaviour? | yes: the test checks behaviour, so a behaviour-preserving refactor keeps it green |
+| `diagnostic` | When this test fails, does it say which assertion failed and what was expected? | yes: the failure names the assertion and the expected value |
+| `fixture` | Does the test build only the data it needs, rather than a large shared fixture or values unrelated to the behaviour? | yes: it builds only the data it needs |
+| `fast` | Does the test run fast, with no sleep, no heavy I/O, and no large computation? | yes: it runs fast |
+| `readable` | Can a reader tell what this test does and why, without opening the code under test? | yes: the test reads clearly on its own |
+| `magic_number` | Does the assertion name its values, rather than use a bare number or string the reader must decode? | yes: the values are named or self-explanatory |
+| `reads_output` | Does the assertion read the value the code under test produced, rather than its own input, its setup, or only that no error was thrown? | yes: it asserts the returned or observed output |
+| `automated` | Does this test reach a pass or fail with no person doing or reading anything? | yes: it is self-checking and unattended |
+| `restores` | Does the test restore every global, environment variable, timer, and spy that it changes, so it leaves nothing for the next test? | yes: it clears or restores what it changes |
+| `verdict` | Overall, is this test a real guard against the behaviour it names? Weigh whether it can fail, what it asserts, and every smell the earlier questions name. It is a real guard only if it can fail when that behaviour breaks. | scale: slop, weak, good, strong |
