@@ -3,9 +3,12 @@
 
 import { eyesResults, location, pad, plural, rowCells, summary } from "./format.mjs";
 
+/** @typedef {import("../types.d.ts").AuditResult} AuditResult */
+/** @typedef {import("../types.d.ts").AuditUsage} AuditUsage */
+
 /**
- * @param {any[]} results
- * @param {{ ref?: string, model?: string, usage?: { calls: number, tokens: number } }} [meta]
+ * @param {AuditResult[]} results
+ * @param {{ ref?: string, model?: string, usage?: AuditUsage }} [meta]
  */
 export function formatText(results, meta = {}) {
   const lines = [];

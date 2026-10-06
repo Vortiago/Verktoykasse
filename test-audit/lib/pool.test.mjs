@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import { mapPool } from "./pool.mjs";
 
 test("mapPool preserves input order", async () => {
+  /** @param {number} item */
   const slowFirst = (item) => new Promise((resolve) => setTimeout(() => resolve(item * 2), item === 1 ? 20 : 1));
   assert.deepEqual(await mapPool([1, 2, 3, 4], 2, slowFirst), [2, 4, 6, 8]);
 });

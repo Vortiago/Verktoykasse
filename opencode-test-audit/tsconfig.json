@@ -1,5 +1,5 @@
 {
-  "//": "Type gate for the plugin. `node tools/check.mjs` (or `tsc --noEmit`) is the whole gate — no emit, no build. allowJs lets index.ts import the core `.mjs` modules, which stay unchecked by design (they import node:* and carry no @types/node).",
+  "//": "Type gate for the plugin. `node tools/check.mjs` (or `tsc --noEmit`) is the whole gate — no emit, no build. allowJs lets index.ts import the core `.mjs` modules and read their JSDoc types. This gate does not check those modules (no checkJs): test-audit's own gate does.",
   "compilerOptions": {
     "target": "ES2022",
     "lib": ["ES2023"],

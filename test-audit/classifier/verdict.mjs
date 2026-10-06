@@ -6,14 +6,19 @@ import { trusted } from "./systemone.mjs";
 import { ASSERT_PASS, CAN_FAIL_KEYS, CAN_FAIL_NEGATED, DESCRIPTIVE_KEYS, ESCALATE_ON_FALSE, FLAG_BY_GATE, VERDICTS } from "./battery.mjs";
 import config from "../config.mjs";
 
+/** @typedef {import("../types.d.ts").AuditTest} AuditTest */
+/** @typedef {import("../types.d.ts").AuditAnswer} AuditAnswer */
+/** @typedef {import("../types.d.ts").AuditResult} AuditResult */
+
 /** Verdicts at or below this level escalate. */
 const WEAK = VERDICTS.indexOf("weak");
 
 /**
  * Reduce one test's answers to a verdict.
- * @param {{ file: string, line: number, name: string, path: string[], flags?: string[] }} test
- * @param {Record<string, any>} answers
+ * @param {AuditTest} test
+ * @param {Record<string, AuditAnswer>} answers
  * @param {{ error?: string }} [opts]
+ * @returns {AuditResult}
  */
 export function verdictFrom(test, answers, opts = {}) {
   const values = CAN_FAIL_KEYS.map((key) => canFailValue(key, answers[key]));
@@ -80,7 +85,10 @@ export function verdictFrom(test, answers, opts = {}) {
   };
 }
 
-/** P(can fail) from one phrasing, or null when the answer is not trusted. */
+/**
+ * P(can fail) from one phrasing, or null when the answer is not trusted.
+ * @param {string} key @param {AuditAnswer | undefined} answer
+ */
 function canFailValue(key, answer) {
   const value = field(answer, "noul", "number");
   if (value === undefined) return null;
@@ -97,6 +105,7 @@ function canFailStateOf(present, spread, band) {
 
 /**
  * The reasons a test escalates to a human. An empty list is the only pass.
+ * @param {{ error: string | undefined, answered: boolean, canFailUnstable: boolean, canFailState: string, canFailMean: number | null, spread: number | null, assertsTrusted: boolean, assertsA: string | undefined, assertsB: string | undefined, asserts: string | undefined, gates: Record<string, boolean | undefined>, verdictIndex: number | undefined }} input
  * @returns {string[]}
  */
 function escalate({ error, answered, canFailUnstable, canFailState, canFailMean, spread, assertsTrusted, assertsA, assertsB, asserts, gates, verdictIndex }) {
@@ -129,14 +138,16 @@ function escalate({ error, answered, canFailUnstable, canFailState, canFailMean,
 /**
  * One trusted field of an answer, or undefined when the answer is missing,
  * below the mass floor, or of the wrong type.
- * @param {any} answer @param {string} key @param {"string" | "number"} kind
+ * @template {"string" | "number"} Kind
+ * @param {any} answer @param {string} key @param {Kind} kind
+ * @returns {(Kind extends "string" ? string : number) | undefined}
  */
 function field(answer, key, kind) {
   if (!trusted(answer) || typeof answer[key] !== kind) return undefined;
   return answer[key];
 }
 
-/** @param {any} answer @returns {number | undefined} */
+/** @param {AuditAnswer | undefined} answer @returns {number | undefined} */
 function scoreOf(answer) {
   const score = field(answer, "score", "number");
   return Number.isFinite(score) ? score : undefined;
@@ -154,7 +165,7 @@ function verdictIndexOf(score) {
   return Math.round(score);
 }
 
-/** @param {any} answer @returns {boolean | undefined} */
+/** @param {AuditAnswer | undefined} answer @returns {boolean | undefined} */
 function boolOf(answer) {
   const value = field(answer, "noul", "number");
   return value === undefined ? undefined : value >= 0.5;

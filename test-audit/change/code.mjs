@@ -17,7 +17,7 @@ const REGEX_PUNCTUATION = "(,=:[!&|?{};+-*%^~<>";
  */
 export function codeOnly(text) {
   let out = "";
-  /** @type {Array<{ type: string, quote?: string, inClass?: boolean, depth?: number }>} */
+  /** @type {Array<{ type: "string", quote: string } | { type: "template" } | { type: "regex", inClass: boolean } | { type: "interp", depth: number }>} */
   const stack = [];
   const top = () => stack[stack.length - 1];
   let i = 0;

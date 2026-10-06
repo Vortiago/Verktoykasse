@@ -8,7 +8,10 @@ import { formatMarkdown } from "./markdown.mjs";
 export { formatText, formatMarkdown };
 export { canFailText, escapeCell, pad } from "./format.mjs";
 
-/** Exit 1 when any test escalates. A slop or weak verdict always escalates. */
+/** @typedef {import("../types.d.ts").AuditResult} AuditResult */
+/** @typedef {import("../types.d.ts").AuditUsage} AuditUsage */
+
+/** Exit 1 when any test escalates. A slop or weak verdict always escalates. @param {AuditResult[]} results */
 export function exitCode(results) {
   return eyesResults(results).length ? 1 : 0;
 }
@@ -17,7 +20,7 @@ export function exitCode(results) {
  * The report for one audit, in one of the three faces. An empty change reads the
  * same in the text and markdown faces; the json face always emits a record, so a
  * script that parses it never meets prose.
- * @param {{ results: any[], ref?: string, model?: string, usage?: object }} audit
+ * @param {{ results: AuditResult[], ref?: string, model?: string, usage?: AuditUsage }} audit
  * @param {{ format?: "text" | "json" | "markdown" }} [opts]
  */
 export function formatAudit(audit, opts = {}) {

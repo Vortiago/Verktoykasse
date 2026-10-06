@@ -8,10 +8,13 @@ import { classify, usageMeter } from "./classifier/index.mjs";
 import { mapPool } from "./lib/pool.mjs";
 import config from "./config.mjs";
 
+/** @typedef {import("./types.d.ts").AuditResult} AuditResult */
+/** @typedef {import("./types.d.ts").AuditUsage} AuditUsage */
+
 /**
  * @param {{ base?: string, head?: string, staged?: boolean, files?: string[] }} [args]
  * @param {{ cwd?: string, url?: string, model?: string }} [opts]
- * @returns {Promise<{ results: any[], ref: string, model: string, usage: { calls: number, tokens: number } }>}
+ * @returns {Promise<{ results: AuditResult[], ref: string, model: string, usage: AuditUsage }>}
  */
 export async function runAudit(args = {}, opts = {}) {
   const url = opts.url ?? config.baseUrl;

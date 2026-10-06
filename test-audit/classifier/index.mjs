@@ -12,12 +12,20 @@ import config from "../config.mjs";
 export { usageMeter } from "./systemone.mjs";
 export { DESCRIPTIVE_KEYS, VERDICTS } from "./battery.mjs";
 
+/** @typedef {import("../types.d.ts").AuditTest} AuditTest */
+/** @typedef {import("../types.d.ts").AuditAnswer} AuditAnswer */
+/** @typedef {import("./systemone.mjs").Question} Question */
+/**
+ * The transport `classify` calls: `systemone.ask` unless a test injects its own.
+ * @typedef {(state: string, questions: Record<string, Question>, opts: { url?: string, model?: string, timeoutMs?: number, onResponse?: (json: object) => void }) => Promise<Record<string, AuditAnswer>>} Ask
+ */
+
 /**
  * The per-test state. The shared rubric comes first, so a truncation never drops
  * the definitions; then the test record, then the change context. The test JSON
  * is capped to leave room, and the source sits early in it so a hard test still
  * shows the assertion.
- * @param {{ file: string, line: number, name: string, path: string[], source: string, fixtures: string[], imports: string[] }} test
+ * @param {AuditTest} test
  * @param {string} [changeContext]
  * @param {number} [cap]
  */
@@ -43,12 +51,13 @@ export function buildState(test, changeContext = "", cap = config.stateCap) {
 
 /**
  * Ask the battery once and reduce the answers to a verdict.
- * @param {object} test
- * @param {{ ask?: Function, url?: string, model?: string, changeContext?: string, onResponse?: (json: object) => void }} [opts]
+ * @param {AuditTest} test
+ * @param {{ ask?: Ask, url?: string, model?: string, changeContext?: string, onResponse?: (json: object) => void }} [opts]
  */
 export async function classify(test, opts = {}) {
   const ask = opts.ask ?? systemoneAsk;
   const state = buildState(test, opts.changeContext ?? "");
+  /** @type {Record<string, AuditAnswer>} */
   let answers = {};
   let error;
   try {

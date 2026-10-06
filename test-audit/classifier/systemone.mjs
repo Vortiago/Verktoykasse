@@ -18,15 +18,16 @@
 import config from "../config.mjs";
 
 /** @typedef {"choice" | "score" | "noul"} QuestionType */
-/** @typedef {{ type: QuestionType, instructions: string, criteria?: unknown }} Question */
-/** @typedef {{ type: QuestionType, probabilities?: Record<string, number>, confidence?: number, mass?: number, choice?: string, score?: number, noul?: number }} Answer */
+/** @typedef {{ type: QuestionType, instructions: string, criteria: Record<string, string> | string[] }} Question */
+/** @typedef {import("../types.d.ts").AuditAnswer} AuditAnswer */
+/** @typedef {{ answers?: Record<string, AuditAnswer>, usage?: Record<string, unknown> }} SystemOneResponse */
 
 /**
  * Ask one or more typed questions about `state`.
  * @param {string | unknown} state
  * @param {Record<string, Question>} questions
  * @param {{ url?: string, model?: string, timeoutMs?: number, onResponse?: (json: object) => void }} [opts]
- * @returns {Promise<Record<string, Answer>>}
+ * @returns {Promise<Record<string, AuditAnswer>>}
  */
 export async function ask(state, questions, opts = {}) {
   const { url = config.baseUrl, model = config.model, timeoutMs = config.timeoutMs, onResponse } = opts;
@@ -43,26 +44,35 @@ export async function ask(state, questions, opts = {}) {
     const text = await res.text().catch(() => "");
     throw new Error(`systemone ${res.status}: ${text.slice(0, 300)}`);
   }
-  const json = await res.json();
+  const json = /** @type {SystemOneResponse} */ (await res.json());
   onResponse?.(json);
   return json.answers ?? {};
 }
 
-/** A yes/no gate. `criteria` says what yes and no MEAN, not the answer names. */
+/**
+ * A yes/no gate. `criteria` says what yes and no MEAN, not the answer names.
+ * @param {string} instructions @param {string} yes @param {string} no
+ */
 export const noul = (instructions, yes, no) => ({
   type: /** @type {QuestionType} */ ("noul"),
   instructions,
   criteria: { true: yes, false: no },
 });
 
-/** Pick one named answer. */
+/**
+ * Pick one named answer.
+ * @param {string} instructions @param {Record<string, string>} criteria
+ */
 export const choice = (instructions, criteria) => ({
   type: /** @type {QuestionType} */ ("choice"),
   instructions,
   criteria,
 });
 
-/** An ordinal level: `levels` lowest first; the answer index names the level. */
+/**
+ * An ordinal level: `levels` lowest first; the answer index names the level.
+ * @param {string} instructions @param {string[]} levels
+ */
 export const score = (instructions, levels) => ({
   type: /** @type {QuestionType} */ ("score"),
   instructions,
@@ -75,7 +85,7 @@ export const score = (instructions, levels) => ({
  * 1 means the model was answering, near 0 means the grammar did the choosing, and
  * below `minMass` the answer is unanswered and the caller escalates. An endpoint
  * that reports no `mass` is trusted, so the paraphrase spread is then the guard.
- * @param {Answer | undefined} answer
+ * @param {AuditAnswer | undefined} answer
  * @param {number} [minMass]
  */
 export function trusted(answer, minMass = config.minMass) {
@@ -83,7 +93,10 @@ export function trusted(answer, minMass = config.minMass) {
   return typeof answer.mass === "number" ? answer.mass >= minMass : true;
 }
 
-/** The token count of one response's `usage`, whatever shape it carries. */
+/**
+ * The token count of one response's `usage`, whatever shape it carries.
+ * @param {Record<string, unknown> | undefined} usage
+ */
 export function tokensOf(usage) {
   if (!usage || typeof usage !== "object") return 0;
   if (typeof usage.total_tokens === "number") return usage.total_tokens;
@@ -98,6 +111,7 @@ export function usageMeter() {
   const usage = { calls: 0, tokens: 0 };
   return {
     usage,
+    /** @param {SystemOneResponse} json */
     onResponse: (json) => {
       usage.calls += 1;
       usage.tokens += tokensOf(json.usage);

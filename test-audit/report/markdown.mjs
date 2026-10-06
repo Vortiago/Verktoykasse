@@ -2,9 +2,12 @@
 
 import { escapeCell, eyesPhrase, eyesResults, location, plural, rowCells, summary } from "./format.mjs";
 
+/** @typedef {import("../types.d.ts").AuditResult} AuditResult */
+/** @typedef {import("../types.d.ts").AuditUsage} AuditUsage */
+
 /**
- * @param {any[]} results
- * @param {{ ref?: string, model?: string, usage?: object }} [meta]
+ * @param {AuditResult[]} results
+ * @param {{ ref?: string, model?: string, usage?: AuditUsage }} [meta]
  */
 export function formatMarkdown(results, meta = {}) {
   const escalatedResults = eyesResults(results);

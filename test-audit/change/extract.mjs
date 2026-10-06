@@ -9,6 +9,8 @@
 import { argSpan, splitTop } from "../tools/js-scan.mjs";
 import { codeOnly } from "./code.mjs";
 
+/** @typedef {import("../types.d.ts").AuditTest} AuditTest */
+
 /** A path is a test file when it ends in .test./.spec. or sits under __tests__. */
 const TEST_FILE = /(?:\.(?:test|spec)\.[cm]?[jt]sx?$)|(?:^|[\\/])__tests__[\\/]/;
 
@@ -36,9 +38,10 @@ export function isTestFile(path) {
  * Extract every test in one file's text.
  * @param {string} text
  * @param {string} file
- * @returns {Array<{ file: string, line: number, name: string, path: string[], source: string, fixtures: string[], imports: string[], flags: string[] }>}
+ * @returns {AuditTest[]}
  */
 export function extractTests(text, file) {
+  /** @type {AuditTest[]} */
   const out = [];
   // The code-only view and the line index are one scan per file, not one per
   // describe scope or per test.
@@ -76,7 +79,7 @@ function lineAt(starts, offset) {
  * @param {number} end
  * @param {string[]} path
  * @param {string[]} inherited
- * @param {{ file: string, imports: string[], lineStarts: number[], out: object[] }} ctx
+ * @param {{ file: string, imports: string[], lineStarts: number[], out: AuditTest[] }} ctx
  */
 function walk(text, code, start, end, path, inherited, ctx) {
   const calls = findCalls(code, text, start, end);
@@ -130,6 +133,7 @@ export function changeContext(diff, cap) {
  */
 export function splitDiff(diff) {
   const sections = [];
+  /** @type {{ path: string, lines: string[] } | undefined} */
   let current;
   for (const line of diff.split("\n")) {
     const start = DIFF_FILE.exec(line);
@@ -197,7 +201,7 @@ function findCalls(code, text, start, end) {
       dynamicName: literal === null,
       callStart,
       callEnd: span.end,
-      body: bodyInterior(code, text, open, span.end),
+      body: bodyInterior(code, open, span.end),
     });
     re.lastIndex = span.end;
   }
@@ -209,13 +213,12 @@ function findCalls(code, text, start, end) {
  * inside its braces; an expression-bodied arrow (`() => expect(x).toBe(1)`)
  * returns the expression, so it is not mistaken for an empty test. The arrow
  * and brace are found on the code-only view, where a `=>` inside the name is
- * blanked; the returned text is sliced from the original.
+ * blanked; the caller slices the returned span from the original.
  * @param {string} code
- * @param {string} text
  * @param {number} open
  * @param {number} spanEnd
  */
-function bodyInterior(code, text, open, spanEnd) {
+function bodyInterior(code, open, spanEnd) {
   const inner = code.slice(open + 1, spanEnd - 1);
   const callback = inner.search(/=>|\bfunction\b/);
   if (callback === -1) return null;

@@ -7,11 +7,14 @@ import { dirname, join } from "node:path";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
+/** @typedef {import("../types.d.ts").CalibrationLabel} CalibrationLabel */
+
 /**
- * @returns {{ acceptance: { canFailAgreement: number }, cases: any[] }}
+ * @returns {{ acceptance: { canFailAgreement: number }, cases: CalibrationLabel[] }}
  */
 export function loadLabels() {
   const { acceptance } = JSON.parse(readFileSync(join(HERE, "labels.json"), "utf8"));
+  /** @type {CalibrationLabel[]} */
   const cases = [];
   for (const name of readdirSync(join(HERE, "labels")).sort()) {
     if (!name.endsWith(".json")) continue;

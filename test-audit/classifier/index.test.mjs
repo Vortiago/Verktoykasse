@@ -8,13 +8,17 @@ import { buildState, classify } from "./index.mjs";
 import { BATTERY, CAN_FAIL_KEYS, DESCRIPTIVE_KEYS, RUBRIC } from "./battery.mjs";
 import { verdictFrom } from "./verdict.mjs";
 
-const TEST = { file: "add.test.mjs", line: 1, name: "add", path: [], source: 'test("add", () => { expect(add(1, 1)).toBe(2); });', fixtures: [], imports: [] };
+/** @typedef {import("../types.d.ts").AuditTest} AuditTest */
+/** @typedef {import("../types.d.ts").AuditAnswer} AuditAnswer */
 
-/** A trusted yes/no answer. */
+/** @type {AuditTest} */
+const TEST = { file: "add.test.mjs", line: 1, name: "add", path: [], source: 'test("add", () => { expect(add(1, 1)).toBe(2); });', fixtures: [], imports: [], flags: [] };
+
+/** A trusted yes/no answer. @param {number} value @param {number} [mass] @returns {AuditAnswer} */
 const noul = (value, mass = 0.99) => ({ type: "noul", probabilities: {}, confidence: 0.9, mass, noul: value });
-/** A trusted choice answer. */
+/** A trusted choice answer. @param {string} value @param {number} [mass] @returns {AuditAnswer} */
 const choice = (value, mass = 0.99) => ({ type: "choice", probabilities: {}, confidence: 0.9, mass, choice: value });
-/** A trusted score answer. */
+/** A trusted score answer. @param {number} value @param {number} [mass] @returns {AuditAnswer} */
 const score = (value, mass = 0.99) => ({ type: "score", probabilities: {}, confidence: 0.9, mass, score: value });
 
 /** A passing battery: the test can fail, asserts behaviour, and scores strong. */
@@ -156,7 +160,7 @@ test("a good verdict beside a stable cannot-fail answer escalates", () => {
   // The three phrasings agree the test cannot fail, yet the verdict says strong.
   const result = verdictFrom(TEST, { ...goodAnswers(), can_fail_a: noul(0.2), can_fail_b: noul(0.8), can_fail_c: noul(0.25) });
   assert.equal(result.canFail.state, "stable");
-  assert.equal(result.canFail.mean < 0.5, true);
+  assert.equal(result.canFail.mean !== null && result.canFail.mean < 0.5, true);
   assert.equal(result.needsEyes, true);
   assert.match(result.reasons.join(" "), /can_fail contradicts the verdict/);
 });
@@ -168,12 +172,15 @@ test("a transport failure is an audit failure", () => {
 });
 
 test("classify asks once with the state and the whole battery", async () => {
+  /** @type {{ state: string, questions: Record<string, unknown> } | undefined} */
   let seen;
+  /** @param {string} state @param {Record<string, unknown>} questions */
   const ask = async (state, questions) => {
     seen = { state, questions };
     return goodAnswers();
   };
   const result = await classify(TEST, { ask, changeContext: "the change" });
+  assert.ok(seen);
   assert.match(seen.state, /add\.test\.mjs/);
   assert.match(seen.state, /the change/);
   assert.deepEqual(Object.keys(seen.questions), Object.keys(BATTERY));

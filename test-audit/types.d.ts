@@ -1,8 +1,8 @@
-// Shared shapes for the test-audit modules. Those modules are `.mjs`, so they
-// sit outside the tsc gate exactly as searx-researcher/server does: they import
-// `node:*`, and this gate carries no @types/node. This file is the gate's type
-// input and the one place the shapes are written down, so a reader finds them
-// in one place instead of across ten files.
+// Shared shapes for the test-audit modules. The modules are `.mjs` with JSDoc
+// types, and the tsc gate checks them under strict (tsconfig.json). A module
+// imports a shape with `@typedef {import("../types.d.ts").AuditTest} AuditTest`,
+// so each shape is written down once, here, instead of across ten files. The
+// Node API the modules use is declared in node.d.ts.
 
 /** One test extracted from a test file. The unit of an audit. */
 export interface AuditTest {
@@ -19,7 +19,8 @@ export interface AuditTest {
 
 /** One answer from the SystemOne endpoint. `score` is an expected level; `noul` is P(yes). */
 export interface AuditAnswer {
-  type: "choice" | "score" | "noul";
+  /** Absent on an endpoint that sends only the field the question needs, such as Ollama 0.35. */
+  type?: "choice" | "score" | "noul";
   probabilities?: Record<string, number>;
   confidence?: number;
   /** Absent on an endpoint that reports no mass, such as Ollama 0.35. */
@@ -46,5 +47,36 @@ export interface AuditResult {
   flags: string[];
   needsEyes: boolean;
   reasons: string[];
+  error?: string;
+}
+
+/** The calls one run made and the tokens they cost. */
+export interface AuditUsage {
+  calls: number;
+  tokens: number;
+}
+
+/** One labelled case of the calibration corpus (calibration/labels/). */
+export interface CalibrationLabel {
+  /** The case file, relative to calibration/. */
+  file: string;
+  /** The name of the test in that file. */
+  test: string;
+  defect?: string;
+  /** The expected answer to the falsifiable question. */
+  canFail?: boolean;
+  /** true: the audit must never pass this test silently. false: a good test, so an escalation is a false positive. */
+  mustEscalate?: boolean;
+  /** A test whose expected outcome is escalation. */
+  mixed?: boolean;
+  /** The expected answer to the `deterministic` question. */
+  deterministic?: boolean;
+  note?: string;
+}
+
+/** One labelled case after a run: its result, or why it has none. */
+export interface CalibrationRow {
+  label: CalibrationLabel;
+  result?: AuditResult;
   error?: string;
 }

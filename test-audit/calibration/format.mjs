@@ -5,7 +5,15 @@ import { canFailText, escapeCell, pad } from "../report/index.mjs";
 import { DESCRIPTIVE_KEYS, VERDICTS } from "../classifier/index.mjs";
 import { rowStatus, shortStatus } from "./judge.mjs";
 
-/** The detailed view for one endpoint and model. */
+/** @typedef {import("../types.d.ts").AuditUsage} AuditUsage */
+/** @typedef {import("../types.d.ts").CalibrationRow} CalibrationRow */
+/** @typedef {ReturnType<typeof import("./judge.mjs").judge>} Judgement */
+/**
+ * One endpoint and model's run over the corpus.
+ * @typedef {{ target: { url: string, model: string }, rows: CalibrationRow[], verdict: Judgement, usage: AuditUsage }} CalibrationEntry
+ */
+
+/** The detailed view for one endpoint and model. @param {CalibrationEntry} entry */
 export function formatSingle(entry) {
   const { rows, verdict, usage, target } = entry;
   const lines = [`Live calibration: ${rows.length} cases, ${target.url} ${target.model}, ${usage.calls} calls, ${usage.tokens} tokens`, ""];
@@ -32,11 +40,11 @@ export function formatSingle(entry) {
   return lines.join("\n");
 }
 
-/** The comparison view: one status column per endpoint and model. */
+/** The comparison view: one status column per endpoint and model. @param {CalibrationEntry[]} entries */
 export function formatMatrix(entries) {
   const width = 6;
   const lines = [`Live calibration: ${entries[0].rows.length} cases across ${entries.length} targets`, ""];
-  lines.push([pad("CASE", 30), pad("DEFECT", 16), ...entries.map((entry, index) => pad(`T${index + 1}`, width))].join(" "));
+  lines.push([pad("CASE", 30), pad("DEFECT", 16), ...entries.map((_entry, index) => pad(`T${index + 1}`, width))].join(" "));
   for (let row = 0; row < entries[0].rows.length; row++) {
     const cells = entries.map((entry) => shortStatus(entry.rows[row]));
     lines.push(
@@ -63,6 +71,7 @@ const VERDICT_ORDER = [...VERDICTS, "unclassified"];
  * The benchmark report: one entry per test, worst verdict first, with the result
  * of every check underneath and the reasons the test escalates. The checks come
  * from the battery, so a new question appears here without an edit.
+ * @param {CalibrationEntry[]} entries
  */
 export function formatBenchmark(entries) {
   const lines = [];
@@ -85,13 +94,14 @@ export function formatBenchmark(entries) {
   return lines.join("\n");
 }
 
-/** Worst verdict first, then by test name. */
+/** Worst verdict first, then by test name. @param {CalibrationRow} a @param {CalibrationRow} b */
 function byVerdict(a, b) {
+  /** @param {CalibrationRow} row */
   const rank = (row) => VERDICT_ORDER.indexOf(row.result?.score.label ?? "unclassified");
   return rank(a) - rank(b) || a.label.test.localeCompare(b.label.test);
 }
 
-/** One test's entry: its defect, each check's result, then its verdict. */
+/** One test's entry: its defect, each check's result, then its verdict. @param {CalibrationRow} row */
 function testEntry(row) {
   const { label, result, error } = row;
   const lines = [`### \`${escapeCell(label.test)}\` — ${label.defect ?? "unknown defect"}`, ""];
@@ -116,7 +126,7 @@ function yesNo(value) {
   return value === true ? "yes" : value === false ? "no" : "unanswered";
 }
 
-/** @param {ReturnType<import("./judge.mjs").judge>} verdict */
+/** @param {Judgement} verdict */
 function summaryLine(verdict) {
   return (
     `can_fail agreement: ${verdict.correct}/${verdict.resolved} resolved (${Math.round(verdict.agreement * 100)}%). ` +
@@ -126,7 +136,7 @@ function summaryLine(verdict) {
   );
 }
 
-/** Per-defect escalation, so a whole defect family that slips through shows. */
+/** Per-defect escalation, so a whole defect family that slips through shows. @param {Judgement} verdict */
 function defectLine(verdict) {
   const parts = Object.entries(verdict.defects)
     .sort(([a], [b]) => a.localeCompare(b))

@@ -32,7 +32,8 @@ export const ESCALATE_ON_FALSE = {
 
 /** The flag a false answer to each descriptive question raises, keyed by the
  * question's name, so a new question is one entry here plus its question in
- * `BATTERY`. */
+ * `BATTERY`.
+ * @type {Record<string, string>} */
 export const FLAG_BY_GATE = {
   observable: "implementation-coupled",
   conditional: "conditional",
@@ -118,7 +119,7 @@ Verdict: slop, weak, good, or strong. Slop is no real guard; weak is a guard wit
 /**
  * The whole battery for one test. All questions travel in one call, so the state
  * is read once and each question costs one token.
- * @type {Record<string, { type: string, instructions: string, criteria?: unknown }>}
+ * @type {Record<string, import("./systemone.mjs").Question>}
  */
 export const BATTERY = {
   // The best single phrasing is the concrete, operational one, so it leads.

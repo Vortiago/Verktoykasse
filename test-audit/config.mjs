@@ -1,5 +1,4 @@
-// test-audit configuration. Env-driven, with portable defaults. `.mjs` so the
-// vanilla-web tsc gate (include **/*.js) leaves it alone.
+// test-audit configuration. Env-driven, with portable defaults.
 //
 // The base URL points at any Jev-compatible SystemOne endpoint: a local Ollama
 // 0.35 or later, llama-arbiter, Ollaya, or any TypeSafe-compatible server. Every

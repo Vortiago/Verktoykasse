@@ -233,9 +233,6 @@ Run the selftest again when the model or a question changes. Record each run in
   folds a `test.each` table into one test and flags a computed name. The
   extractor does not match the tagged-template form, the generic form
   (`test.each<T>`), or a test called on a runner object (`t.test(...)`).
-- The core modules are `.mjs`, so the `tsc` gate does not check them. They import
-  `node:*`, and the gate carries no `@types/node`. The `node --test` suite guards
-  them instead.
 
 ## References
 

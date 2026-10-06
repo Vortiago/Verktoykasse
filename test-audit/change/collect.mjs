@@ -9,6 +9,11 @@ import { resolve } from "node:path";
 import process from "node:process";
 
 /**
+ * Where a touched file's text is read from: the working tree, the index, or a commit.
+ * @typedef {"worktree" | "index" | { ref: string }} Source
+ */
+
+/**
  * The change to audit: the text of every touched file, and a reader for the
  * diff. The diff is read only on demand, because a change with no tests never
  * needs it. A file that cannot be read (deleted, binary) is dropped. Git resolves
@@ -33,6 +38,7 @@ export function collect(opts = {}) {
   const root = tryGit(["rev-parse", "--show-toplevel"], cwd)?.trim() || cwd;
   let spec;
   let ref;
+  /** @type {Source} */
   let source;
   if (staged) {
     spec = ["--cached"];
@@ -71,7 +77,7 @@ export function parseNameOnly(text) {
   return text.split("\n").map((line) => line.trim()).filter(Boolean);
 }
 
-/** @param {"worktree" | "index" | { ref: string }} source @param {string} path @param {string} root */
+/** @param {Source} source @param {string} path @param {string} root */
 function readSource(source, path, root) {
   if (source === "worktree") return readWorktree(path, root);
   if (source === "index") return tryGit(["show", `:${path}`], root);
@@ -100,7 +106,10 @@ function assertRef(flag, value) {
   if (value && value.startsWith("-")) throw new Error(`${flag} is not a ref: ${value}`);
 }
 
-/** @param {{ path: string, text: string | undefined }} file */
+/**
+ * @param {{ path: string, text: string | undefined }} file
+ * @returns {file is { path: string, text: string }}
+ */
 function hasText(file) {
   return typeof file.text === "string";
 }
@@ -134,7 +143,10 @@ function tryGit(args, cwd) {
   return result.status === 0 ? result.stdout : undefined;
 }
 
-/** The spawn every git call shares: utf8 text, and a buffer that fits a big change. */
+/**
+ * The spawn every git call shares: utf8 text, and a buffer that fits a big change.
+ * @param {string[]} args @param {string} cwd
+ */
 function runGit(args, cwd) {
   return spawnSync("git", args, { cwd, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
 }

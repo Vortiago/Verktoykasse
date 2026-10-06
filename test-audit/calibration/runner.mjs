@@ -15,8 +15,13 @@ import config from "../config.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
+/** @typedef {import("../types.d.ts").AuditTest} AuditTest */
+/** @typedef {import("../types.d.ts").CalibrationLabel} CalibrationLabel */
+/** @typedef {import("../types.d.ts").CalibrationRow} CalibrationRow */
+/** @typedef {{ label: CalibrationLabel, test?: AuditTest, error?: string }} PreparedCase */
+
 /**
- * @param {{ targets: Array<{url: string, model: string}>, benchmark?: boolean, onProgress?: (event: { target: string, index: number, total: number, status: string, test: string }) => void }} [opts]
+ * @param {{ targets: Array<{url: string, model: string}>, benchmark?: boolean, onProgress?: (event: { target: string, index: number, total: number, status: string, test: string }) => void }} opts
  * @returns {Promise<{ text: string, code: number }>}
  */
 export async function runSelftest(opts) {
@@ -49,8 +54,8 @@ export async function runSelftest(opts) {
 /**
  * Read and parse one labelled case. The test is found by name, so a case file
  * may hold more than one test.
- * @param {any} label
- * @returns {{ label: any, test?: object, error?: string }}
+ * @param {CalibrationLabel} label
+ * @returns {PreparedCase}
  */
 function prepareCase(label) {
   try {
@@ -64,8 +69,9 @@ function prepareCase(label) {
 
 /**
  * Classify one prepared case.
- * @param {{ label: any, test?: object, error?: string }} item
+ * @param {PreparedCase} item
  * @param {{ target: {url: string, model: string}, onResponse: (json: object) => void }} ctx
+ * @returns {Promise<CalibrationRow>}
  */
 async function runCase(item, ctx) {
   if (!item.test) return { label: item.label, error: item.error ?? `test not found: ${item.label.test}` };

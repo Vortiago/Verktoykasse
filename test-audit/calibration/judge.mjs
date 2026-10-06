@@ -4,8 +4,11 @@
 // unstable case routed to a human is the design working, not a wrong answer.
 // Pure, so the scoring is tested without a model.
 
+/** @typedef {import("../types.d.ts").AuditResult} AuditResult */
+/** @typedef {import("../types.d.ts").CalibrationRow} CalibrationRow */
+
 /**
- * @param {any[]} rows
+ * @param {CalibrationRow[]} rows
  * @param {{ canFailAgreement: number }} acceptance
  */
 export function judge(rows, acceptance) {
@@ -70,13 +73,13 @@ export function judge(rows, acceptance) {
   };
 }
 
-/** The can-fail answer the tool committed to, or undefined when it routed. */
+/** The can-fail answer the tool committed to, or undefined when it routed. @param {AuditResult} result */
 function saidCanFail(result) {
   if (result.canFail.unstable || result.canFail.mean === null) return undefined;
   return result.canFail.mean > 0.5;
 }
 
-/** `ok`, or the reason a row stands out. */
+/** `ok`, or the reason a row stands out. @param {CalibrationRow} row */
 export function rowStatus(row) {
   const { label, result } = row;
   if (!result) return "no-test";
@@ -88,7 +91,7 @@ export function rowStatus(row) {
   return "ok";
 }
 
-/** A one-letter status for the comparison matrix. */
+/** A one-letter status for the comparison matrix. @param {CalibrationRow} row */
 export function shortStatus(row) {
   return { ok: ".", "no-test": "?", SILENT: "S", MIXED: "M", "FALSE+": "F", WRONG: "W" }[rowStatus(row)] ?? "?";
 }

@@ -6,14 +6,30 @@ import assert from "node:assert/strict";
 import { judge, rowStatus } from "./judge.mjs";
 import { loadLabels } from "./labels.mjs";
 
-/** A labelled row with a result whose can-fail mean and escalation are set. */
+/** @typedef {import("../types.d.ts").CalibrationLabel} CalibrationLabel */
+/** @typedef {import("../types.d.ts").CalibrationRow} CalibrationRow */
+
+/**
+ * A labelled row with a result whose can-fail mean and escalation are set. The
+ * judge reads only those, so the rest of the result is empty, and the label's
+ * case file is derived from its test name.
+ * @param {Omit<CalibrationLabel, "file">} label
+ * @param {{ mean?: number | null, state?: string, needsEyes?: boolean }} [opts]
+ * @returns {CalibrationRow}
+ */
 function row(label, { mean = 0.99, state = "stable", needsEyes = false } = {}) {
   return {
-    label,
+    label: { file: `cases/${label.test}.case.mjs`, ...label },
     result: {
+      test: { file: `${label.test}.test.mjs`, line: 1, name: label.test, path: [] },
+      answers: {},
       canFail: { mean, state, unstable: state === "borderline" || state === "unstable", values: [], spread: 0 },
+      asserts: { trust: true, agrees: true },
+      descriptive: {},
       score: { label: needsEyes ? "weak" : "strong" },
+      flags: [],
       needsEyes,
+      reasons: [],
     },
   };
 }
@@ -89,7 +105,7 @@ test("loadLabels merges every fragment", () => {
 });
 
 test("a label that resolves to no test fails the run", () => {
-  const rows = [{ label: { test: "missing", mustEscalate: true }, error: "test not found: missing" }];
+  const rows = [{ label: { file: "cases/missing.case.mjs", test: "missing", mustEscalate: true }, error: "test not found: missing" }];
   const verdict = judge(rows, { canFailAgreement: 0.9 });
   assert.equal(verdict.unresolved, 1);
   assert.equal(verdict.pass, false);

@@ -4,11 +4,19 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { exitCode, formatAudit, formatText, formatMarkdown, pad } from "./index.mjs";
 
-/** A minimal verdict record; only the fields the report reads are filled. */
+/** @typedef {import("../types.d.ts").AuditResult} AuditResult */
+
+/**
+ * A verdict record for a clean test. The report reads only some of its fields;
+ * the rest are empty.
+ * @param {Partial<AuditResult>} [overrides]
+ * @returns {AuditResult}
+ */
 function result(overrides = {}) {
   return {
     test: { file: "add.test.mjs", line: 1, name: "adds", path: [] },
-    canFail: { values: [0.99, 0.99, 0.98], mean: 0.99, spread: 0.01, state: "stable" },
+    answers: {},
+    canFail: { values: [0.99, 0.99, 0.98], mean: 0.99, spread: 0.01, state: "stable", unstable: false },
     asserts: { value: "behaviour", a: "behaviour", b: "behaviour", trust: true, agrees: true },
     runs: true,
     type: "unit",
