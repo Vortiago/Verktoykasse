@@ -12,6 +12,40 @@ the behaviour of the code and checks that the named test fails.
 The [OpenCode plugin](#opencode-plugin) in `opencode/` runs this tool inside
 OpenCode, and installs from this directory.
 
+## Layout
+
+The tool has one folder per check. A check is one judgement the tool asks the
+model about a test: one question, or a set of phrasings of one judgement. The
+folder holds all of the check: its questions, its rubric definition, its role in
+the verdict, its sources, and the calibration cases meant to catch its defect.
+
+```
+test-audit/
+  checks/                 one folder per check
+    index.mjs             puts the checks together: the battery, the rubric, the role tables
+    checks.test.mjs       keeps the folders, the battery, and the cases in step
+    rubric.snapshot.txt   the rubric the model sees, byte for byte
+    battery.snapshot.json the questions the model sees, byte for byte
+    runs/
+      check.mjs           the questions, the rubric definition, the role, and the sources
+      cases/
+        skip-token/
+          case.mjs        the test, with a header comment that the model never sees
+          label.json      the known defect and the expected outcome
+          code.mjs        the code under test, if the right answer depends on it
+    can-fail/  asserts/  positive/  type/  verdict/  and 18 descriptive checks
+  change/                 read the diff and find the tests
+  classifier/             ask one SystemOne call per test, and apply the verdict rules
+  report/                 print a verdict, a summary, and an exit code
+  calibration/            run the cases against an endpoint, and judge the run
+  opencode/               the OpenCode plugin
+```
+
+To change what the tool asks about a test, edit the `check.mjs` of that check.
+To add a case, add a folder to its `cases/`. A case file is `case.mjs`, not
+`test.mjs`, because a bare `node --test` runs every `test.mjs` it finds, and the
+cases are deliberately bad tests.
+
 ## Run an audit
 
 ```sh
@@ -145,8 +179,9 @@ corpus proves the questions trustworthy, and it will live beside the CLI, not in
 the plugin.
 
 `package.json` lists the files an install needs in `files`: the runtime modules,
-`opencode/index.ts`, `types.d.ts`, this README and the licence. The corpus, the
-benchmark and the tests stay out. The plugin has its own type gate, which
+`checks/index.mjs` and each `checks/<check>/check.mjs`, `opencode/index.ts`,
+`types.d.ts`, this README and the licence. The calibration cases, the benchmark
+and the tests stay out. The plugin has its own type gate, which
 installs `@opencode/plugin` into `node_modules/`:
 
 ```sh
@@ -158,7 +193,7 @@ cd test-audit && node opencode/check.mjs
 ```
 git diff (base..head, the index, or the working tree)
   -> change/       read the diff and find the tests
-  -> classifier/   ask one SystemOne call per test
+  -> classifier/   ask the questions of checks/ in one SystemOne call per test
   -> report/       print a verdict, a summary, and an exit code
 ```
 
@@ -188,46 +223,42 @@ also report `mass`.
 
 ### The battery
 
-The battery is 29 questions about one test. All questions share one state and
-travel in one call.
+The battery is 29 questions about one test, from 24 checks. All questions share
+one state and travel in one call. Each check is a folder in `checks/`, and
+`checks/index.mjs` sets the order.
 
-| Question | Type | Looks for |
-| --- | --- | --- |
-| `can_fail_a` | yes/no | tautology, vacuous test, passes-with-zero |
-| `can_fail_b` | yes/no, negated twin | the same judgement, asked the other way |
-| `can_fail_c` | yes/no | the same judgement, asked directly |
-| `asserts_a` | choice | behaviour, hardcoded data, shape only, interaction only, nothing |
-| `asserts_b` | choice, order swapped | the position control for `asserts_a` |
-| `positive_a` | yes/no | only-negative test: no assertion on the output that must exist |
-| `positive_b` | yes/no, negated twin | the same judgement, asked the other way |
-| `runs_a` | yes/no | a skip, todo, only, or focus marker on the test, on a describe around it, or on another test in the file |
-| `runs_b` | yes/no, negated twin | the same judgement, asked the other way |
-| `type` | choice | unit, integration, regression, e2e, smoke, characterization |
-| `observable` | yes/no | implementation coupling: private internals, call order, exact collaborator interactions |
-| `conditional` | yes/no | conditional logic: a branch, loop, or catch can leave the assertion unrun |
-| `isolated` | yes/no | interacting tests, test-run war, shared mutable state, order dependence |
-| `controlled` | yes/no | resource optimism and mystery guest: an assumed network, clock, filesystem, or environment |
-| `specific` | yes/no | a weak assertion, where the most specific assertion is possible |
-| `named` | yes/no | an obscure test: a vague name that states no behaviour and no result |
-| `deterministic` | yes/no | sleep, time, network, order dependence |
-| `one_thing` | yes/no | eager test: several unrelated behaviours in one body |
-| `name_matches` | yes/no | name-only test: the body asserts something other than the name |
-| `resilient` | yes/no | structure sensitivity: a behaviour-preserving refactor breaks the test |
-| `diagnostic` | yes/no | assertion roulette: a failure does not say which assertion failed |
-| `fixture` | yes/no | general fixture and irrelevant information: data the test does not need |
-| `fast` | yes/no | slow test: a sleep, heavy I/O, or a large computation |
-| `readable` | yes/no | obscure test: a reader must open the code under test to follow it |
-| `magic_number` | yes/no | magic number test: a bare value the reader must decode |
-| `reads_output` | yes/no | assertion diversion: the assertion reads its own input or its setup, or only that no error was thrown |
-| `automated` | yes/no | manual intervention: a step a person must do, or output a person must read |
-| `restores` | yes/no | test pollution: state left behind for the next test |
-| `verdict` | score | slop, weak, good, strong |
+| Check | Questions | Role | Looks for | Cases |
+| --- | --- | --- | --- | --- |
+| [`can-fail`](checks/can-fail/check.mjs) | `can_fail_a`, `can_fail_b` (negated), `can_fail_c` | can-fail | tautology, self-reference, vacuous test, passes-with-zero | 9 |
+| [`asserts`](checks/asserts/check.mjs) | `asserts_a`, `asserts_b` (order swapped) | asserts | hardcoded data, shape only, interaction only, nothing | 12 |
+| [`positive`](checks/positive/check.mjs) | `positive_a`, `positive_b` (negated) | gate: no positive assertion | only-negative test | 5 |
+| [`runs`](checks/runs/check.mjs) | `runs_a`, `runs_b` (negated) | gate: does not run | a skip, todo, only, or focus marker on the test, on a describe around it, or on another test in the file | 4 |
+| [`type`](checks/type/check.mjs) | `type` | type | unit, integration, regression, e2e, smoke, characterization | 0 |
+| [`observable`](checks/observable/check.mjs) | `observable` | flag `implementation-coupled` | private internals, call order, exact collaborator interactions | 0 |
+| [`conditional`](checks/conditional/check.mjs) | `conditional` | flag `conditional` | a branch, loop, or catch that can leave the assertion unrun | 1 |
+| [`isolated`](checks/isolated/check.mjs) | `isolated` | flag `order-dependent` | interacting tests, shared mutable state, order dependence | 0 |
+| [`controlled`](checks/controlled/check.mjs) | `controlled` | flag `uncontrolled-resource` | an assumed network, clock, filesystem, or environment | 0 |
+| [`specific`](checks/specific/check.mjs) | `specific` | flag `weak-assert` | a weak assertion, where a more specific one is possible | 0 |
+| [`named`](checks/named/check.mjs) | `named` | flag `vague-name` | a vague name that states no behaviour and no result | 0 |
+| [`deterministic`](checks/deterministic/check.mjs) | `deterministic` | flag `non-deterministic` | a sleep, the clock, the network, randomness, order | 6 |
+| [`one-thing`](checks/one-thing/check.mjs) | `one_thing` | flag `eager` | several unrelated behaviours in one body | 2 |
+| [`name-matches`](checks/name-matches/check.mjs) | `name_matches` | flag `name-mismatch` | name-only test: the body asserts something other than the name | 4 |
+| [`resilient`](checks/resilient/check.mjs) | `resilient` | flag `structure-dependent` | a behaviour-preserving refactor breaks the test | 0 |
+| [`diagnostic`](checks/diagnostic/check.mjs) | `diagnostic` | flag `silent-failure` | assertion roulette: a failure does not say which assertion failed | 0 |
+| [`fixture`](checks/fixture/check.mjs) | `fixture` | flag `general-fixture` | a general fixture, or data the test does not need | 0 |
+| [`fast`](checks/fast/check.mjs) | `fast` | flag `slow` | a sleep, heavy I/O, or a large computation | 0 |
+| [`readable`](checks/readable/check.mjs) | `readable` | flag `obscure` | a reader must open the code under test to follow it | 0 |
+| [`magic-number`](checks/magic-number/check.mjs) | `magic_number` | flag `magic-number` | a bare value the reader must decode | 0 |
+| [`reads-output`](checks/reads-output/check.mjs) | `reads_output` | flag `asserts-input` | the assertion reads its own input or setup, or only that no error was thrown | 2 |
+| [`automated`](checks/automated/check.mjs) | `automated` | flag `manual` | a step a person must do, or output a person must read | 0 |
+| [`restores`](checks/restores/check.mjs) | `restores` | flag `state-leak` | state left behind for the next test | 0 |
+| [`verdict`](checks/verdict/check.mjs) | `verdict` | verdict | slop, weak, good, strong; its cases are the clean and the mixed tests | 16 |
 
 Five answers carry the verdict: the `positive_*` pair, the `runs_*` pair, the
 `can_fail_*` set, the `asserts_*` pair, and `verdict`. Each pair holds one
 negated twin, so one confident wrong answer cannot pass a test alone. A pair
-whose phrasings disagree beyond the band escalates, like `can_fail`. The other 18 questions are the descriptive
-questions. Each one raises a flag.
+whose phrasings disagree beyond the band escalates, like `can_fail`. The other
+18 questions are the descriptive questions. Each one raises a flag.
 
 ### Trust
 
@@ -249,18 +280,20 @@ node test-audit/cli.mjs --selftest --models "nimble,tev1"   # several models on 
 node test-audit/cli.mjs --selftest --benchmark   # a per-case report, in markdown
 ```
 
-`--selftest` runs the labelled corpus in `calibration/` against the configured
-endpoint and reports agreement with the labels. The corpus covers each named
-defect, clean tests of the common types, and mixed cases that should escalate. A
-target in `--targets` is `url|model`, or a bare `model` for the configured URL.
+`--selftest` runs the labelled cases in `checks/*/cases/` against the configured
+endpoint and reports agreement with the labels. The machinery is in
+`calibration/`. The cases cover each named defect, clean tests of the common
+types, and mixed cases that should escalate. A target in `--targets` is
+`url|model`, or a bare `model` for the configured URL.
 
-A case sends the model what a real audit sends: the test, and, when the label
-names a `code` file, the code under test as the change context. Give a case its
-`code` file when the right answer depends on the code. For example, a test that
-asserts `taxRates()` equals `TAX_RATES` agrees by construction only if
+A case sends the model what a real audit sends: the test, and, when the case
+folder holds a `code.mjs`, the code under test as the change context. Give a
+case its `code.mjs` when the right answer depends on the code. For example, a
+test that asserts `taxRates()` equals `TAX_RATES` agrees by construction only if
 `taxRates()` returns that same constant. The model sees neutral paths
-(`example.test.mjs`, `src/example.mjs`), because a case file's name states its
-label.
+(`example.test.mjs`, `src/example.mjs`), because the path of a case states its
+label. The model sees only the test call, so the header comment of `case.mjs`
+can name the defect and its source.
 
 A run passes acceptance when all of these are true:
 
@@ -268,7 +301,7 @@ A run passes acceptance when all of these are true:
 - Every mixed case escalates.
 - Every labelled case resolves to a test in its case file, and the endpoint
   answers it. A transport failure is not a routed case.
-- The `can_fail` agreement is 90% or more (set in `calibration/labels.json`).
+- The `can_fail` agreement is 90% or more (set in `calibration/judge.mjs`).
 
 The selftest exits `0` when every target passes acceptance, and `1` when one
 fails. The tool does not score the `can_fail` answer of a case that escalated as
@@ -278,8 +311,8 @@ unstable, because the tool did not commit to a value.
 
 1. A summary: the headline numbers, one row for each defect family, and links
    to the cases that are not OK.
-2. Cases at a glance: one table row for each case, with the test, the known
-   defect, the expected outcome, the result and the status. The cases that are
+2. Cases at a glance: one table row for each case, with the test, its check,
+   the known defect, the expected outcome, the result and the status. The cases that are
    not OK come first.
 3. One collapsible block for each case. It holds the test source, the code under
    test if the label names one, and the label in plain words. A short list ties
