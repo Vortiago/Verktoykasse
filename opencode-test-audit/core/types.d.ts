@@ -1,4 +1,4 @@
-// canonical source: test-audit/types.d.ts@4ba9d42 sha256:baea080956b5e494e0bef4445a4b06f82ceb392b750f20249bbabadf4af47d40 - vendored copy, do not edit here
+// canonical source: test-audit/types.d.ts@bcd812b sha256:e77bea091735f8bdbccc136878f647573f0632e0872e6370851b523e0490a994 - vendored copy, do not edit here
 // Shared shapes for the test-audit modules. The modules are `.mjs` with JSDoc
 // types, and the tsc gate checks them under strict (tsconfig.json). A module
 // imports a shape with `@typedef {import("../types.d.ts").AuditTest} AuditTest`,
@@ -153,8 +153,6 @@ export interface CalibrationLabel {
   mustEscalate?: boolean;
   /** A test whose expected outcome is escalation. */
   mixed?: boolean;
-  /** The expected answer to the `deterministic` question. */
-  deterministic?: boolean;
   /** What the case shows, in prose. */
   note?: string;
   /** The file beside the case that holds the code under test, relative to
@@ -163,6 +161,9 @@ export interface CalibrationLabel {
   code?: string;
   /** The sources the header comment of the case file names. */
   sources?: Source[];
+  /* A label may also hold a field named after a check, such as `deterministic`
+   * or `asserts`: the value that check must give. labelChecks in
+   * calibration/labels.mjs reads them; LABEL_CHECKS lists the names. */
 }
 
 /** One labelled case after a run: its result, or why it has none. */

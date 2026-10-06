@@ -280,6 +280,14 @@ test that asserts `taxRates()` equals `TAX_RATES` agrees by construction only if
 label. The model sees only the test call, so the header comment of `case.mjs`
 can name the defect and its source.
 
+A `label.json` holds the test name, the known `defect`, the expected `canFail`,
+`mustEscalate` and `mixed`, and a `note`. It can also name a check and the value
+that check must give, such as `"named": false` or `"asserts": "behaviour"`. Give
+each check at least one case where its good answer is right and one where its
+bad answer is right, so a question that the model misreads shows on both sides.
+A descriptive check only raises a flag, so a misread one never shows in
+escalation; its label value is the only thing that measures it.
+
 A run passes acceptance when all of these are true:
 
 - No defect case passes silently.
@@ -290,12 +298,16 @@ A run passes acceptance when all of these are true:
 
 The selftest exits `0` when every target passes acceptance, and `1` when one
 fails. The tool does not score the `can_fail` answer of a case that escalated as
-unstable, because the tool did not commit to a value.
+unstable, because the tool did not commit to a value. The same holds for a check
+value that a label names. The check agreement is reported, for each check, but
+it is not an acceptance rule. A case whose check value differs from its label
+shows as **WRONG check**.
 
 `--benchmark` prints the run as a markdown report, in this order:
 
-1. A summary: the headline numbers, one row for each defect family, and links
-   to the cases that are not OK.
+1. A summary: the headline numbers, one row for each defect family, the check
+   agreement for each check that a label names, and links to the cases that are
+   not OK.
 2. Cases at a glance: one table row for each case, with the test, its check,
    the known defect, the expected outcome, the result and the status. The cases that are
    not OK come first.

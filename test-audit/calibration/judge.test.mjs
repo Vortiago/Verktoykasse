@@ -91,10 +91,23 @@ test("judge holds the run to the acceptance bar", () => {
   assert.equal(verdict.pass, false);
 });
 
-test("the deterministic answer is scored against the label", () => {
-  const verdict = judge([row({ test: "a", deterministic: true }, GOOD), row({ test: "b", deterministic: true }, { ...GOOD, deterministic: noul(0.1) })]);
-  assert.equal(verdict.deterministicTotal, 2);
-  assert.equal(verdict.deterministicCorrect, 1);
+test("each check a label names is scored against the label", () => {
+  const rows = [
+    row(/** @type {any} */ ({ test: "a", deterministic: true, asserts: "behaviour" }), GOOD),
+    row(/** @type {any} */ ({ test: "b", deterministic: true }), { ...GOOD, deterministic: noul(0.1) }),
+    row(/** @type {any} */ ({ test: "c", named: false }), GOOD),
+  ];
+  const verdict = judge(rows);
+  assert.deepEqual(verdict.checkAnswers, { asserts: { correct: 1, total: 1 }, deterministic: { correct: 1, total: 2 }, named: { correct: 0, total: 1 } });
+  assert.deepEqual(rows.map(rowStatus), ["ok", "CHECK", "CHECK"]);
+  // A check value that differs is reported, not an acceptance failure.
+  assert.equal(verdict.pass, true);
+});
+
+test("a labelled check that did not commit is not counted as wrong", () => {
+  const rows = [row(/** @type {any} */ ({ test: "a", runs: true }), { ...GOOD, runs_a: noul(0.9), runs_b: noul(0.9) })];
+  assert.deepEqual(judge(rows).checkAnswers, {});
+  assert.ok(rowStatus(rows[0]) !== "CHECK");
 });
 
 test("loadLabels gives each label its check and its case file from the folder", () => {

@@ -5,7 +5,7 @@ import { canFailText, escapeCell, pad } from "../report/index.mjs";
 import { questionValue, trusted } from "../classifier/index.mjs";
 import { BATTERY, CHECKS } from "../checks/index.mjs";
 import { rowStatus, saidCanFail, shortStatus } from "./judge.mjs";
-import { LABEL_FIELDS } from "./labels.mjs";
+import { labelChecks } from "./labels.mjs";
 
 /** @typedef {import("../types.d.ts").AuditUsage} AuditUsage */
 /** @typedef {import("../types.d.ts").AuditResult} AuditResult */
@@ -77,6 +77,7 @@ const STATUS = {
   MIXED: { name: "MIXED not routed", meaning: "a mixed case did not escalate. Acceptance fails." },
   "FALSE+": { name: "FALSE positive", meaning: "a case that should pass escalated." },
   WRONG: { name: "WRONG can_fail", meaning: "the tool committed to the wrong can_fail value." },
+  CHECK: { name: "WRONG check", meaning: "a check the label names committed to another value than the label. Not an acceptance rule." },
   ERROR: { name: "NO ANSWER", meaning: "the endpoint gave no trusted answer. Acceptance fails." },
   "no-test": { name: "NO TEST", meaning: "the case file holds no test with this name. Acceptance fails." },
 };
@@ -147,7 +148,8 @@ function summarySection(entry, numbered) {
     `| can_fail agreement | ${verdict.correct} of ${verdict.resolved} (${percent(verdict.agreement)}) | The can_fail answers that match the label. Only the cases where the tool committed to a value count. Must be ${percent(verdict.minAgreement)} or more. |`,
   );
   lines.push(`| Mixed routed | ${verdict.mixedRouted} of ${verdict.mixedTotal} | Mixed cases that escalated. Must be all. |`);
-  lines.push(`| deterministic agreement | ${verdict.deterministicCorrect} of ${verdict.deterministicTotal} | The deterministic answers that match the label. Not an acceptance rule. |`);
+  const [checkCorrect, checkTotal] = Object.values(verdict.checkAnswers).reduce(([correct, total], tally) => [correct + tally.correct, total + tally.total], [0, 0]);
+  lines.push(`| Check agreement | ${checkCorrect} of ${checkTotal} | The check values that match the label, where the label names one and the tool committed. Not an acceptance rule. The table below splits it by check. |`);
   lines.push(`| Unresolved | ${verdict.unresolved} | Cases with no test or no answer. Must be 0. |`);
   lines.push(`| Acceptance | **${verdict.pass ? "PASS" : "FAIL"}** | PASS when each "must" in this table holds. |`);
 
@@ -158,6 +160,17 @@ function summarySection(entry, numbered) {
     const bad = group.filter((row) => rowStatus(row) !== "ok");
     const ok = bad.length ? `**no**: ${countText(bad.map(statusName))}` : "yes";
     lines.push(`| ${escapeCell(name)} | ${group.length} | ${escalated} | ${expectedText(group.map((row) => row.label))} | ${ok} |`);
+  }
+
+  // Every check a label names, so a check whose question the model misreads
+  // shows even when it never escalates (a descriptive check only flags).
+  lines.push("", "### Check agreement", "", "| Check | Labelled | Committed | Match |", "| --- | --- | --- | --- |");
+  for (const check of CHECKS) {
+    const labelledRows = rows.filter((row) => labelChecks(row.label).some(([name]) => name === check.name));
+    if (!labelledRows.length) continue;
+    const tally = verdict.checkAnswers[check.name] ?? { correct: 0, total: 0 };
+    const match = tally.total ? `${tally.correct} (${percent(tally.correct / tally.total)})` : "-";
+    lines.push(`| ${code(check.name)} | ${labelledRows.length} | ${tally.total} | ${match} |`);
   }
 
   const notOk = numbered.filter(({ row }) => rowStatus(row) !== "ok");
@@ -243,7 +256,11 @@ function caseBlock({ row, number, anchor }) {
   }
   lines.push(`- ${knownDefect(row)}`);
   const error = row.error ?? result?.error;
-  if (result && !error) lines.push(...decided(label, result), `- ${descriptive(label, result)}`);
+  if (result && !error) {
+    lines.push(...decided(label, result), `- ${descriptive(result)}`);
+    const checks = labelled(label, result);
+    if (checks) lines.push(`- ${checks}`);
+  }
   else lines.push(`- **Status:** ${statusName(row)}, ${STATUS[rowStatus(row)]?.meaning ?? ""}${error ? ` Error: ${error}.` : ""}`);
   lines.push("</details>");
   return lines;
@@ -257,7 +274,7 @@ function knownDefect(row) {
   parts.push(`**Check:** ${checkLink(label)}.`);
   const expected = [expectedOutcome(label)];
   if (label.canFail !== undefined) expected.push(`${code("can_fail")} ${valueText(label.canFail)}`);
-  for (const [key, value] of labelAnswers(label)) expected.push(`${code(key)} ${valueText(value)}`);
+  for (const [name, value] of labelChecks(label)) expected.push(`${code(name)} ${valueText(value)}`);
   parts.push(`**Expected:** ${expected.join(", ")}.`);
   if (label.note) parts.push(`Note: ${label.note}${/[.!?]$/.test(label.note) ? "" : "."}`);
   if (test) {
@@ -269,23 +286,6 @@ function knownDefect(row) {
   }
   if (label.sources?.length) parts.push(`Sources: ${label.sources.map((source) => (source.url ? `[${source.name}](${source.url})` : source.name)).join("; ")}.`);
   return parts.join(" ");
-}
-
-/** The label fields that state the expected answer to a question of the battery, such as `deterministic`. */
-const LABEL_ANSWERS = LABEL_FIELDS.filter((key) => key in BATTERY);
-
-/**
- * The answers the label sets for questions of the battery.
- * @param {CalibrationLabel} label
- * @returns {Array<[string, boolean | string]>}
- */
-function labelAnswers(label) {
-  /** @type {Array<[string, boolean | string]>} */
-  const answers = [];
-  for (const [key, value] of Object.entries(label)) {
-    if (LABEL_ANSWERS.includes(key) && (typeof value === "boolean" || typeof value === "string")) answers.push([key, value]);
-  }
-  return answers;
 }
 
 /**
@@ -349,10 +349,10 @@ function canFailNote(label, result) {
 
 /**
  * The descriptive answers in one line: the clean count, each smell and its flag,
- * the questions with no answer, the type, and the label checks.
- * @param {CalibrationLabel} label @param {AuditResult} result
+ * the questions with no answer, and the type.
+ * @param {AuditResult} result
  */
-function descriptive(label, result) {
+function descriptive(result) {
   /** @type {string[]} */
   const smells = [];
   /** @type {string[]} */
@@ -371,12 +371,22 @@ function descriptive(label, result) {
     }
   }
   const parts = [`${clean} clean`, `smells: ${smells.join(", ") || "none"}`, `unanswered: ${unanswered.join(", ") || "none"}`, ...others];
-  for (const [key, expected] of labelAnswers(label)) {
-    const value = questionValue(key, result.answers[key]);
-    const want = `label ${code(key)} ${valueText(expected)}`;
-    parts.push(value === undefined ? `${want}: no answer` : value === expected ? `${want}: match` : `**${want}, tool ${valueText(value)}**`);
-  }
   return `**Descriptive:** ${parts.join(" · ")}.`;
+}
+
+/**
+ * Each check the label names, against the value the tool gave. A check with no
+ * committed value says why: it escalated, or had no answer.
+ * @param {CalibrationLabel} label @param {AuditResult} result
+ */
+function labelled(label, result) {
+  const parts = labelChecks(label).map(([name, expected]) => {
+    const value = result.checks[name]?.value;
+    const want = `${code(name)} ${valueText(expected)}`;
+    if (value === undefined) return `${want}: not committed`;
+    return value === expected ? `${want}: match` : `**${want}, tool ${valueText(/** @type {boolean | string} */ (value))}**`;
+  });
+  return parts.length ? `**Label checks:** ${parts.join(" · ")}.` : "";
 }
 
 /** The terms, explained once, and the questions of the battery. */
@@ -391,7 +401,7 @@ function legend() {
     "## Legend",
     "",
     "- **Case**: one labelled test in `checks/<check>/cases/<case>/`. `case.mjs` holds the test, `label.json` states the known defect and the expected outcome, and `code.mjs`, if the case has one, holds the code under test.",
-    "- **Check**: the check that the case is meant to catch, in `checks/<check>/check.mjs`. A clean case and a mixed case belong to the `verdict` check.",
+    "- **Check**: the check that the case is meant to catch, in `checks/<check>/check.mjs`. A mixed case, and a clean case that pins no single check, belong to the `verdict` check. A label can also name a check and the value it must give.",
     "- **Escalate**: the tool sends the test to a human, so the test **needs eyes**. Each reason says why. A test with no reason **passes**.",
     `- **can_fail**: the probability that a change to the code under test can make the test fail. The tool asks it in ${Object.keys(canFail.questions).length} phrasings and takes the mean. The **spread** is the highest value minus the lowest. A spread above \`TEST_AUDIT_STABLE_BAND\` makes the value borderline or unstable, and the test escalates.`,
     `- **Twin pair**: ${gates.join(" and ")}. The tool asks each twice. The value counts only when both phrasings agree. A "no" escalates.`,
@@ -472,7 +482,9 @@ function summaryLine(verdict) {
     `can_fail agreement: ${verdict.correct}/${verdict.resolved} resolved (${percent(verdict.agreement)}). ` +
     `Silent passes: ${verdict.silentPasses}. Mixed routed: ${verdict.mixedRouted}/${verdict.mixedTotal}. ` +
     `False positives: ${verdict.falsePositives}/${verdict.goodTotal}. ` +
-    `deterministic: ${verdict.deterministicCorrect}/${verdict.deterministicTotal}.` +
+    `Checks: ${Object.entries(verdict.checkAnswers)
+      .map(([name, tally]) => `${name} ${tally.correct}/${tally.total}`)
+      .join(", ") || "none labelled"}.` +
     (verdict.unresolved ? ` Unresolved: ${verdict.unresolved}.` : "")
   );
 }

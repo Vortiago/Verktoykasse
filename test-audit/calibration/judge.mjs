@@ -1,11 +1,14 @@
 // The calibration rules. Only these are hard: no labelled defect case passes
 // silently, every mixed case routes to eyes, and every label resolves to a test
 // that the endpoint answered.
-// Agreement is measured only where the tool committed to a can-fail value; an
-// unstable case routed to a human is the design working, not a wrong answer.
+// Agreement is measured only where the tool committed to a value: the can_fail
+// value, and the value of each check a label names. An unstable case routed to a
+// human is the design working, not a wrong answer. Only can_fail agreement is an
+// acceptance rule; a check value that differs from its label shows as CHECK.
 // Pure, so the scoring is tested without a model.
 
 import { CHECKS } from "../checks/index.mjs";
+import { labelChecks } from "./labels.mjs";
 
 /** @typedef {import("../types.d.ts").AuditResult} AuditResult */
 /** @typedef {import("../types.d.ts").CalibrationRow} CalibrationRow */
@@ -25,8 +28,9 @@ export function judge(rows) {
   let mixedTotal = 0;
   let falsePositives = 0;
   let goodTotal = 0;
-  let deterministicCorrect = 0;
-  let deterministicTotal = 0;
+  /** Per check: the labelled values the tool committed to, and how many match.
+   * @type {Record<string, { correct: number, total: number }>} */
+  const checkAnswers = {};
   let unresolved = 0;
   /** @type {Record<string, { total: number, escalated: number }>} */
   const defects = {};
@@ -54,10 +58,12 @@ export function judge(rows) {
       goodTotal += 1;
       if (result.needsEyes) falsePositives += 1;
     }
-    const deterministic = result.checks.deterministic?.value;
-    if (label.deterministic !== undefined && deterministic !== undefined) {
-      deterministicTotal += 1;
-      if (deterministic === label.deterministic) deterministicCorrect += 1;
+    for (const [name, expected] of labelChecks(label)) {
+      const value = result.checks[name]?.value;
+      if (value === undefined) continue;
+      const tally = (checkAnswers[name] ??= { correct: 0, total: 0 });
+      tally.total += 1;
+      if (value === expected) tally.correct += 1;
     }
     const said = saidCanFail(result);
     if (label.canFail !== undefined && said !== undefined) {
@@ -75,8 +81,7 @@ export function judge(rows) {
     mixedTotal,
     falsePositives,
     goodTotal,
-    deterministicCorrect,
-    deterministicTotal,
+    checkAnswers,
     unresolved,
     defects,
     minAgreement: ACCEPTANCE.canFailAgreement,
@@ -114,10 +119,25 @@ export function rowStatus(row) {
   if (label.mustEscalate === false && result.needsEyes) return "FALSE+";
   const said = saidCanFail(result);
   if (label.canFail !== undefined && said !== undefined && said !== label.canFail) return "WRONG";
+  if (wrongChecks(row).length) return "CHECK";
   return "ok";
 }
 
 /** A one-letter status for the comparison matrix. @param {CalibrationRow} row */
 export function shortStatus(row) {
-  return { ok: ".", "no-test": "?", ERROR: "E", SILENT: "S", MIXED: "M", "FALSE+": "F", WRONG: "W" }[rowStatus(row)] ?? "?";
+  return { ok: ".", "no-test": "?", ERROR: "E", SILENT: "S", MIXED: "M", "FALSE+": "F", WRONG: "W", CHECK: "C" }[rowStatus(row)] ?? "?";
+}
+/**
+ * The labelled checks the tool committed to a different value for. A check
+ * that did not commit (unanswered, or its phrasings disagree) is not wrong: it
+ * escalated, which is the design working.
+ * @param {CalibrationRow} row
+ * @returns {Array<{ name: string, expected: boolean | string, value: unknown }>}
+ */
+export function wrongChecks(row) {
+  const { label, result } = row;
+  if (!result) return [];
+  return labelChecks(label)
+    .map(([name, expected]) => ({ name, expected, value: result.checks[name]?.value }))
+    .filter(({ expected, value }) => value !== undefined && value !== expected);
 }

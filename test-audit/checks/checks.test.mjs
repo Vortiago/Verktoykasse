@@ -10,7 +10,7 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { BATTERY, CHECKS, RUBRIC } from "./index.mjs";
-import { CASE_FILE, CODE_FILE, LABEL_FIELDS, LABEL_FILE, LOADED_FIELDS, ROOT, headerOf, loadLabels, sourcesOf } from "../calibration/labels.mjs";
+import { CASE_FILE, CODE_FILE, LABEL_FIELDS, LABEL_FILE, LOADED_FIELDS, ROOT, headerOf, labelChecks, loadLabels, sourcesOf } from "../calibration/labels.mjs";
 import { extractTests } from "../change/index.mjs";
 import { buildState } from "../classifier/index.mjs";
 import { NEUTRAL_TEST_PATH, prepareCase } from "../calibration/case-state.mjs";
@@ -116,6 +116,22 @@ test("a label holds only the label fields, and names its defect", () => {
   for (const label of LABELS) {
     for (const key of Object.keys(label)) assert.ok(LABEL_FIELDS.includes(key) || LOADED_FIELDS.includes(key), `${label.file}: field ${key}`);
     assert.ok(typeof label.defect === "string" && label.defect.length > 0, `${label.file}: no defect`);
+  }
+});
+
+test("a check value in a label is one that check can give", () => {
+  for (const label of LABELS) {
+    for (const [name, value] of labelChecks(label)) {
+      const check = CHECKS.find((candidate) => candidate.name === name);
+      assert.ok(check, `${label.file}: no check ${name}`);
+      /** @type {Array<boolean | string>} */
+      const allowed =
+        check.role === "asserts" ? Object.keys(check.kinds)
+        : check.role === "verdict" ? check.levels
+        : check.role === "type" ? Object.keys(Object.values(check.questions)[0].criteria)
+        : [true, false];
+      assert.ok(allowed.includes(value), `${label.file}: ${name} ${value} is not one of ${allowed.join(", ")}`);
+    }
   }
 });
 

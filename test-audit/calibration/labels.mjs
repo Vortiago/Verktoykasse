@@ -10,6 +10,7 @@
 import { existsSync, globSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
+import { CHECKS } from "../checks/index.mjs";
 
 /** test-audit/: the label paths are relative to it, so the benchmark links resolve. */
 export const ROOT = fileURLToPath(new URL("../", import.meta.url));
@@ -21,8 +22,13 @@ export const LABEL_FILE = "label.json";
 /** The file in a case folder that holds the code under test, if the case has one. */
 export const CODE_FILE = "code.mjs";
 
-/** The fields a `label.json` may hold. A field that names a question of the battery, such as `deterministic`, is an expected answer. */
-export const LABEL_FIELDS = ["test", "defect", "canFail", "mustEscalate", "mixed", "deterministic", "note"];
+/** The checks a label can state the expected value of, by name: every check
+ * but can_fail, whose expected value is `canFail`. */
+export const LABEL_CHECKS = CHECKS.filter((check) => check.role !== "can-fail").map((check) => check.name);
+
+/** The fields a `label.json` may hold. A field that names a check, such as
+ * `deterministic` or `asserts`, is the value that check must give. */
+export const LABEL_FIELDS = ["test", "defect", "canFail", "mustEscalate", "mixed", "note", ...LABEL_CHECKS];
 /** The fields the loader adds from the case folder. */
 export const LOADED_FIELDS = ["check", "file", "code", "sources"];
 
@@ -103,4 +109,21 @@ export function sourcesOf(text) {
     }
   }
   return sources.map((source) => ({ ...source, name: source.name.replace(/\.$/, "") }));
+}
+
+/**
+ * The check values a label expects, in battery order: yes or no for a gate or
+ * a descriptive check, the kind for asserts and type, the level for verdict.
+ * @param {CalibrationLabel} label
+ * @returns {Array<[string, boolean | string]>}
+ */
+export function labelChecks(label) {
+  /** @type {Array<[string, boolean | string]>} */
+  const out = [];
+  const fields = /** @type {Record<string, unknown>} */ (/** @type {unknown} */ (label));
+  for (const name of LABEL_CHECKS) {
+    const value = fields[name];
+    if (typeof value === "boolean" || typeof value === "string") out.push([name, value]);
+  }
+  return out;
 }

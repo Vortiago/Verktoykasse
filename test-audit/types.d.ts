@@ -152,8 +152,6 @@ export interface CalibrationLabel {
   mustEscalate?: boolean;
   /** A test whose expected outcome is escalation. */
   mixed?: boolean;
-  /** The expected answer to the `deterministic` question. */
-  deterministic?: boolean;
   /** What the case shows, in prose. */
   note?: string;
   /** The file beside the case that holds the code under test, relative to
@@ -162,6 +160,9 @@ export interface CalibrationLabel {
   code?: string;
   /** The sources the header comment of the case file names. */
   sources?: Source[];
+  /* A label may also hold a field named after a check, such as `deterministic`
+   * or `asserts`: the value that check must give. labelChecks in
+   * calibration/labels.mjs reads them; LABEL_CHECKS lists the names. */
 }
 
 /** One labelled case after a run: its result, or why it has none. */
