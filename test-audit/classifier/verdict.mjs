@@ -3,7 +3,7 @@
 // objects without the model.
 
 import { trusted } from "./systemone.mjs";
-import { ASSERT_PASS, CAN_FAIL_KEYS, CAN_FAIL_NEGATED, DESCRIPTIVE_KEYS, FLAG_BY_GATE, VERDICTS } from "./battery.mjs";
+import { ASSERT_PASS, CAN_FAIL_KEYS, CAN_FAIL_NEGATED, DESCRIPTIVE_KEYS, ESCALATE_ON_FALSE, FLAG_BY_GATE, VERDICTS } from "./battery.mjs";
 import config from "../config.mjs";
 
 /** Verdicts at or below this level escalate. */
@@ -11,44 +11,48 @@ const WEAK = VERDICTS.indexOf("weak");
 
 /**
  * Reduce one test's answers to a verdict.
- * @param {object} test
+ * @param {{ file: string, line: number, name: string, path: string[], flags?: string[] }} test
  * @param {Record<string, any>} answers
- * @param {{ config?: object, error?: string }} [opts]
+ * @param {{ error?: string }} [opts]
  */
 export function verdictFrom(test, answers, opts = {}) {
-  const cfg = opts.config ?? config;
-  const values = CAN_FAIL_KEYS.map((key) => canFailValue(key, answers[key], cfg));
+  const values = CAN_FAIL_KEYS.map((key) => canFailValue(key, answers[key]));
   const present = values.filter((value) => value !== null);
   const spread = present.length >= 2 ? Math.max(...present) - Math.min(...present) : null;
   const mean = present.length ? present.reduce((sum, value) => sum + value, 0) / present.length : null;
-  const canFailState = canFailStateOf(present.length, spread, cfg.stableBand);
+  const canFailState = canFailStateOf(present.length, spread, config.stableBand);
 
-  const assertsA = choiceOf(answers.asserts_a, cfg);
-  const assertsB = choiceOf(answers.asserts_b, cfg);
+  const assertsA = field(answers.asserts_a, "choice", "string");
+  const assertsB = field(answers.asserts_b, "choice", "string");
   const assertsTrusted = assertsA !== undefined && assertsB !== undefined;
   const asserts = assertsTrusted ? assertsA : undefined;
 
-  const runs = boolOf(answers.runs, cfg);
-  const positive = boolOf(answers.positive, cfg);
-  const type = choiceOf(answers.type, cfg);
+  /** @type {Record<string, boolean | undefined>} */
+  const gates = {};
+  for (const gate of Object.keys(ESCALATE_ON_FALSE)) gates[gate] = boolOf(answers[gate]);
+  const type = field(answers.type, "choice", "string");
+  /** @type {Record<string, boolean | undefined>} */
   const descriptive = {};
-  for (const gate of DESCRIPTIVE_KEYS) descriptive[gate] = boolOf(answers[gate], cfg);
-  const scoreValue = scoreOf(answers.verdict, cfg);
+  for (const gate of DESCRIPTIVE_KEYS) descriptive[gate] = boolOf(answers[gate]);
+  const scoreValue = scoreOf(answers.verdict);
   const verdictIndex = verdictIndexOf(scoreValue);
   const verdict = verdictIndex === undefined ? undefined : VERDICTS[verdictIndex];
 
-  // The descriptive questions report as flags. The verdict-carrying answers
-  // (runs, positive, can_fail, asserts, verdict) are what escalate.
+  // The descriptive questions and the extractor's own notes report as flags.
+  // The verdict-carrying answers (the ESCALATE_ON_FALSE gates, can_fail,
+  // asserts, verdict) are what escalate.
   /** @type {string[]} */
-  const flagList = [];
+  const flagList = [...(test.flags ?? [])];
   if (asserts && asserts !== ASSERT_PASS) flagList.push(asserts);
   for (const gate of DESCRIPTIVE_KEYS) {
     if (descriptive[gate] === false) flagList.push(FLAG_BY_GATE[gate]);
   }
   const flags = [...new Set(flagList)];
+  const canFailUnstable = canFailState === "borderline" || canFailState === "unstable";
   const reasons = escalate({
     error: opts.error,
     answered: present.length === CAN_FAIL_KEYS.length,
+    canFailUnstable,
     canFailState,
     canFailMean: mean,
     spread,
@@ -56,17 +60,16 @@ export function verdictFrom(test, answers, opts = {}) {
     assertsA,
     assertsB,
     asserts,
-    runs,
-    positive,
-    verdict,
+    gates,
+    verdictIndex,
   });
 
   return {
     test: { file: test.file, line: test.line, name: test.name, path: test.path },
     answers,
-    canFail: { values, mean, spread, state: canFailState },
+    canFail: { values, mean, spread, state: canFailState, unstable: canFailUnstable },
     asserts: { value: asserts, a: assertsA, b: assertsB, trust: assertsTrusted, agrees: assertsTrusted && assertsA === assertsB },
-    runs,
+    ...gates,
     type,
     descriptive,
     score: { value: scoreValue, label: verdict },
@@ -78,9 +81,10 @@ export function verdictFrom(test, answers, opts = {}) {
 }
 
 /** P(can fail) from one phrasing, or null when the answer is not trusted. */
-function canFailValue(key, answer, cfg) {
-  if (!answer || typeof answer.noul !== "number" || !trusted(answer, cfg.minMass)) return null;
-  return CAN_FAIL_NEGATED.has(key) ? 1 - answer.noul : answer.noul;
+function canFailValue(key, answer) {
+  const value = field(answer, "noul", "number");
+  if (value === undefined) return null;
+  return CAN_FAIL_NEGATED.has(key) ? 1 - value : value;
 }
 
 /** @param {number} present @param {number | null} spread @param {number} band */
@@ -95,42 +99,47 @@ function canFailStateOf(present, spread, band) {
  * The reasons a test escalates to a human. An empty list is the only pass.
  * @returns {string[]}
  */
-function escalate({ error, answered, canFailState, canFailMean, spread, assertsTrusted, assertsA, assertsB, asserts, runs, positive, verdict }) {
+function escalate({ error, answered, canFailUnstable, canFailState, canFailMean, spread, assertsTrusted, assertsA, assertsB, asserts, gates, verdictIndex }) {
   const reasons = [];
   if (error) reasons.push(`no answers (${error})`);
   if (!answered) reasons.push("can_fail not fully answered");
-  if (canFailState === "borderline" || canFailState === "unstable") {
+  if (canFailUnstable) {
     reasons.push(`can_fail ${canFailState} (spread ${spread === null ? "-" : spread.toFixed(2)})`);
   }
   // A confident "cannot fail" beside a good verdict is a contradiction: a guard
   // that never goes red cannot be good. The spread cannot see this, because the
   // three phrasings agree; only a cross-question rule catches it.
-  if (canFailMean !== null && canFailMean < 0.5 && (verdict === "good" || verdict === "strong")) {
+  if (canFailMean !== null && canFailMean < 0.5 && verdictIndex !== undefined && verdictIndex > WEAK) {
     reasons.push("can_fail contradicts the verdict");
   }
-  if (runs === undefined) reasons.push("runs unclassified");
-  else if (runs === false) reasons.push("does not run");
-  if (positive === undefined) reasons.push("positive unclassified");
-  else if (positive === false) reasons.push("no positive assertion");
+  for (const [gate, reason] of Object.entries(ESCALATE_ON_FALSE)) {
+    if (gates[gate] === undefined) reasons.push(`${gate} unclassified`);
+    else if (gates[gate] === false) reasons.push(reason);
+  }
   // The assertion must check the behaviour. A shape, a hardcoded table, a mock
   // call, or nothing at all is not a guard, so any other answer escalates.
   if (!assertsTrusted) reasons.push("asserts unclassified");
   else if (assertsA !== assertsB) reasons.push(`asserts unstable (${assertsA} vs ${assertsB})`);
   else if (asserts !== ASSERT_PASS) reasons.push(`asserts ${asserts}`);
-  if (verdict === undefined) reasons.push("verdict unclassified");
-  else if (VERDICTS.indexOf(verdict) <= WEAK) reasons.push(`verdict ${verdict}`);
+  if (verdictIndex === undefined) reasons.push("verdict unclassified");
+  else if (verdictIndex <= WEAK) reasons.push(`verdict ${VERDICTS[verdictIndex]}`);
   return reasons;
 }
 
-/** @param {any} answer @param {object} cfg */
-function choiceOf(answer, cfg) {
-  return answer && trusted(answer, cfg.minMass) && typeof answer.choice === "string" ? answer.choice : undefined;
+/**
+ * One trusted field of an answer, or undefined when the answer is missing,
+ * below the mass floor, or of the wrong type.
+ * @param {any} answer @param {string} key @param {"string" | "number"} kind
+ */
+function field(answer, key, kind) {
+  if (!trusted(answer) || typeof answer[key] !== kind) return undefined;
+  return answer[key];
 }
 
-/** @param {any} answer @param {object} cfg @returns {number | undefined} */
-function scoreOf(answer, cfg) {
-  if (!answer || !trusted(answer, cfg.minMass) || typeof answer.score !== "number" || !Number.isFinite(answer.score)) return undefined;
-  return answer.score;
+/** @param {any} answer @returns {number | undefined} */
+function scoreOf(answer) {
+  const score = field(answer, "score", "number");
+  return Number.isFinite(score) ? score : undefined;
 }
 
 /**
@@ -145,8 +154,8 @@ function verdictIndexOf(score) {
   return Math.round(score);
 }
 
-/** @param {any} answer @param {object} cfg @returns {boolean | undefined} */
-function boolOf(answer, cfg) {
-  if (!answer || typeof answer.noul !== "number" || !trusted(answer, cfg.minMass)) return undefined;
-  return answer.noul >= 0.5;
+/** @param {any} answer @returns {boolean | undefined} */
+function boolOf(answer) {
+  const value = field(answer, "noul", "number");
+  return value === undefined ? undefined : value >= 0.5;
 }

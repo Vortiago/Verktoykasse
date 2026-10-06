@@ -1,10 +1,10 @@
 // The pieces the text and markdown reports share: how a can-fail value, a
 // location, and the summary line read.
 
-/** A can-fail value, with `!` when the paraphrase spread was not stable. */
+/** A can-fail value, with `!` when the paraphrase spread is above the band. */
 export function canFailText(canFail) {
   if (canFail.mean === null) return "-";
-  return `${canFail.mean.toFixed(2)}${canFail.state === "stable" ? "" : "!"}`;
+  return `${canFail.mean.toFixed(2)}${canFail.unstable ? "!" : ""}`;
 }
 
 /** `file:line` for one test. */
@@ -23,6 +23,11 @@ export function rowCells(result) {
     location(result.test),
     result.test.name,
   ];
+}
+
+/** "1 test", "2 tests": the noun agrees with the count. */
+export function plural(count, noun) {
+  return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }
 
 /** "1 needs eyes", "2 need eyes": the verb agrees with the count. */
@@ -44,8 +49,8 @@ export function summary(results, meta) {
   }
   const parts = Object.entries(counts).map(([label, count]) => `${count} ${label}`);
   const eyes = eyesResults(results).length;
-  const unstable = results.filter((result) => result.canFail.state === "unstable" || result.canFail.state === "borderline").length;
-  const usage = meta.usage ? ` ${meta.usage.calls} call${meta.usage.calls === 1 ? "" : "s"}, ${meta.usage.tokens} tokens.` : "";
+  const unstable = results.filter((result) => result.canFail.unstable).length;
+  const usage = meta.usage ? ` ${plural(meta.usage.calls, "call")}, ${meta.usage.tokens} tokens.` : "";
   return `Summary: ${parts.join(", ") || "no tests"}. ${unstable} unstable. ${eyesPhrase(eyes)}.${usage}`;
 }
 

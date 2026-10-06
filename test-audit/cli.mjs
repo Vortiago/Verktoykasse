@@ -10,13 +10,14 @@
 //   node cli.mjs --files a.test.mjs  audit named files
 //   node cli.mjs --json              full record
 //   node cli.mjs --url http://127.0.0.1:11434 --model nimble   point at any SystemOne endpoint
-//   node cli.mjs --selftest          live calibration over corpus/
+//   node cli.mjs --selftest          live calibration over the corpus in calibration/
 //   node cli.mjs --selftest --targets "http://127.0.0.1:11434|nimble, http://127.0.0.1:11435|winnow:e4b"
 //
 // A transport failure is an audit failure, not a skip: the affected test
 // escalates like any other.
 
 import process from "node:process";
+import { parseArgs as parseArgv } from "node:util";
 import { runAudit } from "./audit.mjs";
 import { exitCode, formatAudit } from "./report/index.mjs";
 import config from "./config.mjs";
@@ -33,7 +34,7 @@ const USAGE = `test-audit: a SystemOne classifier for the tests a change adds
   --model <id>       decision model the base serves
   --json             print the full record
   --markdown         print a review comment
-  --selftest         live calibration over corpus/ (needs an endpoint)
+  --selftest         live calibration over calibration/ (needs an endpoint)
   --benchmark        with --selftest, print a markdown benchmark report
   --targets <list>   comma-separated "url|model" or "model" entries to compare
   --models <list>    comma-separated models on the configured URL to compare
@@ -52,9 +53,8 @@ async function main() {
   }
   if (args.benchmark && !args.selftest) throw new Error("--benchmark needs --selftest");
   if (args.selftest) {
-    const { runSelftest } = await import("./calibration/index.mjs");
+    const { runSelftest } = await import("./calibration/runner.mjs");
     const { text, code } = await runSelftest({
-      config,
       targets: selftestTargets(args),
       benchmark: args.benchmark,
       onProgress: (event) => {
@@ -66,7 +66,7 @@ async function main() {
   }
   const audit = await runAudit(args, { cwd: process.cwd(), url: args.url, model: args.model });
   const format = args.json ? "json" : args.markdown ? "markdown" : "text";
-  console.log(formatAudit({ ...audit, model: args.model ?? config.model }, { format }));
+  console.log(formatAudit(audit, { format }));
   return exitCode(audit.results);
 }
 
@@ -75,21 +75,18 @@ async function main() {
  * `--models` is a shorthand for several models on one URL. Neither given means
  * the configured URL and model.
  * @param {ReturnType<typeof parseArgs>} args
- * @returns {Array<{url: string, model: string, label: string}>}
+ * @returns {Array<{url: string, model: string}>}
  */
 function selftestTargets(args) {
   const fallbackUrl = args.url ?? config.baseUrl;
   if (args.targets?.length) {
     return args.targets.map((entry) => {
       const [url, model] = entry.includes("|") ? splitOnce(entry, "|") : [fallbackUrl, entry];
-      return { url, model, label: model };
+      return { url, model };
     });
   }
-  if (args.models?.length) {
-    return args.models.map((model) => ({ url: fallbackUrl, model, label: model }));
-  }
-  const model = args.model ?? config.model;
-  return [{ url: fallbackUrl, model, label: model }];
+  if (args.models?.length) return args.models.map((model) => ({ url: fallbackUrl, model }));
+  return [{ url: fallbackUrl, model: args.model ?? config.model }];
 }
 
 /** @param {string} text @param {string} sep */
@@ -99,36 +96,42 @@ function splitOnce(text, sep) {
 }
 
 /**
+ * `--files` takes the paths that follow it, so the paths arrive as positionals.
  * @param {string[]} argv
  */
 function parseArgs(argv) {
-  const args = { base: undefined, head: undefined, staged: false, files: undefined, url: undefined, model: undefined, targets: undefined, models: undefined, json: false, markdown: false, selftest: false, benchmark: false, help: false };
-  for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i];
-    if (arg === "--base") args.base = argv[++i];
-    else if (arg === "--head") args.head = argv[++i];
-    else if (arg === "--staged") args.staged = true;
-    else if (arg === "--url") args.url = argv[++i];
-    else if (arg === "--model") args.model = argv[++i];
-    else if (arg === "--targets") args.targets = list(argv[++i]);
-    else if (arg === "--models") args.models = list(argv[++i]);
-    else if (arg === "--json") args.json = true;
-    else if (arg === "--markdown") args.markdown = true;
-    else if (arg === "--selftest") args.selftest = true;
-    else if (arg === "--benchmark") args.benchmark = true;
-    else if (arg === "--help" || arg === "-h") args.help = true;
-    else if (arg === "--files") {
-      args.files = [];
-      while (i + 1 < argv.length && !argv[i + 1].startsWith("--")) args.files.push(argv[++i]);
-      if (args.files.length === 0) throw new Error("--files needs at least one path");
-    } else throw new Error(`unknown argument: ${arg}`);
-  }
-  return args;
+  const { values, positionals } = parseArgv({
+    args: argv,
+    allowPositionals: true,
+    options: {
+      base: { type: "string" },
+      head: { type: "string" },
+      staged: { type: "boolean", default: false },
+      files: { type: "boolean", default: false },
+      url: { type: "string" },
+      model: { type: "string" },
+      targets: { type: "string" },
+      models: { type: "string" },
+      json: { type: "boolean", default: false },
+      markdown: { type: "boolean", default: false },
+      selftest: { type: "boolean", default: false },
+      benchmark: { type: "boolean", default: false },
+      help: { type: "boolean", short: "h", default: false },
+    },
+  });
+  if (values.files && positionals.length === 0) throw new Error("--files needs at least one path");
+  if (!values.files && positionals.length) throw new Error(`unknown argument: ${positionals[0]}`);
+  return {
+    ...values,
+    files: values.files ? positionals : undefined,
+    targets: values.targets === undefined ? undefined : list(values.targets),
+    models: values.models === undefined ? undefined : list(values.models),
+  };
 }
 
-/** @param {string | undefined} value */
+/** @param {string} value */
 function list(value) {
-  return (value ?? "")
+  return value
     .split(",")
     .map((entry) => entry.trim())
     .filter(Boolean);

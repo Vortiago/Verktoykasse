@@ -2,7 +2,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { exitCode, formatAudit, formatText, formatJson, formatMarkdown, pad } from "./index.mjs";
+import { exitCode, formatAudit, formatText, formatMarkdown, pad } from "./index.mjs";
 
 /** A minimal verdict record; only the fields the report reads are filled. */
 function result(overrides = {}) {
@@ -36,8 +36,8 @@ test("formatText names the escalated test and its reasons", () => {
   assert.match(text, /Summary: 1 strong, 1 slop\. 0 unstable\. 1 needs eyes\./);
 });
 
-test("formatJson emits the full record", () => {
-  const json = JSON.parse(formatJson([result()], { ref: "HEAD", usage: { calls: 1, tokens: 5 } }));
+test("the json face emits the full record", () => {
+  const json = JSON.parse(formatAudit({ results: [result()], ref: "HEAD", usage: { calls: 1, tokens: 5 } }, { format: "json" }));
   assert.equal(json.results.length, 1);
   assert.equal(json.results[0].score.label, "strong");
   assert.equal(json.usage.calls, 1);

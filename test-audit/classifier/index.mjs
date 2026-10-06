@@ -5,12 +5,9 @@
 // unstable verdict-carrying answer escalates the test, and never a tie-break.
 
 import { ask as systemoneAsk } from "./systemone.mjs";
-import { batteryQuestions, RUBRIC } from "./battery.mjs";
+import { BATTERY, RUBRIC } from "./battery.mjs";
 import { verdictFrom } from "./verdict.mjs";
 import config from "../config.mjs";
-
-// The battery is static data, so it is built once, not once per test.
-const BATTERY = batteryQuestions();
 
 export { usageMeter } from "./systemone.mjs";
 export { DESCRIPTIVE_KEYS, VERDICTS } from "./battery.mjs";
@@ -47,23 +44,22 @@ export function buildState(test, changeContext = "", cap = config.stateCap) {
 /**
  * Ask the battery once and reduce the answers to a verdict.
  * @param {object} test
- * @param {{ ask?: Function, config?: object, url?: string, model?: string, changeContext?: string, onResponse?: (json: object) => void }} [opts]
+ * @param {{ ask?: Function, url?: string, model?: string, changeContext?: string, onResponse?: (json: object) => void }} [opts]
  */
 export async function classify(test, opts = {}) {
-  const cfg = opts.config ?? config;
   const ask = opts.ask ?? systemoneAsk;
-  const state = buildState(test, opts.changeContext ?? "", cfg.stateCap);
+  const state = buildState(test, opts.changeContext ?? "");
   let answers = {};
   let error;
   try {
     answers = await ask(state, BATTERY, {
       url: opts.url,
       model: opts.model,
-      timeoutMs: cfg.timeoutMs,
+      timeoutMs: config.timeoutMs,
       onResponse: opts.onResponse,
     });
   } catch (err) {
     error = err instanceof Error ? err.message : String(err);
   }
-  return verdictFrom(test, answers, { config: cfg, error });
+  return verdictFrom(test, answers, { error });
 }

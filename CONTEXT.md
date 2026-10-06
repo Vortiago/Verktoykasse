@@ -54,24 +54,24 @@ implement/close decision. Not committable work as filed.
 _Avoid_: spike (the outcome is a decision recorded on the issue, not code)
 
 **Test audit**:
-The per-test classification of a change produced by `test-audit`. One audit
-covers every test the change adds.
+The classification, test by test, that `test-audit` produces for a change. One
+audit covers every test the change adds.
 _Avoid_: test scan, test review
 
 **Battery**:
-The set of typed SystemOne questions asked about one test. Every question of a
-battery shares one state read and travels in one call.
+The set of typed SystemOne questions that `test-audit` asks about one test. All
+questions of a battery share one read of the state and travel in one call.
 
 **Paraphrase pair**:
-Two or more logically equivalent phrasings of one question, polarity
-normalised before comparison. Disagreement beyond the stable band is
+Two or more logically equivalent phrasings of one question. The tool normalises
+their polarity before it compares them. A disagreement beyond the stable band is
 instability, not a tie to break.
 _Avoid_: reworded question, duplicate question
 
 **Needs-eyes**:
-The verdict of a test whose verdict-carrying answers are untrusted or unstable,
-or whose score lands at slop/weak. The audit escalates it to a human; it never
-passes it silently.
+The verdict of a test whose verdict-carrying answers are untrusted, unstable or
+show a defect, or whose score is slop or weak. The audit escalates the test to a
+human. It never passes the test silently.
 _Avoid_: flagged, failed
 
 ### Web toolkit

@@ -3,10 +3,9 @@
 
 import { eyesResults } from "./format.mjs";
 import { formatText } from "./text.mjs";
-import { formatJson } from "./json.mjs";
 import { formatMarkdown } from "./markdown.mjs";
 
-export { formatText, formatJson, formatMarkdown };
+export { formatText, formatMarkdown };
 export { canFailText, escapeCell, pad } from "./format.mjs";
 
 /** Exit 1 when any test escalates. A slop or weak verdict always escalates. */
@@ -23,7 +22,7 @@ export function exitCode(results) {
  */
 export function formatAudit(audit, opts = {}) {
   const meta = { ref: audit.ref, model: audit.model, usage: audit.usage };
-  if (opts.format === "json") return formatJson(audit.results, meta);
+  if (opts.format === "json") return JSON.stringify({ ...meta, results: audit.results }, null, 2);
   if (audit.results.length === 0) return "Test audit: no tests in the change.";
   if (opts.format === "markdown") return formatMarkdown(audit.results, meta);
   return formatText(audit.results, meta);

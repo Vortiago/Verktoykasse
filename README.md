@@ -137,22 +137,25 @@ A directory is a skill when it holds a `SKILL.md`.
   [README](opencode-tasklist/README.md).
 
 - **[test-audit](test-audit/README.md)**: a SystemOne classifier for the tests a
-  change adds. For each added test it asks a Jev-compatible typed-question
-  endpoint the questions a reviewer asks. It reports a per-test verdict:
-  tautology, vacuous, shape-not-value, mock-only, name-only, and the rest of the
-  house catalogue. Trust combines `mass` and a paraphrase pair, so an unstable
-  judgement routes to a human instead of passing silently. It speaks any
-  Jev-compatible endpoint (a local Ollama decision model, llama-arbiter, or any
-  TypeSafe endpoint), and `--selftest --targets` scores several models on one
-  labelled corpus ([references here](test-audit/references.md), [results
-  here](test-audit/BENCHMARK.md)). It is a cheap sensor beside the mutation check
-  in `verify-prd-implemented`, not a coverage tool. It ships a CLI and the
-  `opencode-test-audit` plugin.
+  change adds. It asks a Jev-compatible typed-question endpoint the questions a
+  reviewer asks about each added test, and it prints one verdict for each test.
+  It looks for defects such as a tautology, a vacuous test, a shape-only or
+  interaction-only assertion, a name-only test, and the rest of the house
+  catalogue. Trust combines `mass` and a paraphrase pair. If a judgement is
+  unstable, the tool escalates the test to a human instead of passing it
+  silently.
+
+  The endpoint can be a local Ollama decision model, llama-arbiter, or any
+  TypeSafe endpoint. `--selftest --targets` scores several models on one
+  labelled corpus ([references](test-audit/references.md),
+  [results](test-audit/BENCHMARK.md)). The tool is a cheap sensor beside the
+  mutation check in `verify-prd-implemented`, not a coverage tool. It ships a
+  CLI and the `opencode-test-audit` plugin.
 
 - **[opencode-test-audit](opencode-test-audit/README.md)**: an OpenCode 2 plugin
-  that runs `test-audit` on a change. One command, `/test-audit`, and one
-  `test-audit` tool. Advisory: it reports, it never blocks. Install it with
-  `opencode plugin add` from the path in its
+  that runs `test-audit` on a change. It adds one command, `/test-audit`, and
+  one tool, `test-audit`. It is advisory: it reports and never blocks. Install
+  it with `opencode plugin add` from the path in its
   [README](opencode-test-audit/README.md).
 
 ## Install

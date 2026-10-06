@@ -1,8 +1,23 @@
 # test-audit benchmark
 
-The corpus scores a decision model on how well it separates a real test guard
-from fake safety. Each run records one entry per case, worst verdict first, with
-the result of every check and the reasons a case escalates.
+This file records a calibration run of `test-audit`. The labelled corpus scores
+how well a decision model separates a real guard from fake safety. The
+[README](README.md#calibrate) gives the acceptance rules.
+
+The section for each target starts with three lines:
+
+- The endpoint, and the number of cases, calls and tokens.
+- The summary. `can_fail agreement` counts the correct `can_fail` answers out of
+  the labelled cases where the tool committed to a value. `Silent passes` counts
+  the defect cases that did not escalate. `Mixed routed` counts the mixed cases
+  that escalated. `False positives` counts the clean cases that escalated.
+  `deterministic` counts the correct `deterministic` answers out of the cases
+  with a `deterministic` label.
+- The defects escalated: for each defect family, the cases that escalated out of
+  the total. A `!` after a count marks a family with a case that did not
+  escalate.
+
+One entry for each case follows, worst verdict first.
 
 Date: 2026-10-06.
 
@@ -21,8 +36,8 @@ can_fail agreement: 38/39 resolved (97%). Silent passes: 0. Mixed routed: 5/5. F
 
 defects escalated: ambiguous 5/5, commented-out 2/2, early-return 1/1, focused 2/2, hardcoded-data 2/2, interaction-only 3/3, name-only 4/4, only-negative 4/4, passes-with-zero 2/2, self-reference 3/3, shape-only 4/4, skipped 3/3, tautology 2/2, vacuous 2/2, wrong-reason 2/2
 
-Checks, in order: observable, conditional, isolated, controlled, specific, named, deterministic, one_thing, name_matches, resilient, diagnostic, fixture, fast, readable, magic_number, reads_output, automated, restores.
-Each check is clean, the smell it looks for, or unanswered. `can_fail` is the mean P(can fail) over three phrasings; a `!` marks a spread above the band.
+Descriptive questions, in report order: observable, conditional, isolated, controlled, specific, named, deterministic, one_thing, name_matches, resilient, diagnostic, fixture, fast, readable, magic_number, reads_output, automated, restores.
+Each entry sorts these questions into clean, smells and unanswered. A smell is a false answer: the test shows the problem that the question looks for. `can_fail` is the mean probability, over three phrasings, that the test can fail. A `!` after the value means that the spread is above `TEST_AUDIT_STABLE_BAND`. The verdict line lists the reasons that the case needs eyes.
 
 ### `computes the tax` — name-only
 

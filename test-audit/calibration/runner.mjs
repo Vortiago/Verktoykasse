@@ -1,6 +1,6 @@
 // The live calibration runner: classify every labelled case against one or more
 // endpoints and report agreement. It needs the network, so it is not part of the
-// repo gate. `runSelftest` is the interface.
+// repo gate. `runSelftest` is the interface; the CLI imports it from here.
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -16,28 +16,26 @@ import config from "../config.mjs";
 const HERE = dirname(fileURLToPath(import.meta.url));
 
 /**
- * @param {{ config?: object, targets?: Array<{url: string, model: string, label: string}>, benchmark?: boolean, onProgress?: (event: { target: string, index: number, total: number, status: string, test: string }) => void }} [opts]
+ * @param {{ targets: Array<{url: string, model: string}>, benchmark?: boolean, onProgress?: (event: { target: string, index: number, total: number, status: string, test: string }) => void }} [opts]
  * @returns {Promise<{ text: string, code: number }>}
  */
-export async function runSelftest(opts = {}) {
-  const cfg = opts.config ?? config;
+export async function runSelftest(opts) {
   const labels = loadLabels();
   // Read and parse every case once; every target reuses it.
   const cases = labels.cases.map(prepareCase);
-  const targets = opts.targets?.length ? opts.targets : [{ url: cfg.baseUrl, model: cfg.model, label: cfg.model }];
 
   // The targets are independent endpoints, so their pools run side by side;
   // each endpoint still takes `concurrency` calls at a time, no more than it
   // would take alone.
   const entries = await Promise.all(
-    targets.map(async (target) => {
+    opts.targets.map(async (target) => {
       const meter = usageMeter();
       let done = 0;
       const total = cases.length;
-      const rows = await mapPool(cases, cfg.concurrency, async (item) => {
-        const row = await runCase(item, { cfg, target, onResponse: meter.onResponse });
+      const rows = await mapPool(cases, config.concurrency, async (item) => {
+        const row = await runCase(item, { target, onResponse: meter.onResponse });
         done += 1;
-        opts.onProgress?.({ target: target.label, index: done, total, status: rowStatus(row), test: item.label.test });
+        opts.onProgress?.({ target: target.model, index: done, total, status: rowStatus(row), test: item.label.test });
         return row;
       });
       return { target, rows, verdict: judge(rows, labels.acceptance), usage: meter.usage };
@@ -67,12 +65,11 @@ function prepareCase(label) {
 /**
  * Classify one prepared case.
  * @param {{ label: any, test?: object, error?: string }} item
- * @param {{ cfg: object, target: {url: string, model: string}, onResponse: (json: object) => void }} ctx
+ * @param {{ target: {url: string, model: string}, onResponse: (json: object) => void }} ctx
  */
 async function runCase(item, ctx) {
   if (!item.test) return { label: item.label, error: item.error ?? `test not found: ${item.label.test}` };
   const result = await classify(item.test, {
-    config: ctx.cfg,
     url: ctx.target.url,
     model: ctx.target.model,
     onResponse: ctx.onResponse,

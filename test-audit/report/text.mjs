@@ -1,7 +1,7 @@
 // The default face of an audit: a table, then the escalated tests with their
 // reasons, then the summary.
 
-import { eyesResults, location, pad, rowCells, summary } from "./format.mjs";
+import { eyesResults, location, pad, plural, rowCells, summary } from "./format.mjs";
 
 /**
  * @param {any[]} results
@@ -9,7 +9,7 @@ import { eyesResults, location, pad, rowCells, summary } from "./format.mjs";
  */
 export function formatText(results, meta = {}) {
   const lines = [];
-  lines.push(`Audit of ${meta.ref ?? "the working tree"}: ${results.length} test${results.length === 1 ? "" : "s"}`);
+  lines.push(`Audit of ${meta.ref ?? "the working tree"}: ${plural(results.length, "test")}`);
   lines.push("");
   const header = ["VERDICT", "EYES", "TYPE", "CAN-FAIL", "ASSERTS", "LOCATION", "NAME"];
   const widths = [8, 5, 14, 9, 16, 24, 0];

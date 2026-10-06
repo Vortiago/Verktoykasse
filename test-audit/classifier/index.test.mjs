@@ -5,7 +5,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { buildState, classify } from "./index.mjs";
-import { batteryQuestions, CAN_FAIL_KEYS, DESCRIPTIVE_KEYS, RUBRIC } from "./battery.mjs";
+import { BATTERY, CAN_FAIL_KEYS, DESCRIPTIVE_KEYS, RUBRIC } from "./battery.mjs";
 import { verdictFrom } from "./verdict.mjs";
 
 const TEST = { file: "add.test.mjs", line: 1, name: "add", path: [], source: 'test("add", () => { expect(add(1, 1)).toBe(2); });', fixtures: [], imports: [] };
@@ -51,7 +51,7 @@ function goodAnswers() {
 }
 
 test("the battery carries the whole question set once", () => {
-  const questions = batteryQuestions();
+  const questions = BATTERY;
   assert.deepEqual(Object.keys(questions), [...CAN_FAIL_KEYS, "asserts_a", "asserts_b", "positive", "runs", "type", ...DESCRIPTIVE_KEYS, "verdict"]);
   assert.deepEqual(Object.keys(questions.asserts_b.criteria), [...Object.keys(questions.asserts_a.criteria)].reverse());
 });
@@ -176,7 +176,7 @@ test("classify asks once with the state and the whole battery", async () => {
   const result = await classify(TEST, { ask, changeContext: "the change" });
   assert.match(seen.state, /add\.test\.mjs/);
   assert.match(seen.state, /the change/);
-  assert.deepEqual(Object.keys(seen.questions), Object.keys(batteryQuestions()));
+  assert.deepEqual(Object.keys(seen.questions), Object.keys(BATTERY));
   assert.equal(result.needsEyes, false);
 });
 
@@ -199,5 +199,12 @@ test("answers without mass are accepted, so an Ollama response works", () => {
   const result = verdictFrom(TEST, answers);
   assert.equal(result.canFail.state, "stable");
   assert.equal(result.asserts.value, "behaviour");
+  assert.equal(result.needsEyes, false);
+});
+
+test("the extractor's flags and the positive answer reach the result", () => {
+  const result = verdictFrom({ ...TEST, flags: ["each"] }, goodAnswers());
+  assert.ok(result.flags.includes("each"));
+  assert.equal(result.positive, true);
   assert.equal(result.needsEyes, false);
 });

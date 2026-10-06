@@ -23,9 +23,16 @@ const ASSERTS_MEANING = {
 /** The one assert kind that is a real guard; every other kind escalates. */
 export const ASSERT_PASS = Object.keys(ASSERTS_MEANING)[0];
 
+/** The escalation reason a false answer to each verdict-carrying yes/no
+ * question raises, keyed by the question's name. */
+export const ESCALATE_ON_FALSE = {
+  runs: "does not run",
+  positive: "no positive assertion",
+};
+
 /** The flag a false answer to each descriptive question raises, keyed by the
  * question's name, so a new question is one entry here plus its question in
- * `batteryQuestions`. */
+ * `BATTERY`. */
 export const FLAG_BY_GATE = {
   observable: "implementation-coupled",
   conditional: "conditional",
@@ -111,139 +118,137 @@ Verdict: slop, weak, good, or strong. Slop is no real guard; weak is a guard wit
 /**
  * The whole battery for one test. All questions travel in one call, so the state
  * is read once and each question costs one token.
- * @returns {Record<string, { type: string, instructions: string, criteria?: unknown }>}
+ * @type {Record<string, { type: string, instructions: string, criteria?: unknown }>}
  */
-export function batteryQuestions() {
-  return {
-    // The best single phrasing is the concrete, operational one, so it leads.
-    can_fail_a: noul(
-      "Could you make this test fail by changing only the code under test?",
-      "a change to the code under test can make it fail",
-      "no change to the code under test can make it fail",
-    ),
-    // The negated twin. After polarity normalisation it must agree with `a`.
-    can_fail_b: noul(
-      "Does this test pass regardless of whether the code under test is correct?",
-      "it passes even when the behaviour is broken",
-      "broken behaviour makes it fail",
-    ),
-    can_fail_c: noul(
-      "If the behaviour this test exercises regresses, will the test fail?",
-      "the assertion can catch a regression in the behaviour",
-      "the assertion misses the regression and still passes",
-    ),
-    asserts_a: choice("What does this test actually assert about the code under test?", { ...ASSERTS_MEANING }),
-    // The same question with the answer order reversed: a position-swap control.
-    asserts_b: choice(
-      "What does the test's assertion actually check?",
-      Object.fromEntries(Object.entries(ASSERTS_MEANING).reverse()),
-    ),
-    positive: noul(
-      "Does this test include at least one positive assertion on the output the code under test produces, rather than only asserting that something is absent or does not throw?",
-      "it asserts the positive case",
-      "it asserts only an absence, an empty result, or a non-throw",
-    ),
-    runs: noul(
-      "Does this test actually run in the suite, rather than being skipped, ignored, or narrowed by an only or focus marker?",
-      "it runs",
-      "it is skipped, ignored, or focused",
-    ),
-    type: choice("What type of test is this?", { ...TYPE_MEANING }),
-    // The descriptive questions below report a smell as a flag; the verdict score
-    // is what escalates.
-    observable: noul(
-      "Does this test assert observable behaviour of the code under test, rather than private internals or internal call order?",
-      "it checks behaviour a caller could observe",
-      "it checks private internals or internal call order",
-    ),
-    conditional: noul(
-      "Does this test assert unconditionally, with no branch, loop, or catch that can leave the assertion unrun?",
-      "the assertion always runs",
-      "a branch, loop, or catch can leave the assertion unrun",
-    ),
-    isolated: noul(
-      "Does this test pass on its own and in any order, with no reliance on shared mutable state or another test?",
-      "it is independent of other tests and of run order",
-      "it shares state with, or depends on the order of, other tests",
-    ),
-    controlled: noul(
-      "Does the test control the external resources it needs, such as time, the network, the filesystem, or the environment, rather than assume they are present?",
-      "its inputs and resources are controlled",
-      "it assumes an external resource is present",
-    ),
-    specific: noul(
-      "Does the test use the most specific assertion that would catch the failure, rather than a weaker one that would also pass on wrong output?",
-      "the assertion is specific to the expected value",
-      "a weaker assertion would also pass on wrong output",
-    ),
-    named: noul(
-      "Does the test's name state the behaviour and its expected result, rather than a vague label such as works, test1, or should be fine?",
-      "the name states the behaviour and the expected result",
-      "the name is vague",
-    ),
-    deterministic: noul(
-      "Does this test give the same result on every run, with no reliance on time, order, the network, or a sleep?",
-      "it gives the same result every run",
-      "it can pass or fail for reasons outside the code under test",
-    ),
-    one_thing: noul(
-      "Does this test check one behaviour, rather than several unrelated behaviours at once?",
-      "it checks one behaviour",
-      "it is an eager test that checks several unrelated things",
-    ),
-    name_matches: noul(
-      "Does the test body assert the behaviour its name states?",
-      "the body asserts the behaviour the name promises",
-      "the name promises one behaviour and the body asserts something else or something trivial",
-    ),
-    resilient: noul(
-      "Would a refactor of the code under test that keeps the same behaviour break this test?",
-      "the test checks behaviour, so a behaviour-preserving refactor keeps it green",
-      "the test depends on the current structure, so a refactor breaks it",
-    ),
-    diagnostic: noul(
-      "When this test fails, does it say which assertion failed and what was expected?",
-      "the failure names the assertion and the expected value",
-      "a failure gives no clue which assertion failed or why",
-    ),
-    fixture: noul(
-      "Does the test build only the data it needs, rather than a large shared fixture or values unrelated to the behaviour?",
-      "it builds only the data it needs",
-      "it leans on a large or unrelated fixture",
-    ),
-    fast: noul(
-      "Does the test run fast, with no sleep, no heavy I/O, and no large computation?",
-      "it runs fast",
-      "it sleeps, waits, or does heavy work",
-    ),
-    readable: noul(
-      "Can a reader tell what this test does and why, without opening the code under test?",
-      "the test reads clearly on its own",
-      "the reader must open the code under test to understand it",
-    ),
-    magic_number: noul(
-      "Does the assertion name its values, rather than use a bare number or string the reader must decode?",
-      "the values are named or self-explanatory",
-      "a bare number or string must be decoded from the code under test",
-    ),
-    reads_output: noul(
-      "Does the assertion read the value the code under test produced, rather than its own input, its setup, or only that no error was thrown?",
-      "it asserts the returned or observed output",
-      "it asserts its own input, its setup, or merely that the call did not throw",
-    ),
-    automated: noul(
-      "Does this test reach a pass or fail with no person doing or reading anything?",
-      "it is self-checking and unattended",
-      "it needs a manual step, or a person to read the output",
-    ),
-    restores: noul(
-      "Does the test restore every global, environment variable, timer, and spy that it changes, so it leaves nothing for the next test?",
-      "it clears or restores what it changes",
-      "it leaves process or module state changed for the next test",
-    ),
-    verdict: score(
-      "Overall, is this test a real guard against the behaviour it names? Weigh whether it can fail, what it asserts, and every smell the earlier questions name. It is a real guard only if it can fail when that behaviour breaks.",
-      VERDICTS,
-    ),
-  };
-}
+export const BATTERY = {
+  // The best single phrasing is the concrete, operational one, so it leads.
+  can_fail_a: noul(
+    "Could you make this test fail by changing only the code under test?",
+    "a change to the code under test can make it fail",
+    "no change to the code under test can make it fail",
+  ),
+  // The negated twin. After polarity normalisation it must agree with `a`.
+  can_fail_b: noul(
+    "Does this test pass regardless of whether the code under test is correct?",
+    "it passes even when the behaviour is broken",
+    "broken behaviour makes it fail",
+  ),
+  can_fail_c: noul(
+    "If the behaviour this test exercises regresses, will the test fail?",
+    "the assertion can catch a regression in the behaviour",
+    "the assertion misses the regression and still passes",
+  ),
+  asserts_a: choice("What does this test actually assert about the code under test?", { ...ASSERTS_MEANING }),
+  // The same question with the answer order reversed: a position-swap control.
+  asserts_b: choice(
+    "What does the test's assertion actually check?",
+    Object.fromEntries(Object.entries(ASSERTS_MEANING).reverse()),
+  ),
+  positive: noul(
+    "Does this test include at least one positive assertion on the output the code under test produces, rather than only asserting that something is absent or does not throw?",
+    "it asserts the positive case",
+    "it asserts only an absence, an empty result, or a non-throw",
+  ),
+  runs: noul(
+    "Does this test actually run in the suite, rather than being skipped, ignored, or narrowed by an only or focus marker?",
+    "it runs",
+    "it is skipped, ignored, or focused",
+  ),
+  type: choice("What type of test is this?", { ...TYPE_MEANING }),
+  // The descriptive questions below report a smell as a flag; the verdict score
+  // is what escalates.
+  observable: noul(
+    "Does this test assert observable behaviour of the code under test, rather than private internals or internal call order?",
+    "it checks behaviour a caller could observe",
+    "it checks private internals or internal call order",
+  ),
+  conditional: noul(
+    "Does this test assert unconditionally, with no branch, loop, or catch that can leave the assertion unrun?",
+    "the assertion always runs",
+    "a branch, loop, or catch can leave the assertion unrun",
+  ),
+  isolated: noul(
+    "Does this test pass on its own and in any order, with no reliance on shared mutable state or another test?",
+    "it is independent of other tests and of run order",
+    "it shares state with, or depends on the order of, other tests",
+  ),
+  controlled: noul(
+    "Does the test control the external resources it needs, such as time, the network, the filesystem, or the environment, rather than assume they are present?",
+    "its inputs and resources are controlled",
+    "it assumes an external resource is present",
+  ),
+  specific: noul(
+    "Does the test use the most specific assertion that would catch the failure, rather than a weaker one that would also pass on wrong output?",
+    "the assertion is specific to the expected value",
+    "a weaker assertion would also pass on wrong output",
+  ),
+  named: noul(
+    "Does the test's name state the behaviour and its expected result, rather than a vague label such as works, test1, or should be fine?",
+    "the name states the behaviour and the expected result",
+    "the name is vague",
+  ),
+  deterministic: noul(
+    "Does this test give the same result on every run, with no reliance on time, order, the network, or a sleep?",
+    "it gives the same result every run",
+    "it can pass or fail for reasons outside the code under test",
+  ),
+  one_thing: noul(
+    "Does this test check one behaviour, rather than several unrelated behaviours at once?",
+    "it checks one behaviour",
+    "it is an eager test that checks several unrelated things",
+  ),
+  name_matches: noul(
+    "Does the test body assert the behaviour its name states?",
+    "the body asserts the behaviour the name promises",
+    "the name promises one behaviour and the body asserts something else or something trivial",
+  ),
+  resilient: noul(
+    "Would a refactor of the code under test that keeps the same behaviour break this test?",
+    "the test checks behaviour, so a behaviour-preserving refactor keeps it green",
+    "the test depends on the current structure, so a refactor breaks it",
+  ),
+  diagnostic: noul(
+    "When this test fails, does it say which assertion failed and what was expected?",
+    "the failure names the assertion and the expected value",
+    "a failure gives no clue which assertion failed or why",
+  ),
+  fixture: noul(
+    "Does the test build only the data it needs, rather than a large shared fixture or values unrelated to the behaviour?",
+    "it builds only the data it needs",
+    "it leans on a large or unrelated fixture",
+  ),
+  fast: noul(
+    "Does the test run fast, with no sleep, no heavy I/O, and no large computation?",
+    "it runs fast",
+    "it sleeps, waits, or does heavy work",
+  ),
+  readable: noul(
+    "Can a reader tell what this test does and why, without opening the code under test?",
+    "the test reads clearly on its own",
+    "the reader must open the code under test to understand it",
+  ),
+  magic_number: noul(
+    "Does the assertion name its values, rather than use a bare number or string the reader must decode?",
+    "the values are named or self-explanatory",
+    "a bare number or string must be decoded from the code under test",
+  ),
+  reads_output: noul(
+    "Does the assertion read the value the code under test produced, rather than its own input, its setup, or only that no error was thrown?",
+    "it asserts the returned or observed output",
+    "it asserts its own input, its setup, or merely that the call did not throw",
+  ),
+  automated: noul(
+    "Does this test reach a pass or fail with no person doing or reading anything?",
+    "it is self-checking and unattended",
+    "it needs a manual step, or a person to read the output",
+  ),
+  restores: noul(
+    "Does the test restore every global, environment variable, timer, and spy that it changes, so it leaves nothing for the next test?",
+    "it clears or restores what it changes",
+    "it leaves process or module state changed for the next test",
+  ),
+  verdict: score(
+    "Overall, is this test a real guard against the behaviour it names? Weigh whether it can fail, what it asserts, and every smell the earlier questions name. It is a real guard only if it can fail when that behaviour breaks.",
+    VERDICTS,
+  ),
+};

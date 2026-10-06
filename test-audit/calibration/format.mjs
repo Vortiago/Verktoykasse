@@ -48,7 +48,7 @@ export function formatMatrix(entries) {
   lines.push("");
   for (let index = 0; index < entries.length; index++) {
     const { target, verdict, usage } = entries[index];
-    lines.push(`T${index + 1} ${target.label}  [${target.url}]  ${usage.calls} calls`);
+    lines.push(`T${index + 1} ${target.model}  [${target.url}]  ${usage.calls} calls`);
     lines.push(`   ${summaryLine(verdict)}`);
     lines.push(`   ${defectLine(verdict)}`);
     lines.push(`   ${verdict.pass ? "PASS" : "FAIL"}`);
@@ -68,15 +68,15 @@ export function formatBenchmark(entries) {
   const lines = [];
   for (const entry of entries) {
     const { rows, verdict, usage, target } = entry;
-    lines.push(`## ${target.label}`, "");
+    lines.push(`## ${target.model}`, "");
     lines.push(`Endpoint \`${target.url}\`. ${rows.length} cases, ${usage.calls} calls, ${usage.tokens} tokens.`);
     lines.push("");
     lines.push(summaryLine(verdict));
     lines.push("");
     lines.push(defectLine(verdict));
     lines.push("");
-    lines.push(`Checks, in order: ${DESCRIPTIVE_KEYS.join(", ")}.`);
-    lines.push("Each check is clean, the smell it looks for, or unanswered. `can_fail` is the mean P(can fail) over three phrasings; a `!` marks a spread above the band.");
+    lines.push(`Descriptive questions, in report order: ${DESCRIPTIVE_KEYS.join(", ")}.`);
+    lines.push("Each entry sorts these questions into clean, smells and unanswered. A smell is a false answer: the test shows the problem that the question looks for. `can_fail` is the mean probability, over three phrasings, that the test can fail. A `!` after the value means that the spread is above `TEST_AUDIT_STABLE_BAND`. The verdict line lists the reasons that the case needs eyes.");
     lines.push("");
     for (const row of [...rows].sort(byVerdict)) {
       lines.push(...testEntry(row), "");
@@ -99,7 +99,7 @@ function testEntry(row) {
     lines.push(`No answer: ${escapeCell(error ?? "unknown")}.`, "", "**verdict: unclassified** · needs eyes: no answer", "");
     return lines;
   }
-  lines.push(`- can_fail ${canFailText(result.canFail)} (spread ${result.canFail.spread === null ? "-" : result.canFail.spread.toFixed(2)}) · asserts ${result.asserts.value ?? "unclassified"} · runs ${yesNo(result.runs)}`);
+  lines.push(`- can_fail ${canFailText(result.canFail)} (spread ${result.canFail.spread === null ? "-" : result.canFail.spread.toFixed(2)}) · asserts ${result.asserts.value ?? "unclassified"} · runs ${yesNo(result.runs)} · positive ${yesNo(result.positive)}`);
   const clean = DESCRIPTIVE_KEYS.filter((key) => result.descriptive[key] === true);
   const smells = DESCRIPTIVE_KEYS.filter((key) => result.descriptive[key] === false);
   const unanswered = DESCRIPTIVE_KEYS.filter((key) => result.descriptive[key] === undefined);

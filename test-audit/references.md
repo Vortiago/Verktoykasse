@@ -12,7 +12,7 @@ stays the proof.
 | Key | What it asks | Source(s) |
 | --- | --- | --- |
 | `can_fail_a` | could a change to the code under test make this fail? | Beck, Test Desiderata (`Behavioral`); WPT checklist, "fails when it's supposed to fail"; Meszaros, `Erratic Test`; Google mutation testing; Just et al. 2014 |
-| `can_fail_b` | does it pass regardless of correctness? (negated twin) | the same sources as `a`; self-consistency (Wang et al. 2022) and prompt sensitivity (Sclar et al. 2024) for the twin |
+| `can_fail_b` | does it pass regardless of correctness? (negated twin) | the same sources as `a`; self-consistency (Wang et al. 2023) and prompt sensitivity (Sclar et al. 2024) for the twin |
 | `can_fail_c` | if the behaviour regresses, will it fail? | the same sources as `a`; WPT checklist |
 | `asserts_a` | behaviour, hardcoded-data, shape-only, interaction-only, nothing | testsmells.org (`Redundant Assertion`, `Unknown Test`, `Magic Number Test`, `Sensitive Equality`); Meszaros, `Obscure Test` (`Hard-Coded Test Data`, `Indirect Testing`); Fowler, "Mocks Aren't Stubs"; house catalogue |
 | `asserts_b` | the same, with the answer order reversed (position control) | MT-Bench (Zheng et al. 2023), position and verbosity bias; "Large Language Models are not Fair Evaluators" (Wang et al. 2023), balanced position calibration |

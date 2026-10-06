@@ -20,7 +20,7 @@ test("extractTests reads a test with its name and line", () => {
   assert.equal(tests.length, 1);
   assert.equal(tests[0].name, "add handles negatives");
   assert.equal(tests[0].line, 1);
-  assert.match(tests[0].body, /toBe\(-5\)/);
+  assert.match(tests[0].source, /toBe\(-5\)/);
   assert.equal(tests[0].source.startsWith("test("), true);
 });
 
@@ -49,7 +49,7 @@ test("extractTests folds a test.each table into one test", () => {
   const [found] = extractTests('test.each([1, 2])("n %i", (n) => { expect(n).toBeGreaterThan(0); });\n', "x.test.mjs");
   assert.equal(found.name, "n %i");
   assert.deepEqual(found.flags, ["each"]);
-  assert.match(found.body, /toBeGreaterThan/);
+  assert.match(found.source, /toBeGreaterThan/);
 });
 
 test("extractTests flags a computed name", () => {
@@ -102,9 +102,14 @@ test("a test right after an opening brace is found", () => {
   );
 });
 
-test("an expression-bodied test keeps its body", () => {
-  const [found] = extractTests('test("a", () => expect(x).toBe(1));', "x.test.mjs");
-  assert.equal(found.body.trim(), "expect(x).toBe(1)");
+test("a test name with a comma or a regex is read whole", () => {
+  const [found] = extractTests('test("splits a, b", () => expect(split(/,/)).toEqual(["a", "b"]));', "x.test.mjs");
+  assert.equal(found.name, "splits a, b");
+});
+
+test("a test on a later line reports that line", () => {
+  const found = extractTests('test("a", () => {});\n\n\ntest("b", () => {});\n', "x.test.mjs");
+  assert.deepEqual(found.map((t) => t.line), [1, 4]);
 });
 
 test("splitDiff separates the per-file sections", () => {

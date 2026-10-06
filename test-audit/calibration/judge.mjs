@@ -72,8 +72,7 @@ export function judge(rows, acceptance) {
 
 /** The can-fail answer the tool committed to, or undefined when it routed. */
 function saidCanFail(result) {
-  if (result.canFail.state !== "stable" && result.canFail.state !== "single") return undefined;
-  if (result.canFail.mean === null) return undefined;
+  if (result.canFail.unstable || result.canFail.mean === null) return undefined;
   return result.canFail.mean > 0.5;
 }
 

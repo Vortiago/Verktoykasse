@@ -3,14 +3,15 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { judge, rowStatus, loadLabels } from "./index.mjs";
+import { judge, rowStatus } from "./judge.mjs";
+import { loadLabels } from "./labels.mjs";
 
 /** A labelled row with a result whose can-fail mean and escalation are set. */
 function row(label, { mean = 0.99, state = "stable", needsEyes = false } = {}) {
   return {
     label,
     result: {
-      canFail: { mean, state, values: [], spread: 0 },
+      canFail: { mean, state, unstable: state === "borderline" || state === "unstable", values: [], spread: 0 },
       score: { label: needsEyes ? "weak" : "strong" },
       needsEyes,
     },
@@ -76,7 +77,7 @@ test("judge groups escalation by defect, so a whole family that slips shows", ()
   assert.equal(verdict.pass, false);
 });
 
-test("loadLabels merges the baseline with every fragment", () => {
+test("loadLabels merges every fragment", () => {
   const { acceptance, cases } = loadLabels();
   assert.equal(typeof acceptance.canFailAgreement, "number");
   assert.ok(cases.length >= 18);

@@ -11,9 +11,9 @@ export interface AuditTest {
   name: string;
   path: string[];
   source: string;
-  body: string;
   fixtures: string[];
   imports: string[];
+  /** Extractor notes, such as `each` or `dynamic-name`; they join the result's flags. */
   flags: string[];
 }
 
@@ -33,10 +33,12 @@ export interface AuditAnswer {
 export interface AuditResult {
   test: Pick<AuditTest, "file" | "line" | "name" | "path">;
   answers: Record<string, AuditAnswer>;
-  canFail: { values: Array<number | null>; mean: number | null; spread: number | null; state: string };
+  canFail: { values: Array<number | null>; mean: number | null; spread: number | null; state: string; unstable: boolean };
   asserts: { value?: string; a?: string; b?: string; trust: boolean; agrees: boolean };
   /** Whether the test actually runs; undefined when unanswered. */
   runs?: boolean;
+  /** Whether the test asserts a positive case; undefined when unanswered. */
+  positive?: boolean;
   type?: string;
   /** One boolean per descriptive gate (observable, conditional, isolated, …); undefined when unanswered. */
   descriptive: Record<string, boolean | undefined>;

@@ -9,14 +9,15 @@ import { resolve } from "node:path";
 import process from "node:process";
 
 /**
- * The change to audit: the diff for context, and the text of every touched
- * file. A file that cannot be read (deleted, binary) is dropped. Git resolves
+ * The change to audit: the text of every touched file, and a reader for the
+ * diff. The diff is read only on demand, because a change with no tests never
+ * needs it. A file that cannot be read (deleted, binary) is dropped. Git resolves
  * paths against the repository root, so a run from a subdirectory still reads
  * every touched file.
  * A `filter` drops discovered paths before their text is read; named files are
  * read unfiltered, because the caller named them on purpose.
  * @param {{ base?: string, head?: string, staged?: boolean, files?: string[], cwd?: string, filter?: (path: string) => boolean }} [opts]
- * @returns {{ diff: string, files: Array<{ path: string, text: string }>, ref: string }}
+ * @returns {{ readDiff: () => string, files: Array<{ path: string, text: string }>, ref: string }}
  */
 export function collect(opts = {}) {
   const { base, head, staged = false, files, cwd = process.cwd(), filter } = opts;
@@ -26,14 +27,13 @@ export function collect(opts = {}) {
   // Named files are read relative to where the caller stands, not the root.
   if (files && files.length) {
     const out = files.map((path) => ({ path, text: readWorktree(path, cwd) })).filter(hasText);
-    return { diff: "", files: out, ref: "named files" };
+    return { readDiff: () => "", files: out, ref: "named files" };
   }
 
   const root = tryGit(["rev-parse", "--show-toplevel"], cwd)?.trim() || cwd;
   let spec;
   let ref;
   let source;
-  let includeUntracked = false;
   if (staged) {
     spec = ["--cached"];
     ref = "the index";
@@ -49,19 +49,17 @@ export function collect(opts = {}) {
     spec = [point];
     ref = `${point} (from ${baseRef})`;
     source = "worktree";
-    includeUntracked = true;
   }
 
   // A bad ref must fail loudly, not read as an empty change. `git` throws; the
   // optional probes (`merge-base`, untracked, a file at a ref) use tryGit.
-  const diff = git(["diff", ...spec], root);
   let paths = parseNameOnly(git(["diff", "--name-only", "--diff-filter=ACMR", ...spec], root));
-  if (includeUntracked) {
+  if (source === "worktree") {
     const untracked = parseNameOnly(tryGit(["ls-files", "--others", "--exclude-standard"], root) ?? "");
     paths = [...new Set([...paths, ...untracked])];
   }
   const out = paths.filter((path) => !filter || filter(path)).map((path) => ({ path, text: readSource(source, path, root) })).filter(hasText);
-  return { diff, files: out, ref };
+  return { readDiff: () => git(["diff", ...spec], root), files: out, ref };
 }
 
 /**
@@ -80,7 +78,6 @@ function readSource(source, path, root) {
   return tryGit(["show", `${source.ref}:${path}`], root);
 }
 
-/** The default branch to diff against, from `origin/HEAD`, with a fallback. */
 /**
  * The default branch to diff against: `origin/HEAD`, then `origin/main`, then a
  * local `main`, so a clone without the remote symbolic ref still runs.

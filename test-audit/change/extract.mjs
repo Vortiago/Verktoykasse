@@ -6,7 +6,7 @@
 // `argSpan` walks to the matching bracket of a call, and `splitTop` splits the
 // argument list on its top-level commas.
 
-import { argSpan, splitTop, lineOf } from "../tools/js-scan.mjs";
+import { argSpan, splitTop } from "../tools/js-scan.mjs";
 import { codeOnly } from "./code.mjs";
 
 /** A path is a test file when it ends in .test./.spec. or sits under __tests__. */
@@ -15,6 +15,9 @@ const TEST_FILE = /(?:\.(?:test|spec)\.[cm]?[jt]sx?$)|(?:^|[\\/])__tests__[\\/]/
 /** The call heads that open a scope or a test. Keyword and optional `.member`. */
 const CALL =
   /(^|[^\w$.])(xdescribe|fdescribe|describe|xit|xtest|fit|test|it|beforeEach|beforeAll|afterEach|afterAll)(?:\.(skip|only|each|todo|concurrent|failing|sequential))?\s*\(/;
+
+/** The second call of `test.each([...])(...)`, matched right where the first ends. */
+const EACH_CALL = /\s*\(/y;
 
 const DESCRIBES = new Set(["describe", "xdescribe", "fdescribe"]);
 const TESTS = new Set(["test", "it", "xit", "xtest", "fit"]);
@@ -33,14 +36,34 @@ export function isTestFile(path) {
  * Extract every test in one file's text.
  * @param {string} text
  * @param {string} file
- * @returns {Array<{ file: string, line: number, name: string, path: string[], source: string, body: string, fixtures: string[], imports: string[], flags: string[] }>}
+ * @returns {Array<{ file: string, line: number, name: string, path: string[], source: string, fixtures: string[], imports: string[], flags: string[] }>}
  */
 export function extractTests(text, file) {
   const out = [];
-  // The code-only view is one scan per file, not one per describe scope.
+  // The code-only view and the line index are one scan per file, not one per
+  // describe scope or per test.
   const code = codeOnly(text);
-  walk(text, code, 0, text.length, [], [], { file, imports: extractImports(text), out });
+  walk(text, code, 0, text.length, [], [], { file, imports: extractImports(text), lineStarts: lineStarts(text), out });
   return out;
+}
+
+/** The offset where each line starts, so a line lookup is a binary search. @param {string} text */
+function lineStarts(text) {
+  const starts = [0];
+  for (let i = text.indexOf("\n"); i !== -1; i = text.indexOf("\n", i + 1)) starts.push(i + 1);
+  return starts;
+}
+
+/** The 1-based line of an offset. @param {number[]} starts @param {number} offset */
+function lineAt(starts, offset) {
+  let low = 0;
+  let high = starts.length - 1;
+  while (low < high) {
+    const mid = (low + high + 1) >> 1;
+    if (starts[mid] <= offset) low = mid;
+    else high = mid - 1;
+  }
+  return low + 1;
 }
 
 /**
@@ -53,7 +76,7 @@ export function extractTests(text, file) {
  * @param {number} end
  * @param {string[]} path
  * @param {string[]} inherited
- * @param {{ file: string, imports: string[], out: object[] }} ctx
+ * @param {{ file: string, imports: string[], lineStarts: number[], out: object[] }} ctx
  */
 function walk(text, code, start, end, path, inherited, ctx) {
   const calls = findCalls(code, text, start, end);
@@ -70,11 +93,10 @@ function walk(text, code, start, end, path, inherited, ctx) {
     if (call.member === "each") flags.push("each");
     ctx.out.push({
       file: ctx.file,
-      line: lineOf(text, call.callStart),
+      line: lineAt(ctx.lineStarts, call.callStart),
       name: call.name,
       path: [...path],
       source: text.slice(call.callStart, call.callEnd),
-      body: call.body ? text.slice(call.body.start, call.body.end) : "",
       fixtures: scope,
       imports: ctx.imports,
       flags,
@@ -155,14 +177,18 @@ function findCalls(code, text, start, end) {
     }
     // `test.each([...])("name", fn)`: take the second call as the real one.
     if (member === "each") {
-      const next = code.slice(span.end).match(/^\s*\(/);
-      const inner = next ? argSpan(code, span.end + next[0].length - 1) : null;
+      EACH_CALL.lastIndex = span.end;
+      const next = EACH_CALL.exec(code);
+      const inner = next ? argSpan(code, EACH_CALL.lastIndex - 1) : null;
       if (inner) {
-        open = span.end + next[0].length - 1;
+        open = EACH_CALL.lastIndex - 1;
         span = inner;
       }
     }
-    const first = (splitTop(text.slice(open + 1, span.end - 1))[0] ?? "").trim();
+    // Split on the code-only view, where a comma inside a string or regex is
+    // blanked; slice the name from the original text at the same offsets.
+    const firstLength = (splitTop(code.slice(open + 1, span.end - 1))[0] ?? "").length;
+    const first = text.slice(open + 1, open + 1 + firstLength).trim();
     const literal = unquote(first);
     calls.push({
       keyword,
