@@ -7,8 +7,8 @@
   "note": "One helper backs both sides, so any change to it moves both sides together.",
   "sources": [
     {
-      "name": "Kent Beck, Test Desiderata",
-      "url": "https://kentbeck.github.io/TestDesiderata/"
+      "name": "the house catalogue, verify-prd-implemented/test-patterns.md: Tautology / self-reference",
+      "url": "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md"
     }
   ]
 }

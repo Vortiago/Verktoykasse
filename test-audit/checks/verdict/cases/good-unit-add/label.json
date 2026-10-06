@@ -4,5 +4,11 @@
   "canFail": true,
   "mustEscalate": false,
   "deterministic": true,
-  "note": "a clean unit guard"
+  "note": "a clean unit guard",
+  "sources": [
+    {
+      "name": "Kent Beck, Test Desiderata (2019): Behavioral, Specific",
+      "url": "https://kentbeck.github.io/TestDesiderata/"
+    }
+  ]
 }

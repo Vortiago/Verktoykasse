@@ -22,7 +22,7 @@ interface CheckBase {
   negated?: string[];
   /** The definition this check adds to the shared rubric, if any. */
   rubric?: string;
-  /** What grounds the check. references.md holds the bibliography. */
+  /** What grounds the check. The header comment of the check file names the same sources. */
   sources: Source[];
 }
 

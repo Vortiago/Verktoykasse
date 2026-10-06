@@ -7,11 +7,7 @@
   "note": "The name promises validation, while a truthy check passes for any non-empty value.",
   "sources": [
     {
-      "name": "Meszaros, xUnit Test Patterns (Obscure Test)",
-      "url": "http://xunitpatterns.com/"
-    },
-    {
-      "name": "verify-prd-implemented test-patterns (Skipped / disabled / focused)",
+      "name": "the house catalogue, verify-prd-implemented/test-patterns.md: Name-only",
       "url": "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md"
     }
   ]

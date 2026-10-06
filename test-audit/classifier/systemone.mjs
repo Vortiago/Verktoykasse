@@ -14,6 +14,17 @@
 // calibrated.
 //
 // The whole battery for one test travels in one call, so the state is read once.
+//
+// Sources:
+// - The SystemOne endpoint, the Jev-compatible typed-question protocol, and the
+//   reading of `mass` and `confidence` are in-house. No public primary source
+//   exists for them.
+// - Katherine Tian et al., Just Ask for Calibration (EMNLP 2023)
+//   https://arxiv.org/abs/2305.14975
+//   The confidence of an RLHF model is not calibrated by default, so the tool
+//   reads `confidence` as a margin, never as a probability.
+// A small, fast model as a one-token classifier for each question is an
+// engineering choice, not a published finding.
 
 import config from "../config.mjs";
 

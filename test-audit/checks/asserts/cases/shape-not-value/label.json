@@ -3,5 +3,11 @@
   "defect": "shape-only",
   "canFail": true,
   "mustEscalate": true,
-  "note": "shape-not-value: a shape change can fail it, the content is never checked"
+  "note": "shape-not-value: a shape change can fail it, the content is never checked",
+  "sources": [
+    {
+      "name": "the house catalogue, verify-prd-implemented/test-patterns.md: Shape-not-value",
+      "url": "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md"
+    }
+  ]
 }

@@ -1,4 +1,7 @@
 // Eager: one test checks validation, storage and notification in one body.
+// Source: Gerard Meszaros, xUnit Test Patterns (2007): Eager Test (in Obscure
+//   Test).
+//   http://xunitpatterns.com/Obscure%20Test.html
 test("creating a user validates, stores and notifies", async () => {
   const store = new MemoryStore();
   const notifier = new SpyNotifier();

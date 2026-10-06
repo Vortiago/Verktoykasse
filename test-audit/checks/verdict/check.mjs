@@ -2,6 +2,11 @@
 // four levels. Slop or weak escalates. Its calibration cases are the clean tests
 // that must pass and the mixed tests that must escalate, because those judge the
 // whole verdict, not one smell.
+//
+// Sources:
+// - house rule: the four levels and the cross-question rule (inference)
+//   No source states these levels. They are a synthesis of the sources of the
+//   other checks.
 
 import { score } from "../../classifier/systemone.mjs";
 
@@ -23,7 +28,6 @@ export default {
   a serious smell; good is a real guard; strong is a real guard with a specific
   expected value that would fail loudly.`,
   sources: [
-    { name: "house rule: the four levels and the cross-question rule, a synthesis of the other checks' sources (inference)" },
-    { name: "Birgitta Böckeler, Maintainability sensors for coding agents (2026), escalate, never tie-break", url: "https://www.martinfowler.com/articles/sensors-for-coding-agents.html" },
+    { name: "house rule: the four levels and the cross-question rule (inference)" },
   ],
 };

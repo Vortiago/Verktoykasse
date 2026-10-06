@@ -7,8 +7,8 @@
   "note": "A missing call fails the test, though the mock stands in for behaviour it never verifies.",
   "sources": [
     {
-      "name": "testsmells.org, Open Catalog of Test Smells",
-      "url": "https://testsmells.org/"
+      "name": "Martin Fowler, Mocks Aren't Stubs (2007)",
+      "url": "https://martinfowler.com/articles/mocksArentStubs.html"
     }
   ]
 }

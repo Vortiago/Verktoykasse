@@ -1,5 +1,14 @@
 // The isolated check: does the test pass on its own and in any order, with no
 // shared mutable state? A "no" raises the `order-dependent` flag.
+//
+// Sources:
+// - Kent Beck, Test Desiderata (2019): Isolated
+//   https://kentbeck.github.io/TestDesiderata/
+//   A test gives the same result in any order of the run.
+// - Gerard Meszaros, xUnit Test Patterns (2007): Interacting Tests, Test Run
+//   War, Unrepeatable Test (in Erratic Test)
+//   http://xunitpatterns.com/Erratic%20Test.html
+//   Tests that share state or a resource pass or fail by order or by run.
 
 import { noul } from "../../classifier/systemone.mjs";
 
@@ -18,7 +27,7 @@ export default {
   rubric: `Isolated: passes on its own and in any order, with no shared mutable state and no
   dependence on another test.`,
   sources: [
-    { name: "Kent Beck, Test Desiderata (Isolated)", url: "https://kentbeck.github.io/TestDesiderata/" },
-    { name: "Meszaros, xUnit Test Patterns: Interacting Tests, Test Run War, Unrepeatable Test (in Erratic Test)", url: "http://xunitpatterns.com/Erratic%20Test.html" },
+    { name: "Kent Beck, Test Desiderata (2019): Isolated", url: "https://kentbeck.github.io/TestDesiderata/" },
+    { name: "Gerard Meszaros, xUnit Test Patterns (2007): Interacting Tests, Test Run War, Unrepeatable Test (in Erratic Test)", url: "http://xunitpatterns.com/Erratic%20Test.html" },
   ],
 };

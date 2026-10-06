@@ -1,5 +1,16 @@
 // The one-thing check: does the test check one behaviour, not several unrelated
 // behaviours at once? A "no" raises the `eager` flag.
+//
+// Sources:
+// - Gerard Meszaros, xUnit Test Patterns (2007): Eager Test (in Obscure Test
+//   and Assertion Roulette)
+//   http://xunitpatterns.com/Obscure%20Test.html
+//   A test that verifies too much in one method is hard to read and to
+//   diagnose.
+// - testsmells.org, Open Catalog of Test Smells: Eager Test
+//   https://testsmells.org/pages/testsmells.html
+//   A test that calls several methods of the object under test is a smell that
+//   a tool can find.
 
 import { noul } from "../../classifier/systemone.mjs";
 
@@ -17,7 +28,7 @@ export default {
   },
   rubric: `One behaviour: the body checks one thing, not several unrelated behaviours.`,
   sources: [
-    { name: "Meszaros, xUnit Test Patterns: Eager Test (in Obscure Test and Assertion Roulette)", url: "http://xunitpatterns.com/Obscure%20Test.html" },
+    { name: "Gerard Meszaros, xUnit Test Patterns (2007): Eager Test (in Obscure Test and Assertion Roulette)", url: "http://xunitpatterns.com/Obscure%20Test.html" },
     { name: "testsmells.org, Open Catalog of Test Smells: Eager Test", url: "https://testsmells.org/pages/testsmells.html" },
   ],
 };

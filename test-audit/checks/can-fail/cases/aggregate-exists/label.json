@@ -7,8 +7,8 @@
   "note": "The aggregate exists, but no value inside it is ever read.",
   "sources": [
     {
-      "name": "Kent Beck, Test Desiderata",
-      "url": "https://kentbeck.github.io/TestDesiderata/"
+      "name": "the house catalogue, verify-prd-implemented/test-patterns.md: Vacuous / passes-with-zero",
+      "url": "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md"
     }
   ]
 }

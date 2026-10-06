@@ -3,5 +3,11 @@
   "defect": "clean",
   "canFail": true,
   "mustEscalate": false,
-  "note": "a clean regression guard"
+  "note": "a clean regression guard",
+  "sources": [
+    {
+      "name": "Kent Beck, Test Desiderata (2019): Behavioral, Specific",
+      "url": "https://kentbeck.github.io/TestDesiderata/"
+    }
+  ]
 }

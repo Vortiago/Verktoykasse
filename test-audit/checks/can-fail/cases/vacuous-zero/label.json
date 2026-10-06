@@ -3,5 +3,11 @@
   "defect": "passes-with-zero",
   "canFail": false,
   "mustEscalate": true,
-  "note": "vacuous: passes when the feature produces nothing"
+  "note": "vacuous: passes when the feature produces nothing",
+  "sources": [
+    {
+      "name": "the house catalogue, verify-prd-implemented/test-patterns.md: Vacuous / passes-with-zero",
+      "url": "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md"
+    }
+  ]
 }

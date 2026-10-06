@@ -3,6 +3,20 @@
 // or fail for reasons outside the code under test. A "no" raises the
 // `non-deterministic` flag. A flaky guard is still a guard, so it reports and
 // does not escalate.
+//
+// Sources:
+// - Kent Beck, Test Desiderata (2019): Deterministic, Isolated
+//   https://kentbeck.github.io/TestDesiderata/
+//   If nothing changes, the result does not change.
+// - Gerard Meszaros, xUnit Test Patterns (2007): Erratic Test (Nondeterministic
+//   Test, Resource Optimism, Interacting Tests, Test Run War)
+//   http://xunitpatterns.com/Erratic%20Test.html
+//   Nondeterminism, an assumed resource, or a shared resource makes the result
+//   vary between runs.
+// - testsmells.org, Open Catalog of Test Smells: Sleepy Test, Mystery Guest,
+//   Resource Optimism
+//   https://testsmells.org/pages/testsmells.html
+//   A sleep or an external resource makes the result depend on the environment.
 
 import { noul } from "../../classifier/systemone.mjs";
 
@@ -21,8 +35,8 @@ export default {
   rubric: `Deterministic: same result every run, with no sleep, clock, network, randomness, or
   order dependence.`,
   sources: [
-    { name: "Kent Beck, Test Desiderata (Deterministic, Isolated)", url: "https://kentbeck.github.io/TestDesiderata/" },
-    { name: "Meszaros, xUnit Test Patterns: Erratic Test (Nondeterministic Test, Resource Optimism, Interacting Tests, Test Run War)", url: "http://xunitpatterns.com/Erratic%20Test.html" },
-    { name: "testsmells.org, Open Catalog of Test Smells: Sleepy Test, Mystery Guest, Resource Optimism, Conditional Test Logic", url: "https://testsmells.org/pages/testsmells.html" },
+    { name: "Kent Beck, Test Desiderata (2019): Deterministic, Isolated", url: "https://kentbeck.github.io/TestDesiderata/" },
+    { name: "Gerard Meszaros, xUnit Test Patterns (2007): Erratic Test (Nondeterministic Test, Resource Optimism, Interacting Tests, Test Run War)", url: "http://xunitpatterns.com/Erratic%20Test.html" },
+    { name: "testsmells.org, Open Catalog of Test Smells: Sleepy Test, Mystery Guest, Resource Optimism", url: "https://testsmells.org/pages/testsmells.html" },
   ],
 };

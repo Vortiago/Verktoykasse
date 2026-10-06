@@ -1,6 +1,19 @@
 // The type check: what kind of test is this, by what it actually exercises? The
 // report shows the answer. It never escalates, because a wrong label does little
 // harm (ADR 0007).
+//
+// Sources:
+// - Gerard Meszaros, xUnit Test Patterns (2007): Test Organization and Test
+//   Strategy
+//   http://xunitpatterns.com/
+//   The book sorts tests by scope, which grounds the labels unit, integration,
+//   and end-to-end.
+// - Michael Feathers, Characterization Testing (2016)
+//   https://michaelfeathers.silvrback.com/characterization-testing
+//   A characterization test pins the current behaviour before a change.
+// - house choice: the exact six labels (inference)
+//   No source names these six labels. A wrong label does little harm, so the
+//   type never escalates.
 
 import { choice } from "../../classifier/systemone.mjs";
 
@@ -21,7 +34,7 @@ export default {
   rubric: `Type: unit, integration, regression, e2e, smoke, or characterization, by what it
   actually exercises.`,
   sources: [
-    { name: "Meszaros, xUnit Test Patterns: Test Organization and Test Strategy", url: "http://xunitpatterns.com/" },
+    { name: "Gerard Meszaros, xUnit Test Patterns (2007): Test Organization and Test Strategy", url: "http://xunitpatterns.com/" },
     { name: "Michael Feathers, Characterization Testing (2016)", url: "https://michaelfeathers.silvrback.com/characterization-testing" },
     { name: "house choice: the exact six labels (inference)" },
   ],

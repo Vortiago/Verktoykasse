@@ -3,5 +3,11 @@
   "defect": "wrong-reason",
   "canFail": true,
   "mustEscalate": true,
-  "note": "passes for the wrong reason: only the mock call is checked"
+  "note": "passes for the wrong reason: only the mock call is checked",
+  "sources": [
+    {
+      "name": "the house catalogue, verify-prd-implemented/test-patterns.md: Passes for the wrong reason",
+      "url": "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md"
+    }
+  ]
 }

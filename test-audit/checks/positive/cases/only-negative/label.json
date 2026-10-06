@@ -3,5 +3,11 @@
   "defect": "only-negative",
   "canFail": true,
   "mustEscalate": true,
-  "note": "no positive/negative pair"
+  "note": "no positive/negative pair",
+  "sources": [
+    {
+      "name": "the house catalogue, verify-prd-implemented/test-patterns.md: No negative/positive pair",
+      "url": "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md"
+    }
+  ]
 }

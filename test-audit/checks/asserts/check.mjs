@@ -2,6 +2,29 @@
 // is a real guard. Hardcoded data, shape only, interaction only, and nothing
 // escalate. The second phrasing lists the kinds in reverse order, as a position
 // control, so the two answers must agree by key.
+//
+// The position swap and its sources are in classifier/verdict.mjs.
+//
+// Sources:
+// - testsmells.org, Open Catalog of Test Smells: Redundant Assertion, Unknown
+//   Test, Magic Number Test, Sensitive Equality
+//   https://testsmells.org/pages/testsmells.html
+//   An assertion that is always true, that is missing, or that compares a
+//   string form does not guard the behaviour.
+// - Gerard Meszaros, xUnit Test Patterns (2007): Obscure Test (Hard-Coded Test
+//   Data, Indirect Testing)
+//   http://xunitpatterns.com/Obscure%20Test.html
+//   Expected data from the code itself, or a check through another object,
+//   hides what the test verifies.
+// - Martin Fowler, Mocks Aren't Stubs (2007)
+//   https://martinfowler.com/articles/mocksArentStubs.html
+//   State verification checks the result. Behaviour verification checks only
+//   the calls to a collaborator.
+// - the house catalogue, verify-prd-implemented/test-patterns.md:
+//   Shape-not-value
+//   https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md
+//   A check of the type, the length, or the keys survives a result that is
+//   wrong everywhere.
 
 import { choice } from "../../classifier/systemone.mjs";
 
@@ -26,10 +49,8 @@ export default {
   },
   sources: [
     { name: "testsmells.org, Open Catalog of Test Smells: Redundant Assertion, Unknown Test, Magic Number Test, Sensitive Equality", url: "https://testsmells.org/pages/testsmells.html" },
-    { name: "Meszaros, xUnit Test Patterns: Obscure Test (Hard-Coded Test Data, Indirect Testing)", url: "http://xunitpatterns.com/Obscure%20Test.html" },
+    { name: "Gerard Meszaros, xUnit Test Patterns (2007): Obscure Test (Hard-Coded Test Data, Indirect Testing)", url: "http://xunitpatterns.com/Obscure%20Test.html" },
     { name: "Martin Fowler, Mocks Aren't Stubs (2007)", url: "https://martinfowler.com/articles/mocksArentStubs.html" },
-    { name: "the house catalogue: shape-not-value, nothing asserted, hardcoded data", url: "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md" },
-    { name: "Zheng et al., Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena (2023), position bias, for the order swap", url: "https://arxiv.org/abs/2306.05685" },
-    { name: "Wang et al., Large Language Models are not Fair Evaluators (2023), balanced position calibration, for the order swap", url: "https://arxiv.org/abs/2305.17926" },
+    { name: "the house catalogue, verify-prd-implemented/test-patterns.md: Shape-not-value", url: "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md" },
   ],
 };

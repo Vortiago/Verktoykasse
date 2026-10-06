@@ -1,6 +1,22 @@
 // The name-matches check: does the test body assert the behaviour its name
 // states? A name-only test promises one behaviour and asserts something else or
 // something trivial. A "no" raises the `name-mismatch` flag.
+//
+// Sources:
+// - Web Platform Tests, Review Checklist: "The test is testing what it thinks
+//   it's testing"
+//   https://web-platform-tests.org/reviewing-tests/checklist.html
+//   A reviewer checks that the test exercises what its name claims.
+// - testsmells.org, Open Catalog of Test Smells: Unknown Test
+//   https://testsmells.org/pages/testsmells.html
+//   A test that does not show what it verifies hides its purpose.
+// - Gerard Meszaros, xUnit Test Patterns (2007): Obscure Test
+//   http://xunitpatterns.com/Obscure%20Test.html
+//   A reader cannot tell what the test verifies.
+// - the house catalogue, verify-prd-implemented/test-patterns.md: Name-only
+//   https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md
+//   A test named for a behaviour can assert something adjacent and trivial. The
+//   name is documentation, not a guard.
 
 import { noul } from "../../classifier/systemone.mjs";
 
@@ -19,7 +35,7 @@ export default {
   sources: [
     { name: "Web Platform Tests, Review Checklist: \"The test is testing what it thinks it's testing\"", url: "https://web-platform-tests.org/reviewing-tests/checklist.html" },
     { name: "testsmells.org, Open Catalog of Test Smells: Unknown Test", url: "https://testsmells.org/pages/testsmells.html" },
-    { name: "Meszaros, xUnit Test Patterns: Obscure Test", url: "http://xunitpatterns.com/Obscure%20Test.html" },
-    { name: "the house catalogue: name-only", url: "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md" },
+    { name: "Gerard Meszaros, xUnit Test Patterns (2007): Obscure Test", url: "http://xunitpatterns.com/Obscure%20Test.html" },
+    { name: "the house catalogue, verify-prd-implemented/test-patterns.md: Name-only", url: "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md" },
   ],
 };

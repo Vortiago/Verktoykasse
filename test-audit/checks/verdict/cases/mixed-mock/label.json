@@ -3,5 +3,11 @@
   "defect": "ambiguous",
   "mustEscalate": true,
   "mixed": true,
-  "note": "interaction assertion with a specific count"
+  "note": "interaction assertion with a specific count",
+  "sources": [
+    {
+      "name": "Xuezhi Wang et al., Self-Consistency Improves Chain of Thought Reasoning (ICLR 2023)",
+      "url": "https://arxiv.org/abs/2203.11171"
+    }
+  ]
 }

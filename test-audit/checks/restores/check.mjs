@@ -1,5 +1,14 @@
 // The restores check: does the test restore every global, environment variable,
 // timer, and spy that it changes? A "no" raises the `state-leak` flag.
+//
+// Sources:
+// - Kent Beck, Test Desiderata (2019): Isolated
+//   https://kentbeck.github.io/TestDesiderata/
+//   A test gives the same result in any order of the run.
+// - Gerard Meszaros, xUnit Test Patterns (2007): Interacting Tests, Test Run
+//   War (in Erratic Test)
+//   http://xunitpatterns.com/Erratic%20Test.html
+//   A test that leaves shared state changed makes another test pass or fail.
 
 import { noul } from "../../classifier/systemone.mjs";
 
@@ -18,8 +27,7 @@ export default {
   rubric: `Restores state: the test clears or restores every global, environment variable,
   timer, and spy it changes, so it leaves nothing for the next test.`,
   sources: [
-    { name: "Kent Beck, Test Desiderata (Isolated)", url: "https://kentbeck.github.io/TestDesiderata/" },
-    { name: "Meszaros, xUnit Test Patterns: Interacting Tests, Test Run War (in Erratic Test)", url: "http://xunitpatterns.com/Erratic%20Test.html" },
-    { name: "testsmells.org, Open Catalog of Test Smells: Test Pollution", url: "https://testsmells.org/pages/testsmells.html" },
+    { name: "Kent Beck, Test Desiderata (2019): Isolated", url: "https://kentbeck.github.io/TestDesiderata/" },
+    { name: "Gerard Meszaros, xUnit Test Patterns (2007): Interacting Tests, Test Run War (in Erratic Test)", url: "http://xunitpatterns.com/Erratic%20Test.html" },
   ],
 };

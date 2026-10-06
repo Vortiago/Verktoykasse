@@ -3,5 +3,11 @@
   "defect": "non-deterministic",
   "canFail": true,
   "deterministic": false,
-  "note": "a real guard, but timer-bound; reported, not escalated"
+  "note": "a real guard, but timer-bound; reported, not escalated",
+  "sources": [
+    {
+      "name": "Kent Beck, Test Desiderata (2019): Deterministic",
+      "url": "https://kentbeck.github.io/TestDesiderata/"
+    }
+  ]
 }

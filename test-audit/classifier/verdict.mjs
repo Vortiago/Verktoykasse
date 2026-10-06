@@ -1,6 +1,37 @@
 // The verdict rules: reduce one test's answers to a verdict, a set of flags, and
 // the reasons it escalates. Pure, so the rules are tested on hand-written answer
 // objects without the model.
+//
+// The twin rule: each verdict-carrying judgement is asked in two or three
+// phrasings, one of them negated. The rules align their polarity and trust the
+// value only when the spread is inside TEST_AUDIT_STABLE_BAND. A disagreement
+// escalates to a human. A third phrasing never breaks the tie. The `asserts`
+// pair also lists its kinds in reverse order, as a position control.
+//
+// Sources:
+// - Xuezhi Wang et al., Self-Consistency Improves Chain of Thought Reasoning
+//   (ICLR 2023)
+//   https://arxiv.org/abs/2203.11171
+//   An answer that several paths agree on is more reliable than one path.
+// - Melanie Sclar et al., Quantifying Language Models' Sensitivity to Spurious
+//   Features in Prompt Design (ICLR 2024)
+//   https://arxiv.org/abs/2310.11324
+//   A small change of prompt that keeps the meaning can move accuracy by a
+//   large margin, so one phrasing is not enough.
+// - Lianmin Zheng et al., Judging LLM-as-a-Judge with MT-Bench and Chatbot
+//   Arena (NeurIPS 2023)
+//   https://arxiv.org/abs/2306.05685
+//   An LLM judge prefers an answer for its position, not only its content.
+// - Peiyi Wang et al., Large Language Models are not Fair Evaluators (2023)
+//   https://arxiv.org/abs/2305.17926
+//   Swapping the order of the options and combining the results reduces
+//   position bias. That the asserts swap removes it is an inference.
+// - Birgitta Böckeler, Maintainability sensors for coding agents (2026)
+//   https://www.martinfowler.com/articles/sensors-for-coding-agents.html
+//   An inferential sensor reports, and a human decides. So a disagreement
+//   escalates and is never resolved by a vote.
+// The band default (0.25), the four verdict levels, and the rule that a
+// confident "cannot fail" contradicts a good verdict are house choices.
 
 import { trusted } from "./systemone.mjs";
 import { ASSERT_PASS, CAN_FAIL_KEYS, DESCRIPTIVE_KEYS, ESCALATE_ON_FALSE, FLAG_BY_GATE, NEGATED, VERDICTS } from "../checks/index.mjs";

@@ -315,36 +315,6 @@ are a baseline to run again.
 
 ## References
 
-The table maps each question to the source that grounds it.
-[`references.md`](references.md) has the full list. It also marks which claims
-are primary sources and which are house inferences.
-
-| Looking for | Grounded in |
-| --- | --- |
-| Falsifiability (`can_fail_*`) | Beck, *Test Desiderata* (`Behavioral`); WPT review checklist, "fails when it's supposed to fail"; Meszaros, `Erratic Test`; the mutation-testing literature |
-| Assertion target (`asserts_*`) | testsmells.org, Open Catalog of Test Smells (`Redundant Assertion`, `Unknown Test`, `Sensitive Equality`, `Magic Number Test`); Meszaros, `Obscure Test`; Fowler, "Mocks Aren't Stubs" |
-| Runs (`runs_a`, `runs_b`) | testsmells.org, `Ignored Test`; Meszaros, `Ignored Test`; the house catalogue, skipped / disabled / focused |
-| Only negative (`positive_a`, `positive_b`) | the house catalogue, no negative/positive pair; the WPT checklist, "fails when it's supposed to fail" |
-| Implementation coupling (`observable`) | Meszaros, `Indirect Testing`; Fowler, "Mocks Aren't Stubs"; testsmells.org, `Redundant Assertion` |
-| Conditional logic (`conditional`) | Meszaros, `Conditional Test Logic`; testsmells.org, `Conditional Test Logic` |
-| Isolation (`isolated`) | Beck, `Isolated`; Meszaros, `Interacting Tests`, `Test Run War`, `Unrepeatable Test` |
-| Controlled resources (`controlled`) | Meszaros, `Resource Optimism`, `Mystery Guest`; testsmells.org, `Mystery Guest` |
-| Specific assertion (`specific`) | WPT checklist, "the most specific asserts possible"; testsmells.org, `Sensitive Equality` |
-| Vague name (`named`) | Meszaros, `Obscure Test`; testsmells.org, `Unknown Test` |
-| Structure-insensitive (`resilient`) | Beck, `Structure-insensitive`; Meszaros, `Fragile Test` and `Sensitive Equality` |
-| Diagnostic failure (`diagnostic`) | Meszaros, `Assertion Roulette` (`Missing Assertion Message`); testsmells.org, `Assertion Roulette` |
-| Fixture scope (`fixture`) | Meszaros, `General Fixture` and `Irrelevant Information` |
-| Speed (`fast`) | Beck, `Fast`; Meszaros, `Slow Tests` and `Sleepy Test`; testsmells.org, `Sleepy Test` |
-| Readability (`readable`) | Beck, `Readable`; Meszaros, `Obscure Test`; testsmells.org, `Unknown Test` |
-| Magic number (`magic_number`) | testsmells.org, `Magic Number Test`; Meszaros, `Hard-Coded Test Data` |
-| Asserts the output (`reads_output`) | testsmells.org, `Assertion Diversion`, `Calculating Expected Results On The Fly`; the house catalogue, passes-for-the-wrong-reason; mutation-testing propagation |
-| Automated (`automated`) | Beck, `Automated`; Meszaros, `Manual Intervention`; the WPT checklist on manual tests |
-| Restores state (`restores`) | Beck, `Isolated`; Meszaros, `Interacting Tests`, `Test Run War`; testsmells.org, `Test Pollution` |
-| Test type (`type`) | Meszaros, `Test Organization`; Feathers, characterization testing. The six labels are house choice |
-| Determinism (`deterministic`) | Beck, `Deterministic` and `Isolated`; Meszaros, `Erratic Test`; testsmells.org, `Sleepy Test` and `Mystery Guest` |
-| Eager test (`one_thing`) | Meszaros, `Eager Test`; testsmells.org, `Eager Test` |
-| Name matches body (`name_matches`) | WPT checklist, "testing what it thinks it's testing"; testsmells.org, `Unknown Test`; the house catalogue |
-| Cross-question contradiction (`verdict`) | a house rule, inferred from the sources |
-| Escalate, never tie-break | Böckeler, "Maintainability sensors for coding agents" |
-| Paraphrase pair and position swap | self-consistency (Wang et al. 2023); MT-Bench and "not Fair Evaluators" on position bias |
-| The house defect catalogue | [`verify-prd-implemented/test-patterns.md`](../verify-prd-implemented/test-patterns.md) |
+Each check names its sources in the header comment of its
+`checks/<check>/check.mjs`. [`references.md`](references.md) is the index to
+all the sources, and it lists the background reading.

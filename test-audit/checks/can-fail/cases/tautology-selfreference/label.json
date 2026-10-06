@@ -3,5 +3,11 @@
   "defect": "self-reference",
   "canFail": false,
   "mustEscalate": true,
-  "note": "tautology: both sides call the same production code"
+  "note": "tautology: both sides call the same production code",
+  "sources": [
+    {
+      "name": "the house catalogue, verify-prd-implemented/test-patterns.md: Tautology / self-reference",
+      "url": "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md"
+    }
+  ]
 }

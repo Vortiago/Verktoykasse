@@ -1,6 +1,21 @@
 // The controlled check: does the test fix the time, network, filesystem, and
 // environment it needs, rather than assume they are present? A "no" raises the
 // `uncontrolled-resource` flag.
+//
+// Sources:
+// - Gerard Meszaros, xUnit Test Patterns (2007): Resource Optimism (in Erratic
+//   Test)
+//   http://xunitpatterns.com/Erratic%20Test.html
+//   A test that assumes an external resource is present fails when it is not.
+// - Gerard Meszaros, xUnit Test Patterns (2007): Mystery Guest (in Obscure
+//   Test)
+//   http://xunitpatterns.com/Obscure%20Test.html
+//   A test that uses an external resource hides the cause of its result.
+// - testsmells.org, Open Catalog of Test Smells: Mystery Guest, Resource
+//   Optimism
+//   https://testsmells.org/pages/testsmells.html
+//   A test that uses an external file or database, or assumes it, is a smell
+//   that a tool can find.
 
 import { noul } from "../../classifier/systemone.mjs";
 
@@ -19,8 +34,8 @@ export default {
   rubric: `Controlled resources: the test fixes the time, network, filesystem, and
   environment it needs; it does not assume they are present.`,
   sources: [
-    { name: "Meszaros, xUnit Test Patterns: Resource Optimism (in Erratic Test)", url: "http://xunitpatterns.com/Erratic%20Test.html" },
-    { name: "Meszaros, xUnit Test Patterns: Mystery Guest (in Obscure Test)", url: "http://xunitpatterns.com/Obscure%20Test.html" },
-    { name: "testsmells.org, Open Catalog of Test Smells: Mystery Guest", url: "https://testsmells.org/pages/testsmells.html" },
+    { name: "Gerard Meszaros, xUnit Test Patterns (2007): Resource Optimism (in Erratic Test)", url: "http://xunitpatterns.com/Erratic%20Test.html" },
+    { name: "Gerard Meszaros, xUnit Test Patterns (2007): Mystery Guest (in Obscure Test)", url: "http://xunitpatterns.com/Obscure%20Test.html" },
+    { name: "testsmells.org, Open Catalog of Test Smells: Mystery Guest, Resource Optimism", url: "https://testsmells.org/pages/testsmells.html" },
   ],
 };

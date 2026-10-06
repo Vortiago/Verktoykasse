@@ -8,7 +8,7 @@
   "note": "A real catalogue check, but a live fetch makes the result depend on the network.",
   "sources": [
     {
-      "name": "Kent Beck, Test Desiderata (deterministic)",
+      "name": "Kent Beck, Test Desiderata (2019): Deterministic",
       "url": "https://kentbeck.github.io/TestDesiderata/"
     }
   ]

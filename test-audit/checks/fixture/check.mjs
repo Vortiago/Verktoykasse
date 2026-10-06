@@ -1,6 +1,13 @@
 // The fixture check: does the test build only the data it needs, not a large
 // shared fixture or values unrelated to the behaviour? A "no" raises the
 // `general-fixture` flag.
+//
+// Sources:
+// - Gerard Meszaros, xUnit Test Patterns (2007): General Fixture, Irrelevant
+//   Information (in Obscure Test)
+//   http://xunitpatterns.com/Obscure%20Test.html
+//   A large shared fixture, or data that the behaviour does not need, makes the
+//   test hard to read.
 
 import { noul } from "../../classifier/systemone.mjs";
 
@@ -18,5 +25,7 @@ export default {
   },
   rubric: `Local fixture: the test builds only the data it needs, not a large shared fixture
   or values unrelated to the behaviour.`,
-  sources: [{ name: "Meszaros, xUnit Test Patterns: General Fixture, Irrelevant Information (in Obscure Test)", url: "http://xunitpatterns.com/Obscure%20Test.html" }],
+  sources: [
+    { name: "Gerard Meszaros, xUnit Test Patterns (2007): General Fixture, Irrelevant Information (in Obscure Test)", url: "http://xunitpatterns.com/Obscure%20Test.html" },
+  ],
 };

@@ -1,6 +1,16 @@
 // The specific check: does the test use the strongest assertion that would catch
 // the failure, not a weaker one that also passes on wrong output? A "no" raises
 // the `weak-assert` flag.
+//
+// Sources:
+// - Web Platform Tests, Review Checklist: "The test uses the most specific
+//   asserts possible"
+//   https://web-platform-tests.org/reviewing-tests/checklist.html
+//   A reviewer asks for the strongest assertion that the check allows.
+// - testsmells.org, Open Catalog of Test Smells: Sensitive Equality
+//   https://testsmells.org/pages/testsmells.html
+//   A comparison of a string form passes or fails for reasons other than the
+//   value.
 
 import { noul } from "../../classifier/systemone.mjs";
 

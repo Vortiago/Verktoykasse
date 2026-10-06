@@ -12,6 +12,8 @@ import { fileURLToPath } from "node:url";
 import { BATTERY, CHECKS, ESCALATE_ON_FALSE, FLAG_BY_GATE, NEGATED, RUBRIC } from "./index.mjs";
 import { CASE_FILE, CODE_FILE, LABEL_FILE, loadLabels } from "../calibration/labels.mjs";
 import { extractTests } from "../change/index.mjs";
+import { buildState } from "../classifier/index.mjs";
+import { codeContext } from "../calibration/runner.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -30,6 +32,20 @@ const CASES = FOLDERS.flatMap((folder) => {
 
 /** The label fields a label.json may hold. The loader adds `check`, `file` and `code`. */
 const LABEL_FIELDS = new Set(["test", "defect", "canFail", "mustEscalate", "mixed", "deterministic", "note", "sources"]);
+
+/**
+ * The comment at the head of a file, as one line of words: the `//` lines
+ * before the first line of code, without their markers.
+ * @param {string} text
+ */
+function headerOf(text) {
+  const lines = [];
+  for (const line of text.split("\n")) {
+    if (!line.startsWith("//")) break;
+    lines.push(line.slice(2).trim());
+  }
+  return lines.join(" ").replace(/\s+/g, " ");
+}
 
 /** The folder name of a check: the kebab-case form of its name. @param {string} name */
 const folderOf = (name) => name.replaceAll("_", "-");
@@ -88,6 +104,17 @@ test("every check names its sources", () => {
   }
 });
 
+test("each check's header comment names every source in its `sources`, with the URL", () => {
+  for (const check of CHECKS) {
+    const header = headerOf(readFileSync(join(HERE, folderOf(check.name), "check.mjs"), "utf8"));
+    assert.ok(header.includes("Sources:"), `${check.name} has no Sources: list in its header`);
+    for (const source of check.sources) {
+      assert.ok(header.includes(source.name), `${check.name}: the header does not name ${source.name}`);
+      if (source.url) assert.ok(header.includes(source.url), `${check.name}: the header has no ${source.url}`);
+    }
+  }
+});
+
 test("every case folder holds a case.mjs and a label.json, and at most a code.mjs beside them", () => {
   assert.ok(CASES.length > 0);
   for (const folder of CASES) {
@@ -115,5 +142,33 @@ test("a label holds only the label fields, and names its defect", () => {
   for (const label of loadLabels()) {
     for (const key of Object.keys(label)) assert.ok(LABEL_FIELDS.has(key) || ["check", "file", "code"].includes(key), `${label.file}: field ${key}`);
     assert.ok(typeof label.defect === "string" && label.defect.length > 0, `${label.file}: no defect`);
+  }
+});
+
+test("each case's header comment says what it shows and names the sources of its label", () => {
+  for (const label of loadLabels()) {
+    const header = headerOf(readFileSync(join(HERE, "..", label.file), "utf8"));
+    assert.ok(header.length > 0, `${label.file} has no header comment`);
+    assert.ok(label.sources?.length, `${label.file}: the label names no source`);
+    for (const source of label.sources ?? []) {
+      assert.ok(header.includes(`Source: ${source.name}`), `${label.file}: the header does not name ${source.name}`);
+      if (source.url) assert.ok(header.includes(source.url), `${label.file}: the header has no ${source.url}`);
+    }
+  }
+});
+
+test("a case's header comment never reaches the model, and its code under test has no comment", () => {
+  for (const label of loadLabels()) {
+    const text = readFileSync(join(HERE, "..", label.file), "utf8");
+    const test = extractTests(text, "example.test.mjs").find((found) => found.name === label.test);
+    assert.ok(test, `${label.file}: no test ${label.test}`);
+    const code = label.code ? readFileSync(join(HERE, "..", label.code), "utf8") : "";
+    // The code under test travels whole, so a comment in it would reach the model.
+    assert.ok(!/\/\/|\/\*/.test(code), `${label.code} holds a comment`);
+    const state = buildState(test, code ? codeContext(code) : "", 1_000_000);
+    for (const line of text.split("\n")) {
+      if (!line.startsWith("//")) break;
+      assert.ok(!state.includes(line.slice(2).trim()), `${label.file}: the state holds its header line ${line}`);
+    }
   }
 });

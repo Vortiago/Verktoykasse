@@ -147,7 +147,7 @@ A directory is a skill when it holds a `SKILL.md`.
 
   The endpoint can be a local Ollama decision model, llama-arbiter, or any
   TypeSafe endpoint. `--selftest --targets` scores several models on one
-  labelled corpus ([references](test-audit/references.md),
+  labelled corpus ([checks and sources](test-audit/checks/),
   [results](test-audit/BENCHMARK.md)). The tool is a cheap sensor beside the
   mutation check in `verify-prd-implemented`, not a coverage tool. It ships a
   CLI and an OpenCode 2 plugin in the same directory. The plugin adds one

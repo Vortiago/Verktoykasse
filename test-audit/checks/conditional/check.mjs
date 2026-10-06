@@ -1,6 +1,14 @@
 // The conditional check: does the assertion always run? A branch, loop, or catch
 // that can leave it unrun lets the test assert nothing on some inputs. A "no"
 // raises the `conditional` flag.
+//
+// Sources:
+// - Gerard Meszaros, xUnit Test Patterns (2007): Conditional Test Logic
+//   http://xunitpatterns.com/Conditional%20Test%20Logic.html
+//   A branch or a loop in a test can leave the assertion unrun.
+// - testsmells.org, Open Catalog of Test Smells: Conditional Test Logic
+//   https://testsmells.org/pages/testsmells.html
+//   Control flow in a test method is a smell that a tool can find.
 
 import { noul } from "../../classifier/systemone.mjs";
 
@@ -19,7 +27,7 @@ export default {
   rubric: `Conditional test logic: a branch, loop, or catch that can leave the assertion
   unrun, so the test may assert nothing on some inputs.`,
   sources: [
-    { name: "Meszaros, xUnit Test Patterns: Conditional Test Logic", url: "http://xunitpatterns.com/Conditional%20Test%20Logic.html" },
+    { name: "Gerard Meszaros, xUnit Test Patterns (2007): Conditional Test Logic", url: "http://xunitpatterns.com/Conditional%20Test%20Logic.html" },
     { name: "testsmells.org, Open Catalog of Test Smells: Conditional Test Logic", url: "https://testsmells.org/pages/testsmells.html" },
   ],
 };

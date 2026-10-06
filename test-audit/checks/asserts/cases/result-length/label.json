@@ -7,8 +7,8 @@
   "note": "A wrong count fails the test, yet the step contents are never checked.",
   "sources": [
     {
-      "name": "testsmells.org, Open Catalog of Test Smells",
-      "url": "https://testsmells.org/"
+      "name": "the house catalogue, verify-prd-implemented/test-patterns.md: Shape-not-value",
+      "url": "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md"
     }
   ]
 }

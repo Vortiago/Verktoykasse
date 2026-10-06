@@ -2,6 +2,18 @@
 // on the test or on a describe around it, or an only or focus marker on another
 // test in the file, stops it from guarding anything. Asked as a twin pair;
 // `runs_b` is the negated twin.
+//
+// The twin rule and its sources are in classifier/verdict.mjs.
+//
+// Sources:
+// - testsmells.org, Open Catalog of Test Smells: Ignored Test
+//   https://testsmells.org/pages/testsmells.html
+//   A test that is marked to be ignored does not run, so it guards nothing.
+// - the house catalogue, verify-prd-implemented/test-patterns.md: Skipped /
+//   disabled / focused
+//   https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md
+//   A skip, an xit, an it.only elsewhere in the file, or an early return
+//   narrows the run.
 
 import { noul } from "../../classifier/systemone.mjs";
 
@@ -30,8 +42,6 @@ export default {
   around it, and no only or focus marker is on another test in the file.`,
   sources: [
     { name: "testsmells.org, Open Catalog of Test Smells: Ignored Test", url: "https://testsmells.org/pages/testsmells.html" },
-    { name: "Meszaros, xUnit Test Patterns: Ignored Test", url: "http://xunitpatterns.com/" },
-    { name: "the house catalogue: skipped, disabled, focused", url: "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md" },
-    { name: "Wang et al., Self-Consistency Improves Chain of Thought Reasoning (2023), for the twin", url: "https://arxiv.org/abs/2203.11171" },
+    { name: "the house catalogue, verify-prd-implemented/test-patterns.md: Skipped / disabled / focused", url: "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md" },
   ],
 };

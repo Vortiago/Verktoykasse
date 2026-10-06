@@ -1,5 +1,13 @@
 // The named check: does the test's name state the behaviour and the expected
 // result, not a vague label? A "no" raises the `vague-name` flag.
+//
+// Sources:
+// - Gerard Meszaros, xUnit Test Patterns (2007): Obscure Test
+//   http://xunitpatterns.com/Obscure%20Test.html
+//   A reader cannot tell what the test verifies.
+// - testsmells.org, Open Catalog of Test Smells: Unknown Test
+//   https://testsmells.org/pages/testsmells.html
+//   A test that does not show what it verifies hides its purpose.
 
 import { noul } from "../../classifier/systemone.mjs";
 
@@ -17,7 +25,7 @@ export default {
   },
   rubric: `Name: states the behaviour and the expected result, not a vague label.`,
   sources: [
-    { name: "Meszaros, xUnit Test Patterns: Obscure Test", url: "http://xunitpatterns.com/Obscure%20Test.html" },
+    { name: "Gerard Meszaros, xUnit Test Patterns (2007): Obscure Test", url: "http://xunitpatterns.com/Obscure%20Test.html" },
     { name: "testsmells.org, Open Catalog of Test Smells: Unknown Test", url: "https://testsmells.org/pages/testsmells.html" },
   ],
 };

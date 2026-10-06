@@ -7,8 +7,8 @@
   "note": "A changed call count fails the test, yet the payload of each call is never asserted.",
   "sources": [
     {
-      "name": "testsmells.org, Open Catalog of Test Smells",
-      "url": "https://testsmells.org/"
+      "name": "Martin Fowler, Mocks Aren't Stubs (2007)",
+      "url": "https://martinfowler.com/articles/mocksArentStubs.html"
     }
   ]
 }

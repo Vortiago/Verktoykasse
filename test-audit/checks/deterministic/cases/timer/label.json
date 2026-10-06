@@ -8,7 +8,7 @@
   "note": "A real guard on the retry count, but the fixed sleep makes the outcome depend on scheduling.",
   "sources": [
     {
-      "name": "Kent Beck, Test Desiderata (deterministic)",
+      "name": "Kent Beck, Test Desiderata (2019): Deterministic",
       "url": "https://kentbeck.github.io/TestDesiderata/"
     }
   ]

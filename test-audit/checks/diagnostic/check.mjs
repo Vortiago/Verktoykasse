@@ -1,5 +1,15 @@
 // The diagnostic check: when the test fails, does it say which assertion failed
 // and what was expected? A "no" raises the `silent-failure` flag.
+//
+// Sources:
+// - Gerard Meszaros, xUnit Test Patterns (2007): Assertion Roulette (Missing
+//   Assertion Message)
+//   http://xunitpatterns.com/Assertion%20Roulette.html
+//   When a test with several assertions fails, a missing message hides which
+//   one failed.
+// - testsmells.org, Open Catalog of Test Smells: Assertion Roulette
+//   https://testsmells.org/pages/testsmells.html
+//   Several assertions with no message make a failure hard to find.
 
 import { noul } from "../../classifier/systemone.mjs";
 
@@ -17,7 +27,7 @@ export default {
   },
   rubric: `Diagnostic: a failure names the assertion that failed and the expected value.`,
   sources: [
-    { name: "Meszaros, xUnit Test Patterns: Assertion Roulette (Missing Assertion Message)", url: "http://xunitpatterns.com/Assertion%20Roulette.html" },
+    { name: "Gerard Meszaros, xUnit Test Patterns (2007): Assertion Roulette (Missing Assertion Message)", url: "http://xunitpatterns.com/Assertion%20Roulette.html" },
     { name: "testsmells.org, Open Catalog of Test Smells: Assertion Roulette", url: "https://testsmells.org/pages/testsmells.html" },
   ],
 };

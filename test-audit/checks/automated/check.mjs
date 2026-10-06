@@ -1,5 +1,17 @@
 // The automated check: does the test reach pass or fail with no person doing or
 // reading anything? A "no" raises the `manual` flag.
+//
+// Sources:
+// - Kent Beck, Test Desiderata (2019): Automated
+//   https://kentbeck.github.io/TestDesiderata/
+//   A test runs without human intervention.
+// - Gerard Meszaros, xUnit Test Patterns (2007): Manual Intervention
+//   http://xunitpatterns.com/
+//   A test that needs a person to set it up or to check the result is not a
+//   self-checking test.
+// - Web Platform Tests, Review Checklist: manual tests
+//   https://web-platform-tests.org/reviewing-tests/checklist.html
+//   The checklist keeps manual tests apart from automated tests.
 
 import { noul } from "../../classifier/systemone.mjs";
 
@@ -17,8 +29,8 @@ export default {
   },
   rubric: `Automated: the test reaches pass or fail with no person doing or reading anything.`,
   sources: [
-    { name: "Kent Beck, Test Desiderata (Automated)", url: "https://kentbeck.github.io/TestDesiderata/" },
-    { name: "Meszaros, xUnit Test Patterns: Manual Intervention", url: "http://xunitpatterns.com/" },
-    { name: "Web Platform Tests, Review Checklist, on manual tests", url: "https://web-platform-tests.org/reviewing-tests/checklist.html" },
+    { name: "Kent Beck, Test Desiderata (2019): Automated", url: "https://kentbeck.github.io/TestDesiderata/" },
+    { name: "Gerard Meszaros, xUnit Test Patterns (2007): Manual Intervention", url: "http://xunitpatterns.com/" },
+    { name: "Web Platform Tests, Review Checklist: manual tests", url: "https://web-platform-tests.org/reviewing-tests/checklist.html" },
   ],
 };

@@ -139,7 +139,7 @@ test("the remote catalogue lists the widget", async () => {
   expect(items).toContain("widget");
 })
 ```
-- **Known defect:** non-deterministic. **Check:** [`deterministic`](checks/deterministic/check.mjs). **Expected:** pass, `can_fail` yes, `deterministic` no. Note: A real catalogue check, but a live fetch makes the result depend on the network. Case file [`checks/deterministic/cases/network/case.mjs`](checks/deterministic/cases/network/case.mjs), line 2. Sources: [Kent Beck, Test Desiderata (deterministic)](https://kentbeck.github.io/TestDesiderata/).
+- **Known defect:** non-deterministic. **Check:** [`deterministic`](checks/deterministic/check.mjs). **Expected:** pass, `can_fail` yes, `deterministic` no. Note: A real catalogue check, but a live fetch makes the result depend on the network. Case file [`checks/deterministic/cases/network/case.mjs`](checks/deterministic/cases/network/case.mjs), line 4. Sources: [Kent Beck, Test Desiderata (2019): Deterministic](https://kentbeck.github.io/TestDesiderata/).
 - **What decided it:** weak, needs eyes.
   - `verdict` weak. **Escalates:** verdict weak.
   - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.84, spread 0.20 (stable). Label yes: match. `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded.
@@ -155,7 +155,7 @@ test("the retry lands within the window", async () => {
   expect(attempts.length).toBe(2);
 })
 ```
-- **Known defect:** non-deterministic. **Check:** [`deterministic`](checks/deterministic/check.mjs). **Expected:** pass, `can_fail` yes, `deterministic` no. Note: A real guard on the retry count, but the fixed sleep makes the outcome depend on scheduling. Case file [`checks/deterministic/cases/timer/case.mjs`](checks/deterministic/cases/timer/case.mjs), line 2. Sources: [Kent Beck, Test Desiderata (deterministic)](https://kentbeck.github.io/TestDesiderata/).
+- **Known defect:** non-deterministic. **Check:** [`deterministic`](checks/deterministic/check.mjs). **Expected:** pass, `can_fail` yes, `deterministic` no. Note: A real guard on the retry count, but the fixed sleep makes the outcome depend on scheduling. Case file [`checks/deterministic/cases/timer/case.mjs`](checks/deterministic/cases/timer/case.mjs), line 5. Sources: [Kent Beck, Test Desiderata (2019): Deterministic](https://kentbeck.github.io/TestDesiderata/).
 - **What decided it:** weak, needs eyes.
   - `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.76, spread 0.60 (unstable). **Escalates:** can_fail unstable (spread 0.60). Label yes: not scored.
   - `asserts_a` behaviour · `asserts_b` shape-only → asserts: behaviour versus shape-only. **Escalates:** asserts unstable (behaviour vs shape-only).
@@ -171,7 +171,7 @@ test("the sorter keeps every random value", () => {
   expect(sortNumbers(input)).toEqual([...input].sort((a, b) => a - b));
 })
 ```
-- **Known defect:** non-deterministic. **Check:** [`deterministic`](checks/deterministic/check.mjs). **Expected:** pass, `can_fail` yes, `deterministic` no. Note: A real sorting property, but the random input makes a failure hard to reproduce. Case file [`checks/deterministic/cases/randomness/case.mjs`](checks/deterministic/cases/randomness/case.mjs), line 2. Sources: [Kent Beck, Test Desiderata (deterministic)](https://kentbeck.github.io/TestDesiderata/).
+- **Known defect:** non-deterministic. **Check:** [`deterministic`](checks/deterministic/check.mjs). **Expected:** pass, `can_fail` yes, `deterministic` no. Note: A real sorting property, but the random input makes a failure hard to reproduce. Case file [`checks/deterministic/cases/randomness/case.mjs`](checks/deterministic/cases/randomness/case.mjs), line 5. Sources: [Kent Beck, Test Desiderata (2019): Deterministic](https://kentbeck.github.io/TestDesiderata/).
 - **What decided it:** good, needs eyes.
   - `asserts_a` hardcoded-data · `asserts_b` behaviour → asserts: hardcoded-data versus behaviour. **Escalates:** asserts unstable (hardcoded-data vs behaviour).
   - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.96, spread 0.06 (stable). Label yes: match. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded. `verdict` good.
@@ -185,7 +185,7 @@ test("the token has not expired yet", () => {
   expect(token.expiresAt).toBeGreaterThan(Date.now());
 })
 ```
-- **Known defect:** non-deterministic. **Check:** [`deterministic`](checks/deterministic/check.mjs). **Expected:** pass, `can_fail` yes, `deterministic` no. Note: A real expiry check, but reading Date.now makes the result depend on when the test runs. Case file [`checks/deterministic/cases/clock/case.mjs`](checks/deterministic/cases/clock/case.mjs), line 2. Sources: [Kent Beck, Test Desiderata (deterministic)](https://kentbeck.github.io/TestDesiderata/).
+- **Known defect:** non-deterministic. **Check:** [`deterministic`](checks/deterministic/check.mjs). **Expected:** pass, `can_fail` yes, `deterministic` no. Note: A real expiry check, but reading Date.now makes the result depend on when the test runs. Case file [`checks/deterministic/cases/clock/case.mjs`](checks/deterministic/cases/clock/case.mjs), line 5. Sources: [Kent Beck, Test Desiderata (2019): Deterministic](https://kentbeck.github.io/TestDesiderata/).
 - **What decided it:** weak, needs eyes.
   - `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.87, spread 0.28 (borderline). **Escalates:** can_fail borderline (spread 0.28). Label yes: not scored.
   - `verdict` weak. **Escalates:** verdict weak.
@@ -208,7 +208,7 @@ export function normalise(record) {
   return { ...record, title: record.title.trim() };
 }
 ```
-- **Known defect:** wrong-reason. **Check:** [`reads-output`](checks/reads-output/check.mjs). **Expected:** escalate, `can_fail` yes. Note: The assertion holds because it reads the input object, not the value the code returned. Case file [`checks/reads-output/cases/asserts-input/case.mjs`](checks/reads-output/cases/asserts-input/case.mjs), line 2. Sources: [verify-prd-implemented test-patterns (Passes for the wrong reason; No negative/positive pair)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
+- **Known defect:** wrong-reason. **Check:** [`reads-output`](checks/reads-output/check.mjs). **Expected:** escalate, `can_fail` yes. Note: The assertion holds because it reads the input object, not the value the code returned. Case file [`checks/reads-output/cases/asserts-input/case.mjs`](checks/reads-output/cases/asserts-input/case.mjs), line 6. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Passes for the wrong reason](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** slop, needs eyes.
   - `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.05, spread 0.05 (stable). **WRONG can_fail:** label yes, tool 0.05.
   - `asserts_a` hardcoded-data · `asserts_b` hardcoded-data → asserts: hardcoded-data. **Escalates:** asserts hardcoded-data.
@@ -225,7 +225,7 @@ test("builds the graph", () => {
   expect(graph.nodes.length).toBeGreaterThan(0);
 })
 ```
-- **Known defect:** ambiguous. It is a mixed case, so its answers can disagree. **Check:** [`verdict`](checks/verdict/check.mjs). **Expected:** escalate. Note: two shape assertions. Case file [`checks/verdict/cases/mixed-shape/case.mjs`](checks/verdict/cases/mixed-shape/case.mjs), line 2.
+- **Known defect:** ambiguous. It is a mixed case, so its answers can disagree. **Check:** [`verdict`](checks/verdict/check.mjs). **Expected:** escalate. Note: two shape assertions. Case file [`checks/verdict/cases/mixed-shape/case.mjs`](checks/verdict/cases/mixed-shape/case.mjs), line 5. Sources: [Xuezhi Wang et al., Self-Consistency Improves Chain of Thought Reasoning (ICLR 2023)](https://arxiv.org/abs/2203.11171).
 - **What decided it:** weak, needs eyes.
   - `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.34, spread 0.96 (unstable). **Escalates:** can_fail unstable (spread 0.96).
   - `asserts_a` shape-only · `asserts_b` shape-only → asserts: shape-only. **Escalates:** asserts shape-only.
@@ -242,7 +242,7 @@ test("collects the graph nodes", () => {
   expect(nodes.length).toBeGreaterThan(0);
 })
 ```
-- **Known defect:** ambiguous. It is a mixed case, so its answers can disagree. **Check:** [`verdict`](checks/verdict/check.mjs). **Expected:** escalate. Note: Both assertions check the shape and never the node values, so the paraphrased gates disagree. Case file [`checks/verdict/cases/mixed-graph-shapes/case.mjs`](checks/verdict/cases/mixed-graph-shapes/case.mjs), line 2. Sources: [Wang et al., Self-Consistency Improves Chain of Thought Reasoning (2023): paraphrased gates](https://arxiv.org/abs/2203.11171).
+- **Known defect:** ambiguous. It is a mixed case, so its answers can disagree. **Check:** [`verdict`](checks/verdict/check.mjs). **Expected:** escalate. Note: Both assertions check the shape and never the node values, so the paraphrased gates disagree. Case file [`checks/verdict/cases/mixed-graph-shapes/case.mjs`](checks/verdict/cases/mixed-graph-shapes/case.mjs), line 5. Sources: [Xuezhi Wang et al., Self-Consistency Improves Chain of Thought Reasoning (ICLR 2023)](https://arxiv.org/abs/2203.11171).
 - **What decided it:** weak, needs eyes.
   - `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.33, spread 0.96 (unstable). **Escalates:** can_fail unstable (spread 0.96).
   - `asserts_a` shape-only · `asserts_b` shape-only → asserts: shape-only. **Escalates:** asserts shape-only.
@@ -259,7 +259,7 @@ test("retries once", () => {
   expect(fn).toHaveBeenCalledTimes(2);
 })
 ```
-- **Known defect:** ambiguous. It is a mixed case, so its answers can disagree. **Check:** [`verdict`](checks/verdict/check.mjs). **Expected:** escalate. Note: interaction assertion with a specific count. Case file [`checks/verdict/cases/mixed-mock/case.mjs`](checks/verdict/cases/mixed-mock/case.mjs), line 2.
+- **Known defect:** ambiguous. It is a mixed case, so its answers can disagree. **Check:** [`verdict`](checks/verdict/check.mjs). **Expected:** escalate. Note: interaction assertion with a specific count. Case file [`checks/verdict/cases/mixed-mock/case.mjs`](checks/verdict/cases/mixed-mock/case.mjs), line 5. Sources: [Xuezhi Wang et al., Self-Consistency Improves Chain of Thought Reasoning (ICLR 2023)](https://arxiv.org/abs/2203.11171).
 - **What decided it:** weak, needs eyes.
   - `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.79, spread 0.41 (borderline). **Escalates:** can_fail borderline (spread 0.41).
   - `asserts_a` interaction-only · `asserts_b` interaction-only → asserts: interaction-only. **Escalates:** asserts interaction-only.
@@ -276,7 +276,7 @@ test("the schema is sound", () => {
   expect(schema.fields.length).toBeGreaterThan(0);
 })
 ```
-- **Known defect:** ambiguous. It is a mixed case, so its answers can disagree. **Check:** [`verdict`](checks/verdict/check.mjs). **Expected:** escalate. Note: A tautology sits beside a weak shape assertion, so the paraphrased gates disagree. Case file [`checks/verdict/cases/mixed-world-shape/case.mjs`](checks/verdict/cases/mixed-world-shape/case.mjs), line 2. Sources: [Wang et al., Self-Consistency Improves Chain of Thought Reasoning (2023): paraphrased gates](https://arxiv.org/abs/2203.11171).
+- **Known defect:** ambiguous. It is a mixed case, so its answers can disagree. **Check:** [`verdict`](checks/verdict/check.mjs). **Expected:** escalate. Note: A tautology sits beside a weak shape assertion, so the paraphrased gates disagree. Case file [`checks/verdict/cases/mixed-world-shape/case.mjs`](checks/verdict/cases/mixed-world-shape/case.mjs), line 5. Sources: [Xuezhi Wang et al., Self-Consistency Improves Chain of Thought Reasoning (ICLR 2023)](https://arxiv.org/abs/2203.11171).
 - **What decided it:** slop, needs eyes.
   - `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.19, spread 0.54 (unstable). **Escalates:** can_fail unstable (spread 0.54).
   - `asserts_a` nothing · `asserts_b` shape-only → asserts: nothing versus shape-only. **Escalates:** asserts unstable (nothing vs shape-only).
@@ -292,7 +292,7 @@ test("the world is sane", () => {
   expect(add.length).toBeGreaterThan(0);
 })
 ```
-- **Known defect:** ambiguous. It is a mixed case, so its answers can disagree. **Check:** [`verdict`](checks/verdict/check.mjs). **Expected:** escalate. Note: half tautology, half weak shape assertion. Case file [`checks/verdict/cases/mixed-tautology/case.mjs`](checks/verdict/cases/mixed-tautology/case.mjs), line 2.
+- **Known defect:** ambiguous. It is a mixed case, so its answers can disagree. **Check:** [`verdict`](checks/verdict/check.mjs). **Expected:** escalate. Note: half tautology, half weak shape assertion. Case file [`checks/verdict/cases/mixed-tautology/case.mjs`](checks/verdict/cases/mixed-tautology/case.mjs), line 5. Sources: [Xuezhi Wang et al., Self-Consistency Improves Chain of Thought Reasoning (ICLR 2023)](https://arxiv.org/abs/2203.11171).
 - **What decided it:** slop, needs eyes.
   - `asserts_a` nothing · `asserts_b` nothing → asserts: nothing. **Escalates:** asserts nothing.
   - `verdict` slop. **Escalates:** verdict slop.
@@ -306,7 +306,7 @@ test("add handles negatives", () => {
   expect(add(-2, -3)).toBe(-5);
 })
 ```
-- **Known defect:** none, a clean test. **Check:** [`verdict`](checks/verdict/check.mjs). **Expected:** pass, `can_fail` yes, `deterministic` yes. Note: a clean unit guard. Case file [`checks/verdict/cases/good-unit-add/case.mjs`](checks/verdict/cases/good-unit-add/case.mjs), line 2.
+- **Known defect:** none, a clean test. **Check:** [`verdict`](checks/verdict/check.mjs). **Expected:** pass, `can_fail` yes, `deterministic` yes. Note: a clean unit guard. Case file [`checks/verdict/cases/good-unit-add/case.mjs`](checks/verdict/cases/good-unit-add/case.mjs), line 4. Sources: [Kent Beck, Test Desiderata (2019): Behavioral, Specific](https://kentbeck.github.io/TestDesiderata/).
 - **What decided it:** strong, passes.
   - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded. `verdict` strong.
 - **Descriptive:** 18 clean · smells: none · unanswered: none · `type` not recorded · label `deterministic` yes: match.
@@ -318,7 +318,7 @@ test("converts minutes to seconds", () => {
   expect(toSeconds(3)).toBe(180);
 })
 ```
-- **Known defect:** none, a clean test. **Check:** [`verdict`](checks/verdict/check.mjs). **Expected:** pass, `can_fail` yes. Note: a real guard. Case file [`checks/verdict/cases/good-unit-seconds/case.mjs`](checks/verdict/cases/good-unit-seconds/case.mjs), line 2. Sources: [Kent Beck, Test Desiderata](https://kentbeck.github.io/TestDesiderata/).
+- **Known defect:** none, a clean test. **Check:** [`verdict`](checks/verdict/check.mjs). **Expected:** pass, `can_fail` yes. Note: a real guard. Case file [`checks/verdict/cases/good-unit-seconds/case.mjs`](checks/verdict/cases/good-unit-seconds/case.mjs), line 4. Sources: [Kent Beck, Test Desiderata (2019): Behavioral, Specific](https://kentbeck.github.io/TestDesiderata/).
 - **What decided it:** strong, passes.
   - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded. `verdict` strong.
 - **Descriptive:** 18 clean · smells: none · unanswered: none · `type` not recorded.
@@ -330,7 +330,7 @@ test("formats a receipt line", () => {
   expect(formatReceiptLine("Coffee", 2, 3.5)).toBe("Coffee x2 @ 3.50 = 7.00");
 })
 ```
-- **Known defect:** none, a clean test. **Check:** [`verdict`](checks/verdict/check.mjs). **Expected:** pass, `can_fail` yes. Note: a real guard. Case file [`checks/verdict/cases/good-characterization-receipt/case.mjs`](checks/verdict/cases/good-characterization-receipt/case.mjs), line 2. Sources: [Kent Beck, Test Desiderata](https://kentbeck.github.io/TestDesiderata/).
+- **Known defect:** none, a clean test. **Check:** [`verdict`](checks/verdict/check.mjs). **Expected:** pass, `can_fail` yes. Note: a real guard. Case file [`checks/verdict/cases/good-characterization-receipt/case.mjs`](checks/verdict/cases/good-characterization-receipt/case.mjs), line 4. Sources: [Kent Beck, Test Desiderata (2019): Behavioral, Specific](https://kentbeck.github.io/TestDesiderata/).
 - **What decided it:** strong, passes.
   - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded. `verdict` strong.
 - **Descriptive:** 18 clean · smells: none · unanswered: none · `type` not recorded.
@@ -342,7 +342,7 @@ test("regression #42: a single import resolves", () => {
   expect(parseImports('import a from "b";')).toEqual([{ name: "a", from: "b" }]);
 })
 ```
-- **Known defect:** none, a clean test. **Check:** [`verdict`](checks/verdict/check.mjs). **Expected:** pass, `can_fail` yes. Note: a clean regression guard. Case file [`checks/verdict/cases/good-regression/case.mjs`](checks/verdict/cases/good-regression/case.mjs), line 2.
+- **Known defect:** none, a clean test. **Check:** [`verdict`](checks/verdict/check.mjs). **Expected:** pass, `can_fail` yes. Note: a clean regression guard. Case file [`checks/verdict/cases/good-regression/case.mjs`](checks/verdict/cases/good-regression/case.mjs), line 4. Sources: [Kent Beck, Test Desiderata (2019): Behavioral, Specific](https://kentbeck.github.io/TestDesiderata/).
 - **What decided it:** strong, passes.
   - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded. `verdict` strong.
 - **Descriptive:** 18 clean · smells: none · unanswered: none · `type` not recorded.
@@ -354,7 +354,7 @@ test("regression #77: a trimmed name keeps its inner spaces", () => {
   expect(trimName("  Ada  Lovelace  ")).toBe("Ada  Lovelace");
 })
 ```
-- **Known defect:** none, a clean test. **Check:** [`verdict`](checks/verdict/check.mjs). **Expected:** pass, `can_fail` yes. Note: a real guard. Case file [`checks/verdict/cases/good-regression-whitespace/case.mjs`](checks/verdict/cases/good-regression-whitespace/case.mjs), line 2. Sources: [Kent Beck, Test Desiderata](https://kentbeck.github.io/TestDesiderata/).
+- **Known defect:** none, a clean test. **Check:** [`verdict`](checks/verdict/check.mjs). **Expected:** pass, `can_fail` yes. Note: a real guard. Case file [`checks/verdict/cases/good-regression-whitespace/case.mjs`](checks/verdict/cases/good-regression-whitespace/case.mjs), line 4. Sources: [Kent Beck, Test Desiderata (2019): Behavioral, Specific](https://kentbeck.github.io/TestDesiderata/).
 - **What decided it:** strong, passes.
   - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded. `verdict` strong.
 - **Descriptive:** 18 clean · smells: none · unanswered: none · `type` not recorded.
@@ -366,7 +366,7 @@ test("reverses a string", () => {
   expect(reverse("abc")).toBe("cba");
 })
 ```
-- **Known defect:** none, a clean test. **Check:** [`verdict`](checks/verdict/check.mjs). **Expected:** pass, `can_fail` yes, `deterministic` yes. Note: a clean unit guard. Case file [`checks/verdict/cases/good-unit-reverse/case.mjs`](checks/verdict/cases/good-unit-reverse/case.mjs), line 2.
+- **Known defect:** none, a clean test. **Check:** [`verdict`](checks/verdict/check.mjs). **Expected:** pass, `can_fail` yes, `deterministic` yes. Note: a clean unit guard. Case file [`checks/verdict/cases/good-unit-reverse/case.mjs`](checks/verdict/cases/good-unit-reverse/case.mjs), line 4. Sources: [Kent Beck, Test Desiderata (2019): Behavioral, Specific](https://kentbeck.github.io/TestDesiderata/).
 - **What decided it:** strong, passes.
   - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded. `verdict` strong.
 - **Descriptive:** 18 clean · smells: none · unanswered: none · `type` not recorded · label `deterministic` yes: match.
@@ -378,7 +378,7 @@ test("slugs a display name", () => {
   expect(slugify("Hello, World")).toBe("hello-world");
 })
 ```
-- **Known defect:** none, a clean test. **Check:** [`verdict`](checks/verdict/check.mjs). **Expected:** pass, `can_fail` yes. Note: a real guard. Case file [`checks/verdict/cases/good-unit-slug/case.mjs`](checks/verdict/cases/good-unit-slug/case.mjs), line 2. Sources: [Kent Beck, Test Desiderata](https://kentbeck.github.io/TestDesiderata/).
+- **Known defect:** none, a clean test. **Check:** [`verdict`](checks/verdict/check.mjs). **Expected:** pass, `can_fail` yes. Note: a real guard. Case file [`checks/verdict/cases/good-unit-slug/case.mjs`](checks/verdict/cases/good-unit-slug/case.mjs), line 4. Sources: [Kent Beck, Test Desiderata (2019): Behavioral, Specific](https://kentbeck.github.io/TestDesiderata/).
 - **What decided it:** strong, passes.
   - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded. `verdict` strong.
 - **Descriptive:** 18 clean · smells: none · unanswered: none · `type` not recorded.
@@ -392,7 +392,7 @@ test("store round trips a value", async () => {
   expect(await store.get("k")).toBe("v");
 })
 ```
-- **Known defect:** none, a clean test. **Check:** [`verdict`](checks/verdict/check.mjs). **Expected:** pass, `can_fail` yes. Note: a clean integration guard. Case file [`checks/verdict/cases/good-integration/case.mjs`](checks/verdict/cases/good-integration/case.mjs), line 2.
+- **Known defect:** none, a clean test. **Check:** [`verdict`](checks/verdict/check.mjs). **Expected:** pass, `can_fail` yes. Note: a clean integration guard. Case file [`checks/verdict/cases/good-integration/case.mjs`](checks/verdict/cases/good-integration/case.mjs), line 4. Sources: [Kent Beck, Test Desiderata (2019): Behavioral, Specific](https://kentbeck.github.io/TestDesiderata/).
 - **What decided it:** strong, passes.
   - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded. `verdict` strong.
 - **Descriptive:** 16 clean · smells: `controlled` (uncontrolled-resource), `restores` (state-leak) · unanswered: none · `type` not recorded.
@@ -406,7 +406,7 @@ test("the cache returns a stored value", async () => {
   expect(await cache.get("session")).toBe("abc123");
 })
 ```
-- **Known defect:** none, a clean test. **Check:** [`verdict`](checks/verdict/check.mjs). **Expected:** pass, `can_fail` yes. Note: a real guard. Case file [`checks/verdict/cases/good-integration-cache/case.mjs`](checks/verdict/cases/good-integration-cache/case.mjs), line 2. Sources: [Kent Beck, Test Desiderata](https://kentbeck.github.io/TestDesiderata/).
+- **Known defect:** none, a clean test. **Check:** [`verdict`](checks/verdict/check.mjs). **Expected:** pass, `can_fail` yes. Note: a real guard. Case file [`checks/verdict/cases/good-integration-cache/case.mjs`](checks/verdict/cases/good-integration-cache/case.mjs), line 4. Sources: [Kent Beck, Test Desiderata (2019): Behavioral, Specific](https://kentbeck.github.io/TestDesiderata/).
 - **What decided it:** strong, passes.
   - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded. `verdict` strong.
 - **Descriptive:** 17 clean · smells: `restores` (state-leak) · unanswered: none · `type` not recorded.
@@ -419,7 +419,7 @@ test("the server answers health", async () => {
   expect(await res.text()).toBe("ok");
 })
 ```
-- **Known defect:** none, a clean test. **Check:** [`verdict`](checks/verdict/check.mjs). **Expected:** pass, `can_fail` yes. Note: a clean end-to-end guard. Case file [`checks/verdict/cases/good-e2e/case.mjs`](checks/verdict/cases/good-e2e/case.mjs), line 2.
+- **Known defect:** none, a clean test. **Check:** [`verdict`](checks/verdict/check.mjs). **Expected:** pass, `can_fail` yes. Note: a clean end-to-end guard. Case file [`checks/verdict/cases/good-e2e/case.mjs`](checks/verdict/cases/good-e2e/case.mjs), line 4. Sources: [Kent Beck, Test Desiderata (2019): Behavioral, Specific](https://kentbeck.github.io/TestDesiderata/).
 - **What decided it:** strong, passes.
   - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded. `verdict` strong.
 - **Descriptive:** 16 clean · smells: `controlled` (uncontrolled-resource), `deterministic` (non-deterministic) · unanswered: none · `type` not recorded.
@@ -432,7 +432,7 @@ test("the service reports its version", async () => {
   expect(await res.text()).toBe("2.4.1");
 })
 ```
-- **Known defect:** none, a clean test. **Check:** [`verdict`](checks/verdict/check.mjs). **Expected:** pass, `can_fail` yes. Note: a real guard. Case file [`checks/verdict/cases/good-e2e-version/case.mjs`](checks/verdict/cases/good-e2e-version/case.mjs), line 2. Sources: [Kent Beck, Test Desiderata](https://kentbeck.github.io/TestDesiderata/).
+- **Known defect:** none, a clean test. **Check:** [`verdict`](checks/verdict/check.mjs). **Expected:** pass, `can_fail` yes. Note: a real guard. Case file [`checks/verdict/cases/good-e2e-version/case.mjs`](checks/verdict/cases/good-e2e-version/case.mjs), line 4. Sources: [Kent Beck, Test Desiderata (2019): Behavioral, Specific](https://kentbeck.github.io/TestDesiderata/).
 - **What decided it:** strong, passes.
   - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded. `verdict` strong.
 - **Descriptive:** 16 clean · smells: `controlled` (uncontrolled-resource), `deterministic` (non-deterministic) · unanswered: none · `type` not recorded.
@@ -445,7 +445,7 @@ test("merges the options", () => {
   expect(true).toBe(true);
 })
 ```
-- **Known defect:** commented-out. **Check:** [`asserts`](checks/asserts/check.mjs). **Expected:** escalate, `can_fail` no. Note: The real assertion is commented out, beside a tautology. Case file [`checks/asserts/cases/commented-out-merge/case.mjs`](checks/asserts/cases/commented-out-merge/case.mjs), line 2. Sources: [Meszaros, xUnit Test Patterns (Obscure Test)](http://xunitpatterns.com/); [verify-prd-implemented test-patterns (Skipped / disabled / focused)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
+- **Known defect:** commented-out. **Check:** [`asserts`](checks/asserts/check.mjs). **Expected:** escalate, `can_fail` no. Note: The real assertion is commented out, beside a tautology. Case file [`checks/asserts/cases/commented-out-merge/case.mjs`](checks/asserts/cases/commented-out-merge/case.mjs), line 9. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Skipped / disabled / focused](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md); [Web Platform Tests, Review Checklist: "The test does not contain commented-out code"](https://web-platform-tests.org/reviewing-tests/checklist.html).
 - **What decided it:** slop, needs eyes.
   - `asserts_a` nothing · `asserts_b` nothing → asserts: nothing. **Escalates:** asserts nothing.
   - `positive_a` · `positive_b` not recorded → positive: not recorded. **Escalates:** no positive assertion.
@@ -461,7 +461,7 @@ test("parses config", () => {
   expect(true).toBe(true);
 })
 ```
-- **Known defect:** commented-out. **Check:** [`asserts`](checks/asserts/check.mjs). **Expected:** escalate. Note: commented-out assertion beside a tautology. Case file [`checks/asserts/cases/commented-out/case.mjs`](checks/asserts/cases/commented-out/case.mjs), line 2.
+- **Known defect:** commented-out. **Check:** [`asserts`](checks/asserts/check.mjs). **Expected:** escalate. Note: commented-out assertion beside a tautology. Case file [`checks/asserts/cases/commented-out/case.mjs`](checks/asserts/cases/commented-out/case.mjs), line 8. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Skipped / disabled / focused](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md); [Web Platform Tests, Review Checklist: "The test does not contain commented-out code"](https://web-platform-tests.org/reviewing-tests/checklist.html).
 - **What decided it:** slop, needs eyes.
   - `asserts_a` nothing · `asserts_b` nothing → asserts: nothing. **Escalates:** asserts nothing.
   - `positive_a` · `positive_b` not recorded → positive: not recorded. **Escalates:** no positive assertion.
@@ -481,7 +481,7 @@ test("creating a user validates, stores and notifies", async () => {
   expect(notifier.sent).toHaveLength(1);
 })
 ```
-- **Known defect:** eager. **Check:** [`one-thing`](checks/one-thing/check.mjs). **Expected:** pass, `can_fail` yes. Note: A real user-creation check, but validation, storage and notification are three unrelated behaviours. Case file [`checks/one-thing/cases/unrelated/case.mjs`](checks/one-thing/cases/unrelated/case.mjs), line 2. Sources: [Meszaros, xUnit Test Patterns (Eager Test)](http://xunitpatterns.com/).
+- **Known defect:** eager. **Check:** [`one-thing`](checks/one-thing/check.mjs). **Expected:** pass, `can_fail` yes. Note: A real user-creation check, but validation, storage and notification are three unrelated behaviours. Case file [`checks/one-thing/cases/unrelated/case.mjs`](checks/one-thing/cases/unrelated/case.mjs), line 5. Sources: [Gerard Meszaros, xUnit Test Patterns (2007): Eager Test (in Obscure Test)](http://xunitpatterns.com/Obscure%20Test.html).
 - **What decided it:** strong, passes.
   - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.99, spread 0.02 (stable). Label yes: match. `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded. `verdict` strong.
 - **Descriptive:** 17 clean · smells: `one_thing` (eager) · unanswered: none · `type` not recorded.
@@ -498,7 +498,7 @@ test("the pipeline parses, formats and lints", () => {
   expect(warnings).toEqual([]);
 })
 ```
-- **Known defect:** eager. **Check:** [`one-thing`](checks/one-thing/check.mjs). **Expected:** pass, `can_fail` yes. Note: A real pipeline check, but parse, format and lint are three features asserted in one body. Case file [`checks/one-thing/cases/three-features/case.mjs`](checks/one-thing/cases/three-features/case.mjs), line 2. Sources: [Meszaros, xUnit Test Patterns (Eager Test)](http://xunitpatterns.com/).
+- **Known defect:** eager. **Check:** [`one-thing`](checks/one-thing/check.mjs). **Expected:** pass, `can_fail` yes. Note: A real pipeline check, but parse, format and lint are three features asserted in one body. Case file [`checks/one-thing/cases/three-features/case.mjs`](checks/one-thing/cases/three-features/case.mjs), line 5. Sources: [Gerard Meszaros, xUnit Test Patterns (2007): Eager Test (in Obscure Test)](http://xunitpatterns.com/Obscure%20Test.html).
 - **What decided it:** strong, passes.
   - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded. `verdict` strong.
 - **Descriptive:** 16 clean · smells: `named` (vague-name), `one_thing` (eager) · unanswered: none · `type` not recorded.
@@ -511,7 +511,7 @@ test("rejects a blank name", () => {
   expect(validateName("")).toBe(false);
 })
 ```
-- **Known defect:** early-return. **Check:** [`conditional`](checks/conditional/check.mjs). **Expected:** escalate, `can_fail` no. Note: The early return makes the assertion unreachable, so the test cannot fail. Case file [`checks/conditional/cases/early-return-name/case.mjs`](checks/conditional/cases/early-return-name/case.mjs), line 2. Sources: [Meszaros, xUnit Test Patterns (Obscure Test)](http://xunitpatterns.com/); [verify-prd-implemented test-patterns (Skipped / disabled / focused)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
+- **Known defect:** early-return. **Check:** [`conditional`](checks/conditional/check.mjs). **Expected:** escalate, `can_fail` no. Note: The early return makes the assertion unreachable, so the test cannot fail. Case file [`checks/conditional/cases/early-return-name/case.mjs`](checks/conditional/cases/early-return-name/case.mjs), line 5. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Skipped / disabled / focused](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** slop, needs eyes.
   - `asserts_a` nothing · `asserts_b` nothing → asserts: nothing. **Escalates:** asserts nothing.
   - `runs_a` · `runs_b` not recorded → runs: no. **Escalates:** does not run.
@@ -526,7 +526,7 @@ it("loads the draft", () => {
   expect(loadDraft("draft")).toEqual("draft");
 })
 ```
-- **Known defect:** focused. **Check:** [`runs`](checks/runs/check.mjs). **Expected:** escalate. Note: The plain test inherits the file-level focus from it.only. Case file [`checks/runs/cases/focus-draft/case.mjs`](checks/runs/cases/focus-draft/case.mjs), line 6. Extractor notes: `focus-in-file`. Sources: [Meszaros, xUnit Test Patterns (Obscure Test)](http://xunitpatterns.com/); [verify-prd-implemented test-patterns (Skipped / disabled / focused)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
+- **Known defect:** focused. **Check:** [`runs`](checks/runs/check.mjs). **Expected:** escalate. Note: The plain test inherits the file-level focus from it.only. Case file [`checks/runs/cases/focus-draft/case.mjs`](checks/runs/cases/focus-draft/case.mjs), line 10. Extractor notes: `focus-in-file`. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Skipped / disabled / focused](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** good, needs eyes.
   - `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.84, spread 0.32 (borderline). **Escalates:** can_fail borderline (spread 0.32).
   - `asserts_a` hardcoded-data · `asserts_b` behaviour → asserts: hardcoded-data versus behaviour. **Escalates:** asserts unstable (hardcoded-data vs behaviour).
@@ -540,7 +540,7 @@ it.only("saves the draft", () => {
   expect(saveDraft("draft")).toBe(true);
 })
 ```
-- **Known defect:** focused. **Check:** [`runs`](checks/runs/check.mjs). **Expected:** escalate. Note: The it.only focuses the file and narrows the whole run. Case file [`checks/runs/cases/focus-draft/case.mjs`](checks/runs/cases/focus-draft/case.mjs), line 2. Extractor notes: `focus-in-file`. Sources: [Meszaros, xUnit Test Patterns (Obscure Test)](http://xunitpatterns.com/); [verify-prd-implemented test-patterns (Skipped / disabled / focused)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
+- **Known defect:** focused. **Check:** [`runs`](checks/runs/check.mjs). **Expected:** escalate. Note: The it.only focuses the file and narrows the whole run. Case file [`checks/runs/cases/focus-draft/case.mjs`](checks/runs/cases/focus-draft/case.mjs), line 6. Extractor notes: `focus-in-file`. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Skipped / disabled / focused](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** weak, needs eyes.
   - `runs_a` · `runs_b` not recorded → runs: no. **Escalates:** does not run.
   - `verdict` weak. **Escalates:** verdict weak.
@@ -563,7 +563,7 @@ export function statusLabels() {
   return STATUS_LABELS;
 }
 ```
-- **Known defect:** hardcoded-data. **Check:** [`asserts`](checks/asserts/check.mjs). **Expected:** escalate, `can_fail` no. Note: The expected value is the code under test own constant, so the test agrees by construction and cannot fail. Case file [`checks/asserts/cases/status-table/case.mjs`](checks/asserts/cases/status-table/case.mjs), line 2. Sources: [testsmells.org, Open Catalog of Test Smells](https://testsmells.org/).
+- **Known defect:** hardcoded-data. **Check:** [`asserts`](checks/asserts/check.mjs). **Expected:** escalate, `can_fail` no. Note: The expected value is the code under test own constant, so the test agrees by construction and cannot fail. Case file [`checks/asserts/cases/status-table/case.mjs`](checks/asserts/cases/status-table/case.mjs), line 6. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Tautology / self-reference](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** good, needs eyes.
   - `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.87, spread 0.30 (borderline). **Escalates:** can_fail borderline (spread 0.30). Label no: not scored.
   - `asserts_a` hardcoded-data · `asserts_b` hardcoded-data → asserts: hardcoded-data. **Escalates:** asserts hardcoded-data.
@@ -586,7 +586,7 @@ export function taxRates() {
   return TAX_RATES;
 }
 ```
-- **Known defect:** hardcoded-data. **Check:** [`asserts`](checks/asserts/check.mjs). **Expected:** escalate, `can_fail` no. Note: The expected value is the code under test own constant, so the test agrees by construction and cannot fail. Case file [`checks/asserts/cases/constant-copy/case.mjs`](checks/asserts/cases/constant-copy/case.mjs), line 2. Sources: [testsmells.org, Open Catalog of Test Smells](https://testsmells.org/).
+- **Known defect:** hardcoded-data. **Check:** [`asserts`](checks/asserts/check.mjs). **Expected:** escalate, `can_fail` no. Note: The expected value is the code under test own constant, so the test agrees by construction and cannot fail. Case file [`checks/asserts/cases/constant-copy/case.mjs`](checks/asserts/cases/constant-copy/case.mjs), line 6. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Tautology / self-reference](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** slop, needs eyes.
   - `asserts_a` hardcoded-data · `asserts_b` hardcoded-data → asserts: hardcoded-data. **Escalates:** asserts hardcoded-data.
   - `verdict` slop. **Escalates:** verdict slop.
@@ -602,7 +602,7 @@ test("forwards the payload", () => {
   expect(spy.mock.calls[0][0]).toMatchObject({ id: expect.any(String) });
 })
 ```
-- **Known defect:** interaction-only. **Check:** [`asserts`](checks/asserts/check.mjs). **Expected:** escalate, `can_fail` yes. Note: The mock argument shape can change and fail the test, while the real output stays unchecked. Case file [`checks/asserts/cases/mock-argument/case.mjs`](checks/asserts/cases/mock-argument/case.mjs), line 2. Sources: [testsmells.org, Open Catalog of Test Smells](https://testsmells.org/).
+- **Known defect:** interaction-only. **Check:** [`asserts`](checks/asserts/check.mjs). **Expected:** escalate, `can_fail` yes. Note: The mock argument shape can change and fail the test, while the real output stays unchecked. Case file [`checks/asserts/cases/mock-argument/case.mjs`](checks/asserts/cases/mock-argument/case.mjs), line 4. Sources: [Martin Fowler, Mocks Aren't Stubs (2007)](https://martinfowler.com/articles/mocksArentStubs.html).
 - **What decided it:** weak, needs eyes.
   - `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.55, spread 0.63 (unstable). **Escalates:** can_fail unstable (spread 0.63). Label yes: not scored.
   - `asserts_a` interaction-only · `asserts_b` interaction-only → asserts: interaction-only. **Escalates:** asserts interaction-only.
@@ -619,7 +619,7 @@ test("notifies the listener", () => {
   expect(spy).toHaveBeenCalled();
 })
 ```
-- **Known defect:** interaction-only. **Check:** [`asserts`](checks/asserts/check.mjs). **Expected:** escalate, `can_fail` yes. Note: A missing call fails the test, though the mock stands in for behaviour it never verifies. Case file [`checks/asserts/cases/spy-called/case.mjs`](checks/asserts/cases/spy-called/case.mjs), line 2. Sources: [testsmells.org, Open Catalog of Test Smells](https://testsmells.org/).
+- **Known defect:** interaction-only. **Check:** [`asserts`](checks/asserts/check.mjs). **Expected:** escalate, `can_fail` yes. Note: A missing call fails the test, though the mock stands in for behaviour it never verifies. Case file [`checks/asserts/cases/spy-called/case.mjs`](checks/asserts/cases/spy-called/case.mjs), line 4. Sources: [Martin Fowler, Mocks Aren't Stubs (2007)](https://martinfowler.com/articles/mocksArentStubs.html).
 - **What decided it:** weak, needs eyes.
   - `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.76, spread 0.52 (unstable). **Escalates:** can_fail unstable (spread 0.52). Label yes: not scored.
   - `asserts_a` interaction-only · `asserts_b` interaction-only → asserts: interaction-only. **Escalates:** asserts interaction-only.
@@ -636,7 +636,7 @@ test("publishes twice", () => {
   expect(spy).toHaveBeenCalledTimes(2);
 })
 ```
-- **Known defect:** interaction-only. **Check:** [`asserts`](checks/asserts/check.mjs). **Expected:** escalate, `can_fail` yes. Note: A changed call count fails the test, yet the payload of each call is never asserted. Case file [`checks/asserts/cases/spy-count/case.mjs`](checks/asserts/cases/spy-count/case.mjs), line 2. Sources: [testsmells.org, Open Catalog of Test Smells](https://testsmells.org/).
+- **Known defect:** interaction-only. **Check:** [`asserts`](checks/asserts/check.mjs). **Expected:** escalate, `can_fail` yes. Note: A changed call count fails the test, yet the payload of each call is never asserted. Case file [`checks/asserts/cases/spy-count/case.mjs`](checks/asserts/cases/spy-count/case.mjs), line 4. Sources: [Martin Fowler, Mocks Aren't Stubs (2007)](https://martinfowler.com/articles/mocksArentStubs.html).
 - **What decided it:** weak, needs eyes.
   - `asserts_a` interaction-only · `asserts_b` interaction-only → asserts: interaction-only. **Escalates:** asserts interaction-only.
   - `verdict` weak. **Escalates:** verdict weak.
@@ -651,7 +651,7 @@ test("computes the tax", () => {
   expect(tax).toBeDefined();
 })
 ```
-- **Known defect:** name-only. **Check:** [`name-matches`](checks/name-matches/check.mjs). **Expected:** escalate, `can_fail` no. Note: name-only: toBeDefined is true for any defined value. Case file [`checks/name-matches/cases/name-only/case.mjs`](checks/name-matches/cases/name-only/case.mjs), line 2.
+- **Known defect:** name-only. **Check:** [`name-matches`](checks/name-matches/check.mjs). **Expected:** escalate, `can_fail` no. Note: name-only: toBeDefined is true for any defined value. Case file [`checks/name-matches/cases/name-only/case.mjs`](checks/name-matches/cases/name-only/case.mjs), line 6. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Name-only](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** slop, needs eyes.
   - `asserts_a` shape-only · `asserts_b` shape-only → asserts: shape-only. **Escalates:** asserts shape-only.
   - `positive_a` · `positive_b` not recorded → positive: not recorded. **Escalates:** no positive assertion.
@@ -667,7 +667,7 @@ test("computes the tax due", () => {
   expect(tax).toBeDefined();
 })
 ```
-- **Known defect:** name-only. **Check:** [`name-matches`](checks/name-matches/check.mjs). **Expected:** escalate, `can_fail` no. Note: The name promises a tax value, while toBeDefined is true for any defined value. Case file [`checks/name-matches/cases/tax-defined/case.mjs`](checks/name-matches/cases/tax-defined/case.mjs), line 2. Sources: [Meszaros, xUnit Test Patterns (Obscure Test)](http://xunitpatterns.com/); [verify-prd-implemented test-patterns (Skipped / disabled / focused)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
+- **Known defect:** name-only. **Check:** [`name-matches`](checks/name-matches/check.mjs). **Expected:** escalate, `can_fail` no. Note: The name promises a tax value, while toBeDefined is true for any defined value. Case file [`checks/name-matches/cases/tax-defined/case.mjs`](checks/name-matches/cases/tax-defined/case.mjs), line 6. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Name-only](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** slop, needs eyes.
   - `asserts_a` shape-only · `asserts_b` shape-only → asserts: shape-only. **Escalates:** asserts shape-only.
   - `positive_a` · `positive_b` not recorded → positive: not recorded. **Escalates:** no positive assertion.
@@ -683,7 +683,7 @@ test("sorts rows by name", () => {
   expect(rows).toHaveLength(2);
 })
 ```
-- **Known defect:** name-only. **Check:** [`name-matches`](checks/name-matches/check.mjs). **Expected:** escalate, `can_fail` no. Note: The name promises a sort, while the length check holds for any permutation. Case file [`checks/name-matches/cases/sort-length/case.mjs`](checks/name-matches/cases/sort-length/case.mjs), line 2. Sources: [Meszaros, xUnit Test Patterns (Obscure Test)](http://xunitpatterns.com/); [verify-prd-implemented test-patterns (Skipped / disabled / focused)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
+- **Known defect:** name-only. **Check:** [`name-matches`](checks/name-matches/check.mjs). **Expected:** escalate, `can_fail` no. Note: The name promises a sort, while the length check holds for any permutation. Case file [`checks/name-matches/cases/sort-length/case.mjs`](checks/name-matches/cases/sort-length/case.mjs), line 6. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Name-only](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** slop, needs eyes.
   - `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.18, spread 0.53 (unstable). **Escalates:** can_fail unstable (spread 0.53). Label no: not scored.
   - `asserts_a` shape-only · `asserts_b` shape-only → asserts: shape-only. **Escalates:** asserts shape-only.
@@ -698,7 +698,7 @@ test("validates email addresses", () => {
   expect(isValidEmail("a@b.com")).toBeTruthy();
 })
 ```
-- **Known defect:** name-only. **Check:** [`name-matches`](checks/name-matches/check.mjs). **Expected:** escalate, `can_fail` no. Note: The name promises validation, while a truthy check passes for any non-empty value. Case file [`checks/name-matches/cases/email-truthy/case.mjs`](checks/name-matches/cases/email-truthy/case.mjs), line 2. Sources: [Meszaros, xUnit Test Patterns (Obscure Test)](http://xunitpatterns.com/); [verify-prd-implemented test-patterns (Skipped / disabled / focused)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
+- **Known defect:** name-only. **Check:** [`name-matches`](checks/name-matches/check.mjs). **Expected:** escalate, `can_fail` no. Note: The name promises validation, while a truthy check passes for any non-empty value. Case file [`checks/name-matches/cases/email-truthy/case.mjs`](checks/name-matches/cases/email-truthy/case.mjs), line 6. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Name-only](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** weak, needs eyes.
   - `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.69, spread 0.80 (unstable). **Escalates:** can_fail unstable (spread 0.80). Label no: not scored.
   - `asserts_a` shape-only · `asserts_b` shape-only → asserts: shape-only. **Escalates:** asserts shape-only.
@@ -717,7 +717,7 @@ test("debounce fires once", async () => {
   expect(calls.length).toBe(1);
 })
 ```
-- **Known defect:** non-deterministic. **Check:** [`deterministic`](checks/deterministic/check.mjs). **Expected:** escalate or pass, `can_fail` yes, `deterministic` no. Note: a real guard, but timer-bound; reported, not escalated. Case file [`checks/deterministic/cases/flaky/case.mjs`](checks/deterministic/cases/flaky/case.mjs), line 2.
+- **Known defect:** non-deterministic. **Check:** [`deterministic`](checks/deterministic/check.mjs). **Expected:** escalate or pass, `can_fail` yes, `deterministic` no. Note: a real guard, but timer-bound; reported, not escalated. Case file [`checks/deterministic/cases/flaky/case.mjs`](checks/deterministic/cases/flaky/case.mjs), line 4. Sources: [Kent Beck, Test Desiderata (2019): Deterministic](https://kentbeck.github.io/TestDesiderata/).
 - **What decided it:** good, passes.
   - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.99, spread 0.02 (stable). Label yes: match. `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded. `verdict` good.
 - **Descriptive:** 14 clean · smells: `controlled` (uncontrolled-resource), `deterministic` (non-deterministic), `fast` (slow), `magic_number` (magic-number) · unanswered: none · `type` not recorded · label `deterministic` no: match.
@@ -730,7 +730,7 @@ test("the metric keys keep their insertion order", () => {
   expect(Object.keys(metrics)).toEqual(["z", "a"]);
 })
 ```
-- **Known defect:** non-deterministic. **Check:** [`deterministic`](checks/deterministic/check.mjs). **Expected:** pass, `can_fail` yes, `deterministic` no. Note: A real metrics check, but it pins key order that the structure does not guarantee. Case file [`checks/deterministic/cases/order/case.mjs`](checks/deterministic/cases/order/case.mjs), line 2. Sources: [Kent Beck, Test Desiderata (deterministic)](https://kentbeck.github.io/TestDesiderata/).
+- **Known defect:** non-deterministic. **Check:** [`deterministic`](checks/deterministic/check.mjs). **Expected:** pass, `can_fail` yes, `deterministic` no. Note: A real metrics check, but it pins key order that the structure does not guarantee. Case file [`checks/deterministic/cases/order/case.mjs`](checks/deterministic/cases/order/case.mjs), line 5. Sources: [Kent Beck, Test Desiderata (2019): Deterministic](https://kentbeck.github.io/TestDesiderata/).
 - **What decided it:** strong, passes.
   - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.99, spread 0.01 (stable). Label yes: match. `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded. `verdict` strong.
 - **Descriptive:** 18 clean · smells: none · unanswered: none · `type` not recorded · **label `deterministic` no, tool yes**.
@@ -742,7 +742,7 @@ test("finds no imports in an empty file", () => {
   expect(findImports("")).toEqual([]);
 })
 ```
-- **Known defect:** only-negative. **Check:** [`positive`](checks/positive/check.mjs). **Expected:** escalate, `can_fail` yes. Note: Only the empty result is checked, so a finder that never finds anything would pass. Case file [`checks/positive/cases/empty-array/case.mjs`](checks/positive/cases/empty-array/case.mjs), line 2. Sources: [verify-prd-implemented test-patterns (Passes for the wrong reason; No negative/positive pair)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
+- **Known defect:** only-negative. **Check:** [`positive`](checks/positive/check.mjs). **Expected:** escalate, `can_fail` yes. Note: Only the empty result is checked, so a finder that never finds anything would pass. Case file [`checks/positive/cases/empty-array/case.mjs`](checks/positive/cases/empty-array/case.mjs), line 6. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: No negative/positive pair](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** strong, needs eyes.
   - `positive_a` · `positive_b` not recorded → positive: not recorded. **Escalates:** no positive assertion.
   - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `runs_a` · `runs_b` not recorded → runs: yes. `verdict` strong.
@@ -755,7 +755,7 @@ test("no edge for a comment", () => {
   expect(resolveEdges("// comment")).toBeNull();
 })
 ```
-- **Known defect:** only-negative. **Check:** [`positive`](checks/positive/check.mjs). **Expected:** escalate, `can_fail` yes. Note: no positive/negative pair. Case file [`checks/positive/cases/only-negative/case.mjs`](checks/positive/cases/only-negative/case.mjs), line 2.
+- **Known defect:** only-negative. **Check:** [`positive`](checks/positive/check.mjs). **Expected:** escalate, `can_fail` yes. Note: no positive/negative pair. Case file [`checks/positive/cases/only-negative/case.mjs`](checks/positive/cases/only-negative/case.mjs), line 6. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: No negative/positive pair](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** strong, needs eyes.
   - `positive_a` · `positive_b` not recorded → positive: not recorded. **Escalates:** no positive assertion.
   - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.98, spread 0.04 (stable). Label yes: match. `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `runs_a` · `runs_b` not recorded → runs: yes. `verdict` strong.
@@ -769,7 +769,7 @@ test("parses a well formed header", () => {
   expect(run).not.toThrow();
 })
 ```
-- **Known defect:** only-negative. **Check:** [`positive`](checks/positive/check.mjs). **Expected:** escalate, `can_fail` yes. Note: Only that the call does not throw is checked, and the parsed output is never asserted. Case file [`checks/positive/cases/no-throw/case.mjs`](checks/positive/cases/no-throw/case.mjs), line 2. Sources: [verify-prd-implemented test-patterns (Passes for the wrong reason; No negative/positive pair)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
+- **Known defect:** only-negative. **Check:** [`positive`](checks/positive/check.mjs). **Expected:** escalate, `can_fail` yes. Note: Only that the call does not throw is checked, and the parsed output is never asserted. Case file [`checks/positive/cases/no-throw/case.mjs`](checks/positive/cases/no-throw/case.mjs), line 6. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: No negative/positive pair](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** slop, needs eyes.
   - `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.25, spread 0.70 (unstable). **Escalates:** can_fail unstable (spread 0.70). Label yes: not scored.
   - `asserts_a` nothing · `asserts_b` nothing → asserts: nothing. **Escalates:** asserts nothing.
@@ -785,7 +785,7 @@ test("returns null for an unknown setting", () => {
   expect(readSetting({ theme: "dark" }, "font")).toBeNull();
 })
 ```
-- **Known defect:** only-negative. **Check:** [`positive`](checks/positive/check.mjs). **Expected:** escalate, `can_fail` yes. Note: Only the absent lookup is checked, so a reader that always returns null would pass. Case file [`checks/positive/cases/absent-key/case.mjs`](checks/positive/cases/absent-key/case.mjs), line 2. Sources: [verify-prd-implemented test-patterns (Passes for the wrong reason; No negative/positive pair)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
+- **Known defect:** only-negative. **Check:** [`positive`](checks/positive/check.mjs). **Expected:** escalate, `can_fail` yes. Note: Only the absent lookup is checked, so a reader that always returns null would pass. Case file [`checks/positive/cases/absent-key/case.mjs`](checks/positive/cases/absent-key/case.mjs), line 6. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: No negative/positive pair](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** strong, needs eyes.
   - `positive_a` · `positive_b` not recorded → positive: not recorded. **Escalates:** no positive assertion.
   - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 1.00, spread 0.01 (stable). Label yes: match. `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `runs_a` · `runs_b` not recorded → runs: yes. `verdict` strong.
@@ -799,7 +799,7 @@ test("events are dispatched", () => {
   expect(dispatched).toBeDefined();
 })
 ```
-- **Known defect:** passes-with-zero. **Check:** [`can-fail`](checks/can-fail/check.mjs). **Expected:** escalate, `can_fail` no. Note: The check only asks whether the collection is defined, so no dispatch passes. Case file [`checks/can-fail/cases/empty-dispatch/case.mjs`](checks/can-fail/cases/empty-dispatch/case.mjs), line 2. Sources: [Kent Beck, Test Desiderata](https://kentbeck.github.io/TestDesiderata/).
+- **Known defect:** passes-with-zero. **Check:** [`can-fail`](checks/can-fail/check.mjs). **Expected:** escalate, `can_fail` no. Note: The check only asks whether the collection is defined, so no dispatch passes. Case file [`checks/can-fail/cases/empty-dispatch/case.mjs`](checks/can-fail/cases/empty-dispatch/case.mjs), line 6. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Vacuous / passes-with-zero](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** slop, needs eyes.
   - `asserts_a` nothing · `asserts_b` shape-only → asserts: nothing versus shape-only. **Escalates:** asserts unstable (nothing vs shape-only).
   - `positive_a` · `positive_b` not recorded → positive: not recorded. **Escalates:** no positive assertion.
@@ -815,7 +815,7 @@ test("imports are folded", () => {
   expect(commit.imports).toBeDefined();
 })
 ```
-- **Known defect:** passes-with-zero. **Check:** [`can-fail`](checks/can-fail/check.mjs). **Expected:** escalate, `can_fail` no. Note: vacuous: passes when the feature produces nothing. Case file [`checks/can-fail/cases/vacuous-zero/case.mjs`](checks/can-fail/cases/vacuous-zero/case.mjs), line 2.
+- **Known defect:** passes-with-zero. **Check:** [`can-fail`](checks/can-fail/check.mjs). **Expected:** escalate, `can_fail` no. Note: vacuous: passes when the feature produces nothing. Case file [`checks/can-fail/cases/vacuous-zero/case.mjs`](checks/can-fail/cases/vacuous-zero/case.mjs), line 5. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Vacuous / passes-with-zero](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** slop, needs eyes.
   - `asserts_a` shape-only · `asserts_b` shape-only → asserts: shape-only. **Escalates:** asserts shape-only.
   - `positive_a` · `positive_b` not recorded → positive: not recorded. **Escalates:** no positive assertion.
@@ -830,7 +830,7 @@ test("parse is stable", () => {
   expect(parse(src)).toEqual(parse(src));
 })
 ```
-- **Known defect:** self-reference. **Check:** [`can-fail`](checks/can-fail/check.mjs). **Expected:** escalate, `can_fail` no. Note: Both sides call the same production function, so the comparison is true by construction. Case file [`checks/can-fail/cases/self-parse/case.mjs`](checks/can-fail/cases/self-parse/case.mjs), line 2. Sources: [Kent Beck, Test Desiderata](https://kentbeck.github.io/TestDesiderata/).
+- **Known defect:** self-reference. **Check:** [`can-fail`](checks/can-fail/check.mjs). **Expected:** escalate, `can_fail` no. Note: Both sides call the same production function, so the comparison is true by construction. Case file [`checks/can-fail/cases/self-parse/case.mjs`](checks/can-fail/cases/self-parse/case.mjs), line 6. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Tautology / self-reference](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** slop, needs eyes.
   - `asserts_a` nothing · `asserts_b` nothing → asserts: nothing. **Escalates:** asserts nothing.
   - `verdict` slop. **Escalates:** verdict slop.
@@ -844,7 +844,7 @@ test("reader round trips", () => {
   expect(parse(source)).toEqual(parse(source));
 })
 ```
-- **Known defect:** self-reference. **Check:** [`can-fail`](checks/can-fail/check.mjs). **Expected:** escalate, `can_fail` no. Note: tautology: both sides call the same production code. Case file [`checks/can-fail/cases/tautology-selfreference/case.mjs`](checks/can-fail/cases/tautology-selfreference/case.mjs), line 2.
+- **Known defect:** self-reference. **Check:** [`can-fail`](checks/can-fail/check.mjs). **Expected:** escalate, `can_fail` no. Note: tautology: both sides call the same production code. Case file [`checks/can-fail/cases/tautology-selfreference/case.mjs`](checks/can-fail/cases/tautology-selfreference/case.mjs), line 5. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Tautology / self-reference](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** slop, needs eyes.
   - `asserts_a` nothing · `asserts_b` nothing → asserts: nothing. **Escalates:** asserts nothing.
   - `verdict` slop. **Escalates:** verdict slop.
@@ -858,7 +858,7 @@ test("the two totals match", () => {
   expect(total(rows)).toBe(total(rows));
 })
 ```
-- **Known defect:** self-reference. **Check:** [`can-fail`](checks/can-fail/check.mjs). **Expected:** escalate, `can_fail` no. Note: One helper backs both sides, so any change to it moves both sides together. Case file [`checks/can-fail/cases/helper-agreement/case.mjs`](checks/can-fail/cases/helper-agreement/case.mjs), line 2. Sources: [Kent Beck, Test Desiderata](https://kentbeck.github.io/TestDesiderata/).
+- **Known defect:** self-reference. **Check:** [`can-fail`](checks/can-fail/check.mjs). **Expected:** escalate, `can_fail` no. Note: One helper backs both sides, so any change to it moves both sides together. Case file [`checks/can-fail/cases/helper-agreement/case.mjs`](checks/can-fail/cases/helper-agreement/case.mjs), line 6. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Tautology / self-reference](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** slop, needs eyes.
   - `asserts_a` nothing · `asserts_b` nothing → asserts: nothing. **Escalates:** asserts nothing.
   - `verdict` slop. **Escalates:** verdict slop.
@@ -873,7 +873,7 @@ test("builds three steps", () => {
   expect(steps.length).toBe(3);
 })
 ```
-- **Known defect:** shape-only. **Check:** [`asserts`](checks/asserts/check.mjs). **Expected:** escalate, `can_fail` yes. Note: A wrong count fails the test, yet the step contents are never checked. Case file [`checks/asserts/cases/result-length/case.mjs`](checks/asserts/cases/result-length/case.mjs), line 2. Sources: [testsmells.org, Open Catalog of Test Smells](https://testsmells.org/).
+- **Known defect:** shape-only. **Check:** [`asserts`](checks/asserts/check.mjs). **Expected:** escalate, `can_fail` yes. Note: A wrong count fails the test, yet the step contents are never checked. Case file [`checks/asserts/cases/result-length/case.mjs`](checks/asserts/cases/result-length/case.mjs), line 5. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Shape-not-value](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** weak, needs eyes.
   - `asserts_a` shape-only · `asserts_b` shape-only → asserts: shape-only. **Escalates:** asserts shape-only.
   - `verdict` weak. **Escalates:** verdict weak.
@@ -888,7 +888,7 @@ test("loads the profile fields", () => {
   expect(Object.keys(profile)).toEqual(["name", "email", "age"]);
 })
 ```
-- **Known defect:** shape-only. **Check:** [`asserts`](checks/asserts/check.mjs). **Expected:** escalate, `can_fail` yes. Note: The keys can change and fail the test, but the field values pass unexamined. Case file [`checks/asserts/cases/result-keys/case.mjs`](checks/asserts/cases/result-keys/case.mjs), line 2. Sources: [testsmells.org, Open Catalog of Test Smells](https://testsmells.org/).
+- **Known defect:** shape-only. **Check:** [`asserts`](checks/asserts/check.mjs). **Expected:** escalate, `can_fail` yes. Note: The keys can change and fail the test, but the field values pass unexamined. Case file [`checks/asserts/cases/result-keys/case.mjs`](checks/asserts/cases/result-keys/case.mjs), line 5. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Shape-not-value](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** good, needs eyes.
   - `asserts_a` shape-only · `asserts_b` shape-only → asserts: shape-only. **Escalates:** asserts shape-only.
   - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.97, spread 0.07 (stable). Label yes: match. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded. `verdict` good.
@@ -903,7 +903,7 @@ test("planner returns roads", () => {
   expect(roads.length).toBe(3);
 })
 ```
-- **Known defect:** shape-only. **Check:** [`asserts`](checks/asserts/check.mjs). **Expected:** escalate, `can_fail` yes. Note: shape-not-value: a shape change can fail it, the content is never checked. Case file [`checks/asserts/cases/shape-not-value/case.mjs`](checks/asserts/cases/shape-not-value/case.mjs), line 2.
+- **Known defect:** shape-only. **Check:** [`asserts`](checks/asserts/check.mjs). **Expected:** escalate, `can_fail` yes. Note: shape-not-value: a shape change can fail it, the content is never checked. Case file [`checks/asserts/cases/shape-not-value/case.mjs`](checks/asserts/cases/shape-not-value/case.mjs), line 5. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Shape-not-value](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** weak, needs eyes.
   - `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.63, spread 0.85 (unstable). **Escalates:** can_fail unstable (spread 0.85). Label yes: not scored.
   - `asserts_a` shape-only · `asserts_b` shape-only → asserts: shape-only. **Escalates:** asserts shape-only.
@@ -919,7 +919,7 @@ test("returns a list of routes", () => {
   expect(Array.isArray(routes)).toBe(true);
 })
 ```
-- **Known defect:** shape-only. **Check:** [`asserts`](checks/asserts/check.mjs). **Expected:** escalate, `can_fail` yes. Note: The array check can fail when the return type changes, but no route value is ever asserted. Case file [`checks/asserts/cases/result-array/case.mjs`](checks/asserts/cases/result-array/case.mjs), line 2. Sources: [testsmells.org, Open Catalog of Test Smells](https://testsmells.org/).
+- **Known defect:** shape-only. **Check:** [`asserts`](checks/asserts/check.mjs). **Expected:** escalate, `can_fail` yes. Note: The array check can fail when the return type changes, but no route value is ever asserted. Case file [`checks/asserts/cases/result-array/case.mjs`](checks/asserts/cases/result-array/case.mjs), line 5. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Shape-not-value](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** slop, needs eyes.
   - `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.27, spread 0.80 (unstable). **Escalates:** can_fail unstable (spread 0.80). Label yes: not scored.
   - `asserts_a` shape-only · `asserts_b` shape-only → asserts: shape-only. **Escalates:** asserts shape-only.
@@ -934,7 +934,7 @@ test.skip("handles overflow", () => {
   expect(add(Number.MAX_SAFE_INTEGER, 1)).toBe(Number.MAX_SAFE_INTEGER + 1);
 })
 ```
-- **Known defect:** skipped. **Check:** [`runs`](checks/runs/check.mjs). **Expected:** escalate. Note: skipped: the test never runs. Case file [`checks/runs/cases/skipped/case.mjs`](checks/runs/cases/skipped/case.mjs), line 2.
+- **Known defect:** skipped. **Check:** [`runs`](checks/runs/check.mjs). **Expected:** escalate. Note: skipped: the test never runs. Case file [`checks/runs/cases/skipped/case.mjs`](checks/runs/cases/skipped/case.mjs), line 5. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Skipped / disabled / focused](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** slop, needs eyes.
   - `runs_a` · `runs_b` not recorded → runs: no. **Escalates:** does not run.
   - `verdict` slop. **Escalates:** verdict slop.
@@ -948,7 +948,7 @@ xit("parses a dotted key", () => {
   expect(parseKey("a.b")).toEqual(["a", "b"]);
 })
 ```
-- **Known defect:** skipped. **Check:** [`runs`](checks/runs/check.mjs). **Expected:** escalate. Note: The test is marked xit, so it never runs. Case file [`checks/runs/cases/xit-key/case.mjs`](checks/runs/cases/xit-key/case.mjs), line 2. Sources: [Meszaros, xUnit Test Patterns (Obscure Test)](http://xunitpatterns.com/); [verify-prd-implemented test-patterns (Skipped / disabled / focused)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
+- **Known defect:** skipped. **Check:** [`runs`](checks/runs/check.mjs). **Expected:** escalate. Note: The test is marked xit, so it never runs. Case file [`checks/runs/cases/xit-key/case.mjs`](checks/runs/cases/xit-key/case.mjs), line 5. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Skipped / disabled / focused](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** slop, needs eyes.
   - `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.39, spread 0.51 (unstable). **Escalates:** can_fail unstable (spread 0.51).
   - `runs_a` · `runs_b` not recorded → runs: no. **Escalates:** does not run.
@@ -963,7 +963,7 @@ test.skip("rejects a stale token", () => {
   expect(verifyToken("expired")).toBe(false);
 })
 ```
-- **Known defect:** skipped. **Check:** [`runs`](checks/runs/check.mjs). **Expected:** escalate. Note: The test is marked skipped, so it never runs. Case file [`checks/runs/cases/skip-token/case.mjs`](checks/runs/cases/skip-token/case.mjs), line 2. Sources: [Meszaros, xUnit Test Patterns (Obscure Test)](http://xunitpatterns.com/); [verify-prd-implemented test-patterns (Skipped / disabled / focused)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
+- **Known defect:** skipped. **Check:** [`runs`](checks/runs/check.mjs). **Expected:** escalate. Note: The test is marked skipped, so it never runs. Case file [`checks/runs/cases/skip-token/case.mjs`](checks/runs/cases/skip-token/case.mjs), line 5. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Skipped / disabled / focused](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** slop, needs eyes.
   - `asserts_a` nothing · `asserts_b` behaviour → asserts: nothing versus behaviour. **Escalates:** asserts unstable (nothing vs behaviour).
   - `runs_a` · `runs_b` not recorded → runs: no. **Escalates:** does not run.
@@ -978,7 +978,7 @@ test("the build is green", () => {
   expect(true).toBe(true);
 })
 ```
-- **Known defect:** tautology. **Check:** [`can-fail`](checks/can-fail/check.mjs). **Expected:** escalate, `can_fail` no. Note: The assertion holds for every build, so breaking the code cannot fail it. Case file [`checks/can-fail/cases/constant-truth/case.mjs`](checks/can-fail/cases/constant-truth/case.mjs), line 2. Sources: [Kent Beck, Test Desiderata](https://kentbeck.github.io/TestDesiderata/).
+- **Known defect:** tautology. **Check:** [`can-fail`](checks/can-fail/check.mjs). **Expected:** escalate, `can_fail` no. Note: The assertion holds for every build, so breaking the code cannot fail it. Case file [`checks/can-fail/cases/constant-truth/case.mjs`](checks/can-fail/cases/constant-truth/case.mjs), line 5. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Tautology / self-reference](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** slop, needs eyes.
   - `asserts_a` nothing · `asserts_b` nothing → asserts: nothing. **Escalates:** asserts nothing.
   - `verdict` slop. **Escalates:** verdict slop.
@@ -992,7 +992,7 @@ test("the world is sane", () => {
   expect(true).toBe(true);
 })
 ```
-- **Known defect:** tautology. **Check:** [`can-fail`](checks/can-fail/check.mjs). **Expected:** escalate, `can_fail` no. Note: tautology: true === true. Case file [`checks/can-fail/cases/tautology-constant/case.mjs`](checks/can-fail/cases/tautology-constant/case.mjs), line 2.
+- **Known defect:** tautology. **Check:** [`can-fail`](checks/can-fail/check.mjs). **Expected:** escalate, `can_fail` no. Note: tautology: true === true. Case file [`checks/can-fail/cases/tautology-constant/case.mjs`](checks/can-fail/cases/tautology-constant/case.mjs), line 5. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Tautology / self-reference](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** slop, needs eyes.
   - `asserts_a` nothing · `asserts_b` nothing → asserts: nothing. **Escalates:** asserts nothing.
   - `verdict` slop. **Escalates:** verdict slop.
@@ -1006,7 +1006,7 @@ test("the queue is not negative", () => {
   expect(queue.length).toBeGreaterThanOrEqual(0);
 })
 ```
-- **Known defect:** vacuous. **Check:** [`can-fail`](checks/can-fail/check.mjs). **Expected:** escalate, `can_fail` no. Note: A length is never negative, so the bound is always true. Case file [`checks/can-fail/cases/count-nonnegative/case.mjs`](checks/can-fail/cases/count-nonnegative/case.mjs), line 2. Sources: [Kent Beck, Test Desiderata](https://kentbeck.github.io/TestDesiderata/).
+- **Known defect:** vacuous. **Check:** [`can-fail`](checks/can-fail/check.mjs). **Expected:** escalate, `can_fail` no. Note: A length is never negative, so the bound is always true. Case file [`checks/can-fail/cases/count-nonnegative/case.mjs`](checks/can-fail/cases/count-nonnegative/case.mjs), line 6. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Vacuous / passes-with-zero](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** slop, needs eyes.
   - `asserts_a` shape-only · `asserts_b` shape-only → asserts: shape-only. **Escalates:** asserts shape-only.
   - `positive_a` · `positive_b` not recorded → positive: not recorded. **Escalates:** no positive assertion.
@@ -1022,7 +1022,7 @@ test("the summary is produced", () => {
   expect(summary.totals).toBeDefined();
 })
 ```
-- **Known defect:** vacuous. **Check:** [`can-fail`](checks/can-fail/check.mjs). **Expected:** escalate, `can_fail` no. Note: The aggregate exists, but no value inside it is ever read. Case file [`checks/can-fail/cases/aggregate-exists/case.mjs`](checks/can-fail/cases/aggregate-exists/case.mjs), line 2. Sources: [Kent Beck, Test Desiderata](https://kentbeck.github.io/TestDesiderata/).
+- **Known defect:** vacuous. **Check:** [`can-fail`](checks/can-fail/check.mjs). **Expected:** escalate, `can_fail` no. Note: The aggregate exists, but no value inside it is ever read. Case file [`checks/can-fail/cases/aggregate-exists/case.mjs`](checks/can-fail/cases/aggregate-exists/case.mjs), line 5. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Vacuous / passes-with-zero](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** slop, needs eyes.
   - `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.16, spread 0.44 (borderline). **Escalates:** can_fail borderline (spread 0.44). Label no: not scored.
   - `asserts_a` shape-only · `asserts_b` shape-only → asserts: shape-only. **Escalates:** asserts shape-only.
@@ -1045,7 +1045,7 @@ export function buildJob({ name, steps }) {
   return { name, steps, status: "queued", createdAt: Date.now() };
 }
 ```
-- **Known defect:** wrong-reason. **Check:** [`reads-output`](checks/reads-output/check.mjs). **Expected:** escalate or pass, `can_fail` yes. Note: The asserted field is copied from the argument, so a stub that only copies would pass. Only the mutation check proves this, so escalation is welcome but not required. Case file [`checks/reads-output/cases/passthrough-argument/case.mjs`](checks/reads-output/cases/passthrough-argument/case.mjs), line 2. Sources: [verify-prd-implemented test-patterns (Passes for the wrong reason; No negative/positive pair)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
+- **Known defect:** wrong-reason. **Check:** [`reads-output`](checks/reads-output/check.mjs). **Expected:** escalate or pass, `can_fail` yes. Note: The asserted field is copied from the argument, so a stub that only copies would pass. Only the mutation check proves this, so escalation is welcome but not required. Case file [`checks/reads-output/cases/passthrough-argument/case.mjs`](checks/reads-output/cases/passthrough-argument/case.mjs), line 6. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Passes for the wrong reason](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** strong, passes.
   - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 1.00, spread 0.01 (stable). Label yes: match. `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `runs_a` · `runs_b` not recorded → runs: yes. `positive_a` · `positive_b` not recorded → positive: not recorded. `verdict` strong.
 - **Descriptive:** 18 clean · smells: none · unanswered: none · `type` not recorded.
@@ -1074,7 +1074,7 @@ export class Calendar {
   }
 }
 ```
-- **Known defect:** wrong-reason. **Check:** [`positive`](checks/positive/check.mjs). **Expected:** escalate or pass, `can_fail` yes. Note: The lookup is empty only because the fixture never creates the booking it queries. Only the mutation check proves this, so escalation is welcome but not required. Case file [`checks/positive/cases/absent-record/case.mjs`](checks/positive/cases/absent-record/case.mjs), line 2. Sources: [verify-prd-implemented test-patterns (Passes for the wrong reason; No negative/positive pair)](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
+- **Known defect:** wrong-reason. **Check:** [`positive`](checks/positive/check.mjs). **Expected:** escalate or pass, `can_fail` yes. Note: The lookup is empty only because the fixture never creates the booking it queries. Only the mutation check proves this, so escalation is welcome but not required. Case file [`checks/positive/cases/absent-record/case.mjs`](checks/positive/cases/absent-record/case.mjs), line 6. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Passes for the wrong reason](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** good, needs eyes.
   - `positive_a` · `positive_b` not recorded → positive: not recorded. **Escalates:** no positive assertion.
   - No escalation: `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.97, spread 0.06 (stable). Label yes: match. `asserts_a` behaviour · `asserts_b` behaviour → asserts: behaviour. `runs_a` · `runs_b` not recorded → runs: yes. `verdict` good.
@@ -1099,7 +1099,7 @@ export function save(user) {
   return saveUser({ ...user, email: user.email.toLowerCase() });
 }
 ```
-- **Known defect:** wrong-reason. **Check:** [`asserts`](checks/asserts/check.mjs). **Expected:** escalate, `can_fail` yes. Note: passes for the wrong reason: only the mock call is checked. Case file [`checks/asserts/cases/wrong-reason-mock/case.mjs`](checks/asserts/cases/wrong-reason-mock/case.mjs), line 2.
+- **Known defect:** wrong-reason. **Check:** [`asserts`](checks/asserts/check.mjs). **Expected:** escalate, `can_fail` yes. Note: passes for the wrong reason: only the mock call is checked. Case file [`checks/asserts/cases/wrong-reason-mock/case.mjs`](checks/asserts/cases/wrong-reason-mock/case.mjs), line 5. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Passes for the wrong reason](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** slop, needs eyes.
   - `can_fail_a` · `can_fail_b` · `can_fail_c` not recorded → can_fail: 0.47, spread 0.59 (unstable). **Escalates:** can_fail unstable (spread 0.59). Label yes: not scored.
   - `asserts_a` interaction-only · `asserts_b` interaction-only → asserts: interaction-only. **Escalates:** asserts interaction-only.

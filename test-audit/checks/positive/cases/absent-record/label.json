@@ -6,7 +6,7 @@
   "note": "The lookup is empty only because the fixture never creates the booking it queries. Only the mutation check proves this, so escalation is welcome but not required.",
   "sources": [
     {
-      "name": "verify-prd-implemented test-patterns (Passes for the wrong reason; No negative/positive pair)",
+      "name": "the house catalogue, verify-prd-implemented/test-patterns.md: Passes for the wrong reason",
       "url": "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md"
     }
   ]

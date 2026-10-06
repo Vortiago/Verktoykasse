@@ -1,195 +1,47 @@
 # test-audit references
 
-What grounds each question in the battery and each named defect. The classifier is
-a cheap sensor: it suspects, it does not prove. The mutation check in
-[`../verify-prd-implemented/test-patterns.md`](../verify-prd-implemented/test-patterns.md)
-stays the proof.
+Each source has a home beside the code that relies on it. This file is the index
+to those homes, plus the background reading that no one file relies on.
 
-## 1. Source map
+## Where the sources are
 
-### Battery questions
+- **A check:** the header comment of `checks/<check>/check.mjs` names each
+  source. For each source it gives the citation, the URL, and what the check
+  relies on. The `sources` field of the check holds the same list, and the
+  benchmark prints it. `checks/checks.test.mjs` keeps the two in step.
+- **A calibration case:** the header comment of
+  `checks/<check>/cases/<case>/case.mjs` says what the case shows and names its
+  source. `label.json` holds the same sources. The model never sees the header,
+  because the tool sends only the test call.
+- **The twin rule and the position swap:** the header comment of
+  [`classifier/verdict.mjs`](classifier/verdict.mjs). These are self-consistency,
+  prompt sensitivity, position bias, and escalation instead of a vote.
+- **The endpoint:** the header comment of
+  [`classifier/systemone.mjs`](classifier/systemone.mjs). The SystemOne protocol
+  and the reading of `mass` and `confidence` are in-house.
+- **The house catalogue:**
+  [`../verify-prd-implemented/test-patterns.md`](../verify-prd-implemented/test-patterns.md).
+  It names the defects and holds the mutation check, which stays the proof. This
+  tool only suspects a defect.
 
-| Key | What it asks | Source(s) |
-| --- | --- | --- |
-| `can_fail_a` | could a change to the code under test make this fail? | Beck, Test Desiderata (`Behavioral`); WPT checklist, "fails when it's supposed to fail"; Meszaros, `Erratic Test`; Google mutation testing; Just et al. 2014 |
-| `can_fail_b` | does it pass regardless of correctness? (negated twin) | the same sources as `a`; self-consistency (Wang et al. 2023) and prompt sensitivity (Sclar et al. 2024) for the twin |
-| `can_fail_c` | if the behaviour regresses, will it fail? | the same sources as `a`; WPT checklist |
-| `asserts_a` | behaviour, hardcoded-data, shape-only, interaction-only, nothing | testsmells.org (`Redundant Assertion`, `Unknown Test`, `Magic Number Test`, `Sensitive Equality`); Meszaros, `Obscure Test` (`Hard-Coded Test Data`, `Indirect Testing`); Fowler, "Mocks Aren't Stubs"; house catalogue |
-| `asserts_b` | the same, with the answer order reversed (position control) | MT-Bench (Zheng et al. 2023), position and verbosity bias; "Large Language Models are not Fair Evaluators" (Wang et al. 2023), balanced position calibration |
-| `positive_a` | at least one assertion on the output that must exist, not only an absence | house catalogue, no negative/positive pair; WPT checklist, "fails when it's supposed to fail" |
-| `positive_b` | do all assertions check only an absence? (negated twin) | the same sources as `positive_a`; self-consistency (Wang et al. 2023) for the twin |
-| `runs_a` | is the test free of skip, todo, only, and focus markers, on itself, its describes, and the other tests in the file? | testsmells.org, `Ignored Test`; Meszaros, `Ignored Test`; house catalogue, skipped / disabled / focused |
-| `runs_b` | is there such a marker? (negated twin) | the same sources as `runs_a`; self-consistency (Wang et al. 2023) for the twin |
-| `type` | unit, integration, regression, e2e, smoke, characterization | Meszaros, `Test Organization` and `Test Strategy`; Feathers, characterization testing. The exact six labels are house choice (inference) |
-| `deterministic` | no time, order, network, or sleep | Beck, `Deterministic` and `Isolated`; Meszaros, `Erratic Test` (`Nondeterministic Test`, `Resource Optimism`, `Interacting Tests`, `Test Run War`); testsmells.org (`Sleepy Test`, `Mystery Guest`, `Resource Optimism`, `Conditional Test Logic`) |
-| `one_thing` | one behaviour, not an eager test | Meszaros, `Eager Test` (under `Obscure Test` and `Assertion Roulette`); testsmells.org, `Eager Test` |
-| `name_matches` | does the body assert what the name states? | WPT checklist, "testing what it thinks it's testing"; testsmells.org, `Unknown Test`; Meszaros, `Obscure Test`; house catalogue, name-only |
-| `observable` | behaviour, not private internals or internal call order | Meszaros, `Indirect Testing`; Fowler, "Mocks Aren't Stubs"; testsmells.org, `Redundant Assertion` |
-| `conditional` | the assertion always runs, no branch, loop, or catch skips it | Meszaros, `Conditional Test Logic`; testsmells.org, `Conditional Test Logic` |
-| `isolated` | passes alone and in any order, no shared mutable state | Beck, `Isolated`; Meszaros, `Interacting Tests`, `Test Run War`, `Unrepeatable Test` |
-| `controlled` | controls time, network, filesystem, and environment | Meszaros, `Resource Optimism`, `Mystery Guest`; testsmells.org, `Mystery Guest` |
-| `specific` | the most specific assertion for the failure | WPT checklist, "the most specific asserts possible"; testsmells.org, `Sensitive Equality` |
-| `named` | the name states the behaviour and expected result | Meszaros, `Obscure Test`; testsmells.org, `Unknown Test` |
-| `resilient` | a behaviour-preserving refactor does not break it | Beck, `Structure-insensitive`; Meszaros, `Fragile Test`, `Sensitive Equality` |
-| `diagnostic` | a failure names the assertion and the expected value | Meszaros, `Assertion Roulette` (`Missing Assertion Message`); testsmells.org, `Assertion Roulette` |
-| `fixture` | only the data the test needs, not a large shared fixture | Meszaros, `General Fixture`, `Irrelevant Information` |
-| `fast` | no sleep, heavy I/O, or large computation | Beck, `Fast`; Meszaros, `Slow Tests`, `Sleepy Test`; testsmells.org, `Sleepy Test` |
-| `readable` | a reader can follow it without opening the code under test | Beck, `Readable`; Meszaros, `Obscure Test`; testsmells.org, `Unknown Test` |
-| `magic_number` | the assertion names its values | testsmells.org, `Magic Number Test`; Meszaros, `Hard-Coded Test Data` |
-| `reads_output` | the assertion reads the produced output, not the input or the setup | testsmells.org, `Assertion Diversion`, `Calculating Expected Results On The Fly`; house catalogue, passes-for-the-wrong-reason; mutation-testing propagation |
-| `automated` | pass or fail with nobody doing or reading anything | Beck, `Automated`; Meszaros, `Manual Intervention`; WPT checklist on manual tests |
-| `restores` | clears or restores the state it changes | Beck, `Isolated`; Meszaros, `Interacting Tests`, `Test Run War`; testsmells.org, `Test Pollution` |
-| `verdict` | slop, weak, good, strong | synthesis of the rows above; the four levels and the cross-question rule are house (inference) |
+A source that a header calls an inference, or a house choice, is a design choice
+of this tool. No source states it.
 
-### Flags
+## Background reading
 
-The descriptive questions raise one flag each, named in the table above. They
-report; they do not escalate. The tool does no static analysis of the test
-source: a rule for one runner's assertion or skip method would not fit the next
-runner, so the questions read the source and judge the intent instead. The one
-place the tool reads the syntax is to find the test blocks.
+- Gerard Meszaros, xUnit Test Patterns (2007), the Test Smells index: code
+  smells, behaviour smells, and project smells.
+  http://xunitpatterns.com/Test%20Smells.html
+- Anthony Peruma et al., tsDetect (FSE 2020). The tool behind testsmells.org.
+  This page was not opened directly.
+  https://testsmells.org/pages/testsmelldetector.html
+- Kent Beck, Test Desiderata (2019), the original posts.
+  https://medium.com/@kentbeck_7670/test-desiderata-94150638a4b3
+- Birgitta Böckeler, Harness engineering for coding agent users (2026). Guides
+  (feedforward) against sensors (feedback), and hooks as the enforcement path.
+  This tool is a sensor. https://martinfowler.com/articles/harness-engineering.html
 
-### Named defects
+## Verification
 
-| Defect | Source(s) |
-| --- | --- |
-| tautology / self-reference | testsmells.org, `Redundant Assertion`; house catalogue |
-| vacuous / passes-with-zero | house catalogue; WPT checklist, "fails when it's supposed to fail"; Beck, `Behavioral` |
-| shape-not-value | house catalogue; testsmells.org, `Sensitive Equality`, `Redundant Assertion` |
-| interaction-only / mock-only | Fowler, "Mocks Aren't Stubs" (behaviour against state verification); house catalogue |
-| hardcoded-data / magic number | Meszaros, `Hard-Coded Test Data`; testsmells.org, `Magic Number Test`; house catalogue |
-| nothing asserted | testsmells.org, `Unknown Test`; house catalogue |
-| name-only | WPT checklist, "testing what it thinks it's testing"; testsmells.org, `Unknown Test`; house catalogue |
-| only-negative / no positive pair | house catalogue (inference from the mutation check) |
-| passes-for-the-wrong-reason | house catalogue, mutation check; Meszaros, `Obscure Test`; Google mutation testing |
-| obscure test | Meszaros, `Obscure Test` |
-| eager test | Meszaros, `Eager Test`; testsmells.org, `Eager Test` |
-| assertion roulette | Meszaros, `Assertion Roulette`; testsmells.org, `Assertion Roulette` |
-| conditional test logic | Meszaros, `Conditional Test Logic`; testsmells.org, `Conditional Test Logic` |
-| erratic / non-deterministic test | Meszaros, `Erratic Test`; Beck, `Deterministic`, `Isolated` |
-| sleepy test | testsmells.org, `Sleepy Test` |
-| mystery guest | Meszaros, `Mystery Guest`; testsmells.org, `Mystery Guest` |
-| slow test (related, not a battery item) | Meszaros, `Slow Tests` |
-
-## 2. Sources
-
-### Test quality and design
-
-- **Kent Beck, Test Desiderata**. https://kentbeck.github.io/TestDesiderata/
-  Grounds falsifiability (`Behavioral`), determinism (`Deterministic`),
-  independence (`Isolated`), and the readable and specific properties.
-  Original papers: https://medium.com/@kentbeck_7670/test-desiderata-94150638a4b3
-- **Gerard Meszaros, xUnit Test Patterns** (2007). http://xunitpatterns.com/
-  The test-smell taxonomy: code smells, behaviour smells, project smells.
-- **Obscure Test** (holds `Eager Test`, `Mystery Guest`, `General Fixture`,
-  `Irrelevant Information`, `Hard-Coded Test Data`, `Indirect Testing`).
-  http://xunitpatterns.com/Obscure%20Test.html
-- **Erratic Test** (holds `Nondeterministic Test`, `Unrepeatable Test`,
-  `Interacting Tests`, `Resource Optimism`, `Test Run War`).
-  http://xunitpatterns.com/Erratic%20Test.html
-- **Assertion Roulette** (holds `Eager Test` and `Missing Assertion Message`).
-  http://xunitpatterns.com/Assertion%20Roulette.html
-- **Conditional Test Logic**. http://xunitpatterns.com/Conditional%20Test%20Logic.html
-- **Test Smells index** (the three categories). http://xunitpatterns.com/Test%20Smells.html
-- **testsmells.org, Open Catalog of Test Smells** (19 smells with a detection
-  strategy each). https://testsmells.org/pages/testsmells.html
-  Site home: https://testsmells.org/
-  Tool paper: Peruma et al., tsDetect, FSE 2020,
-  https://testsmells.org/pages/testsmelldetector.html (page listed by the site;
-  not opened directly).
-- **Michael Feathers, Characterization Testing** (2016).
-  https://michaelfeathers.silvrback.com/characterization-testing
-  Grounds the `characterization` test type.
-
-### Falsifiability and the review checklists
-
-- **Web Platform Tests, Review Checklist**.
-  https://web-platform-tests.org/reviewing-tests/checklist.html
-  The exact phrasings "The test fails when it's supposed to fail", "The test is
-  testing what it thinks it's testing", "The test uses the most specific asserts
-  possible", and "The test does not contain commented-out code".
-- **Google, State of Mutation Testing at Google** (Petrovic and Ivankovic,
-  ICSE-SEIP 2018). https://research.google/pubs/state-of-mutation-testing-at-google/
-  Mutation testing as test-suite efficacy at industrial scale.
-- **Just et al., Are Mutants a Valid Substitute for Real Faults in Software
-  Testing?** (FSE 2014). https://doi.org/10.1145/2635868.2635929
-  Mutation score as a proxy for real-fault detection.
-- **Jia and Harman, An Analysis and Survey of the Development of Mutation
-  Testing** (IEEE TSE 2011). https://doi.org/10.1109/TSE.2010.62
-
-### Interaction and mocking
-
-- **Martin Fowler, Mocks Aren't Stubs** (2007).
-  https://martinfowler.com/articles/mocksArentStubs.html
-  State against behaviour verification: grounds `interaction-only`.
-
-### Guides against tools/hooks
-
-- **Birgitta Böckeler, Maintainability sensors for coding agents** (27 May 2026).
-  https://www.martinfowler.com/articles/sensors-for-coding-agents.html
-  Sensors against guides, computational against inferential, and mutation
-  testing as a regression sensor for AI-written tests.
-- **Birgitta Böckeler, Harness engineering for coding agent users** (2 April 2026).
-  https://martinfowler.com/articles/harness-engineering.html
-  Guides (feedforward) against sensors (feedback), and hooks as the enforcement
-  path.
-
-### LLM-as-judge reliability
-
-- **Zheng et al., Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena**
-  (NeurIPS 2023). https://arxiv.org/abs/2306.05685
-  Position, verbosity and self-enhancement bias, and agreement with humans.
-- **Wang et al., Large Language Models are not Fair Evaluators** (2023).
-  https://arxiv.org/abs/2305.17926
-  Position bias, and balanced position calibration by order aggregation.
-- **Tian et al., Just Ask for Calibration** (EMNLP 2023).
-  https://arxiv.org/abs/2305.14975
-  Calibration of confidence scores from RLHF language models.
-- **Wang et al., Self-Consistency Improves Chain of Thought Reasoning** (ICLR 2023).
-  https://arxiv.org/abs/2203.11171
-  Sampling several paths and taking the consistent answer.
-- **Sclar et al., Quantifying Language Models' Sensitivity to Spurious Features
-  in Prompt Design** (ICLR 2024). https://arxiv.org/abs/2310.11324
-  Small, meaning-preserving prompt changes move accuracy by large margins.
-
-### House catalogue
-
-- **`verify-prd-implemented/test-patterns.md`** and
-  **`verify-prd-implemented/SKILL.md`** in this repo.
-  The named defect list (tautology, vacuous, shape-not-value, name-only,
-  skipped, commented-out, passes-for-the-wrong-reason, no positive/negative
-  pair) and the mutation recipe.
-
-## 3. Primary sources against inferences
-
-**Primary and verified.** All URLs above were opened or resolved, except the
-testsmells detector page, which is marked. The WPT phrases, the testsmells.org
-19-smell list and detection strategies, the Meszaros smell pages, the Beck 12
-properties, the mutation papers, the Fowler and Böckeler articles, and the
-LLM-as-judge papers are quoted or paraphrased from their own pages.
-
-**Inferences (not directly cited findings).** These are house design choices,
-grounded in the sources but not stated by them:
-
-- The exact wording of each battery question, and the choice of exactly three
-  `can_fail` paraphrases.
-- The paraphrase-spread band (`TEST_AUDIT_STABLE_BAND`, default `0.25`) and the
-  escalate-never-tie-break rule. Self-consistency and prompt-sensitivity work
-  justify sampling more than one phrasing; the threshold is house calibration.
-- The four-level `verdict` scale, and the cross-question rule that a confident
-  "cannot fail" beside a `good` or `strong` verdict is a contradiction.
-- The `type` taxonomy and the exact six labels. Feathers grounds
-  `characterization` alone.
-- The battery reads the test's source and judges the intent, so the same
-  questions work across runners. A static rule for one runner's assertion or
-  skip method would not fit the next runner, and was deliberately left out.
-- The position-swap control for `asserts_b` as a mitigation of position bias.
-  That position bias exists is cited; that this swap removes it is an inference.
-- A small, fast model used as a one-token binary classifier per question. This
-  is an engineering choice, not a published finding.
-
-**In-house and unverified.** The SystemOne endpoint, the Jev-compatible typed
-question protocol, the `mass` reading (the share of the model's probability that
-the allowed answers held before the grammar), and the `confidence` margin are
-implementation details. They appear in `classifier/systemone.mjs` and `README.md`. No
-public primary source exists for them. `confidence` is not calibrated.
+The URLs in the check headers, the engine headers, and this file were opened or
+resolved when they were added, except the tsDetect page, which is marked.

@@ -8,7 +8,7 @@
   "note": "A real metrics check, but it pins key order that the structure does not guarantee.",
   "sources": [
     {
-      "name": "Kent Beck, Test Desiderata (deterministic)",
+      "name": "Kent Beck, Test Desiderata (2019): Deterministic",
       "url": "https://kentbeck.github.io/TestDesiderata/"
     }
   ]

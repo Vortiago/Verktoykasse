@@ -7,8 +7,8 @@
   "note": "The expected value is the code under test own constant, so the test agrees by construction and cannot fail.",
   "sources": [
     {
-      "name": "testsmells.org, Open Catalog of Test Smells",
-      "url": "https://testsmells.org/"
+      "name": "the house catalogue, verify-prd-implemented/test-patterns.md: Tautology / self-reference",
+      "url": "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md"
     }
   ]
 }
