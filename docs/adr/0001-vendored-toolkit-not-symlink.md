@@ -22,8 +22,8 @@ drift, and an app could copy `templates.js` from either skill and get a differen
 
 Two hard constraints bound any fix:
 
-1. **No build step, no runtime deps.** Plain ES modules served statically. The only dev
-   dependency is `typescript`. Nothing may transform source between edit and run/ship.
+1. **No build step, no runtime deps.** Plain ES modules served statically. Dev dependencies
+   are typecheck-only. Nothing may transform source between edit and run/ship.
 2. **Skills install independently.** `install.sh` symlinks each skill into
    `~/.claude/skills/<name>` on its own, and apps vendor files *out of* a skill's tree. So
    `vanilla-components` must remain self-contained: it cannot reach across to

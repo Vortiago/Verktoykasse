@@ -16,7 +16,7 @@
     color: var(--text);
     border: 1px solid var(--hairline);
     border-radius: var(--r);
-    box-shadow: 0 8px 24px light-dark(rgba(0, 0, 0, 0.14), rgba(0, 0, 0, 0.5));
+    box-shadow: var(--shadow-2);
 
     opacity: 0;
     transition: opacity 0.12s ease, display 0.12s allow-discrete, overlay 0.12s allow-discrete;

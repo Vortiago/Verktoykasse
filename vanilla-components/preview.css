@@ -1,4 +1,4 @@
-/* canonical source: vanilla-web/preview.css@4a2a40c sha256:acb732902cdd74faf615117909722610a651fefb8b9218847c76376419ebc538 - vendored copy, do not edit here */
+/* canonical source: vanilla-web/preview.css@891d70f sha256:1b296929044c93532a503340ed5a412d83feabdf6c34c1e4243db8b60690e267 - vendored copy, do not edit here */
 /* Chrome for the standalone preview page (preview.html / preview.js).
  * Self-sufficient: styled with light-dark() + system defaults so it works with
  * or without the app's shell.css tokens, and follows the theme toggle for free. */
@@ -10,13 +10,22 @@
     --selected-bg: light-dark(#e6efff, #23314d);
     --btn-bg: light-dark(#f3f3f3, #21242a);
     --btn-border: light-dark(#d8d8d8, #34383f);
+    --page-text: light-dark(#1a1a1a, #e8e8e8);
+    --page-bg: light-dark(#ffffff, #14161a);
+    --edge: light-dark(#e2e2e2, #2a2d33);
+    --dash-border: light-dark(#d4d4d4, #34383f);
+    --caption: light-dark(#666, #9aa0aa);
+    --selected-border: light-dark(#c7d9fb, #35507e);
+    --code-bg: light-dark(#f7f7f8, #1a1d22);
+    --hl-comment: light-dark(#6b7280, #7d8590);
+    --hl-string: light-dark(#0a7d3c, #7ce0a0);
   }
 
   body {
     margin: 0;
     font: 14px/1.5 system-ui, sans-serif;
-    color: light-dark(#1a1a1a, #e8e8e8);
-    background: light-dark(#ffffff, #14161a);
+    color: var(--page-text);
+    background: var(--page-bg);
   }
 
   .preview-top {
@@ -28,7 +37,7 @@
     gap: 1rem;
     padding: 0.6rem 1rem;
     background: inherit;
-    border-bottom: 1px solid light-dark(#e2e2e2, #2a2d33);
+    border-bottom: 1px solid var(--edge);
   }
   .preview-top strong {
     font-weight: 600;
@@ -55,7 +64,7 @@
     flex-direction: column;
     gap: 0.15rem;
     padding: 0.5rem;
-    border-inline-end: 1px solid light-dark(#e2e2e2, #2a2d33);
+    border-inline-end: 1px solid var(--edge);
   }
   .rail-item {
     padding: 0.35rem 0.55rem;
@@ -83,12 +92,12 @@
   }
   .frame-stage {
     padding: 1.25rem;
-    border: 1px dashed light-dark(#d4d4d4, #34383f);
+    border: 1px dashed var(--dash-border);
     border-radius: 8px;
   }
   .frame-caption {
     font-size: 12px;
-    color: light-dark(#666, #9aa0aa);
+    color: var(--caption);
   }
   .frame-caption code {
     font-family: ui-monospace, monospace;
@@ -139,7 +148,7 @@
   .source-tab[aria-selected="true"] {
     font-weight: 600;
     background: var(--selected-bg);
-    border-color: light-dark(#c7d9fb, #35507e);
+    border-color: var(--selected-border);
   }
   .source-copy {
     margin-inline-start: auto;
@@ -155,8 +164,8 @@
     padding: 1rem;
     overflow-x: auto;
     font: 13px/1.5 ui-monospace, monospace;
-    background: light-dark(#f7f7f8, #1a1d22);
-    border: 1px solid light-dark(#e2e2e2, #2a2d33);
+    background: var(--code-bg);
+    border: 1px solid var(--edge);
     border-radius: 8px;
   }
   .source-code[aria-busy="true"] {
@@ -169,10 +178,10 @@
   /* Minimal hand-rolled highlighting — comments + strings only, applied via
    * the native CSS Custom Highlight API (no tokenizer/highlighter library). */
   ::highlight(src-comment) {
-    color: light-dark(#6b7280, #7d8590);
+    color: var(--hl-comment);
     font-style: italic;
   }
   ::highlight(src-string) {
-    color: light-dark(#0a7d3c, #7ce0a0);
+    color: var(--hl-string);
   }
 }

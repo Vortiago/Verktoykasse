@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // @ts-check
-// Scaffolds a starter <name>.preview.js for one component (see reference/preview.md).
+// Scaffolds a starter <name>.preview.js for one component (see vanilla-web/reference/preview.md).
 // This is a one-time SEED, not generated output: it writes the boilerplate
 // (imports, the @type path, the render adapter, title) plus one TODO variant, and
 // refuses to overwrite an existing file. You fill in the variants. It's a separate

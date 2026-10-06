@@ -1,5 +1,5 @@
 {
-  "//": "Canonical JSDoc + tsc type gate for the vanilla-web conventions (see SKILL.md). Copy into <app>/ next to the web root. `npx tsc --noEmit` (or an npm `typecheck` script) is the whole gate — no emit, no build. Every .js starts with // @ts-check; noUnusedLocals turns stale imports into hard errors.",
+  "//": "Canonical JSDoc + tsc type gate for the vanilla-web conventions (see SKILL.md). Copy into <app>/ next to the web root. `node tools/check.mjs` (or `npx tsc --noEmit`) is the whole gate — no emit, no build. Every .js and .mjs starts with // @ts-check; noUnusedLocals turns stale imports into hard errors. .test.mjs is excluded: those files pass deliberately wrong shapes to exercise edge cases, so tsc fights their purpose — check-syntax parses them instead.",
   "compilerOptions": {
     "target": "ES2022",
     "module": "ESNext",
@@ -12,8 +12,8 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "types": []
+    "types": ["node"]
   },
-  "include": ["**/*.js", "types.d.ts"],
-  "exclude": ["node_modules", "serve.mjs", "testing", "ds-bundle", ".ds-sync", "bridge/ds-adapter", "bridge/out"]
+  "include": ["**/*.js", "**/*.mjs", "types.d.ts"],
+  "exclude": ["node_modules", "testing", "**/*.test.mjs", "ds-bundle", ".ds-sync", "bridge/ds-adapter", "bridge/out"]
 }

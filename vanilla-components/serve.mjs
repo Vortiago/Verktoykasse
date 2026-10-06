@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// canonical source: vanilla-web/serve.mjs@4a2a40c sha256:3bd130bde8264fee60c75558936ee4001dee19a2d22a2ce3c1fb73d9d8d964bb - vendored copy, do not edit here
+// canonical source: vanilla-web/serve.mjs@bd231d2 sha256:5982e62b34f6604776b7b704ae44184106f2212eb8ec005bddb04df4dbb3ba6e - vendored copy, do not edit here
 // @ts-check
 // Canonical zero-dependency static server for the vanilla-web conventions
-// (see SKILL.md). Static files + a few extension points you opt into:
+// (see vanilla-web/SKILL.md). Static files + a few extension points you opt into:
 //
 //   STATIC      always on: MIME, traversal guard, directory index, and
 //               content-negotiated compression (brotli/gzip, cached by mtime) +
@@ -14,7 +14,7 @@
 //   INLINE API  or handle /api/* in-file (this server IS the backend): add
 //               handlers at the marked hook (readJsonBody + sendJson helpers).
 //   CLIENT      POST /api/client-errors — sendBeacon target for wireErrorBar's
-//   ERRORS      relay (lib/chrome.js #62): console.error("[client]", …) with
+//   ERRORS      relay (lib/chrome.js): console.error("[client]", …) with
 //               a timestamp, so a browser error lands somewhere an LLM session
 //               can read it. Flood-guarded (30/min, one warn when capped); no
 //               storage, no dashboard — the log line IS the feature.
@@ -35,7 +35,7 @@ import { createServer, request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
 import { readFile, stat } from "node:fs/promises";
 import { join, dirname, extname, normalize } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { gzip, brotliCompress, constants } from "node:zlib";
 import { promisify } from "node:util";
 
@@ -50,6 +50,7 @@ const PREVIEW = process.env.PREVIEW !== "off"; // on by default; PREVIEW=off to 
 const TEST = process.env.TEST === "1"; // gate the leak-suite hooks (inert in prod)
 const CACHE = Number(process.env.CACHE) || 0; // seconds; 0/unset → no-cache (always revalidate)
 
+/** @type {Record<string, string>} */
 const MIME = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
@@ -68,7 +69,7 @@ const MIME = {
 const COMPRESSIBLE = new Set([".html", ".js", ".mjs", ".css", ".json", ".svg", ".md"]);
 const MIN_COMPRESS = 1400; // don't bother below ~1 packet
 
-// Security headers (#59) — a static object spread into every static-file
+// Security headers — a static object spread into every static-file
 // response (304, compressed 200, plain 200 all share the one `headers` object
 // below, so none of the three paths can silently drop these) and into the
 // error paths (sendJson, 403, 404); only the reverse proxy passes through
@@ -130,7 +131,7 @@ function readBody(req) {
 }
 
 // ── Server-Sent Events ──────────────────────────────────────────────────────
-// The default transport for live data (SKILL.md → Live data): the server
+// The default transport for live data (vanilla-web/SKILL.md → Live data): the server
 // pushes ONLY when the payload actually changed, so the client never renders
 // a no-op tick. EventSource reconnects by itself. Wire a source of change
 // (fs.watch, a poll of an upstream API, a job queue) to broadcast(). Client side
@@ -158,7 +159,7 @@ function handleEvents(res) {
   res.on("close", () => sseClients.delete(res));
 }
 
-// ── Client-error relay (#62) ─────────────────────────────────────────────────
+// ── Client-error relay ─────────────────────────────────────────────────
 // wireErrorBar (lib/chrome.js) sendBeacons here — AFTER it filters
 // AbortError, so a cancelled navigation never shows up. The log line IS the
 // feature: no storage, no dashboard, just somewhere an LLM session maintaining
@@ -231,11 +232,11 @@ const server = createServer(async (req, res) => {
     // Leak-suite hooks (TEST=1 only): observe SSE client count + drive change so
     // the memory-live-update spec can exercise real liveSSE teardown. Inert in prod.
     if (TEST && urlPath === "/api/test/sse-count") return sendJson(res, 200, { count: sseClients.size });
-    // e2e proxy for "the server log received the report" (#62) — Playwright can't
+    // e2e proxy for "the server log received the report" — Playwright can't
     // read this process's stdout directly, so expose the count it's already
     // tracking. TEST=1 only, same as the other hooks in this block.
     if (TEST && urlPath === "/api/test/client-error-count") return sendJson(res, 200, { count: clientErrorTotal });
-    // #67 — the flood guard's 30/min budget is a single per-PROCESS counter, but
+    // — the flood guard's 30/min budget is a single per-PROCESS counter, but
     // Playwright's webServer starts ONE server for the whole suite: every
     // error-triggering spec was drawing from the same rolling window, so a
     // later spec could get rate-limited by an earlier one's errors. Lets a spec
@@ -294,7 +295,7 @@ const server = createServer(async (req, res) => {
     const headers = {
       ...SECURITY_HEADERS,
       "content-type": MIME[ext] || "application/octet-stream",
-      "cache-control": CACHE > 0 ? `max-age=${CACHE}` : "no-cache", // #57 — ETag/304 still apply either way
+      "cache-control": CACHE > 0 ? `max-age=${CACHE}` : "no-cache", // ETag/304 still apply either way
       etag,
       vary: "Accept-Encoding",
     };
@@ -334,14 +335,18 @@ const server = createServer(async (req, res) => {
 // On by default: if a previews/ generator is present, regenerate its registry on
 // startup so a newly added *.preview.js is catalogued without a manual step.
 // Inert when there's no previews/scan.mjs; `node previews/scan.mjs` is the manual
-// fallback. See reference/preview.md.
+// fallback. See vanilla-web/reference/preview.md.
 if (PREVIEW) {
   const scanPath = join(ROOT, "previews", "scan.mjs");
   // Probe for the generator explicitly, so a genuine error inside scan.mjs is
   // reported instead of being mistaken for "no preview feature installed".
   if (await stat(scanPath).then(() => true, () => false)) {
     try {
-      const { default: scanPreviews } = await import("./previews/scan.mjs");
+      // Imported via the probed path, not a literal specifier: the generator is
+      // absent in a scaffolded app, and tsc resolves a literal even under a stat
+      // guard (TS2307). Deriving it from scanPath also keeps probe and import on
+      // one path by construction.
+      const { default: scanPreviews } = await import(pathToFileURL(scanPath).href);
       const n = await scanPreviews(ROOT);
       console.log(`  previews: ${n} component(s) catalogued`);
     } catch (err) {

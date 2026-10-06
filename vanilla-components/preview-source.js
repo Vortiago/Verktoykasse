@@ -1,7 +1,7 @@
-// canonical source: vanilla-web/preview-source.js@4a2a40c sha256:2f2c6e986babf666cf4f7deecd70fa7dd06a7620a88d31d58d177d3764d59cf1 - vendored copy, do not edit here
+// canonical source: vanilla-web/preview-source.js@2e2ba06 sha256:c48f9c3445cc918d273d3164cc5da95c5433da9d5afd151b59e63445887865a5 - vendored copy, do not edit here
 // @ts-check
 // View-source widget for the vanilla-web component preview harness (see
-// reference/preview.md, "View source"). preview.js is this module's ONLY
+// vanilla-web/reference/preview.md, "View source"). preview.js is this module's ONLY
 // intended caller: for each shown component it mounts one Preview/HTML/CSS/JS
 // tab strip — once per component, not per variant, since the underlying files
 // are identical across every variant — and hands this module the tab strip's
@@ -18,7 +18,7 @@
 // `::highlight(src-comment)` / `::highlight(src-string)`. A copy button next
 // to the tabs puts the active tab's raw text on the clipboard.
 //
-// Known limitation (accepted, not a bug to chase — see reference/preview.md):
+// Known limitation (accepted, not a bug to chase — see vanilla-web/reference/preview.md):
 // the string-detection regex has no concept of a JS regex literal or a
 // template-literal `${…}` interpolation, so either can make the tokenizer
 // misread real code that follows, or swallow an interpolated expression whole

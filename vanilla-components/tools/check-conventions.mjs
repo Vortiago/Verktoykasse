@@ -1,39 +1,21 @@
 #!/usr/bin/env node
-// canonical source: vanilla-web/tools/check-conventions.mjs@0c55dad sha256:fb9aecbaa3b824a2e217012c2315c108cb042dffcfd01340ef5a8b3977fc146c - vendored copy, do not edit here
+// canonical source: vanilla-web/tools/check-conventions.mjs@2e2ba06 sha256:536674f15cba0930e7e6d639a1d4f132f1d23e4a01923b031ce522e53c559c4b - vendored copy, do not edit here
 // @ts-check
-// check-conventions — turns the mechanically checkable SKILL.md invariants into
-// gate failures. An LLM reads the skill once per session; this runs on every
-// check. Three regex-grade rules over app/component/view .js code:
+// check-conventions — the mechanically checkable vanilla-web/SKILL.md invariants, as gate
+// failures. Three rules over app/component/view .js; what each one protects is
+// in vanilla-web/SKILL.md ("Invariants") and vanilla-web/reference/interactivity.md:
 //
-//   signal-listener  addEventListener without { signal } (or { once: true })
-//                    in the options — the no-leaks invariant; a missed signal
-//                    is the classic slow-OOM re-mount leak.
-//   html-string      innerHTML= / outerHTML= / insertAdjacentHTML( / DOMParser —
-//                    "no HTML strings in JS"; markup belongs in <template> .html.
-//   raw-swap         raw replaceChildren( outside the sanctioned helpers —
-//                    polled re-renders must go through renderRegion (innerHTML
-//                    swaps are already caught by html-string).
+//   signal-listener  addEventListener with no { signal } / { once: true }
+//   html-string      innerHTML / outerHTML / insertAdjacentHTML / DOMParser
+//   raw-swap         replaceChildren outside the sanctioned helpers
 //
-// Escapes (both visible in the diff, never silent — and both only count when
-// COMMENT-BORNE: a marker inside a string literal suppresses nothing):
-//   // static-render               trailing on the line — the semantic alias
-//                                  for raw-swap ONLY (it documents WHY: a
-//                                  deliberate one-shot render); suppresses no
-//                                  other rule.
-//   // gate-allow: <rule>[, rule]  trailing on the line — suppresses the named
-//                                  rule(s) there (e.g. // gate-allow: html-string).
-//   // gate-allow: <rule>[, rule]  ANYWHERE in the file's first ~10 lines —
-//                                  suppresses the named rule(s) for the WHOLE
-//                                  file (e.g. a demo/prototype script whose every
-//                                  listener legitimately needs the same escape,
-//                                  in place of one inline comment per call site).
+// Escapes, comment-borne only (one inside a string literal suppresses nothing):
+//   // static-render               raw-swap only — a deliberate one-shot render
+//   // gate-allow: <rule>[, rule]  trailing on the line, or in the first ~10
+//                                  lines for the whole file
 //
-// The canonical lib files are exempt (they ARE the sanctioned helpers):
-// templates.js, render.js, chrome.js, shell.js, store.js, state.js,
-// api-client.js, format.js, live.js, preview.js, preview-source.js, serve.mjs,
-// and everything under lib/, tools/, previews/, plus node_modules/ and
-// testing/. Zero-dep; same shape + exit contract as check-css-vars: file:line
-// findings, exit 1 on any finding.
+// The sanctioned helpers are exempt, since they are what the rules point at:
+// the SKIP_FILES list below, plus lib/, tools/, previews/.
 import { readFileSync } from "node:fs";
 import { ROOT, SKIP, scanPaths, lineOf, stripComments, argSpan, splitTop, commentMatch } from "./js-scan.mjs";
 
@@ -133,7 +115,7 @@ for (const rel of files) {
 }
 
 if (findings.length) {
-  console.error(`✖ ${findings.length} convention violation${findings.length === 1 ? "" : "s"} (see rule docs in tools/check-conventions.mjs):`);
+  console.error(`✖ ${findings.length} convention violation${findings.length === 1 ? "" : "s"} (rules: vanilla-web/SKILL.md invariants):`);
   for (const f of findings) console.error(`  ${f.file}:${f.line}  ${f.rule}  ${f.msg}`);
   process.exit(1);
 }

@@ -1,5 +1,5 @@
 // @ts-check
-// Canonical page-chrome wiring for the vanilla-web conventions (see SKILL.md).
+// Canonical page-chrome wiring for the vanilla-web conventions (see vanilla-web/SKILL.md).
 // Copy into <app>/web/lib/chrome.js; extend, don't fork. Identity: the two
 // pieces of chrome every page wires — the theme toggle and the error bar —
 // shared by the app shell (shell.js) and the standalone component preview
@@ -34,9 +34,9 @@ export function wireTheme(storageKey = "theme") {
 
 /** Surface listener exceptions and unhandled rejections (which vanish silently
  * by default): always logs, fills `<output id="errbar">` when present, and
- * beacons a truncated copy to the server (#62) — the one place an LLM session
+ * beacons a truncated copy to the server — the one place an LLM session
  * maintaining the app can actually read it. `AbortError` is filtered at both
- * hooks (#61): a cancelled fetch/mount from routine navigation is a lifecycle
+ * hooks: a cancelled fetch/mount from routine navigation is a lifecycle
  * event, not a failure, so it's `console.debug`'d instead of painted red — and
  * never beaconed (the relay call sits AFTER the filter, deliberately). The
  * relay is additive only: `sendBeacon` 404s silently when `/api/client-errors`

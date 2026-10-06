@@ -39,7 +39,8 @@ const COMPONENTS = await discoverComponents(ROOT);
  *  lib imports for bridge editions (tpl/pick/slot + defineComponent), register the
  *  inlined <template> (no fetch; CSS ships via styles.css), keep the factory verbatim.
  *  The loaders now live inside defineComponent, so there are no per-factory
- *  loadTemplates/loadCSS calls to strip — only the two imports are swapped. */
+ *  loadTemplates/loadCSS calls to strip — only the two imports are swapped.
+ *  @param {string} name @param {string} factorySrc @param {string} html */
 function neutralize(name, factorySrc, html) {
   let js = factorySrc
     .replace(/^import\s*\{[^}]*\}\s*from\s*["']\.\.\/\.\.\/lib\/templates\.js["'];?\s*$/m, "")
@@ -75,6 +76,11 @@ ${js.trim()}
 `;
 }
 
+/** A shim source generator: the component's PascalCase name and its factory's
+ * `create<Pascal>` identifier in, a dist module's React wrapper source out.
+ * @typedef {(Pascal: string, create: string) => string} Shim */
+
+/** @type {Shim} */
 const declarativeShim = (Pascal, create) => `
 export function ${Pascal}(props) {
   const ref = React.useRef(null);
@@ -90,6 +96,7 @@ export function ${Pascal}(props) {
 }
 `;
 
+/** @type {Shim} */
 const tooltipShim = (Pascal, create) => `
 // Hover-driven tooltip -> demo shim: render a trigger, tether the tip to it and
 // show it immediately so the design-sync card isn't blank.
@@ -112,6 +119,7 @@ export function ${Pascal}({ content = "Tooltip" } = {}) {
 }
 `;
 
+/** @type {Shim} */
 const dialogShim = (Pascal, create) => `
 // A <dialog> is hidden until opened; the card shows it open-inline (non-modal) so
 // it isn't blank. The real component is driven by open()/close() (see prompt.md).
@@ -135,6 +143,7 @@ export function ${Pascal}(props) {
 }
 `;
 
+/** @type {Shim} */
 const menuShim = (Pascal, create) => `
 // Imperative menu -> demo shim: render a trigger, anchor the menu to it and open
 // it on mount so the design-sync card shows the menu, not just a button.
@@ -160,6 +169,7 @@ export function ${Pascal}({ items = [] } = {}) {
 
 // shim name → generator. The single registry: selection, validation, and the
 // "unknown shim" message all derive from it, so adding a shim is one entry here.
+/** @type {Record<string, Shim>} */
 const SHIMS = { declarative: declarativeShim, tooltip: tooltipShim, dialog: dialogShim, menu: menuShim };
 
 // Validate shim names up front — Object.hasOwn (NOT `SHIMS[name]`, which accepts

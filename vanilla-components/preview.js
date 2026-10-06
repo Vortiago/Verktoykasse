@@ -1,7 +1,7 @@
-// canonical source: vanilla-web/preview.js@4a2a40c sha256:0665cb2c2ca65b7ac01ea6dc126e439434447368522e4699b9ae0b52ff537a9b - vendored copy, do not edit here
+// canonical source: vanilla-web/preview.js@2e2ba06 sha256:0dfdd4af7a83b64bee7fef20a2856acb785f3e2c09ef07a76918734802f9749d - vendored copy, do not edit here
 // @ts-check
 // Standalone component preview harness for the vanilla-web conventions
-// (see reference/preview.md). Loaded by preview.html as its OWN page — it is
+// (see vanilla-web/reference/preview.md). Loaded by preview.html as its OWN page — it is
 // NOT part of the app router, so nothing here ships in the real app bundle.
 //
 // Left rail lists components from the generated previews/registry.js; selecting

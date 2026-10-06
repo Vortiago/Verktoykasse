@@ -29,8 +29,10 @@ PAIRS=(
   "chrome.js|lib/chrome.js"
   "tools/check.mjs|tools/check.mjs"
   "tools/check-css-vars.mjs|tools/check-css-vars.mjs"
+  "tools/check-css-tokens.mjs|tools/check-css-tokens.mjs"
   "tools/check-slots.mjs|tools/check-slots.mjs"
   "tools/check-conventions.mjs|tools/check-conventions.mjs"
+  "tools/check-syntax.mjs|tools/check-syntax.mjs"
   "tools/js-scan.mjs|tools/js-scan.mjs"
 )
 

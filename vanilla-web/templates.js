@@ -1,6 +1,6 @@
 // @ts-check
 // Canonical template + view-lifecycle helpers for the vanilla-web conventions
-// (see SKILL.md). Copy into <app>/web/lib/templates.js; extend, don't fork.
+// (see vanilla-web/SKILL.md). Copy into <app>/web/lib/templates.js; extend, don't fork.
 // Identity: the .html seam (fetch a component's markup, clone it, fill it) plus
 // the small view-lifecycle helpers every mount() reaches for (loadCSS, every,
 // withPending). Interaction-safe re-rendering (renderRegion/heldInside/
@@ -18,12 +18,12 @@
 
 /** In-flight-and-done memo, keyed by url: the value IS the single fetch+inline
  * for that url, so two callers racing for the SAME url in the same tick share
- * one promise instead of each independently fetching and appending (#66) — the
+ * one promise instead of each independently fetching and appending — the
  * old `Set<string>` only recorded "done" and left a check-then-act window
  * between the membership test and the add. @type {Map<string, Promise<void>>} */
 const inflight = new Map();
 
-// Trusted Types (#59): loadTemplates is the ONE innerHTML sink in the toolkit
+// Trusted Types: loadTemplates is the ONE innerHTML sink in the toolkit
 // (slot()/pick() write textContent only). require-trusted-types-for 'script'
 // in serve.mjs's CSP would throw on a raw string assignment, so the sink is
 // wrapped in a single named, lazily-created policy — the policy IS the audit
@@ -47,12 +47,12 @@ function trustedHtml(html) {
 /** Fetch one url's template file, inline its <template> nodes, and memoize the
  * WHOLE operation (fetch + inline) in `inflight` — not just the fetch — so
  * concurrent callers for the same url share one fetch AND one DOM append,
- * never two (#66). `p` is stored before either async step settles, so a second
+ * never two. `p` is stored before either async step settles, so a second
  * caller arriving before the first `await` in this tick still finds (and
  * shares) it. Deleted from `inflight` on rejection (abort or a non-ok
  * response) — never on success — so a cancelled/failed load doesn't poison
  * the memo: the next mount's call creates a fresh entry and retries cleanly
- * (#61); a successful load's entry stays forever, same idempotency the old
+ *; a successful load's entry stays forever, same idempotency the old
  * `fetched` Set gave a completed url.
  * @param {string} u @param {AbortSignal} [signal] @returns {Promise<void>} */
 function loadOne(u, signal) {
@@ -77,13 +77,13 @@ function loadOne(u, signal) {
 /** Fetch component .html files and inline their <template> nodes. Idempotent —
  * a url already loaded (or currently loading) is shared, never re-fetched or
  * re-appended: concurrent calls for the SAME url get the SAME in-flight
- * promise (#66) instead of each independently fetching and inlining a
+ * promise instead of each independently fetching and inlining a
  * duplicate `<template>`. Pass an optional trailing options object
  * (`{ signal }`) to make this call's fetches abortable; existing call sites
  * that pass only strings are unaffected. On abort (or any fetch failure) a
  * url's entry is removed from the memo (see loadOne) so a cancelled view's
  * next mount retries the fetch cleanly instead of silently treating it as
- * already loaded (#61).
+ * already loaded.
  * @param {...(string | { signal?: AbortSignal })} args */
 export async function loadTemplates(...args) {
   const last = args[args.length - 1];
