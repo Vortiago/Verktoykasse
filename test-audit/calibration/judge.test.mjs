@@ -132,9 +132,10 @@ test("agreement counts a can-fail value only when every phrasing answered", () =
   assert.equal(rowStatus(partial), "ok");
 });
 
-test("a mean of exactly 0.5 reads as can fail, as the audit reads it", () => {
+test("a mean of exactly 0.5 is undecided and escalates, as the audit reads it", () => {
   const verdict = judge([row({ test: "a", canFail: true }, { ...GOOD, can_fail_a: noul(0.5), can_fail_b: noul(0.5), can_fail_c: noul(0.5) })]);
-  assert.equal(verdict.correct, 1);
+  assert.equal(verdict.correct, 0);
+  assert.equal(verdict.resolved, 0);
 });
 
 test("a case the endpoint never answered fails the run", () => {

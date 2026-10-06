@@ -51,12 +51,12 @@ export function collect(opts = {}) {
     ref = "the index";
     source = "index";
   } else if (head) {
-    const baseRef = base ?? defaultBase(root);
+    const baseRef = base || defaultBase(root);
     spec = [`${baseRef}...${head}`];
     ref = spec[0];
     source = { ref: head };
   } else {
-    const baseRef = base ?? defaultBase(root);
+    const baseRef = base || defaultBase(root);
     const point = tryGit(["merge-base", baseRef, "HEAD"], root)?.trim() || baseRef;
     spec = [point];
     ref = `${point} (from ${baseRef})`;

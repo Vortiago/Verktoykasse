@@ -264,3 +264,35 @@ test("a function or method named after a call head is not a test", () => {
     ["real"],
   );
 });
+
+test("isTestFile accepts the mocha and node:test defaults", () => {
+  assert.equal(isTestFile("test/slug.mjs"), true);
+  assert.equal(isTestFile("tests/unit/slug.js"), true);
+  assert.equal(isTestFile("src/slug-test.js"), true);
+  assert.equal(isTestFile("src/slug_test.ts"), true);
+  assert.equal(isTestFile("test/fixtures/data.json"), false);
+  assert.equal(isTestFile("src/contest/slug.js"), false);
+});
+
+test("mocha's context and specify are a describe and a test", () => {
+  const text = `describe("cart", () => {
+  context("when empty", () => {
+    beforeEach(() => { cart.clear(); });
+    it("has no total", () => { expect(cart.total).toBe(0); });
+  });
+  it("adds an item", () => { cart.add(1); expect(cart.size).toBe(1); });
+  specify("removes an item", () => { cart.remove(1); expect(cart.size).toBe(0); });
+});`;
+  const tests = extractTests(text, "cart.test.js");
+  assert.deepEqual(tests.map((t) => [t.name, t.path, t.fixtures.length]), [
+    ["has no total", ["cart", "when empty"], 1],
+    ["adds an item", ["cart"], 0],
+    ["removes an item", ["cart"], 0],
+  ]);
+});
+
+test("a keyword read as a property is a value, so the slash after it is division", () => {
+  const text = `it("ratio", () => { const r = stats.new / total; expect(r).toBe(0.5); });
+it("matches", () => { expect(/a\\)/.test("a)")).toBe(true); });`;
+  assert.deepEqual(extractTests(text, "stats.test.js").map((t) => t.name), ["ratio", "matches"]);
+});

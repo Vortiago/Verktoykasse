@@ -11,13 +11,15 @@ import { codeOnly } from "./code-only.mjs";
 
 /** @typedef {import("../types.d.ts").AuditTest} AuditTest */
 
-/** A path is a test file when it ends in .test./.spec. or sits under __tests__. */
-const TEST_FILE = /(?:\.(?:test|spec)\.[cm]?[jt]sx?$)|(?:^|[\\/])__tests__[\\/]/;
+/** A path is a test file when it ends in .test./.spec. (or mocha's -test./_test.),
+ * sits under __tests__, or is a script under a test/ or tests/ folder (the mocha
+ * and node:test default). */
+const TEST_FILE = /(?:[._-](?:test|spec)\.[cm]?[jt]sx?$)|(?:^|[\\/])__tests__[\\/]|(?:^|[\\/])tests?[\\/](?:.*[\\/])?[^\\/]+\.[cm]?[jt]sx?$/;
 
 /** The call heads that open a scope or a test: a keyword and its `.member`
  * chain, such as `test.skip.each` or `it.concurrent`. */
 const CALL =
-  /(^|[^\w$.])(xdescribe|fdescribe|describe|suite|xit|xtest|fit|test|it|beforeEach|beforeAll|afterEach|afterAll|before|after)((?:\.(?:skip|only|each|for|todo|concurrent|failing|fails|sequential|skipIf|runIf))*)\s*\(/;
+  /(^|[^\w$.])(xdescribe|fdescribe|describe|suite|context|xcontext|xit|xtest|fit|test|it|specify|xspecify|beforeEach|beforeAll|afterEach|afterAll|before|after)((?:\.(?:skip|only|each|for|todo|concurrent|failing|fails|sequential|skipIf|runIf))*)\s*\(/;
 
 /** Members whose first call takes a table or a condition and returns the test
  * function, so the test is the second call: `test.each([...])("name", fn)`. */
@@ -29,9 +31,10 @@ const EACH_CALL = /\s*\(/y;
 /** The longest describe head the state carries; a longer one is cut. */
 const HEAD_CAP = 160;
 
-/** `suite`, `before` and `after` are node:test's names for a describe and its hooks. */
-const DESCRIBES = new Set(["describe", "xdescribe", "fdescribe", "suite"]);
-const TESTS = new Set(["test", "it", "xit", "xtest", "fit"]);
+/** `suite`, `before` and `after` are node:test's names for a describe and its
+ * hooks; `context` and `specify` are mocha's aliases for describe and it. */
+const DESCRIBES = new Set(["describe", "xdescribe", "fdescribe", "suite", "context", "xcontext"]);
+const TESTS = new Set(["test", "it", "xit", "xtest", "fit", "specify", "xspecify"]);
 const FIXTURES = new Set(["beforeEach", "beforeAll", "afterEach", "afterAll", "before", "after"]);
 
 /**

@@ -218,3 +218,12 @@ test("each check yields one result, and the reasons come in role order", () => {
   assert.deepEqual(result.checks.runs, { value: false, group: result.checks.runs.group, reasons: ["does not run"], flags: [] });
   assert.deepEqual(result.checks.asserts.flags, ["nothing"]);
 });
+
+test("an exact tie escalates instead of passing", () => {
+  const gate = verdictFrom(TEST, { ...goodAnswers(), runs_a: noul(0.5), runs_b: noul(0.5) });
+  assert.equal(gate.checks.runs.value, undefined);
+  assert.match(gate.reasons.join(" "), /runs undecided/);
+  const level = verdictFrom(TEST, { ...goodAnswers(), verdict: score(1.5) });
+  assert.equal(level.score.label, "weak");
+  assert.equal(level.needsEyes, true);
+});

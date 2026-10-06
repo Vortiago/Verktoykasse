@@ -108,6 +108,8 @@ A test escalates, and needs eyes, for each of these reasons:
   interaction only, or nothing.
 - The verdict is slop or weak.
 - A confident "cannot fail" sits beside a good or strong verdict.
+- A yes/no judgement lands exactly on 0.5, or the verdict score lands exactly
+  halfway between two levels. A tie takes the lower level.
 - A test file that the change touches holds no test the extractor can read. The
   report shows it as `(no test found)`, so a form the extractor misses is never
   a clean pass.

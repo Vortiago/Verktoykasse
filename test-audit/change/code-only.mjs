@@ -157,6 +157,8 @@ function canStartRegex(out, next) {
   if (!/[\w$]/.test(char)) return false;
   let start = end;
   while (start >= 0 && /[\w$]/.test(out[start])) start -= 1;
+  // A keyword read as a property (`stats.new / x`, `opts?.in / 2`) is a value.
+  if (out[start] === ".") return false;
   return REGEX_KEYWORDS.has(out.slice(start + 1, end + 1));
 }
 

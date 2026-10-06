@@ -192,7 +192,10 @@ function yesNo(check, answers) {
   const reasons = [];
   if (group.values.includes(null)) reasons.push(`${check.name} not fully answered`);
   if (group.unstable) reasons.push(`${check.name} ${group.state} (spread ${group.spread?.toFixed(2) ?? "-"})`);
-  const value = committed(group) && group.mean !== null ? group.mean >= YES : undefined;
+  // An exact tie is no answer: it would otherwise read as yes and pass a gate.
+  const tied = committed(group) && group.mean === YES;
+  if (tied) reasons.push(`${check.name} undecided (mean ${YES})`);
+  const value = committed(group) && group.mean !== null && !tied ? group.mean > YES : undefined;
   return { value, group, reasons, flags: [] };
 }
 
@@ -264,11 +267,13 @@ function scoreOf(answer) {
 
 /**
  * The score answer is a continuous expected level, so it lands between two
- * levels. Round to the nearest level; a value off the scale is not a verdict.
+ * levels. Round to the nearest level, a tie down; a value off the scale is not a verdict.
  * @param {number | undefined} score @param {string[]} levels
  * @returns {string | undefined}
  */
 function levelOf(score, levels) {
   if (score === undefined || score < -0.5 || score >= levels.length - 0.5) return undefined;
-  return levels[Math.round(score)];
+  // A score halfway between two levels takes the lower one, so a tie between
+  // weak and good escalates rather than passes.
+  return levels[Math.ceil(score - 0.5)];
 }
