@@ -219,6 +219,14 @@ endpoint and reports agreement with the labels. The corpus covers each named
 defect, clean tests of the common types, and mixed cases that should escalate. A
 target in `--targets` is `url|model`, or a bare `model` for the configured URL.
 
+A case sends the model what a real audit sends: the test, and, when the label
+names a `code` file, the code under test as the change context. Give a case its
+`code` file when the right answer depends on the code. For example, a test that
+asserts `taxRates()` equals `TAX_RATES` agrees by construction only if
+`taxRates()` returns that same constant. The model sees neutral paths
+(`example.test.mjs`, `src/example.mjs`), because a case file's name states its
+label.
+
 A run passes acceptance when all of these are true:
 
 - No defect case passes silently.

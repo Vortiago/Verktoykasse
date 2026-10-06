@@ -18,11 +18,13 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 /** The file name the model sees for every case. A case file's own name states
  * its label (`tautology-constant.case.mjs`), so sending it would leak the answer. */
 const CASE_FILE = "example.test.mjs";
+/** The neutral path the code under test sits at in the change context. */
+const CODE_FILE = "src/example.mjs";
 
 /** @typedef {import("../types.d.ts").AuditTest} AuditTest */
 /** @typedef {import("../types.d.ts").CalibrationLabel} CalibrationLabel */
 /** @typedef {import("../types.d.ts").CalibrationRow} CalibrationRow */
-/** @typedef {{ label: CalibrationLabel, test?: AuditTest, error?: string }} PreparedCase */
+/** @typedef {{ label: CalibrationLabel, test?: AuditTest, code?: string, error?: string }} PreparedCase */
 
 /**
  * @param {{ targets: Array<{url: string, model: string}>, benchmark?: boolean, onProgress?: (event: { target: string, index: number, total: number, status: string, test: string }) => void }} opts
@@ -76,10 +78,22 @@ function prepareCase(label) {
   try {
     const text = readFileSync(join(HERE, label.file), "utf8");
     const test = extractTests(text, CASE_FILE).find((candidate) => candidate.name === label.test);
-    return { label, test };
+    const code = label.code ? readFileSync(join(HERE, label.code), "utf8") : undefined;
+    return { label, test, code };
   } catch (err) {
     return { label, error: `cannot read ${label.file}: ${err instanceof Error ? err.message : err}` };
   }
+}
+
+/**
+ * The code under test as the change context a real audit sends: the non-test
+ * part of a diff. The path is neutral, because a case file's name states its
+ * label.
+ * @param {string} code
+ */
+export function codeContext(code) {
+  const lines = code.replace(/\n$/, "").split("\n");
+  return [`diff --git a/${CODE_FILE} b/${CODE_FILE}`, "new file mode 100644", "--- /dev/null", `+++ b/${CODE_FILE}`, `@@ -0,0 +1,${lines.length} @@`, ...lines.map((line) => `+${line}`)].join("\n");
 }
 
 /**
@@ -93,7 +107,8 @@ async function runCase(item, ctx) {
   const result = await classify(item.test, {
     url: ctx.target.url,
     model: ctx.target.model,
+    changeContext: item.code ? codeContext(item.code) : "",
     onResponse: ctx.onResponse,
   });
-  return { label: item.label, test: item.test, result };
+  return { label: item.label, test: item.test, code: item.code, result };
 }

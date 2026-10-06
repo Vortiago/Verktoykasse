@@ -88,6 +88,9 @@ export interface CalibrationLabel {
   deterministic?: boolean;
   /** What the case shows, in prose. */
   note?: string;
+  /** A file beside the case that holds the code under test. The runner sends it
+   * as the change context, the way a real audit sends the non-test diff. */
+  code?: string;
   /** The fragment in labels/ the case comes from, and the sources it cites. */
   group?: string;
   sources?: Array<{ name: string; url?: string }>;
@@ -98,6 +101,8 @@ export interface CalibrationRow {
   label: CalibrationLabel;
   /** The test the extractor found in the case file, as the endpoint saw it. */
   test?: AuditTest;
+  /** The code under test the endpoint saw as the change context, if the case has one. */
+  code?: string;
   result?: AuditResult;
   error?: string;
 }

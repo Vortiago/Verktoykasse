@@ -5,6 +5,10 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { judge, rowStatus } from "./judge.mjs";
 import { loadLabels } from "./labels.mjs";
+import { codeContext } from "./runner.mjs";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 /** @typedef {import("../types.d.ts").CalibrationLabel} CalibrationLabel */
 /** @typedef {import("../types.d.ts").CalibrationRow} CalibrationRow */
@@ -158,4 +162,13 @@ test("a case the endpoint never answered fails the run", () => {
   assert.equal(verdict.unresolved, 2);
   assert.equal(verdict.pass, false);
   assert.equal(rowStatus(rows[0]), "ERROR");
+});
+
+test("every label's code file reads, and the runner sends it as a new-file diff", () => {
+  const here = dirname(fileURLToPath(import.meta.url));
+  const withCode = loadLabels().cases.filter((label) => label.code);
+  assert.ok(withCode.length > 0);
+  for (const label of withCode) assert.ok(readFileSync(join(here, String(label.code)), "utf8").length > 0, label.code);
+  const diff = codeContext("export const a = 1;\n");
+  assert.equal(diff, "diff --git a/src/example.mjs b/src/example.mjs\nnew file mode 100644\n--- /dev/null\n+++ b/src/example.mjs\n@@ -0,0 +1,1 @@\n+export const a = 1;");
 });

@@ -63,6 +63,7 @@
     },
     {
       "file": "cases/asserts-constant-copy.case.mjs",
+      "code": "cases/asserts-constant-copy.code.mjs",
       "test": "taxes the standard rate",
       "defect": "hardcoded-data",
       "canFail": false,
@@ -72,6 +73,7 @@
     },
     {
       "file": "cases/asserts-status-table.case.mjs",
+      "code": "cases/asserts-status-table.code.mjs",
       "test": "resolves the status labels",
       "defect": "hardcoded-data",
       "canFail": false,

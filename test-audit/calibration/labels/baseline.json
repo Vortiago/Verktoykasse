@@ -57,6 +57,7 @@
     },
     {
       "file": "cases/wrong-reason-mock.case.mjs",
+      "code": "cases/wrong-reason-mock.code.mjs",
       "test": "saves the user",
       "canFail": true,
       "mustEscalate": true,

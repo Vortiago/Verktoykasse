@@ -9,6 +9,7 @@
   "cases": [
     {
       "file": "cases/wrongreason-asserts-input.case.mjs",
+      "code": "cases/wrongreason-asserts-input.code.mjs",
       "test": "normalise keeps the title text",
       "defect": "wrong-reason",
       "canFail": true,
@@ -18,6 +19,7 @@
     },
     {
       "file": "cases/wrongreason-absent-record.case.mjs",
+      "code": "cases/wrongreason-absent-record.code.mjs",
       "test": "reports no booking for a free slot",
       "defect": "wrong-reason",
       "canFail": true,
@@ -26,6 +28,7 @@
     },
     {
       "file": "cases/wrongreason-passthrough-argument.case.mjs",
+      "code": "cases/wrongreason-passthrough-argument.code.mjs",
       "test": "builds a job with the given name",
       "defect": "wrong-reason",
       "canFail": true,
