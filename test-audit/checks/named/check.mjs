@@ -1,5 +1,5 @@
-// The named check: does the test's name state the behaviour and the expected
-// result, not a vague label? A "no" raises the `vague-name` flag.
+// The named check: does the test's name state the behaviour it checks, not a
+// vague label? A "no" raises the `vague-name` flag.
 //
 // Sources:
 // - Gerard Meszaros, xUnit Test Patterns (2007): Obscure Test
@@ -17,10 +17,10 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   flag: "vague-name",
   questions: {
     named: noul(
-      "Does the test's name state the behaviour and its expected result, rather than a vague label such as works, test1, or should be fine?",
-      "the name states the behaviour and the expected result",
-      "the name is vague",
+      "Does the test's name state the behaviour it checks, rather than a vague label such as works, test1, or should be fine?",
+      "the name says which behaviour the test checks",
+      "the name is a vague label that does not say which behaviour the test checks",
     ),
   },
-  rubric: `Name: states the behaviour and the expected result, not a vague label.`,
+  rubric: `Name: states the behaviour the test checks, not a vague label.`,
 });

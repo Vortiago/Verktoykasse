@@ -102,7 +102,8 @@ A test escalates, and needs eyes, for each of these reasons:
 - The paraphrases disagree. The spread of the `can_fail_*` set, the `runs_*`
   pair, or the `positive_*` pair is above `TEST_AUDIT_STABLE_BAND`, or
   `asserts_a` and `asserts_b` differ.
-- The test does not run.
+- The test does not run, or an only or focus marker in its file leaves other
+  tests out of the run.
 - The test has no positive assertion.
 - The test asserts something other than behaviour: hardcoded data, shape only,
   interaction only, or nothing.
@@ -215,15 +216,15 @@ only its folder and one line in `checks/index.mjs`.
 | [`can-fail`](checks/can-fail/check.mjs) | `can_fail_a`, `can_fail_b` (negated), `can_fail_c` | can-fail | tautology, self-reference, vacuous test, passes-with-zero | 9 |
 | [`asserts`](checks/asserts/check.mjs) | `asserts_a`, `asserts_b` (order swapped) | asserts | hardcoded data, shape only, interaction only, nothing | 12 |
 | [`positive`](checks/positive/check.mjs) | `positive_a`, `positive_b` (negated) | gate: no positive assertion | only-negative test | 5 |
-| [`runs`](checks/runs/check.mjs) | `runs_a`, `runs_b` (negated) | gate: does not run | a skip, todo, only, or focus marker on the test, on a describe around it, or on another test in the file | 4 |
+| [`runs`](checks/runs/check.mjs) | `runs_a`, `runs_b` (negated) | gate: does not run, or narrows the run | a skip or todo marker on the test or on a describe around it, or an only or focus marker anywhere in the file | 4 |
 | [`type`](checks/type/check.mjs) | `type` | type | unit, integration, regression, e2e, smoke, characterization | 0 |
 | [`observable`](checks/observable/check.mjs) | `observable` | flag `implementation-coupled` | private internals, call order, exact collaborator interactions | 0 |
 | [`conditional`](checks/conditional/check.mjs) | `conditional` | flag `conditional` | a branch, loop, or catch that can leave the assertion unrun | 1 |
 | [`isolated`](checks/isolated/check.mjs) | `isolated` | flag `order-dependent` | interacting tests, shared mutable state, order dependence | 0 |
 | [`controlled`](checks/controlled/check.mjs) | `controlled` | flag `uncontrolled-resource` | an assumed network, clock, filesystem, or environment | 0 |
 | [`specific`](checks/specific/check.mjs) | `specific` | flag `weak-assert` | a weak assertion, where a more specific one is possible | 0 |
-| [`named`](checks/named/check.mjs) | `named` | flag `vague-name` | a vague name that states no behaviour and no result | 0 |
-| [`deterministic`](checks/deterministic/check.mjs) | `deterministic` | flag `non-deterministic` | a sleep, the clock, the network, randomness, order | 6 |
+| [`named`](checks/named/check.mjs) | `named` | flag `vague-name` | a vague name that states no behaviour | 0 |
+| [`deterministic`](checks/deterministic/check.mjs) | `deterministic` | flag `non-deterministic` | a sleep, the real clock, the network, real randomness, an unguaranteed order | 6 |
 | [`one-thing`](checks/one-thing/check.mjs) | `one_thing` | flag `eager` | several unrelated behaviours in one body | 2 |
 | [`name-matches`](checks/name-matches/check.mjs) | `name_matches` | flag `name-mismatch` | name-only test: the body asserts something other than the name | 4 |
 | [`resilient`](checks/resilient/check.mjs) | `resilient` | flag `structure-dependent` | a behaviour-preserving refactor breaks the test | 0 |

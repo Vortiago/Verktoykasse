@@ -20,23 +20,26 @@ import { noul } from "../../classifier/systemone.mjs";
 export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   name: "runs",
   role: "gate",
-  reason: "does not run",
+  // A skip or todo stops this test; an only or focus marker, on this test or
+  // another, stops the rest of the file. Both escalate, under one reason.
+  reason: "does not run, or narrows the run",
   questions: {
     // `scope` (the describe heads around the test) and the `focus-in-file` flag
     // in the state are what let the model answer the "around it" parts.
     runs_a: noul(
-      "Is this test free of markers that change whether it runs? Check the test, each describe around it, and the other tests in the file.",
-      "no skip, todo, only, or focus marker affects it",
-      "a skip, todo, only, or focus marker affects it",
+      "Does the whole file run as written? There is no skip or todo marker on this test or on a describe around it, and no only or focus marker on any test or describe in the file, this one included.",
+      "this test runs, and no marker stops another test in the file from running",
+      "a skip or todo stops this test, or an only or focus marker stops other tests",
     ),
     // The negated twin of `runs_a`.
     runs_b: noul(
-      "Is there a skip, todo, only, or focus marker on this test or on a describe around it, or an only or focus marker on another test in the file?",
-      "a marker changes whether it runs",
-      "no marker changes whether it runs",
+      "Does a marker change what runs? Look for a skip or todo marker on this test or on a describe around it, and an only or focus marker on any test or describe in the file, this one included.",
+      "a skip or todo stops this test, or an only or focus marker stops other tests",
+      "this test runs, and no marker stops another test in the file from running",
     ),
   },
   negated: ["runs_b"],
-  rubric: `Runs: no skip, todo, only, or focus marker is on the test or on a describe
-  around it, and no only or focus marker is on another test in the file.`,
+  rubric: `Runs: no skip or todo marker is on the test or on a describe around it, so the
+  test runs. No only or focus marker is anywhere in the file, on this test or
+  another, so no other test is left out of the run.`,
 });

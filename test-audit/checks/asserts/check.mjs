@@ -30,7 +30,7 @@ import { choice } from "../../classifier/systemone.mjs";
 
 /** The kinds of assertion, best first: the first kind is the one real guard. */
 const KINDS = {
-  behaviour: "it checks the output value or observable behaviour the code produces, against a literal expected result",
+  behaviour: "it checks the output value or observable behaviour the code produces, against an expected value the test fixes itself, as a literal or a named constant, not one taken from the code under test",
   "hardcoded-data": "it repeats the same data the code under test is built from, so it agrees by construction",
   "shape-only": "it checks only the type, length, or keys of a result, not its content",
   "interaction-only": "it checks only that a mock or spy was called, not the behaviour it stands in for",

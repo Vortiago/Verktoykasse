@@ -214,8 +214,8 @@ test("each check yields one result, and the reasons come in role order", () => {
   const answers = { ...goodAnswers(), can_fail_c: noul(0.4), asserts_a: choice("nothing"), asserts_b: choice("nothing"), runs_a: noul(0.1), runs_b: noul(0.9), verdict: score(1) };
   const result = verdictFrom(TEST, answers, { error: "partial" });
   assert.deepEqual(Object.keys(result.checks), CHECKS.map((check) => check.name));
-  assert.deepEqual(result.reasons, ["no answers (partial)", "can_fail unstable (spread 0.59)", "does not run", "asserts nothing", "verdict weak"]);
-  assert.deepEqual(result.checks.runs, { value: false, group: result.checks.runs.group, reasons: ["does not run"], flags: [] });
+  assert.deepEqual(result.reasons, ["no answers (partial)", "can_fail unstable (spread 0.59)", "does not run, or narrows the run", "asserts nothing", "verdict weak"]);
+  assert.deepEqual(result.checks.runs, { value: false, group: result.checks.runs.group, reasons: ["does not run, or narrows the run"], flags: [] });
   assert.deepEqual(result.checks.asserts.flags, ["nothing"]);
 });
 

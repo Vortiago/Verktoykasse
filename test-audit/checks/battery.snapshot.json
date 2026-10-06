@@ -27,7 +27,7 @@
     "type": "choice",
     "instructions": "What does this test actually assert about the code under test?",
     "criteria": {
-      "behaviour": "it checks the output value or observable behaviour the code produces, against a literal expected result",
+      "behaviour": "it checks the output value or observable behaviour the code produces, against an expected value the test fixes itself, as a literal or a named constant, not one taken from the code under test",
       "hardcoded-data": "it repeats the same data the code under test is built from, so it agrees by construction",
       "shape-only": "it checks only the type, length, or keys of a result, not its content",
       "interaction-only": "it checks only that a mock or spy was called, not the behaviour it stands in for",
@@ -42,7 +42,7 @@
       "interaction-only": "it checks only that a mock or spy was called, not the behaviour it stands in for",
       "shape-only": "it checks only the type, length, or keys of a result, not its content",
       "hardcoded-data": "it repeats the same data the code under test is built from, so it agrees by construction",
-      "behaviour": "it checks the output value or observable behaviour the code produces, against a literal expected result"
+      "behaviour": "it checks the output value or observable behaviour the code produces, against an expected value the test fixes itself, as a literal or a named constant, not one taken from the code under test"
     }
   },
   "positive_a": {
@@ -63,18 +63,18 @@
   },
   "runs_a": {
     "type": "noul",
-    "instructions": "Is this test free of markers that change whether it runs? Check the test, each describe around it, and the other tests in the file.",
+    "instructions": "Does the whole file run as written? There is no skip or todo marker on this test or on a describe around it, and no only or focus marker on any test or describe in the file, this one included.",
     "criteria": {
-      "true": "no skip, todo, only, or focus marker affects it",
-      "false": "a skip, todo, only, or focus marker affects it"
+      "true": "this test runs, and no marker stops another test in the file from running",
+      "false": "a skip or todo stops this test, or an only or focus marker stops other tests"
     }
   },
   "runs_b": {
     "type": "noul",
-    "instructions": "Is there a skip, todo, only, or focus marker on this test or on a describe around it, or an only or focus marker on another test in the file?",
+    "instructions": "Does a marker change what runs? Look for a skip or todo marker on this test or on a describe around it, and an only or focus marker on any test or describe in the file, this one included.",
     "criteria": {
-      "true": "a marker changes whether it runs",
-      "false": "no marker changes whether it runs"
+      "true": "a skip or todo stops this test, or an only or focus marker stops other tests",
+      "false": "this test runs, and no marker stops another test in the file from running"
     }
   },
   "type": {
@@ -131,15 +131,15 @@
   },
   "named": {
     "type": "noul",
-    "instructions": "Does the test's name state the behaviour and its expected result, rather than a vague label such as works, test1, or should be fine?",
+    "instructions": "Does the test's name state the behaviour it checks, rather than a vague label such as works, test1, or should be fine?",
     "criteria": {
-      "true": "the name states the behaviour and the expected result",
-      "false": "the name is vague"
+      "true": "the name says which behaviour the test checks",
+      "false": "the name is a vague label that does not say which behaviour the test checks"
     }
   },
   "deterministic": {
     "type": "noul",
-    "instructions": "Does this test give the same result on every run, with no reliance on time, order, the network, or a sleep?",
+    "instructions": "Does this test give the same result on every run? It does not when it reads the real clock or real randomness, calls the network, waits on a sleep, or relies on an order nothing guarantees. A clock, timer, or random source that the test fakes or seeds is under its control and is fine.",
     "criteria": {
       "true": "it gives the same result every run",
       "false": "it can pass or fail for reasons outside the code under test"

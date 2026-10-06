@@ -6,8 +6,9 @@ Falsifiable: a change to the code under test makes the test fail.
   an assertion on data the code copies straight from its input.
 Positive assertion: the test asserts the behaviour that must exist, not only
   that something is absent, empty, or does not throw.
-Runs: no skip, todo, only, or focus marker is on the test or on a describe
-  around it, and no only or focus marker is on another test in the file.
+Runs: no skip or todo marker is on the test or on a describe around it, so the
+  test runs. No only or focus marker is anywhere in the file, on this test or
+  another, so no other test is left out of the run.
 Observable behaviour: output or effects a caller can observe. Private internals,
   call order, and that a mock was called are not observable behaviour.
 Conditional test logic: a branch, loop, or catch that can leave the assertion
@@ -18,7 +19,7 @@ Controlled resources: the test fixes the time, network, filesystem, and
   environment it needs; it does not assume they are present.
 Specific assertion: the strongest assertion that would catch the failure. Weaker
   forms (toBeDefined, toBeTruthy, typeof, Array.isArray, a length) pass on wrong output.
-Name: states the behaviour and the expected result, not a vague label.
+Name: states the behaviour the test checks, not a vague label.
 Structure-insensitive: a refactor of the code under test that keeps the behaviour
   does not break the test.
 Diagnostic: a failure names the assertion that failed and the expected value.
@@ -34,8 +35,9 @@ Asserts the output: the assertion reads the value the code under test produced,
 Automated: the test reaches pass or fail with no person doing or reading anything.
 Restores state: the test clears or restores every global, environment variable,
   timer, and spy it changes, so it leaves nothing for the next test.
-Deterministic: same result every run, with no sleep, clock, network, randomness, or
-  order dependence.
+Deterministic: same result every run, with no sleep, real clock, network, real
+  randomness, or unguaranteed order. A faked or seeded clock, timer, or random
+  source is fine.
 One behaviour: the body checks one thing, not several unrelated behaviours.
 Type: unit, integration, regression, e2e, smoke, or characterization, by what it
   actually exercises.

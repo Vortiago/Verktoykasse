@@ -1,6 +1,6 @@
-// canonical source: test-audit/checks/named/check.mjs@4ba9d42 sha256:f87a78ff886c1cc4b3c809a4f583f869d9207b0bbab69cfbe3e218b4c762b3f8 - vendored copy, do not edit here
-// The named check: does the test's name state the behaviour and the expected
-// result, not a vague label? A "no" raises the `vague-name` flag.
+// canonical source: test-audit/checks/named/check.mjs@079f685 sha256:5d5c4ba5058f79254e6e575e6157cefb3f218ad5ae704d783b7966040ceab2ac - vendored copy, do not edit here
+// The named check: does the test's name state the behaviour it checks, not a
+// vague label? A "no" raises the `vague-name` flag.
 //
 // Sources:
 // - Gerard Meszaros, xUnit Test Patterns (2007): Obscure Test
@@ -18,10 +18,10 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   flag: "vague-name",
   questions: {
     named: noul(
-      "Does the test's name state the behaviour and its expected result, rather than a vague label such as works, test1, or should be fine?",
-      "the name states the behaviour and the expected result",
-      "the name is vague",
+      "Does the test's name state the behaviour it checks, rather than a vague label such as works, test1, or should be fine?",
+      "the name says which behaviour the test checks",
+      "the name is a vague label that does not say which behaviour the test checks",
     ),
   },
-  rubric: `Name: states the behaviour and the expected result, not a vague label.`,
+  rubric: `Name: states the behaviour the test checks, not a vague label.`,
 });

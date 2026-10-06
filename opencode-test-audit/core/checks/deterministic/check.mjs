@@ -1,4 +1,4 @@
-// canonical source: test-audit/checks/deterministic/check.mjs@4ba9d42 sha256:a926fa4ebcd0e55dadd51a6ed5013c103246082b0d4d11bf9300b58355c9c56e - vendored copy, do not edit here
+// canonical source: test-audit/checks/deterministic/check.mjs@079f685 sha256:b04ac242d88990fced858305e4e972f73639c6cbbc84b0cf803b61647b3a25a2 - vendored copy, do not edit here
 // The deterministic check: does the test give the same result on every run? A
 // sleep, the clock, the network, randomness, or order dependence can make it pass
 // or fail for reasons outside the code under test. A "no" raises the
@@ -27,11 +27,12 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   flag: "non-deterministic",
   questions: {
     deterministic: noul(
-      "Does this test give the same result on every run, with no reliance on time, order, the network, or a sleep?",
+      "Does this test give the same result on every run? It does not when it reads the real clock or real randomness, calls the network, waits on a sleep, or relies on an order nothing guarantees. A clock, timer, or random source that the test fakes or seeds is under its control and is fine.",
       "it gives the same result every run",
       "it can pass or fail for reasons outside the code under test",
     ),
   },
-  rubric: `Deterministic: same result every run, with no sleep, clock, network, randomness, or
-  order dependence.`,
+  rubric: `Deterministic: same result every run, with no sleep, real clock, network, real
+  randomness, or unguaranteed order. A faked or seeded clock, timer, or random
+  source is fine.`,
 });
