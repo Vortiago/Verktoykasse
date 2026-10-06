@@ -1,19 +1,20 @@
 #!/usr/bin/env bash
 # Install from a machine that has no clone of this repo, such as a Claude Code
-# web session. It clones the repo (or updates the clone it made before), then
-# runs install.sh with the same arguments. Meant for an environment's setup
-# script:
+# web session. It fetches only the directories you name (plus the files at the
+# repo root), then runs install.sh with the same arguments. Meant for an
+# environment's setup script:
 #
 #   curl -fsSL https://raw.githubusercontent.com/Vortiago/Verktoykasse/main/bootstrap.sh \
 #     | bash -s -- clean-code simplified-technical-english
 #
-# Name what to install. With no names, install.sh installs every skill and
-# both rules directories.
+# Name what to install. With no names, it fetches the whole tree, and
+# install.sh installs every skill and both rules directories. A later run adds
+# its names to the ones already fetched.
 #
-# VERKTOYKASSE_DIR  where the clone lives  (default ~/.local/share/verktoykasse)
+# VERKTOYKASSE_DIR  where the checkout lives  (default ~/.local/share/verktoykasse)
 # VERKTOYKASSE_REF  branch, tag or full commit SHA  (default main)
 #
-# The installed files are symlinks into the clone, so keep the clone.
+# The installed files are symlinks into the checkout, so keep it.
 set -euo pipefail
 
 # Everything runs from main(), called on the last line. Under `curl | bash`,
@@ -24,20 +25,42 @@ main() {
   local ref=${VERKTOYKASSE_REF:-main}
   local url=https://github.com/Vortiago/Verktoykasse.git
 
-  if [[ -d $dir/.git ]]; then
-    git -C "$dir" fetch --quiet --depth 1 origin "$ref"
-    git -C "$dir" checkout --quiet --force FETCH_HEAD
-  else
-    mkdir -p "$(dirname "$dir")"
-    git clone --quiet --depth 1 "$url" "$dir"
-    if [[ $ref != main ]]; then
-      git -C "$dir" fetch --quiet --depth 1 origin "$ref"
-      git -C "$dir" checkout --quiet FETCH_HEAD
-    fi
-  fi
-  echo "clone   $dir @ $(git -C "$dir" rev-parse --short HEAD)"
+  # The directory names among the arguments: every word but a flag and the
+  # value of --target.
+  local names=() arg skip=
+  for arg in "$@"; do
+    if [[ $skip ]]; then skip=; continue; fi
+    case $arg in
+      --target) skip=1 ;;
+      -*) ;;
+      *) names+=("$arg") ;;
+    esac
+  done
 
-  # </dev/null: a skill installer that prompts takes its non-interactive default.
+  local fresh=
+  if [[ ! -d $dir/.git ]]; then
+    git init --quiet "$dir"
+    git -C "$dir" remote add origin "$url"
+    fresh=1
+  fi
+
+  # Cone mode always keeps the files at the root, so install.sh comes along.
+  # A full checkout stays full: narrowing it would cut links an earlier run made.
+  if [[ ${#names[@]} -eq 0 ]]; then
+    [[ $fresh ]] || git -C "$dir" sparse-checkout disable
+  elif [[ $fresh ]]; then
+    git -C "$dir" sparse-checkout set --cone "${names[@]}"
+  elif [[ $(git -C "$dir" config --get core.sparseCheckout) == true ]]; then
+    git -C "$dir" sparse-checkout add "${names[@]}"
+  fi
+
+  # Blobless and shallow: the fetch carries one commit and its trees, and the
+  # checkout downloads the file contents of the sparse directories only.
+  git -C "$dir" fetch --quiet --depth 1 --filter=blob:none origin "$ref"
+  git -C "$dir" checkout --quiet --force FETCH_HEAD
+  echo "fetch   $dir @ $(git -C "$dir" rev-parse --short HEAD)"
+
+  # </dev/null keeps an installer that reads stdin off the rest of this script.
   "$dir/install.sh" "$@" </dev/null
 }
 
