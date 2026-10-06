@@ -31,6 +31,12 @@ const EACH_CALL = /\s*\(/y;
 /** The longest describe head the state carries; a longer one is cut. */
 const HEAD_CAP = 160;
 
+/** The longest setup one scope contributes to the state; a longer one is cut. */
+const SETUP_CAP = 800;
+
+/** An import statement, matched the way extractImports matches it. */
+const IMPORT = /^[ \t]*import\b(?!\s*[.(])[\s\S]*?(?:from\s*)?["'][^"']*["'][ \t]*;?/gm;
+
 /** `suite`, `before` and `after` are node:test's names for a describe and its
  * hooks; `context` and `specify` are mocha's aliases for describe and it. */
 const DESCRIBES = new Set(["describe", "xdescribe", "fdescribe", "suite", "context", "xcontext"]);
@@ -59,7 +65,7 @@ export function extractTests(text, file) {
   // describe scope or per test.
   const code = codeOnly(text);
   const ctx = { file, imports: extractImports(text), lineStarts: lineStarts(text), out, focused: false };
-  walk(text, code, 0, text.length, [], [], [], ctx);
+  walk(text, code, 0, text.length, [], [], [], [], ctx);
   // An only or focus marker anywhere narrows the whole run, so every test in the
   // file carries the note, and `runs` can see it beside a plain sibling test.
   if (ctx.focused) for (const test of out) test.flags.push("focus-in-file");
@@ -96,18 +102,24 @@ function lineAt(starts, offset) {
  * @param {string[]} path
  * @param {string[]} inherited
  * @param {string[]} heads the enclosing describes' call heads, outermost first
+ * @param {string[]} outerSetup the setup code of the enclosing scopes, outermost first
  * @param {{ file: string, imports: string[], lineStarts: number[], out: AuditTest[], focused: boolean }} ctx
  */
-function walk(text, code, start, end, path, inherited, heads, ctx) {
+function walk(text, code, start, end, path, inherited, heads, outerSetup, ctx) {
   const calls = findCalls(code, text, start, end);
   const fixtures = calls.filter((c) => FIXTURES.has(c.keyword)).map((c) => text.slice(c.callStart, c.callEnd));
   const scope = [...inherited, ...fixtures];
+  // The code of this scope that is not a call: the `const EXPECTED = ...` or the
+  // shared `registry` a test reads. Without it a value the test file declares
+  // reads as a free name, the same as a constant from the code under test.
+  const own = setupOf(text, start, end, calls);
+  const setup = own ? [...outerSetup, own] : outerSetup;
   for (const call of calls) {
     if (call.focused) ctx.focused = true;
     if (DESCRIBES.has(call.keyword)) {
       // The head (`describe.skip("parser", () => {`) travels with each test
       // inside, so a skip or only on the describe reaches the `runs` question.
-      if (call.body) walk(text, code, call.body.start, call.body.end, [...path, call.name], scope, [...heads, headOf(text, call.callStart, call.body.start)], ctx);
+      if (call.body) walk(text, code, call.body.start, call.body.end, [...path, call.name], scope, [...heads, headOf(text, call.callStart, call.body.start)], setup, ctx);
       continue;
     }
     if (!TESTS.has(call.keyword)) continue;
@@ -122,6 +134,7 @@ function walk(text, code, start, end, path, inherited, heads, ctx) {
       scope: heads,
       source: text.slice(call.callStart, call.callEnd),
       fixtures: scope,
+      ...(setup.length ? { setup } : {}),
       imports: ctx.imports,
       flags,
     });
@@ -135,6 +148,36 @@ function walk(text, code, start, end, path, inherited, heads, ctx) {
 function headOf(text, start, end) {
   const head = text.slice(start, end).trim();
   return head.length > HEAD_CAP ? `${head.slice(0, HEAD_CAP - 1)}…` : head;
+}
+
+/**
+ * The code of one scope outside its test, describe and hook calls: its
+ * declarations and statements, without imports (sent on their own) and without
+ * comment lines (a case's header comment must not reach the model). Capped.
+ * @param {string} text @param {number} start @param {number} end
+ * @param {Array<{ callStart: number, callEnd: number }>} calls
+ */
+function setupOf(text, start, end, calls) {
+  let rest = "";
+  let at = start;
+  for (const call of calls) {
+    rest += `${text.slice(at, call.callStart)}\n`;
+    at = call.callEnd;
+  }
+  rest += text.slice(at, end);
+  const lines = rest
+    .replace(IMPORT, "")
+    .split("\n")
+    .map((line) => line.trimEnd())
+    .filter((line) => line.trim() && !/^\s*(?:\/\/|\/\*|\*)/.test(line) && !/^[\s;)]*$/.test(line));
+  const joined = dedent(lines).join("\n");
+  return joined.length > SETUP_CAP ? `${joined.slice(0, SETUP_CAP - 1)}…` : joined;
+}
+
+/** Lines with their common indent removed. @param {string[]} lines */
+function dedent(lines) {
+  const indent = Math.min(...lines.map((line) => /^\s*/.exec(line)?.[0].length ?? 0));
+  return lines.map((line) => line.slice(indent));
 }
 
 /** The head of a per-file section in a unified diff. */

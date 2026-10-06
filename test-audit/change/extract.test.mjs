@@ -296,3 +296,22 @@ test("a keyword read as a property is a value, so the slash after it is division
 it("matches", () => { expect(/a\\)/.test("a)")).toBe(true); });`;
   assert.deepEqual(extractTests(text, "stats.test.js").map((t) => t.name), ["ratio", "matches"]);
 });
+
+test("a test carries the setup code of each scope around it, without imports or comments", () => {
+  const text = `// A header comment the model must not see.
+import { Registry } from "./registry.mjs";
+const registry = new Registry();
+const EXPECTED = { major: 1 };
+describe("versions", () => {
+  let parsed;
+  beforeEach(() => { parsed = parse("1.0.0"); });
+  it("reads the major part", () => {
+    expect(parsed).toEqual(EXPECTED);
+  });
+});
+test("dispatches", () => { expect(registry.dispatch("ping")).toBe("pong"); });`;
+  const [inner, outer] = extractTests(text, "a.test.js");
+  assert.deepEqual(inner.setup, ["const registry = new Registry();\nconst EXPECTED = { major: 1 };", "let parsed;"]);
+  assert.deepEqual(outer.setup, ["const registry = new Registry();\nconst EXPECTED = { major: 1 };"]);
+  assert.equal(extractTests('test("a", () => { expect(1).toBe(1); });', "a.test.js")[0].setup, undefined);
+});

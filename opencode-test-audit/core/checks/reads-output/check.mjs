@@ -1,4 +1,4 @@
-// canonical source: test-audit/checks/reads-output/check.mjs@4ba9d42 sha256:f31eea74bcb68d010d56138db043b8b31cb4c263616682b4e8e5c8394d64c827 - vendored copy, do not edit here
+// canonical source: test-audit/checks/reads-output/check.mjs@9ae1caa sha256:30206a6c85830968aff7ba566a7511ec0d4cbcca3ef95e741eba85f226313532 - vendored copy, do not edit here
 // The reads-output check: does the assertion read the value the code under test
 // produced, not its own input, its setup, or only that no error was thrown? A
 // "no" raises the `asserts-input` flag. A test that reads its input passes for
@@ -24,7 +24,7 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   flag: "asserts-input",
   questions: {
     reads_output: noul(
-      "Does the assertion read the value the code under test produced, rather than its own input, its setup, or only that no error was thrown?",
+      "Does the assertion read the value the code under test produced, rather than its own input, its setup, or only that no error was thrown? A test that asserts its argument is unchanged counts as yes only when its name says the code must not change it.",
       "it asserts the returned or observed output",
       "it asserts its own input, its setup, or merely that the call did not throw",
     ),

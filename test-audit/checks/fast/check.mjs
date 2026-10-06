@@ -1,5 +1,5 @@
-// The fast check: does the test run in milliseconds, with no sleep, heavy I/O, or
-// large computation? A "no" raises the `slow` flag.
+// The fast check: does the test finish with no sleep, poll, network or disk call,
+// or large computation? A "no" raises the `slow` flag.
 //
 // Sources:
 // - Kent Beck, Test Desiderata (2019): Fast
@@ -20,7 +20,11 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   role: "descriptive",
   flag: "slow",
   questions: {
-    fast: noul("Does the test run fast, with no sleep, no heavy I/O, and no large computation?", "it runs fast", "it sleeps, waits, or does heavy work"),
+    fast: noul(
+      "Does the test finish without a sleep, a poll, a network or disk call, or a loop over a large input? An await on an in-memory promise is fine.",
+      "it does none of these",
+      "it sleeps, polls, calls the network or disk, or computes over a large input",
+    ),
   },
-  rubric: `Fast: the test runs in milliseconds, with no sleep, heavy I/O, or large computation.`,
+  rubric: `Fast: no sleep, poll, network or disk call, or large computation.`,
 });

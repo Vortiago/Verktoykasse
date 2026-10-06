@@ -23,7 +23,7 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
     automated: noul(
       "Does this test reach a pass or fail with no person doing or reading anything?",
       "it is self-checking and unattended",
-      "it needs a manual step, or a person to read the output",
+      "it has no assertion and only prints, or it waits for a person to act or to read its output",
     ),
   },
   rubric: `Automated: the test reaches pass or fail with no person doing or reading anything.`,

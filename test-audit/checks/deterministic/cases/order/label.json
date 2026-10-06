@@ -1,9 +1,0 @@
-{
-  "test": "the metric keys keep their insertion order",
-  "defect": "non-deterministic",
-  "canFail": true,
-  "mustEscalate": false,
-  "mixed": false,
-  "deterministic": false,
-  "note": "A real metrics check, but it pins key order that the structure does not guarantee."
-}

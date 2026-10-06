@@ -1,4 +1,4 @@
-// canonical source: test-audit/checks/one-thing/check.mjs@4ba9d42 sha256:1b3ee07751422bd4e7f51084a7a2ffbbf62786fbda1903ca7b8507587be1ebaa - vendored copy, do not edit here
+// canonical source: test-audit/checks/one-thing/check.mjs@9ae1caa sha256:baab452884b5f5d6eb4174f5c9424da22a1e59f484518f1c6b3e96138b0a9ccc - vendored copy, do not edit here
 // The one-thing check: does the test check one behaviour, not several unrelated
 // behaviours at once? A "no" raises the `eager` flag.
 //
@@ -21,10 +21,11 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   flag: "eager",
   questions: {
     one_thing: noul(
-      "Does this test check one behaviour, rather than several unrelated behaviours at once?",
+      "Does this test check one behaviour, rather than several unrelated behaviours at once? Several assertions on one result count as one behaviour. Several actions on different units, each with its own assertion, count as several.",
       "it checks one behaviour",
-      "it is an eager test that checks several unrelated things",
+      "it is an eager test that checks several unrelated behaviours",
     ),
   },
-  rubric: `One behaviour: the body checks one thing, not several unrelated behaviours.`,
+  rubric: `One behaviour: the body checks one thing. Several assertions on one result are
+  one behaviour; several actions on different units are several.`,
 });

@@ -1,4 +1,4 @@
-// canonical source: test-audit/types.d.ts@bcd812b sha256:e77bea091735f8bdbccc136878f647573f0632e0872e6370851b523e0490a994 - vendored copy, do not edit here
+// canonical source: test-audit/types.d.ts@9ae1caa sha256:e892b627df10bfc0d9719eec11375e23a9eb658838cbafb519300fb44e2124c4 - vendored copy, do not edit here
 // Shared shapes for the test-audit modules. The modules are `.mjs` with JSDoc
 // types, and the tsc gate checks them under strict (tsconfig.json). A module
 // imports a shape with `@typedef {import("../types.d.ts").AuditTest} AuditTest`,
@@ -54,6 +54,10 @@ export interface AuditTest {
   scope: string[];
   source: string;
   fixtures: string[];
+  /** The code of each scope around the test that is not a test, describe or
+   * hook call, outermost first: the values the test file declares. Absent when
+   * there is none. */
+  setup?: string[];
   imports: string[];
   /** Extractor notes, such as `each`, `dynamic-name` or `focus-in-file`; they join the result's flags. */
   flags: string[];

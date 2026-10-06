@@ -1,6 +1,8 @@
-// canonical source: test-audit/checks/verdict/check.mjs@4ba9d42 sha256:d1cea9e98c090f71178c3f2169c6c88e4456293c285e498897ae418355cdb631 - vendored copy, do not edit here
+// canonical source: test-audit/checks/verdict/check.mjs@9ae1caa sha256:7276ef0c247b3a10dc200b5db0641fa2028179d28bec73e8c9d859a7f147789a - vendored copy, do not edit here
 // The verdict check: overall, is this test a real guard? The answer is a score on
-// four levels. Slop or weak escalates. Its calibration cases are the clean tests
+// four levels, defined only by whether it can fail and what it asserts. Slop or
+// weak escalates. A descriptive smell does not lower the level, because a
+// descriptive check never escalates (ADR 0007). Its calibration cases are the clean tests
 // that must pass and the mixed tests that must escalate, because those judge the
 // whole verdict, not one smell.
 //
@@ -19,12 +21,19 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   role: "verdict",
   levels: LEVELS,
   questions: {
+    // The levels use only the axes that decide a guard. A descriptive smell
+    // never escalates, so it must not lower the level either: a flaky but real
+    // guard is good, with its flags.
     verdict: score(
-      "Overall, is this test a real guard against the behaviour it names? Weigh whether it can fail, what it asserts, and every smell the earlier questions name. It is a real guard only if it can fail when that behaviour breaks.",
+      "Overall, is this test a real guard? Slop: it asserts nothing, or it cannot fail at all, such as a tautology or two sides that both come from the code under test. Weak: it asserts only a shape, a mock call, an absence, or its own input, so it misses most ways the named behaviour can break. Good: it asserts a value or effect that the named behaviour decides. Strong: good, with an exact expected value that would fail loudly. A smell from the other definitions, such as slow, flaky, uncontrolled, a vague name, a magic number, or a state leak, does not lower the level.",
       LEVELS,
     ),
   },
-  rubric: `Verdict: slop, weak, good, or strong. Slop is no real guard; weak is a guard with
-  a serious smell; good is a real guard; strong is a real guard with a specific
-  expected value that would fail loudly.`,
+  rubric: `Verdict: slop, weak, good, or strong. Slop: it asserts nothing, or it cannot fail
+  at all (a tautology, or both sides from the code under test). Weak: it asserts
+  only a shape, a mock call, an absence, or its own input, so it misses most ways
+  the named behaviour can break. Good: it asserts a value or effect that the named
+  behaviour decides. Strong: good, with an exact expected value that would fail
+  loudly. Slow, flaky, uncontrolled, vague-name, magic-number, and state-leak smells
+  do not lower the level.`,
 });

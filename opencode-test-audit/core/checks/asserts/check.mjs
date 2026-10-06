@@ -1,7 +1,7 @@
-// canonical source: test-audit/checks/asserts/check.mjs@079f685 sha256:98e29e7530fd5bff279a5294752a89e5940b0a17476a7e9e78e73c64d7eb92d4 - vendored copy, do not edit here
-// The asserts check: what does the assertion actually check? Only `behaviour`
-// is a real guard. Hardcoded data, shape only, interaction only, and nothing
-// escalate. The second phrasing lists the kinds in reverse order, as a position
+// canonical source: test-audit/checks/asserts/check.mjs@9ae1caa sha256:3217c9b86b0b0ab220f2054b5acb125ea4f05e3bb9fb3623a4b6ac6317b53f6b - vendored copy, do not edit here
+// The asserts check: what does the strongest assertion check? Only `behaviour`
+// is a real guard. Hardcoded data, input only, shape only, interaction only, and
+// nothing escalate. The second phrasing lists the kinds in reverse order, as a position
 // control, so the two answers must agree by key.
 //
 // The position swap and its sources are in classifier/verdict.mjs.
@@ -31,11 +31,14 @@ import { choice } from "../../classifier/systemone.mjs";
 
 /** The kinds of assertion, best first: the first kind is the one real guard. */
 const KINDS = {
-  behaviour: "it checks the output value or observable behaviour the code produces, against an expected value the test fixes itself, as a literal or a named constant, not one taken from the code under test",
-  "hardcoded-data": "it repeats the same data the code under test is built from, so it agrees by construction",
-  "shape-only": "it checks only the type, length, or keys of a result, not its content",
-  "interaction-only": "it checks only that a mock or spy was called, not the behaviour it stands in for",
-  nothing: "it asserts nothing, or only a tautology such as true === true",
+  behaviour:
+    "an output value or effect of the code under test, compared with an expected value the test fixes itself: a literal, a constant the test file declares, or a value the test computes without calling the code under test",
+  "hardcoded-data":
+    "an expected value taken from the code under test itself, such as a constant it exports or a second call to the same code, so both sides agree by construction",
+  "input-only": "its own input or setup, not what the code under test produced",
+  "shape-only": "only the type, length, keys, presence, or definedness of a result, not its content",
+  "interaction-only": "only that a mock or spy was called, how often, or with what, not the result it stands in for",
+  nothing: "no assertion, a tautology such as true === true, or only that the call did not throw",
 };
 
 export default /** @satisfies {import("../../types.d.ts").Check} */ ({
@@ -43,8 +46,10 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   role: "asserts",
   kinds: KINDS,
   questions: {
-    asserts_a: choice("What does this test actually assert about the code under test?", { ...KINDS }),
+    // A test with several assertions is judged by its strongest one, so a
+    // status check beside a body check does not split the twins.
+    asserts_a: choice("Taken together, what do the assertions of this test check about the code under test? Pick the kind of the strongest assertion.", { ...KINDS }),
     // The same question with the answer order reversed: a position-swap control.
-    asserts_b: choice("What does the test's assertion actually check?", Object.fromEntries(Object.entries(KINDS).reverse())),
+    asserts_b: choice("What does the strongest assertion in this test check?", Object.fromEntries(Object.entries(KINDS).reverse())),
   },
 });

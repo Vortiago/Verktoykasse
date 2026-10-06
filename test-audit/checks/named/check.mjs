@@ -17,10 +17,10 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   flag: "vague-name",
   questions: {
     named: noul(
-      "Does the test's name state the behaviour it checks, rather than a vague label such as works, test1, or should be fine?",
+      "Does the test's name state the behaviour it checks, rather than a vague label such as works, test1, should be fine, or only the name of the unit, such as add or parser?",
       "the name says which behaviour the test checks",
       "the name is a vague label that does not say which behaviour the test checks",
     ),
   },
-  rubric: `Name: states the behaviour the test checks, not a vague label.`,
+  rubric: `Name: states the behaviour the test checks, not a vague label or only the unit name.`,
 });

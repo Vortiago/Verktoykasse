@@ -117,8 +117,22 @@ for (const check of CHECKS) {
  * assume: the definition of each concept a reviewer looks for. It is short, so it
  * fits the state cap beside the test.
  */
+/** What each field of the test record holds. The model sees one test, so the
+ * record is all it knows about the file; a field it cannot read is evidence lost. */
+const RECORD = `The test record: \`source\` is the test call. \`scope\` holds the describe heads
+  around it, outermost first. \`fixtures\` holds the before and after hooks of
+  those describes. \`setup\` holds the other code of those scopes, such as the
+  values the file declares. \`imports\` holds the imports of the file. \`flags\`
+  holds notes from the extractor: focus-in-file (an only or focus marker is
+  somewhere in the file), each (a table test), and dynamic-name (a computed name).
+  A field with nothing to hold is absent. A name that no field defines comes from
+  code the test does not show. The change context, when present, is the diff of
+  the code under test.`;
+
 export const RUBRIC = [
   "Rubric for judging a test. Use these definitions for every question.",
+  "",
+  RECORD,
   "",
   ...RUBRIC_ORDER.map((check) => {
     if (!check.rubric) throw new Error(`check ${check.name} has no rubric definition`);

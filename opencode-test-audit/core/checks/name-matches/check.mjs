@@ -1,4 +1,4 @@
-// canonical source: test-audit/checks/name-matches/check.mjs@4ba9d42 sha256:415c4cdec890dd1855fe29e7bd11ab424d74336d660cce81753301a44bd70bdb - vendored copy, do not edit here
+// canonical source: test-audit/checks/name-matches/check.mjs@9ae1caa sha256:9cf8e5b239e3d53e3f523224cfe1904222188c1753f28d637f1dbd866da626b3 - vendored copy, do not edit here
 // The name-matches check: does the test body assert the behaviour its name
 // states? A name-only test promises one behaviour and asserts something else or
 // something trivial. A "no" raises the `name-mismatch` flag.
@@ -27,9 +27,9 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   flag: "name-mismatch",
   questions: {
     name_matches: noul(
-      "Does the test body assert the behaviour its name states?",
+      "Does the test body assert the behaviour its name states? If the name states no behaviour, answer no.",
       "the body asserts the behaviour the name promises",
-      "the name promises one behaviour and the body asserts something else or something trivial",
+      "the name states no behaviour, or it states one and the body asserts something else or something trivial",
     ),
   },
 });

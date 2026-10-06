@@ -248,6 +248,7 @@ function caseBlock({ row, number, anchor }) {
   const lines = [`<details${ok ? "" : " open"}>${summary}`, ""];
   if (test) {
     lines.push(...fenced(test.source, languageOf(label.file)));
+    if (test.setup?.length) lines.push("", "Setup:", "", ...fenced(test.setup.join("\n\n"), languageOf(label.file)));
     if (test.fixtures?.length) lines.push("", "Fixtures:", "", ...fenced(test.fixtures.join("\n\n"), languageOf(label.file)));
   }
   if (row.code) {

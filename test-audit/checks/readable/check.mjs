@@ -1,5 +1,6 @@
-// The readable check: can a reader tell what the test does and why, without
-// opening the code under test? A "no" raises the `obscure` flag.
+// The readable check: does the test show the input, the action, and the expected
+// result, rather than hide them in a helper, an import, or an undefined name? A
+// "no" raises the `obscure` flag.
 //
 // Sources:
 // - Kent Beck, Test Desiderata (2019): Readable
@@ -20,11 +21,11 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   flag: "obscure",
   questions: {
     readable: noul(
-      "Can a reader tell what this test does and why, without opening the code under test?",
-      "the test reads clearly on its own",
-      "the reader must open the code under test to understand it",
+      "Does the test show the input, the action, and the expected result? Answer no when the input or the expected value comes from a helper, an import, or a name that nothing shown defines, or when the comparison hides in a boolean.",
+      "the input, the action, and the expected result are visible in the test",
+      "the input or the expected value is hidden, or the comparison hides in a boolean",
     ),
   },
-  rubric: `Readable: a reader can tell what the test does and why without opening the code
-  under test.`,
+  rubric: `Readable: the input, the action, and the expected result are visible in the test,
+  its hooks, or its setup.`,
 });

@@ -1,7 +1,7 @@
-// canonical source: test-audit/checks/can-fail/check.mjs@4ba9d42 sha256:a89135bdc11f004eb15c4ae7416a00e2436c420453cb014827b739b6499b6e0a - vendored copy, do not edit here
-// The can-fail check: can a change to the code under test make this test fail?
-// A tautology, a self-reference, a vacuous check, and a test that passes with
-// zero results all say no. The tool asks three equivalent phrasings, one of them
+// canonical source: test-audit/checks/can-fail/check.mjs@9ae1caa sha256:a6a0c7a19fc866a35bbe54addf9ff2ced559d1a3ea1c985c3dc478ebbb6340ad - vendored copy, do not edit here
+// The can-fail check: does the test fail when the behaviour it names breaks in
+// the code under test? A tautology, a self-reference, a shape or definedness
+// check, and a test that passes with zero results all say no. The tool asks three equivalent phrasings, one of them
 // negated, and trusts the mean only when they agree (ADR 0007).
 //
 // The twin rule and its sources are in classifier/verdict.mjs.
@@ -36,27 +36,29 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   name: "can_fail",
   role: "can-fail",
   questions: {
-    // The best single phrasing is the concrete, operational one, so it leads.
+    // All three ask one judgement: does the test fail when the behaviour it
+    // names breaks? An "any change can fail it" reading splits from it on every
+    // shape or interaction test, so no phrasing asks about any change.
     can_fail_a: noul(
-      "Could you make this test fail by changing only the code under test?",
-      "a change to the code under test can make it fail",
-      "no change to the code under test can make it fail",
+      "Break the behaviour this test names, in the code under test only. Does the test then fail?",
+      "the test fails when the named behaviour is broken",
+      "the test still passes when the named behaviour is broken",
     ),
     // The negated twin. After polarity normalisation it must agree with `a`.
     can_fail_b: noul(
-      "Does this test pass regardless of whether the code under test is correct?",
-      "it passes even when the behaviour is broken",
-      "broken behaviour makes it fail",
+      "Can the code under test get the behaviour this test names wrong while the test still passes?",
+      "the test can pass with the named behaviour wrong",
+      "a wrong behaviour makes the test fail",
     ),
     can_fail_c: noul(
-      "If the behaviour this test exercises regresses, will the test fail?",
-      "the assertion can catch a regression in the behaviour",
-      "the assertion misses the regression and still passes",
+      "If the behaviour this test names regresses, does the test fail?",
+      "a regression in that behaviour makes the test fail",
+      "a regression in that behaviour leaves the test passing",
     ),
   },
   negated: ["can_fail_b"],
-  rubric: `Falsifiable: a change to the code under test makes the test fail.
-  Not falsifiable: a tautology (true === true, or both sides call the same code);
-  a check that the result is merely defined, non-null, or the right shape;
-  an assertion on data the code copies straight from its input.`,
+  rubric: `Falsifiable: the test fails when the behaviour it names is broken in the code
+  under test. Not falsifiable: a tautology (true === true, or both sides call the
+  same code); a check that the result is merely defined, non-null, or the right
+  shape; an assertion on data the code copies straight from its input.`,
 });

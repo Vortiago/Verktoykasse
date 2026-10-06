@@ -45,6 +45,7 @@ export function buildState(test, changeContext = "", cap = config.stateCap) {
       // beyond the test's own source; sent only when present.
       ...(test.scope?.length ? { scope: test.scope } : {}),
       ...(test.flags?.length ? { flags: test.flags } : {}),
+      ...(test.setup?.length ? { setup: test.setup } : {}),
       source: test.source,
       fixtures: test.fixtures,
       imports: test.imports,

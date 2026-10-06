@@ -89,9 +89,11 @@ The text report has three parts:
    the calls and tokens used.
 
 The verdict is the answer to the `verdict` question: slop, weak, good or strong.
-It is `unclassified` when the endpoint gave no trusted answer.
-`CAN-FAIL` is the mean probability that the test can fail, over the three
-`can_fail_*` phrasings. A `!` after the value means the spread between the phrasings is above the band.
+The levels depend only on whether the test can fail and what it asserts. A
+descriptive smell, such as a flaky or slow test, raises its flag but does not
+lower the verdict. It is `unclassified` when the endpoint gave no trusted answer.
+`CAN-FAIL` is the mean probability that the test fails when the behaviour it
+names breaks, over the three `can_fail_*` phrasings. A `!` after the value means the spread between the phrasings is above the band.
 
 ### When a test needs eyes
 
@@ -105,8 +107,8 @@ A test escalates, and needs eyes, for each of these reasons:
 - The test does not run, or an only or focus marker in its file leaves other
   tests out of the run.
 - The test has no positive assertion.
-- The test asserts something other than behaviour: hardcoded data, shape only,
-  interaction only, or nothing.
+- The strongest assertion checks something other than behaviour: hardcoded
+  data, its own input, shape only, interaction only, or nothing.
 - The verdict is slop or weak.
 - A confident "cannot fail" sits beside a good or strong verdict.
 - A yes/no judgement lands exactly on 0.5, or the verdict score lands exactly
@@ -214,29 +216,29 @@ only its folder and one line in `checks/index.mjs`.
 | Check | Questions | Role | Looks for | Cases |
 | --- | --- | --- | --- | --- |
 | [`can-fail`](checks/can-fail/check.mjs) | `can_fail_a`, `can_fail_b` (negated), `can_fail_c` | can-fail | tautology, self-reference, vacuous test, passes-with-zero | 9 |
-| [`asserts`](checks/asserts/check.mjs) | `asserts_a`, `asserts_b` (order swapped) | asserts | hardcoded data, shape only, interaction only, nothing | 12 |
-| [`positive`](checks/positive/check.mjs) | `positive_a`, `positive_b` (negated) | gate: no positive assertion | only-negative test | 5 |
-| [`runs`](checks/runs/check.mjs) | `runs_a`, `runs_b` (negated) | gate: does not run, or narrows the run | a skip or todo marker on the test or on a describe around it, or an only or focus marker anywhere in the file | 4 |
-| [`type`](checks/type/check.mjs) | `type` | type | unit, integration, regression, e2e, smoke, characterization | 0 |
-| [`observable`](checks/observable/check.mjs) | `observable` | flag `implementation-coupled` | private internals, call order, exact collaborator interactions | 0 |
-| [`conditional`](checks/conditional/check.mjs) | `conditional` | flag `conditional` | a branch, loop, or catch that can leave the assertion unrun | 1 |
-| [`isolated`](checks/isolated/check.mjs) | `isolated` | flag `order-dependent` | interacting tests, shared mutable state, order dependence | 0 |
-| [`controlled`](checks/controlled/check.mjs) | `controlled` | flag `uncontrolled-resource` | an assumed network, clock, filesystem, or environment | 0 |
-| [`specific`](checks/specific/check.mjs) | `specific` | flag `weak-assert` | a weak assertion, where a more specific one is possible | 0 |
-| [`named`](checks/named/check.mjs) | `named` | flag `vague-name` | a vague name that states no behaviour | 0 |
-| [`deterministic`](checks/deterministic/check.mjs) | `deterministic` | flag `non-deterministic` | a sleep, the real clock, the network, real randomness, an unguaranteed order | 6 |
-| [`one-thing`](checks/one-thing/check.mjs) | `one_thing` | flag `eager` | several unrelated behaviours in one body | 2 |
-| [`name-matches`](checks/name-matches/check.mjs) | `name_matches` | flag `name-mismatch` | name-only test: the body asserts something other than the name | 4 |
-| [`resilient`](checks/resilient/check.mjs) | `resilient` | flag `structure-dependent` | a behaviour-preserving refactor breaks the test | 0 |
-| [`diagnostic`](checks/diagnostic/check.mjs) | `diagnostic` | flag `silent-failure` | assertion roulette: a failure does not say which assertion failed | 0 |
-| [`fixture`](checks/fixture/check.mjs) | `fixture` | flag `general-fixture` | a general fixture, or data the test does not need | 0 |
-| [`fast`](checks/fast/check.mjs) | `fast` | flag `slow` | a sleep, heavy I/O, or a large computation | 0 |
-| [`readable`](checks/readable/check.mjs) | `readable` | flag `obscure` | a reader must open the code under test to follow it | 0 |
-| [`magic-number`](checks/magic-number/check.mjs) | `magic_number` | flag `magic-number` | a bare value the reader must decode | 0 |
+| [`asserts`](checks/asserts/check.mjs) | `asserts_a`, `asserts_b` (order swapped) | asserts | hardcoded data, input only, shape only, interaction only, nothing; judged by the strongest assertion | 14 |
+| [`positive`](checks/positive/check.mjs) | `positive_a`, `positive_b` (negated) | gate: no positive assertion | only-negative test | 7 |
+| [`runs`](checks/runs/check.mjs) | `runs_a`, `runs_b` (negated) | gate: does not run, or narrows the run | a skip or todo marker on the test or on a describe around it, or an only or focus marker anywhere in the file | 6 |
+| [`type`](checks/type/check.mjs) | `type` | type | regression, characterization, or smoke by purpose; else unit, integration, or e2e | 5 |
+| [`observable`](checks/observable/check.mjs) | `observable` | flag `implementation-coupled` | a private field, an internal helper call, or internal call order | 2 |
+| [`conditional`](checks/conditional/check.mjs) | `conditional` | flag `conditional` | a branch, a loop over a value that may be empty, an early return, or a catch that can leave an assertion unrun | 3 |
+| [`isolated`](checks/isolated/check.mjs) | `isolated` | flag `order-dependent` | a value another test sets, or shared mutable state no hook resets | 2 |
+| [`controlled`](checks/controlled/check.mjs) | `controlled` | flag `uncontrolled-resource` | a file, server, environment variable, or clock that the test does not create or fake | 2 |
+| [`specific`](checks/specific/check.mjs) | `specific` | flag `weak-assert` | a weak matcher (defined, truthy, a type, a length, a bound, a folded boolean) | 2 |
+| [`named`](checks/named/check.mjs) | `named` | flag `vague-name` | a vague name, or only the name of the unit | 2 |
+| [`deterministic`](checks/deterministic/check.mjs) | `deterministic` | flag `non-deterministic` | a sleep, the real clock, the network, real randomness, an unguaranteed order | 8 |
+| [`one-thing`](checks/one-thing/check.mjs) | `one_thing` | flag `eager` | several unrelated behaviours in one body | 3 |
+| [`name-matches`](checks/name-matches/check.mjs) | `name_matches` | flag `name-mismatch` | a body that asserts something other than the name, or a name that states no behaviour | 4 |
+| [`resilient`](checks/resilient/check.mjs) | `resilient` | flag `structure-dependent` | an internal import, a spy on a helper, a private field, or a pinned call order | 2 |
+| [`diagnostic`](checks/diagnostic/check.mjs) | `diagnostic` | flag `silent-failure` | a bare boolean check, or a repeated assertion with no index | 2 |
+| [`fixture`](checks/fixture/check.mjs) | `fixture` | flag `general-fixture` | a value that nothing shown builds, or a fixture far larger than the test needs | 2 |
+| [`fast`](checks/fast/check.mjs) | `fast` | flag `slow` | a sleep, a poll, a network or disk call, or a large computation | 2 |
+| [`readable`](checks/readable/check.mjs) | `readable` | flag `obscure` | an input or expected value hidden in a helper, an import, or an undefined name | 2 |
+| [`magic-number`](checks/magic-number/check.mjs) | `magic_number` | flag `magic-number` | a literal whose meaning must be looked up in the code under test | 2 |
 | [`reads-output`](checks/reads-output/check.mjs) | `reads_output` | flag `asserts-input` | the assertion reads its own input or setup, or only that no error was thrown | 2 |
-| [`automated`](checks/automated/check.mjs) | `automated` | flag `manual` | a step a person must do, or output a person must read | 0 |
-| [`restores`](checks/restores/check.mjs) | `restores` | flag `state-leak` | state left behind for the next test | 0 |
-| [`verdict`](checks/verdict/check.mjs) | `verdict` | verdict | slop, weak, good, strong; its cases are the clean and the mixed tests | 16 |
+| [`automated`](checks/automated/check.mjs) | `automated` | flag `manual` | a print-only test, or a step a person must do | 2 |
+| [`restores`](checks/restores/check.mjs) | `restores` | flag `state-leak` | a global, environment variable, timer, mock, or spy left changed | 3 |
+| [`verdict`](checks/verdict/check.mjs) | `verdict` | verdict | slop, weak, good, strong, by what the test asserts; its cases are the clean and the mixed tests | 16 |
 
 Five answers carry the verdict: the `positive_*` pair, the `runs_*` pair, the
 `can_fail_*` set, the `asserts_*` pair, and `verdict`. Each pair holds one

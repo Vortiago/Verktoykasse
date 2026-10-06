@@ -1,4 +1,4 @@
-// canonical source: test-audit/classifier/index.mjs@4ba9d42 sha256:e48129ee3ee2a74df1c206c4de453b04b0f9e128153bf7a031a46736ef5f022b - vendored copy, do not edit here
+// canonical source: test-audit/classifier/index.mjs@9ae1caa sha256:9340007cc0f2374a257d44ecb3d7137db5280e892cd832b24f1a19e2fac218cf - vendored copy, do not edit here
 // The classifier: ask the battery about one test and reduce the answers to a
 // verdict. This is the module's interface. `classify` takes an injectable `ask`,
 // so the whole decision path (batching, polarity, spread, escalation) is tested
@@ -46,6 +46,7 @@ export function buildState(test, changeContext = "", cap = config.stateCap) {
       // beyond the test's own source; sent only when present.
       ...(test.scope?.length ? { scope: test.scope } : {}),
       ...(test.flags?.length ? { flags: test.flags } : {}),
+      ...(test.setup?.length ? { setup: test.setup } : {}),
       source: test.source,
       fixtures: test.fixtures,
       imports: test.imports,

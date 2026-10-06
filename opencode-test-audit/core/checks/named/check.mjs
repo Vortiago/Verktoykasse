@@ -1,4 +1,4 @@
-// canonical source: test-audit/checks/named/check.mjs@079f685 sha256:5d5c4ba5058f79254e6e575e6157cefb3f218ad5ae704d783b7966040ceab2ac - vendored copy, do not edit here
+// canonical source: test-audit/checks/named/check.mjs@9ae1caa sha256:7f51d421a855cc30e813a9e43d00e82488bdc145868ee5dfb59d8f088793d751 - vendored copy, do not edit here
 // The named check: does the test's name state the behaviour it checks, not a
 // vague label? A "no" raises the `vague-name` flag.
 //
@@ -18,10 +18,10 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   flag: "vague-name",
   questions: {
     named: noul(
-      "Does the test's name state the behaviour it checks, rather than a vague label such as works, test1, or should be fine?",
+      "Does the test's name state the behaviour it checks, rather than a vague label such as works, test1, should be fine, or only the name of the unit, such as add or parser?",
       "the name says which behaviour the test checks",
       "the name is a vague label that does not say which behaviour the test checks",
     ),
   },
-  rubric: `Name: states the behaviour the test checks, not a vague label.`,
+  rubric: `Name: states the behaviour the test checks, not a vague label or only the unit name.`,
 });

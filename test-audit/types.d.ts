@@ -53,6 +53,10 @@ export interface AuditTest {
   scope: string[];
   source: string;
   fixtures: string[];
+  /** The code of each scope around the test that is not a test, describe or
+   * hook call, outermost first: the values the test file declares. Absent when
+   * there is none. */
+  setup?: string[];
   imports: string[];
   /** Extractor notes, such as `each`, `dynamic-name` or `focus-in-file`; they join the result's flags. */
   flags: string[];

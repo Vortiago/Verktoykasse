@@ -1,6 +1,6 @@
-// canonical source: test-audit/checks/fast/check.mjs@4ba9d42 sha256:43a887013bf7d5e8843891bb7f10976830ccb4b6a8b633e890a2716b1752a9a5 - vendored copy, do not edit here
-// The fast check: does the test run in milliseconds, with no sleep, heavy I/O, or
-// large computation? A "no" raises the `slow` flag.
+// canonical source: test-audit/checks/fast/check.mjs@9ae1caa sha256:4866ed13cb9c738ae33128ce378a76eff4d7f997d4917e56215eabfbe7a3f404 - vendored copy, do not edit here
+// The fast check: does the test finish with no sleep, poll, network or disk call,
+// or large computation? A "no" raises the `slow` flag.
 //
 // Sources:
 // - Kent Beck, Test Desiderata (2019): Fast
@@ -21,7 +21,11 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   role: "descriptive",
   flag: "slow",
   questions: {
-    fast: noul("Does the test run fast, with no sleep, no heavy I/O, and no large computation?", "it runs fast", "it sleeps, waits, or does heavy work"),
+    fast: noul(
+      "Does the test finish without a sleep, a poll, a network or disk call, or a loop over a large input? An await on an in-memory promise is fine.",
+      "it does none of these",
+      "it sleeps, polls, calls the network or disk, or computes over a large input",
+    ),
   },
-  rubric: `Fast: the test runs in milliseconds, with no sleep, heavy I/O, or large computation.`,
+  rubric: `Fast: no sleep, poll, network or disk call, or large computation.`,
 });

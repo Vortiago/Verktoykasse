@@ -1,6 +1,7 @@
-// canonical source: test-audit/checks/diagnostic/check.mjs@4ba9d42 sha256:17627195b33adcc971c7a103cc64b09d3e933bc55237594ddffd85eb3c81b4a5 - vendored copy, do not edit here
-// The diagnostic check: when the test fails, does it say which assertion failed
-// and what was expected? A "no" raises the `silent-failure` flag.
+// canonical source: test-audit/checks/diagnostic/check.mjs@9ae1caa sha256:5b04124b669f40a42bf2fcfede4f81f1692ce91a3c37fb42d6dea3265eb61cb4 - vendored copy, do not edit here
+// The diagnostic check: does a failure show the received and the expected value?
+// A bare boolean check, or one assertion repeated in a loop with no index, does
+// not. A "no" raises the `silent-failure` flag.
 //
 // Sources:
 // - Gerard Meszaros, xUnit Test Patterns (2007): Assertion Roulette (Missing
@@ -20,10 +21,11 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   flag: "silent-failure",
   questions: {
     diagnostic: noul(
-      "When this test fails, does it say which assertion failed and what was expected?",
-      "the failure names the assertion and the expected value",
-      "a failure gives no clue which assertion failed or why",
+      "Does each assertion compare a value with a matcher that reports the expected and the received value, such as toBe or toEqual? A bare boolean check such as expect(a === b).toBe(true) or assert(ok), a comparison folded into one boolean, or one assertion repeated in a loop with no index hides which value was wrong.",
+      "each failure shows the received value and the expected value",
+      "a failure shows only true or false, or cannot say which value failed",
     ),
   },
-  rubric: `Diagnostic: a failure names the assertion that failed and the expected value.`,
+  rubric: `Diagnostic: a failure shows the received and the expected value. A bare boolean
+  check, or one assertion repeated in a loop with no index, does not.`,
 });

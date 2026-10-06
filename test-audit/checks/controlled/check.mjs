@@ -1,5 +1,6 @@
-// The controlled check: does the test fix the time, network, filesystem, and
-// environment it needs, rather than assume they are present? A "no" raises the
+// The controlled check: does the test create or fake every file, server,
+// environment variable, and clock it reads, rather than assume they are present?
+// A test that reads none is controlled. A "no" raises the
 // `uncontrolled-resource` flag.
 //
 // Sources:
@@ -25,11 +26,11 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   flag: "uncontrolled-resource",
   questions: {
     controlled: noul(
-      "Does the test control the external resources it needs, such as time, the network, the filesystem, or the environment, rather than assume they are present?",
-      "its inputs and resources are controlled",
-      "it assumes an external resource is present",
+      "Does the test create or fake every external thing it reads, such as a file, a server, an environment variable, or the clock? Answer yes when it reads none.",
+      "it creates or fakes every external resource it reads, or it reads none",
+      "it reads a file, server, environment variable, or clock that it does not create or fake",
     ),
   },
-  rubric: `Controlled resources: the test fixes the time, network, filesystem, and
-  environment it needs; it does not assume they are present.`,
+  rubric: `Controlled resources: the test creates or fakes every file, server, environment
+  variable, and clock it reads. A test that reads none is controlled.`,
 });

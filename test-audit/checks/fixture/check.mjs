@@ -1,5 +1,6 @@
-// The fixture check: does the test build only the data it needs, not a large
-// shared fixture or values unrelated to the behaviour? A "no" raises the
+// The fixture check: does the test, its hooks, or its setup build the data it
+// reads, and no more? A value that nothing shown builds is a mystery guest. A
+// "no" raises the
 // `general-fixture` flag.
 //
 // Sources:
@@ -17,11 +18,11 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   flag: "general-fixture",
   questions: {
     fixture: noul(
-      "Does the test build only the data it needs, rather than a large shared fixture or values unrelated to the behaviour?",
-      "it builds only the data it needs",
-      "it leans on a large or unrelated fixture",
+      "Does the test, or a hook in fixtures or code in setup, build the data the test reads, and no more? Answer no when the test reads a value that nothing shown builds, or when the fixture holds far more than the behaviour needs.",
+      "it builds the data it reads, and only that",
+      "it reads a value that nothing shown builds, or it leans on a fixture far larger than it needs",
     ),
   },
-  rubric: `Local fixture: the test builds only the data it needs, not a large shared fixture
-  or values unrelated to the behaviour.`,
+  rubric: `Local fixture: the test, its hooks, or its setup build the data it reads, and no
+  more. A value that nothing shown builds is a mystery guest.`,
 });

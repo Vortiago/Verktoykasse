@@ -1,5 +1,6 @@
-// The conditional check: does the assertion always run? A branch, loop, or catch
-// that can leave it unrun lets the test assert nothing on some inputs. A "no"
+// The conditional check: does every assertion always run? A branch, a loop over
+// a value that may be empty, an early return, or a catch that can leave one unrun
+// lets the test assert nothing on some inputs. A "no"
 // raises the `conditional` flag.
 //
 // Sources:
@@ -18,11 +19,12 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   flag: "conditional",
   questions: {
     conditional: noul(
-      "Does this test assert unconditionally, with no branch, loop, or catch that can leave the assertion unrun?",
-      "the assertion always runs",
-      "a branch, loop, or catch can leave the assertion unrun",
+      "Does every assertion in this test always run? Answer no when a branch, a loop over a value that may be empty, an early return, or a try/catch can leave an assertion unrun or swallow its failure.",
+      "every assertion always runs",
+      "a branch, loop, early return, or catch can leave an assertion unrun or swallow its failure",
     ),
   },
-  rubric: `Conditional test logic: a branch, loop, or catch that can leave the assertion
-  unrun, so the test may assert nothing on some inputs.`,
+  rubric: `Conditional test logic: a branch, a loop over a value that may be empty, an
+  early return, or a catch that can leave an assertion unrun or swallow its
+  failure, so the test may assert nothing on some inputs.`,
 });

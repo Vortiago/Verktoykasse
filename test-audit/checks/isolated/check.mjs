@@ -1,5 +1,6 @@
-// The isolated check: does the test pass on its own and in any order, with no
-// shared mutable state? A "no" raises the `order-dependent` flag.
+// The isolated check: does the test read only what it or a before-each hook
+// builds, so it passes alone and in any order? It is about what the test reads;
+// `restores` is about what it leaves. A "no" raises the `order-dependent` flag.
 //
 // Sources:
 // - Kent Beck, Test Desiderata (2019): Isolated
@@ -18,11 +19,12 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   flag: "order-dependent",
   questions: {
     isolated: noul(
-      "Does this test pass on its own and in any order, with no reliance on shared mutable state or another test?",
-      "it is independent of other tests and of run order",
-      "it shares state with, or depends on the order of, other tests",
+      "Does this test read only values that it builds itself, or that a hook in fixtures builds before each test? Answer no when it reads a value that another test must set, or mutable state in setup that is shared with other tests and that no hook resets.",
+      "it builds what it reads, so it passes alone and in any order",
+      "it reads state that another test sets, or mutable state shared with other tests",
     ),
   },
-  rubric: `Isolated: passes on its own and in any order, with no shared mutable state and no
-  dependence on another test.`,
+  rubric: `Isolated: the test reads only what it or a before-each hook builds, so it passes
+  alone and in any order. Isolated is about what the test reads; Restores state
+  is about what it leaves.`,
 });

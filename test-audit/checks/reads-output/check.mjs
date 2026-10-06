@@ -23,7 +23,7 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   flag: "asserts-input",
   questions: {
     reads_output: noul(
-      "Does the assertion read the value the code under test produced, rather than its own input, its setup, or only that no error was thrown?",
+      "Does the assertion read the value the code under test produced, rather than its own input, its setup, or only that no error was thrown? A test that asserts its argument is unchanged counts as yes only when its name says the code must not change it.",
       "it asserts the returned or observed output",
       "it asserts its own input, its setup, or merely that the call did not throw",
     ),

@@ -1,6 +1,8 @@
-// canonical source: test-audit/checks/observable/check.mjs@4ba9d42 sha256:cad242a3acb349792f6310b9b905c1790a8cac328e4f9cc6ee1b9db147532bdd - vendored copy, do not edit here
-// The observable check: does the test assert behaviour a caller can observe,
-// not private internals or internal call order? A "no" raises the
+// canonical source: test-audit/checks/observable/check.mjs@9ae1caa sha256:352aa1acec0083b8fbfdc544ff448196f374fcd8c232fac8fc6fed18e6b0c0a5 - vendored copy, do not edit here
+// The observable check: does the assertion read an output or effect a caller of
+// the public interface could see, not a private field, an internal helper call,
+// or internal call order? It is about what is asserted; `resilient` is about how
+// the code is reached. A "no" raises the
 // `implementation-coupled` flag.
 //
 // Sources:
@@ -24,11 +26,12 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   flag: "implementation-coupled",
   questions: {
     observable: noul(
-      "Does this test assert observable behaviour of the code under test, rather than private internals or internal call order?",
-      "it checks behaviour a caller could observe",
-      "it checks private internals or internal call order",
+      "Does the assertion read an output or an effect that a caller of the public interface could see? A return value, a thrown error, a change the caller can read back, or a message sent through an injected port is observable. A private field, an underscore member, an internal helper call, or the order of internal calls is not.",
+      "it asserts an output or effect a caller could see",
+      "it asserts a private internal, an internal helper call, or internal call order",
     ),
   },
-  rubric: `Observable behaviour: output or effects a caller can observe. Private internals,
-  call order, and that a mock was called are not observable behaviour.`,
+  rubric: `Observable behaviour: a return value, a thrown error, a change the caller can
+  read back, or a message sent through an injected port. A private field, an
+  internal helper call, or the order of internal calls is not observable.`,
 });
