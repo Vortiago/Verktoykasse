@@ -47,7 +47,7 @@ if [ -n "$title" ] && ! cc_header_valid "$title"; then
 ✗ PR title is not a Conventional Commit:
     $title
   expected: <type>[(scope)][!]: <subject>
-  → skill: conventional-commits (~/.claude/skills/conventional-commits/SKILL.md)
+  → skill: conventional-commits ($dir/SKILL.md)
 EOF
   exit 2
 fi
@@ -57,7 +57,7 @@ if pr_body_missing "$cmd" "$cli" "$mode"; then
   cat >&2 <<EOF
 ✗ PR body is empty — it squash-merges into the commit body.
   Add a one-line why: gh --body "<why>" (or --body-file/--fill); az --description "<why>".
-  → skill: conventional-commits (~/.claude/skills/conventional-commits/SKILL.md)
+  → skill: conventional-commits ($dir/SKILL.md)
 EOF
   exit 2
 fi
@@ -83,7 +83,7 @@ if [ -n "$brk" ]; then
   or (b) the breaking commit was reverted/superseded and is not in the net diff
          → rewrite branch history (git rebase -i $base: reword/squash/drop the
            stale "!" commit) so none remains, then retry.
-  → skill: conventional-commits (~/.claude/skills/conventional-commits/SKILL.md)
+  → skill: conventional-commits ($dir/SKILL.md)
 EOF
   exit 2
 fi

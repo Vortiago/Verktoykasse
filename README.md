@@ -97,8 +97,12 @@ A directory is a skill when it holds a `SKILL.md`.
   writing rules for documentation, based on ASD-STE100 Simplified Technical
   English. Guidance, not enforcement, and deliberately not a skill: it is two
   files. [`ste-rules.md`](simplified-technical-english/ste-rules.md) is the single
-  source of the rules, symlinked to `~/.claude/rules/` where its `paths:`
-  frontmatter loads it whenever Claude touches a `*.md` file, in any project.
+  source of the rules, symlinked to `~/.claude/rules/`, where it loads in every
+  session, in any project. It governs four surfaces: a markdown file, a plan
+  file, a commit or PR body, and Claude's own replies. It carries no `paths:`
+  frontmatter, because only a Read arms a path-scoped rule and writing prose
+  does not read prose first, so the scoped form never reached a working session
+  ([ADR 0003](docs/adr/0003-ste-rules-adopt-a-subset.md)).
   [`ste-review.md`](simplified-technical-english/ste-review.md) is a subagent that
   reviews on demand (`@ste-review`), covering markdown, **code comments and
   docstrings**, commit messages and PR bodies, and judging the things no pattern
@@ -109,11 +113,28 @@ A directory is a skill when it holds a `SKILL.md`.
 
 - **[clean-code](clean-code/clean-code-rules.md)**: writing rules for code, based
   on Clean Code. Guidance, not enforcement, and not a skill: one file, symlinked
-  to `~/.claude/rules/`, where its `paths:` frontmatter loads it on a code-file
-  touch. It covers the comment that earns its place, the name that removes the
-  need for one, the shape of a function, dead code and an error message. Every
-  rule names an action to take. The rules it does not adopt from the book, and
-  why, live in [ADR 0004](docs/adr/0004-clean-code-rules-adopt-a-subset.md).
+  to `~/.claude/rules/`, where it loads in every session. It leads with the five
+  questions a comment answers, each with an example. A comment is short prose of
+  at most four lines. The agent fixes a problem it finds on the way, in the same
+  change, and leaves the code cleaner than it found it. The file also covers
+  names, how work splits across files and folders, the shape of a function, dead
+  code, errors and tests. Every rule names an action to take. The rules it does
+  not adopt from the book, and why, live in
+  [ADR 0004](docs/adr/0004-clean-code-rules-adopt-a-subset.md).
+
+- **[opencode-plan-accept](opencode-plan-accept/README.md)**: an OpenCode 2
+  plugin for plan-first work. One command, `/accept`, compacts the session,
+  switches to the build agent, and starts building. Install it with
+  `opencode plugin add` from the path in its
+  [README](opencode-plan-accept/README.md).
+
+- **[opencode-tasklist](opencode-tasklist/README.md)**: an OpenCode 2 plugin
+  that gives the agent a persistent task list with Claude Code's `Task*` tools.
+  It injects the list once after a compaction, nudges the model when a stop
+  leaves tasks open, and shows the list in the TUI sidebar, local or remote.
+  Install it with
+  `opencode plugin add` from the path in its
+  [README](opencode-tasklist/README.md).
 
 ## Install
 

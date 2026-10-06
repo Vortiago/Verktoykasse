@@ -1,0 +1,24 @@
+{
+  "name": "opencode-tasklist",
+  "version": "0.1.0",
+  "description": "An OpenCode 2 plugin that gives the agent a persistent task list and shows it in the sidebar.",
+  "type": "module",
+  "exports": {
+    ".": "./index.ts",
+    "./rpc": "./rpc.ts",
+    "./tui": "./tui.tsx"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@opencode/plugin": "2.0.22"
+  },
+  "peerDependencies": {
+    "@opentui/core": ">=0.5.8",
+    "@opentui/solid": ">=0.5.8",
+    "solid-js": ">=1.9.0"
+  },
+  "devDependencies": {
+    "@opencode/theme": "2.0.22",
+    "typescript": "5.9.3"
+  }
+}
