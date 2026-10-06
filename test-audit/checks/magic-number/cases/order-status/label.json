@@ -1,0 +1,9 @@
+{
+  "test": "maps a paid, unshipped order to its status code",
+  "defect": "magic-number",
+  "canFail": true,
+  "mustEscalate": false,
+  "mixed": false,
+  "magic_number": false,
+  "note": "Nothing in the test says what 7 means."
+}

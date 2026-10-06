@@ -1,7 +1,7 @@
 {
   "test": "planner returns roads",
   "defect": "shape-only",
-  "canFail": true,
+  "canFail": false,
   "mustEscalate": true,
   "asserts": "shape-only",
   "note": "shape-not-value: a shape change can fail it, the content is never checked"

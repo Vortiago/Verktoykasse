@@ -1,9 +1,10 @@
 {
-  "test": "normalise keeps the title text",
+  "test": "normalise trims the title",
   "defect": "wrong-reason",
-  "canFail": true,
+  "canFail": false,
   "mustEscalate": true,
   "mixed": false,
   "reads_output": false,
-  "note": "The assertion holds because it reads the input object, not the value the code returned."
+  "asserts": "input-only",
+  "note": "The name promises a trimmed title, but the assertion reads the untouched input, so broken trimming still passes."
 }

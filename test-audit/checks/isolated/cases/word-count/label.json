@@ -1,0 +1,9 @@
+{
+  "test": "counts the words in a sentence",
+  "defect": "clean",
+  "canFail": true,
+  "mustEscalate": false,
+  "mixed": false,
+  "isolated": true,
+  "note": "No shared state."
+}

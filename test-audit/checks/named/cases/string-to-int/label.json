@@ -1,0 +1,9 @@
+{
+  "test": "parses a number",
+  "defect": "clean",
+  "canFail": true,
+  "mustEscalate": false,
+  "mixed": false,
+  "named": true,
+  "note": "The name says which behaviour the test checks."
+}

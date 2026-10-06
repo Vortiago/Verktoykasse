@@ -1,0 +1,9 @@
+{
+  "test": "totals the cart",
+  "defect": "clean",
+  "canFail": true,
+  "mustEscalate": false,
+  "mixed": false,
+  "diagnostic": true,
+  "note": "toBe shows both values on failure."
+}

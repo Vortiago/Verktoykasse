@@ -1,0 +1,9 @@
+{
+  "test": "accepts the token from the mail",
+  "defect": "manual",
+  "canFail": true,
+  "mustEscalate": false,
+  "mixed": false,
+  "automated": false,
+  "note": "A person must act before the assertion can run."
+}

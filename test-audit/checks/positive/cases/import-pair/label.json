@@ -1,0 +1,9 @@
+{
+  "test": "finds the imports of a file",
+  "defect": "clean",
+  "canFail": true,
+  "mustEscalate": false,
+  "mixed": false,
+  "positive": true,
+  "note": "One assertion names a value that must be produced, beside the empty case."
+}

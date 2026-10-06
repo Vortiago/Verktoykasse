@@ -1,0 +1,9 @@
+{
+  "test": "rounds to two decimals",
+  "defect": "clean",
+  "canFail": true,
+  "mustEscalate": false,
+  "mixed": false,
+  "fast": true,
+  "note": "Milliseconds."
+}

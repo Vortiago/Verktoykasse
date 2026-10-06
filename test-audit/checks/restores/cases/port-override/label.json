@@ -1,0 +1,9 @@
+{
+  "test": "reads the port from the environment",
+  "defect": "state-leak",
+  "canFail": true,
+  "mustEscalate": false,
+  "mixed": false,
+  "restores": false,
+  "note": "PORT stays 8081 for every later test."
+}

@@ -3,5 +3,6 @@
   "defect": "tautology",
   "canFail": false,
   "mustEscalate": true,
+  "verdict": "slop",
   "note": "tautology: true === true"
 }

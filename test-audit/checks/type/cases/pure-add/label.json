@@ -1,0 +1,9 @@
+{
+  "test": "adds two numbers",
+  "defect": "clean",
+  "canFail": true,
+  "mustEscalate": false,
+  "mixed": false,
+  "type": "unit",
+  "note": "One small unit in isolation."
+}

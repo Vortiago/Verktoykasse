@@ -1,0 +1,9 @@
+{
+  "test": "formats a date as ISO",
+  "defect": "clean",
+  "canFail": true,
+  "mustEscalate": false,
+  "mixed": false,
+  "automated": true,
+  "note": "No person needed."
+}

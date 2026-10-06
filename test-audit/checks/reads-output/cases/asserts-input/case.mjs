@@ -3,7 +3,7 @@
 // Source: the house catalogue, verify-prd-implemented/test-patterns.md: Passes
 //   for the wrong reason.
 //   https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md
-test("normalise keeps the title text", () => {
+test("normalise trims the title", () => {
   const input = { title: "  hello  " };
   normalise(input);
   expect(input.title).toBe("  hello  ");

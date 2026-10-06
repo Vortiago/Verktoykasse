@@ -1,0 +1,11 @@
+{
+  "test": "debounce fires once after the wait",
+  "defect": "clean",
+  "canFail": true,
+  "mustEscalate": false,
+  "mixed": false,
+  "deterministic": true,
+  "fast": true,
+  "restores": true,
+  "note": "The timers are faked and restored."
+}

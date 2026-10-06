@@ -5,5 +5,6 @@
   "mustEscalate": true,
   "mixed": false,
   "asserts": "interaction-only",
+  "verdict": "weak",
   "note": "A missing call fails the test, though the mock stands in for behaviour it never verifies."
 }

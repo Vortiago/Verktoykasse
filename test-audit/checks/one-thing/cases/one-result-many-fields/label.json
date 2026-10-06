@@ -1,0 +1,9 @@
+{
+  "test": "a new job starts queued with no steps",
+  "defect": "clean",
+  "canFail": true,
+  "mustEscalate": false,
+  "mixed": false,
+  "one_thing": true,
+  "note": "One action, one result."
+}

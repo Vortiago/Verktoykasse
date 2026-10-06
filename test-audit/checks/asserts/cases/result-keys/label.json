@@ -1,7 +1,7 @@
 {
   "test": "loads the profile fields",
   "defect": "shape-only",
-  "canFail": true,
+  "canFail": false,
   "mustEscalate": true,
   "mixed": false,
   "asserts": "shape-only",

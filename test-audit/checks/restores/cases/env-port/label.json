@@ -1,0 +1,10 @@
+{
+  "test": "reads the port from the environment",
+  "defect": "clean",
+  "canFail": true,
+  "mustEscalate": false,
+  "mixed": false,
+  "restores": true,
+  "controlled": true,
+  "note": "The afterEach restores PORT."
+}

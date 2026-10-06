@@ -1,0 +1,9 @@
+{
+  "test": "a seeded shuffle gives a fixed order",
+  "defect": "clean",
+  "canFail": true,
+  "mustEscalate": false,
+  "mixed": false,
+  "deterministic": true,
+  "note": "The randomness is seeded."
+}

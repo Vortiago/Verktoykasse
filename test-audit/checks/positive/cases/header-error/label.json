@@ -1,0 +1,9 @@
+{
+  "test": "rejects a header without a colon",
+  "defect": "clean",
+  "canFail": true,
+  "mustEscalate": false,
+  "mixed": false,
+  "positive": true,
+  "note": "A thrown error with its message is a positive assertion, not a mere non-throw."
+}

@@ -1,7 +1,7 @@
 {
   "test": "forwards the payload",
   "defect": "interaction-only",
-  "canFail": true,
+  "canFail": false,
   "mustEscalate": true,
   "mixed": false,
   "asserts": "interaction-only",

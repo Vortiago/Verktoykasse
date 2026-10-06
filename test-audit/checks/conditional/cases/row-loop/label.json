@@ -1,0 +1,9 @@
+{
+  "test": "every row is validated",
+  "defect": "conditional-logic",
+  "canFail": true,
+  "mustEscalate": false,
+  "mixed": false,
+  "conditional": false,
+  "note": "If validateAll returns an empty list, the loop asserts nothing."
+}

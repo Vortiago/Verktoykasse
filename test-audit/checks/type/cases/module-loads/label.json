@@ -1,0 +1,9 @@
+{
+  "test": "the package entry loads",
+  "defect": "smoke",
+  "canFail": true,
+  "mustEscalate": true,
+  "mixed": false,
+  "type": "smoke",
+  "note": "It checks only that something exists, so it is shape-only by nature and escalates."
+}

@@ -1,0 +1,10 @@
+{
+  "test": "a token expires after its time to live",
+  "defect": "clean",
+  "canFail": true,
+  "mustEscalate": false,
+  "mixed": false,
+  "controlled": true,
+  "deterministic": true,
+  "note": "The clock is injected, so it is controlled and deterministic."
+}

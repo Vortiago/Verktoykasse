@@ -8,5 +8,11 @@
   "runs": true,
   "positive": true,
   "type": "unit",
+  "verdict": "strong",
+  "named": true,
+  "name_matches": true,
+  "reads_output": true,
+  "one_thing": true,
+  "observable": true,
   "note": "a clean unit guard"
 }

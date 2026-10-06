@@ -4,5 +4,6 @@
   "canFail": false,
   "mustEscalate": true,
   "mixed": false,
+  "verdict": "slop",
   "note": "The assertion holds for every build, so breaking the code cannot fail it."
 }
