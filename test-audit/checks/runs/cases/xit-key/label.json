@@ -3,11 +3,5 @@
   "defect": "skipped",
   "mustEscalate": true,
   "mixed": false,
-  "note": "The test is marked xit, so it never runs.",
-  "sources": [
-    {
-      "name": "the house catalogue, verify-prd-implemented/test-patterns.md: Skipped / disabled / focused",
-      "url": "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md"
-    }
-  ]
+  "note": "The test is marked xit, so it never runs."
 }

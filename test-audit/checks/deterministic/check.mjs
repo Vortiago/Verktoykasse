@@ -33,9 +33,4 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   },
   rubric: `Deterministic: same result every run, with no sleep, clock, network, randomness, or
   order dependence.`,
-  sources: [
-    { name: "Kent Beck, Test Desiderata (2019): Deterministic, Isolated", url: "https://kentbeck.github.io/TestDesiderata/" },
-    { name: "Gerard Meszaros, xUnit Test Patterns (2007): Erratic Test (Nondeterministic Test, Resource Optimism, Interacting Tests, Test Run War)", url: "http://xunitpatterns.com/Erratic%20Test.html" },
-    { name: "testsmells.org, Open Catalog of Test Smells: Sleepy Test, Mystery Guest, Resource Optimism", url: "https://testsmells.org/pages/testsmells.html" },
-  ],
 });

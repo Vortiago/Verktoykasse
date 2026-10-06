@@ -58,11 +58,4 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   Not falsifiable: a tautology (true === true, or both sides call the same code);
   a check that the result is merely defined, non-null, or the right shape;
   an assertion on data the code copies straight from its input.`,
-  sources: [
-    { name: "Kent Beck, Test Desiderata (2019): Behavioral", url: "https://kentbeck.github.io/TestDesiderata/" },
-    { name: "Web Platform Tests, Review Checklist: \"The test fails when it's supposed to fail\"", url: "https://web-platform-tests.org/reviewing-tests/checklist.html" },
-    { name: "Gerard Meszaros, xUnit Test Patterns (2007): Erratic Test", url: "http://xunitpatterns.com/Erratic%20Test.html" },
-    { name: "Goran Petrović and Marko Ivanković, State of Mutation Testing at Google (ICSE-SEIP 2018)", url: "https://research.google/pubs/state-of-mutation-testing-at-google/" },
-    { name: "René Just et al., Are Mutants a Valid Substitute for Real Faults in Software Testing? (FSE 2014)", url: "https://doi.org/10.1145/2635868.2635929" },
-  ],
 });

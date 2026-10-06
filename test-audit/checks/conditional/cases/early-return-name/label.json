@@ -4,11 +4,5 @@
   "canFail": false,
   "mustEscalate": true,
   "mixed": false,
-  "note": "The early return makes the assertion unreachable, so the test cannot fail.",
-  "sources": [
-    {
-      "name": "the house catalogue, verify-prd-implemented/test-patterns.md: Skipped / disabled / focused",
-      "url": "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md"
-    }
-  ]
+  "note": "The early return makes the assertion unreachable, so the test cannot fail."
 }

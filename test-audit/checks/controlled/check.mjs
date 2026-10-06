@@ -32,9 +32,4 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   },
   rubric: `Controlled resources: the test fixes the time, network, filesystem, and
   environment it needs; it does not assume they are present.`,
-  sources: [
-    { name: "Gerard Meszaros, xUnit Test Patterns (2007): Resource Optimism (in Erratic Test)", url: "http://xunitpatterns.com/Erratic%20Test.html" },
-    { name: "Gerard Meszaros, xUnit Test Patterns (2007): Mystery Guest (in Obscure Test)", url: "http://xunitpatterns.com/Obscure%20Test.html" },
-    { name: "testsmells.org, Open Catalog of Test Smells: Mystery Guest, Resource Optimism", url: "https://testsmells.org/pages/testsmells.html" },
-  ],
 });

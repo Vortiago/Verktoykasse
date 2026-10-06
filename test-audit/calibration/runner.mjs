@@ -3,18 +3,14 @@
 // repo gate. `runSelftest` is the interface; the CLI imports it from here.
 
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 import { extractTests } from "../change/index.mjs";
 import { classify, usageMeter } from "../classifier/index.mjs";
 import { mapPool } from "../lib/pool.mjs";
-import { loadLabels } from "./labels.mjs";
+import { ROOT, loadLabels } from "./labels.mjs";
 import { judge, rowStatus } from "./judge.mjs";
 import { formatBenchmark, formatMatrix, formatSingle } from "./format.mjs";
 import config from "../config.mjs";
-
-/** test-audit/: the label paths are relative to it. */
-const ROOT = fileURLToPath(new URL("../", import.meta.url));
 
 /** The file name the model sees for every case. A case's path states its label
  * (`checks/can-fail/cases/tautology-constant/`), so sending it would leak the

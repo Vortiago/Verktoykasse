@@ -25,8 +25,4 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
     ),
   },
   rubric: `Diagnostic: a failure names the assertion that failed and the expected value.`,
-  sources: [
-    { name: "Gerard Meszaros, xUnit Test Patterns (2007): Assertion Roulette (Missing Assertion Message)", url: "http://xunitpatterns.com/Assertion%20Roulette.html" },
-    { name: "testsmells.org, Open Catalog of Test Smells: Assertion Roulette", url: "https://testsmells.org/pages/testsmells.html" },
-  ],
 });

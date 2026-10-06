@@ -4,11 +4,5 @@
   "canFail": true,
   "mustEscalate": false,
   "mixed": false,
-  "note": "A real pipeline check, but parse, format and lint are three features asserted in one body.",
-  "sources": [
-    {
-      "name": "Gerard Meszaros, xUnit Test Patterns (2007): Eager Test (in Obscure Test)",
-      "url": "http://xunitpatterns.com/Obscure%20Test.html"
-    }
-  ]
+  "note": "A real pipeline check, but parse, format and lint are three features asserted in one body."
 }

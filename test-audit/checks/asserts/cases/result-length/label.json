@@ -4,11 +4,5 @@
   "canFail": true,
   "mustEscalate": true,
   "mixed": false,
-  "note": "A wrong count fails the test, yet the step contents are never checked.",
-  "sources": [
-    {
-      "name": "the house catalogue, verify-prd-implemented/test-patterns.md: Shape-not-value",
-      "url": "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md"
-    }
-  ]
+  "note": "A wrong count fails the test, yet the step contents are never checked."
 }

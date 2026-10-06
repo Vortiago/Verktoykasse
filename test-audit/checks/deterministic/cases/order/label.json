@@ -5,11 +5,5 @@
   "mustEscalate": false,
   "mixed": false,
   "deterministic": false,
-  "note": "A real metrics check, but it pins key order that the structure does not guarantee.",
-  "sources": [
-    {
-      "name": "Kent Beck, Test Desiderata (2019): Deterministic",
-      "url": "https://kentbeck.github.io/TestDesiderata/"
-    }
-  ]
+  "note": "A real metrics check, but it pins key order that the structure does not guarantee."
 }

@@ -23,8 +23,4 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
     ),
   },
   rubric: `Name: states the behaviour and the expected result, not a vague label.`,
-  sources: [
-    { name: "Gerard Meszaros, xUnit Test Patterns (2007): Obscure Test", url: "http://xunitpatterns.com/Obscure%20Test.html" },
-    { name: "testsmells.org, Open Catalog of Test Smells: Unknown Test", url: "https://testsmells.org/pages/testsmells.html" },
-  ],
 });

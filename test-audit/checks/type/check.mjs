@@ -32,9 +32,4 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   },
   rubric: `Type: unit, integration, regression, e2e, smoke, or characterization, by what it
   actually exercises.`,
-  sources: [
-    { name: "Gerard Meszaros, xUnit Test Patterns (2007): Test Organization and Test Strategy", url: "http://xunitpatterns.com/" },
-    { name: "Michael Feathers, Characterization Testing (2016)", url: "https://michaelfeathers.silvrback.com/characterization-testing" },
-    { name: "house choice: the exact six labels (inference)" },
-  ],
 });

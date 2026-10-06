@@ -37,8 +37,4 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   negated: ["positive_b"],
   rubric: `Positive assertion: the test asserts the behaviour that must exist, not only
   that something is absent, empty, or does not throw.`,
-  sources: [
-    { name: "the house catalogue, verify-prd-implemented/test-patterns.md: No negative/positive pair", url: "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md" },
-    { name: "Web Platform Tests, Review Checklist: \"The test fails when it's supposed to fail\"", url: "https://web-platform-tests.org/reviewing-tests/checklist.html" },
-  ],
 });

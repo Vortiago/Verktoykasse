@@ -4,11 +4,5 @@
   "canFail": false,
   "mustEscalate": true,
   "mixed": false,
-  "note": "The check only asks whether the collection is defined, so no dispatch passes.",
-  "sources": [
-    {
-      "name": "the house catalogue, verify-prd-implemented/test-patterns.md: Vacuous / passes-with-zero",
-      "url": "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md"
-    }
-  ]
+  "note": "The check only asks whether the collection is defined, so no dispatch passes."
 }

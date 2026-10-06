@@ -10,7 +10,7 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { BATTERY, CHECKS, RUBRIC } from "./index.mjs";
-import { CASE_FILE, CODE_FILE, LABEL_FILE, loadLabels } from "../calibration/labels.mjs";
+import { CASE_FILE, CODE_FILE, LABEL_FIELDS, LABEL_FILE, LOADED_FIELDS, ROOT, headerOf, loadLabels, sourcesOf } from "../calibration/labels.mjs";
 import { extractTests } from "../change/index.mjs";
 import { buildState } from "../classifier/index.mjs";
 import { codeContext } from "../calibration/runner.mjs";
@@ -39,27 +39,10 @@ const LABELS_BY_FILE = Map.groupBy(LABELS, (label) => label.file);
 /** The text of each case file, and the tests the extractor finds in it, read once. */
 const CASE_TEXTS = new Map(
   [...LABELS_BY_FILE.keys()].map((file) => {
-    const text = readFileSync(join(HERE, "..", file), "utf8");
+    const text = readFileSync(join(ROOT, file), "utf8");
     return [file, { text, tests: extractTests(text, "example.test.mjs") }];
   }),
 );
-
-/** The label fields a label.json may hold. The loader adds `check`, `file` and `code`. */
-const LABEL_FIELDS = new Set(["test", "defect", "canFail", "mustEscalate", "mixed", "deterministic", "note", "sources"]);
-
-/**
- * The comment at the head of a file, as one line of words: the `//` lines
- * before the first line of code, without their markers.
- * @param {string} text
- */
-function headerOf(text) {
-  const lines = [];
-  for (const line of text.split("\n")) {
-    if (!line.startsWith("//")) break;
-    lines.push(line.slice(2).trim());
-  }
-  return lines.join(" ").replace(/\s+/g, " ");
-}
 
 /** The folder name of a check: the kebab-case form of its name. @param {string} name */
 const folderOf = (name) => name.replaceAll("_", "-");
@@ -99,24 +82,11 @@ test("a check negates only its own questions, and a descriptive check asks one q
   }
 });
 
-test("every check names its sources", () => {
+test("each check's header comment lists its sources, each with a URL or named as an inference", () => {
   for (const check of CHECKS) {
-    assert.ok(check.sources.length > 0, `${check.name} has no source`);
-    for (const source of check.sources) {
-      assert.ok(source.name.length > 0, `a source of ${check.name} has no name`);
-      if (source.url !== undefined) assert.match(source.url, /^https?:\/\//, `${check.name}: ${source.url}`);
-    }
-  }
-});
-
-test("each check's header comment names every source in its `sources`, with the URL", () => {
-  for (const check of CHECKS) {
-    const header = headerOf(readFileSync(join(HERE, folderOf(check.name), "check.mjs"), "utf8"));
-    assert.ok(header.includes("Sources:"), `${check.name} has no Sources: list in its header`);
-    for (const source of check.sources) {
-      assert.ok(header.includes(source.name), `${check.name}: the header does not name ${source.name}`);
-      if (source.url) assert.ok(header.includes(source.url), `${check.name}: the header has no ${source.url}`);
-    }
+    const sources = sourcesOf(readFileSync(join(HERE, folderOf(check.name), "check.mjs"), "utf8"));
+    assert.ok(sources.length > 0, `${check.name} has no Sources: list in its header`);
+    for (const source of sources) assert.ok(source.url || source.name.includes("(inference)"), `${check.name}: ${source.name} has no URL`);
   }
 });
 
@@ -144,20 +114,17 @@ test("every label names a test in its case file, and every test in a case file h
 
 test("a label holds only the label fields, and names its defect", () => {
   for (const label of LABELS) {
-    for (const key of Object.keys(label)) assert.ok(LABEL_FIELDS.has(key) || ["check", "file", "code"].includes(key), `${label.file}: field ${key}`);
+    for (const key of Object.keys(label)) assert.ok(LABEL_FIELDS.includes(key) || LOADED_FIELDS.includes(key), `${label.file}: field ${key}`);
     assert.ok(typeof label.defect === "string" && label.defect.length > 0, `${label.file}: no defect`);
   }
 });
 
-test("each case's header comment says what it shows and names the sources of its label", () => {
+test("each case's header comment says what it shows and names its sources, each with a URL", () => {
   for (const label of LABELS) {
     const header = headerOf(CASE_TEXTS.get(label.file)?.text ?? "");
-    assert.ok(header.length > 0, `${label.file} has no header comment`);
-    assert.ok(label.sources?.length, `${label.file}: the label names no source`);
-    for (const source of label.sources ?? []) {
-      assert.ok(header.includes(`Source: ${source.name}`), `${label.file}: the header does not name ${source.name}`);
-      if (source.url) assert.ok(header.includes(source.url), `${label.file}: the header has no ${source.url}`);
-    }
+    assert.ok(header.length > 0 && !header[0].startsWith(" Source:"), `${label.file}: the header does not say what the case shows`);
+    assert.ok(label.sources?.length, `${label.file}: the header names no source`);
+    for (const source of label.sources ?? []) assert.ok(source.url, `${label.file}: ${source.name} has no URL`);
   }
 });
 
@@ -170,9 +137,8 @@ test("a case's header comment never reaches the model, and its code under test h
     // The code under test travels whole, so a comment in it would reach the model.
     assert.ok(!/\/\/|\/\*/.test(code), `${label.code} holds a comment`);
     const state = buildState(test, code ? codeContext(code) : "", 1_000_000);
-    for (const line of text.split("\n")) {
-      if (!line.startsWith("//")) break;
-      assert.ok(!state.includes(line.slice(2).trim()), `${label.file}: the state holds its header line ${line}`);
+    for (const line of headerOf(text)) {
+      assert.ok(!state.includes(line.trim()), `${label.file}: the state holds its header line ${line}`);
     }
   }
 });

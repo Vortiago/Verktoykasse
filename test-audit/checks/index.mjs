@@ -1,7 +1,7 @@
 // The checks: one folder for each judgement the tool asks the model about a test.
 // Each `<check>/check.mjs` holds the check's questions, its rubric definition,
-// its role in the verdict, and its sources. Its `cases/` folder holds the
-// calibration cases meant to catch it.
+// and its role in the verdict; its header comment names its sources. Its
+// `cases/` folder holds the calibration cases meant to catch it.
 //
 // This module puts the checks together. It builds the battery (every question,
 // in one call) and the shared rubric. The questions are data. The rules over

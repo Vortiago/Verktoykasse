@@ -46,10 +46,4 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
     // The same question with the answer order reversed: a position-swap control.
     asserts_b: choice("What does the test's assertion actually check?", Object.fromEntries(Object.entries(KINDS).reverse())),
   },
-  sources: [
-    { name: "testsmells.org, Open Catalog of Test Smells: Redundant Assertion, Unknown Test, Magic Number Test, Sensitive Equality", url: "https://testsmells.org/pages/testsmells.html" },
-    { name: "Gerard Meszaros, xUnit Test Patterns (2007): Obscure Test (Hard-Coded Test Data, Indirect Testing)", url: "http://xunitpatterns.com/Obscure%20Test.html" },
-    { name: "Martin Fowler, Mocks Aren't Stubs (2007)", url: "https://martinfowler.com/articles/mocksArentStubs.html" },
-    { name: "the house catalogue, verify-prd-implemented/test-patterns.md: Shape-not-value", url: "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md" },
-  ],
 });

@@ -4,11 +4,5 @@
   "canFail": true,
   "mustEscalate": false,
   "mixed": false,
-  "note": "a real guard",
-  "sources": [
-    {
-      "name": "Kent Beck, Test Desiderata (2019): Behavioral, Specific",
-      "url": "https://kentbeck.github.io/TestDesiderata/"
-    }
-  ]
+  "note": "a real guard"
 }

@@ -3,11 +3,5 @@
   "defect": "ambiguous",
   "mustEscalate": true,
   "mixed": true,
-  "note": "Both assertions check the shape and never the node values, so the paraphrased gates disagree.",
-  "sources": [
-    {
-      "name": "Xuezhi Wang et al., Self-Consistency Improves Chain of Thought Reasoning (ICLR 2023)",
-      "url": "https://arxiv.org/abs/2203.11171"
-    }
-  ]
+  "note": "Both assertions check the shape and never the node values, so the paraphrased gates disagree."
 }

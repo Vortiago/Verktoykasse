@@ -26,8 +26,4 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   },
   rubric: `Magic number: the assertion names its values, rather than a bare number or string
   the reader must decode.`,
-  sources: [
-    { name: "testsmells.org, Open Catalog of Test Smells: Magic Number Test", url: "https://testsmells.org/pages/testsmells.html" },
-    { name: "Gerard Meszaros, xUnit Test Patterns (2007): Hard-Coded Test Data (in Obscure Test)", url: "http://xunitpatterns.com/Obscure%20Test.html" },
-  ],
 });

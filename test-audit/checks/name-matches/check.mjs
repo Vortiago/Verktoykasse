@@ -31,10 +31,4 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
       "the name promises one behaviour and the body asserts something else or something trivial",
     ),
   },
-  sources: [
-    { name: "Web Platform Tests, Review Checklist: \"The test is testing what it thinks it's testing\"", url: "https://web-platform-tests.org/reviewing-tests/checklist.html" },
-    { name: "testsmells.org, Open Catalog of Test Smells: Unknown Test", url: "https://testsmells.org/pages/testsmells.html" },
-    { name: "Gerard Meszaros, xUnit Test Patterns (2007): Obscure Test", url: "http://xunitpatterns.com/Obscure%20Test.html" },
-    { name: "the house catalogue, verify-prd-implemented/test-patterns.md: Name-only", url: "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md" },
-  ],
 });

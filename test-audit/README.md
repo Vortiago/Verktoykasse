@@ -27,10 +27,10 @@ test-audit/
     rubric.snapshot.txt   the rubric the model sees, byte for byte
     battery.snapshot.json the questions the model sees, byte for byte
     runs/
-      check.mjs           the questions, the rubric definition, the role, and the sources
+      check.mjs           the questions, the rubric definition, the role; its header names the sources
       cases/
         skip-token/
-          case.mjs        the test, with a header comment that the model never sees
+          case.mjs        the test; its header names the defect and the sources, and the model never sees it
           label.json      the known defect and the expected outcome
           code.mjs        the code under test, if the right answer depends on it
     can-fail/  asserts/  positive/  type/  verdict/  and 18 descriptive checks

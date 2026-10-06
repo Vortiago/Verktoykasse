@@ -25,8 +25,4 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   },
   rubric: `Conditional test logic: a branch, loop, or catch that can leave the assertion
   unrun, so the test may assert nothing on some inputs.`,
-  sources: [
-    { name: "Gerard Meszaros, xUnit Test Patterns (2007): Conditional Test Logic", url: "http://xunitpatterns.com/Conditional%20Test%20Logic.html" },
-    { name: "testsmells.org, Open Catalog of Test Smells: Conditional Test Logic", url: "https://testsmells.org/pages/testsmells.html" },
-  ],
 });

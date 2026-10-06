@@ -27,9 +27,4 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
     ),
   },
   rubric: `Automated: the test reaches pass or fail with no person doing or reading anything.`,
-  sources: [
-    { name: "Kent Beck, Test Desiderata (2019): Automated", url: "https://kentbeck.github.io/TestDesiderata/" },
-    { name: "Gerard Meszaros, xUnit Test Patterns (2007): Manual Intervention", url: "http://xunitpatterns.com/" },
-    { name: "Web Platform Tests, Review Checklist: manual tests", url: "https://web-platform-tests.org/reviewing-tests/checklist.html" },
-  ],
 });

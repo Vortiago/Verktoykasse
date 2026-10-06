@@ -23,9 +23,4 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
     fast: noul("Does the test run fast, with no sleep, no heavy I/O, and no large computation?", "it runs fast", "it sleeps, waits, or does heavy work"),
   },
   rubric: `Fast: the test runs in milliseconds, with no sleep, heavy I/O, or large computation.`,
-  sources: [
-    { name: "Kent Beck, Test Desiderata (2019): Fast", url: "https://kentbeck.github.io/TestDesiderata/" },
-    { name: "Gerard Meszaros, xUnit Test Patterns (2007): Slow Tests", url: "http://xunitpatterns.com/" },
-    { name: "testsmells.org, Open Catalog of Test Smells: Sleepy Test", url: "https://testsmells.org/pages/testsmells.html" },
-  ],
 });

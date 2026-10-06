@@ -24,7 +24,4 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   },
   rubric: `Local fixture: the test builds only the data it needs, not a large shared fixture
   or values unrelated to the behaviour.`,
-  sources: [
-    { name: "Gerard Meszaros, xUnit Test Patterns (2007): General Fixture, Irrelevant Information (in Obscure Test)", url: "http://xunitpatterns.com/Obscure%20Test.html" },
-  ],
 });

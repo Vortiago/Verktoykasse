@@ -4,11 +4,5 @@
   "canFail": true,
   "mustEscalate": false,
   "mixed": false,
-  "note": "A real user-creation check, but validation, storage and notification are three unrelated behaviours.",
-  "sources": [
-    {
-      "name": "Gerard Meszaros, xUnit Test Patterns (2007): Eager Test (in Obscure Test)",
-      "url": "http://xunitpatterns.com/Obscure%20Test.html"
-    }
-  ]
+  "note": "A real user-creation check, but validation, storage and notification are three unrelated behaviours."
 }

@@ -30,9 +30,4 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   },
   rubric: `Observable behaviour: output or effects a caller can observe. Private internals,
   call order, and that a mock was called are not observable behaviour.`,
-  sources: [
-    { name: "Gerard Meszaros, xUnit Test Patterns (2007): Indirect Testing (in Obscure Test)", url: "http://xunitpatterns.com/Obscure%20Test.html" },
-    { name: "Martin Fowler, Mocks Aren't Stubs (2007)", url: "https://martinfowler.com/articles/mocksArentStubs.html" },
-    { name: "testsmells.org, Open Catalog of Test Smells: Redundant Assertion", url: "https://testsmells.org/pages/testsmells.html" },
-  ],
 });

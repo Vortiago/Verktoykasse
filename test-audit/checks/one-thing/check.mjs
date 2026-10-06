@@ -26,8 +26,4 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
     ),
   },
   rubric: `One behaviour: the body checks one thing, not several unrelated behaviours.`,
-  sources: [
-    { name: "Gerard Meszaros, xUnit Test Patterns (2007): Eager Test (in Obscure Test and Assertion Roulette)", url: "http://xunitpatterns.com/Obscure%20Test.html" },
-    { name: "testsmells.org, Open Catalog of Test Smells: Eager Test", url: "https://testsmells.org/pages/testsmells.html" },
-  ],
 });

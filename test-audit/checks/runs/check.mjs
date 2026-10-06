@@ -39,8 +39,4 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   negated: ["runs_b"],
   rubric: `Runs: no skip, todo, only, or focus marker is on the test or on a describe
   around it, and no only or focus marker is on another test in the file.`,
-  sources: [
-    { name: "testsmells.org, Open Catalog of Test Smells: Ignored Test", url: "https://testsmells.org/pages/testsmells.html" },
-    { name: "the house catalogue, verify-prd-implemented/test-patterns.md: Skipped / disabled / focused", url: "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md" },
-  ],
 });

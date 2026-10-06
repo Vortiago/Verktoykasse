@@ -27,8 +27,4 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   },
   rubric: `Structure-insensitive: a refactor of the code under test that keeps the behaviour
   does not break the test.`,
-  sources: [
-    { name: "Kent Beck, Test Desiderata (2019): Structure-insensitive", url: "https://kentbeck.github.io/TestDesiderata/" },
-    { name: "Gerard Meszaros, xUnit Test Patterns (2007): Fragile Test, Sensitive Equality", url: "http://xunitpatterns.com/" },
-  ],
 });

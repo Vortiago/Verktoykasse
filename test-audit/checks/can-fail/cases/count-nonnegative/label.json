@@ -4,11 +4,5 @@
   "canFail": false,
   "mustEscalate": true,
   "mixed": false,
-  "note": "A length is never negative, so the bound is always true.",
-  "sources": [
-    {
-      "name": "the house catalogue, verify-prd-implemented/test-patterns.md: Vacuous / passes-with-zero",
-      "url": "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md"
-    }
-  ]
+  "note": "A length is never negative, so the bound is always true."
 }

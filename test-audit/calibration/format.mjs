@@ -5,6 +5,7 @@ import { canFailText, escapeCell, pad } from "../report/index.mjs";
 import { questionValue, trusted } from "../classifier/index.mjs";
 import { BATTERY, CHECKS } from "../checks/index.mjs";
 import { rowStatus, saidCanFail, shortStatus } from "./judge.mjs";
+import { LABEL_FIELDS } from "./labels.mjs";
 
 /** @typedef {import("../types.d.ts").AuditUsage} AuditUsage */
 /** @typedef {import("../types.d.ts").AuditResult} AuditResult */
@@ -270,9 +271,11 @@ function knownDefect(row) {
   return parts.join(" ");
 }
 
+/** The label fields that state the expected answer to a question of the battery, such as `deterministic`. */
+const LABEL_ANSWERS = LABEL_FIELDS.filter((key) => key in BATTERY);
+
 /**
- * The answers the label sets for questions of the battery, such as
- * `deterministic`.
+ * The answers the label sets for questions of the battery.
  * @param {CalibrationLabel} label
  * @returns {Array<[string, boolean | string]>}
  */
@@ -280,7 +283,7 @@ function labelAnswers(label) {
   /** @type {Array<[string, boolean | string]>} */
   const answers = [];
   for (const [key, value] of Object.entries(label)) {
-    if (key in BATTERY && (typeof value === "boolean" || typeof value === "string")) answers.push([key, value]);
+    if (LABEL_ANSWERS.includes(key) && (typeof value === "boolean" || typeof value === "string")) answers.push([key, value]);
   }
   return answers;
 }

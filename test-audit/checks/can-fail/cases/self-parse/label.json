@@ -4,11 +4,5 @@
   "canFail": false,
   "mustEscalate": true,
   "mixed": false,
-  "note": "Both sides call the same production function, so the comparison is true by construction.",
-  "sources": [
-    {
-      "name": "the house catalogue, verify-prd-implemented/test-patterns.md: Tautology / self-reference",
-      "url": "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md"
-    }
-  ]
+  "note": "Both sides call the same production function, so the comparison is true by construction."
 }

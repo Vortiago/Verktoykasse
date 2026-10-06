@@ -4,25 +4,13 @@
     "defect": "focused",
     "mustEscalate": true,
     "mixed": false,
-    "note": "The it.only focuses the file and narrows the whole run.",
-    "sources": [
-      {
-        "name": "the house catalogue, verify-prd-implemented/test-patterns.md: Skipped / disabled / focused",
-        "url": "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md"
-      }
-    ]
+    "note": "The it.only focuses the file and narrows the whole run."
   },
   {
     "test": "loads the draft",
     "defect": "focused",
     "mustEscalate": true,
     "mixed": false,
-    "note": "The plain test inherits the file-level focus from it.only.",
-    "sources": [
-      {
-        "name": "the house catalogue, verify-prd-implemented/test-patterns.md: Skipped / disabled / focused",
-        "url": "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md"
-      }
-    ]
+    "note": "The plain test inherits the file-level focus from it.only."
   }
 ]

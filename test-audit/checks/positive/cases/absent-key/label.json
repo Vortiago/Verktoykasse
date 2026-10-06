@@ -4,11 +4,5 @@
   "canFail": true,
   "mustEscalate": true,
   "mixed": false,
-  "note": "Only the absent lookup is checked, so a reader that always returns null would pass.",
-  "sources": [
-    {
-      "name": "the house catalogue, verify-prd-implemented/test-patterns.md: No negative/positive pair",
-      "url": "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md"
-    }
-  ]
+  "note": "Only the absent lookup is checked, so a reader that always returns null would pass."
 }

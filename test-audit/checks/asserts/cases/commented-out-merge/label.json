@@ -4,15 +4,5 @@
   "canFail": false,
   "mustEscalate": true,
   "mixed": false,
-  "note": "The real assertion is commented out, beside a tautology.",
-  "sources": [
-    {
-      "name": "the house catalogue, verify-prd-implemented/test-patterns.md: Skipped / disabled / focused",
-      "url": "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md"
-    },
-    {
-      "name": "Web Platform Tests, Review Checklist: \"The test does not contain commented-out code\"",
-      "url": "https://web-platform-tests.org/reviewing-tests/checklist.html"
-    }
-  ]
+  "note": "The real assertion is commented out, beside a tautology."
 }

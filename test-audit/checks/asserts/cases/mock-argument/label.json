@@ -4,11 +4,5 @@
   "canFail": true,
   "mustEscalate": true,
   "mixed": false,
-  "note": "The mock argument shape can change and fail the test, while the real output stays unchecked.",
-  "sources": [
-    {
-      "name": "Martin Fowler, Mocks Aren't Stubs (2007)",
-      "url": "https://martinfowler.com/articles/mocksArentStubs.html"
-    }
-  ]
+  "note": "The mock argument shape can change and fail the test, while the real output stays unchecked."
 }

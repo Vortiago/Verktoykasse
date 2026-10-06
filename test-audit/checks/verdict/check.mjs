@@ -26,7 +26,4 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   rubric: `Verdict: slop, weak, good, or strong. Slop is no real guard; weak is a guard with
   a serious smell; good is a real guard; strong is a real guard with a specific
   expected value that would fail loudly.`,
-  sources: [
-    { name: "house rule: the four levels and the cross-question rule (inference)" },
-  ],
 });

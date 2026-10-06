@@ -25,8 +25,4 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   },
   rubric: `Isolated: passes on its own and in any order, with no shared mutable state and no
   dependence on another test.`,
-  sources: [
-    { name: "Kent Beck, Test Desiderata (2019): Isolated", url: "https://kentbeck.github.io/TestDesiderata/" },
-    { name: "Gerard Meszaros, xUnit Test Patterns (2007): Interacting Tests, Test Run War, Unrepeatable Test (in Erratic Test)", url: "http://xunitpatterns.com/Erratic%20Test.html" },
-  ],
 });

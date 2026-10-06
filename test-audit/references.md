@@ -7,11 +7,12 @@ to those homes, plus the background reading that no one file relies on.
 
 - **A check:** the header comment of `checks/<check>/check.mjs` names each
   source. For each source it gives the citation, the URL, and what the check
-  relies on. The `sources` field of the check holds the same list, and the
-  benchmark prints it. `checks/checks.test.mjs` keeps the two in step.
+  relies on. The header is the only list. `checks/checks.test.mjs` makes sure
+  that each source has a URL, or is named as an inference.
 - **A calibration case:** the header comment of
   `checks/<check>/cases/<case>/case.mjs` says what the case shows and names its
-  source. `label.json` holds the same sources. The model never sees the header,
+  source with a URL. The header is the only list: `calibration/labels.mjs`
+  reads it, and the benchmark prints it. The model never sees the header,
   because the tool sends only the test call.
 - **The twin rule and the position swap:** the header comment of
   [`classifier/verdict.mjs`](classifier/verdict.mjs). These are self-consistency,

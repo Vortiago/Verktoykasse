@@ -6,7 +6,7 @@
 
 import type { Question } from "./classifier/systemone.mjs";
 
-/** A source that grounds a check or a calibration case. */
+/** A source that grounds a calibration case, as its header comment names it. */
 export interface Source {
   name: string;
   url?: string;
@@ -20,10 +20,8 @@ interface CheckBase {
   questions: Record<string, Question>;
   /** The question keys whose yes and no are swapped. The verdict rules flip their value. */
   negated?: string[];
-  /** The definition this check adds to the shared rubric, if any. */
+  /** The definition this check adds to the shared rubric, if any. The header comment of the check file names its sources. */
   rubric?: string;
-  /** What grounds the check. The header comment of the check file names the same sources. */
-  sources: Source[];
 }
 
 /**
@@ -137,8 +135,8 @@ export interface AuditUsage {
 
 /**
  * One labelled case of the calibration corpus: a `label.json` in
- * checks/<check>/cases/<case>/. The loader adds `check`, `file` and `code` from
- * the folder, so a label.json does not hold them.
+ * checks/<check>/cases/<case>/. The loader adds `check`, `file`, `code` and
+ * `sources` from the folder, so a label.json does not hold them.
  */
 export interface CalibrationLabel {
   /** The check folder the case belongs to: the check meant to catch its defect. */
@@ -162,7 +160,7 @@ export interface CalibrationLabel {
    * test-audit/. The runner sends it as the change context, the way a real
    * audit sends the non-test diff. */
   code?: string;
-  /** The sources the case cites. */
+  /** The sources the header comment of the case file names. */
   sources?: Source[];
 }
 

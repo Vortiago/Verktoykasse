@@ -27,9 +27,4 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   },
   rubric: `Readable: a reader can tell what the test does and why without opening the code
   under test.`,
-  sources: [
-    { name: "Kent Beck, Test Desiderata (2019): Readable", url: "https://kentbeck.github.io/TestDesiderata/" },
-    { name: "Gerard Meszaros, xUnit Test Patterns (2007): Obscure Test", url: "http://xunitpatterns.com/Obscure%20Test.html" },
-    { name: "testsmells.org, Open Catalog of Test Smells: Unknown Test", url: "https://testsmells.org/pages/testsmells.html" },
-  ],
 });

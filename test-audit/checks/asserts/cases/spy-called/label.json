@@ -4,11 +4,5 @@
   "canFail": true,
   "mustEscalate": true,
   "mixed": false,
-  "note": "A missing call fails the test, though the mock stands in for behaviour it never verifies.",
-  "sources": [
-    {
-      "name": "Martin Fowler, Mocks Aren't Stubs (2007)",
-      "url": "https://martinfowler.com/articles/mocksArentStubs.html"
-    }
-  ]
+  "note": "A missing call fails the test, though the mock stands in for behaviour it never verifies."
 }

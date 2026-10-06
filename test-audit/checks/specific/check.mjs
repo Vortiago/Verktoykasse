@@ -27,8 +27,4 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   },
   rubric: `Specific assertion: the strongest assertion that would catch the failure. Weaker
   forms (toBeDefined, toBeTruthy, typeof, Array.isArray, a length) pass on wrong output.`,
-  sources: [
-    { name: "Web Platform Tests, Review Checklist: \"The test uses the most specific asserts possible\"", url: "https://web-platform-tests.org/reviewing-tests/checklist.html" },
-    { name: "testsmells.org, Open Catalog of Test Smells: Sensitive Equality", url: "https://testsmells.org/pages/testsmells.html" },
-  ],
 });
