@@ -20,9 +20,10 @@ export interface AuditTest {
 /** One answer from the SystemOne endpoint. `score` is an expected level; `noul` is P(yes). */
 export interface AuditAnswer {
   type: "choice" | "score" | "noul";
-  probabilities: Record<string, number>;
-  confidence: number;
-  mass: number;
+  probabilities?: Record<string, number>;
+  confidence?: number;
+  /** Absent on an endpoint that reports no mass, such as Ollama 0.35. */
+  mass?: number;
   choice?: string;
   score?: number;
   noul?: number;

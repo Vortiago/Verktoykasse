@@ -134,10 +134,14 @@ function list(value) {
     .filter(Boolean);
 }
 
+// `process.exitCode`, not `process.exit`: a large --json report through a pipe
+// would lose its tail if the process exited before stdout drained.
 main().then(
-  (code) => process.exit(code),
+  (code) => {
+    process.exitCode = code;
+  },
   (err) => {
     console.error(`test-audit: ${err instanceof Error ? err.message : err}`);
-    process.exit(2);
+    process.exitCode = 2;
   },
 );

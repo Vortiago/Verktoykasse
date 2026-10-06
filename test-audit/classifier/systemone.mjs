@@ -25,11 +25,11 @@ import config from "../config.mjs";
  * Ask one or more typed questions about `state`.
  * @param {string | unknown} state
  * @param {Record<string, Question>} questions
- * @param {{ url?: string, model?: string, signal?: AbortSignal, timeoutMs?: number, onResponse?: (json: object) => void }} [opts]
+ * @param {{ url?: string, model?: string, timeoutMs?: number, onResponse?: (json: object) => void }} [opts]
  * @returns {Promise<Record<string, Answer>>}
  */
 export async function ask(state, questions, opts = {}) {
-  const { url = config.baseUrl, model = config.model, signal, timeoutMs = config.timeoutMs, onResponse } = opts;
+  const { url = config.baseUrl, model = config.model, timeoutMs = config.timeoutMs, onResponse } = opts;
   const body = { model, state, questions };
 
   const timeout = AbortSignal.timeout(timeoutMs);
@@ -37,7 +37,7 @@ export async function ask(state, questions, opts = {}) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
-    signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
+    signal: timeout,
   });
   if (!res.ok) {
     const text = await res.text().catch(() => "");

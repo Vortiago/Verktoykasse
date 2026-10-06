@@ -1,6 +1,6 @@
 // The review-comment face of an audit: a markdown table and the escalation list.
 
-import { canFailText, escapeCell, eyesResults, eyesPhrase, location, summary } from "./format.mjs";
+import { escapeCell, eyesPhrase, eyesResults, location, rowCells, summary } from "./format.mjs";
 
 /**
  * @param {any[]} results
@@ -15,9 +15,8 @@ export function formatMarkdown(results, meta = {}) {
   lines.push("| Verdict | Eyes | Type | Can fail | Asserts | Test |");
   lines.push("| --- | --- | --- | --- | --- | --- |");
   for (const result of results) {
-    lines.push(
-      `| ${result.score.label ?? "unclassified"} | ${result.needsEyes ? "yes" : "-"} | ${result.type ?? "unclassified"} | ${canFailText(result.canFail)} | ${result.asserts.value ?? "unclassified"} | \`${escapeCell(location(result.test))}\` ${escapeCell(result.test.name)} |`,
-    );
+    const [verdict, eyes, type, canFail, asserts, where, name] = rowCells(result);
+    lines.push(`| ${verdict} | ${eyes} | ${type} | ${canFail} | ${asserts} | \`${escapeCell(where)}\` ${escapeCell(name)} |`);
   }
   const escalatedResults = eyesResults(results);
   if (escalatedResults.length) {

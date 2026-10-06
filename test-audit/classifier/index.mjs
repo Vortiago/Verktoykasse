@@ -12,8 +12,8 @@ import config from "../config.mjs";
 // The battery is static data, so it is built once, not once per test.
 const BATTERY = batteryQuestions();
 
-export { ask, tokensOf, usageMeter } from "./systemone.mjs";
-export { DESCRIPTIVE_KEYS } from "./battery.mjs";
+export { usageMeter } from "./systemone.mjs";
+export { DESCRIPTIVE_KEYS, VERDICTS } from "./battery.mjs";
 
 /**
  * The per-test state. The shared rubric comes first, so a truncation never drops
@@ -47,7 +47,7 @@ export function buildState(test, changeContext = "", cap = config.stateCap) {
 /**
  * Ask the battery once and reduce the answers to a verdict.
  * @param {object} test
- * @param {{ ask?: Function, config?: object, url?: string, model?: string, changeContext?: string, onResponse?: (json: object) => void, signal?: AbortSignal }} [opts]
+ * @param {{ ask?: Function, config?: object, url?: string, model?: string, changeContext?: string, onResponse?: (json: object) => void }} [opts]
  */
 export async function classify(test, opts = {}) {
   const cfg = opts.config ?? config;
@@ -60,11 +60,9 @@ export async function classify(test, opts = {}) {
       url: opts.url,
       model: opts.model,
       timeoutMs: cfg.timeoutMs,
-      signal: opts.signal,
       onResponse: opts.onResponse,
     });
   } catch (err) {
-    if (opts.signal?.aborted) throw err;
     error = err instanceof Error ? err.message : String(err);
   }
   return verdictFrom(test, answers, { config: cfg, error });

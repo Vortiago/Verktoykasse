@@ -4,15 +4,14 @@
 
 import { noul, choice, score } from "./systemone.mjs";
 
-/** The answer kinds for the `asserts` question, best first. */
-const ASSERT_KINDS = ["behaviour", "hardcoded-data", "shape-only", "interaction-only", "nothing"];
 /** The `verdict` score levels, lowest first. `.score` is their array index. */
 export const VERDICTS = ["slop", "weak", "good", "strong"];
 /** The three logically equivalent phrasings of "can this test fail". */
 export const CAN_FAIL_KEYS = ["can_fail_a", "can_fail_b", "can_fail_c"];
-/** The descriptive questions: asked once each, reported as flags, never escalating alone. */
-export const DESCRIPTIVE_KEYS = ["observable", "conditional", "isolated", "controlled", "specific", "named", "deterministic", "one_thing", "name_matches", "resilient", "diagnostic", "fixture", "fast", "readable", "magic_number", "reads_output", "automated", "restores"];
+/** The phrasings whose yes and no are swapped; normalisation flips their value. */
+export const CAN_FAIL_NEGATED = new Set(["can_fail_b"]);
 
+/** The `asserts` answers, best first: the first kind is the one real guard. */
 const ASSERTS_MEANING = {
   behaviour: "it checks the output value or observable behaviour the code produces, against a literal expected result",
   "hardcoded-data": "it repeats the same data the code under test is built from, so it agrees by construction",
@@ -20,6 +19,36 @@ const ASSERTS_MEANING = {
   "interaction-only": "it checks only that a mock or spy was called, not the behaviour it stands in for",
   nothing: "it asserts nothing, or only a tautology such as true === true",
 };
+
+/** The one assert kind that is a real guard; every other kind escalates. */
+export const ASSERT_PASS = Object.keys(ASSERTS_MEANING)[0];
+
+/** The flag a false answer to each descriptive question raises, keyed by the
+ * question's name, so a new question is one entry here plus its question in
+ * `batteryQuestions`. */
+export const FLAG_BY_GATE = {
+  observable: "implementation-coupled",
+  conditional: "conditional",
+  isolated: "order-dependent",
+  controlled: "uncontrolled-resource",
+  specific: "weak-assert",
+  named: "vague-name",
+  deterministic: "non-deterministic",
+  one_thing: "eager",
+  name_matches: "name-mismatch",
+  resilient: "structure-dependent",
+  diagnostic: "silent-failure",
+  fixture: "general-fixture",
+  fast: "slow",
+  readable: "obscure",
+  magic_number: "magic-number",
+  reads_output: "asserts-input",
+  automated: "manual",
+  restores: "state-leak",
+};
+
+/** The descriptive questions, in report order. */
+export const DESCRIPTIVE_KEYS = Object.keys(FLAG_BY_GATE);
 
 const TYPE_MEANING = {
   unit: "one small unit in isolation, with its collaborators mocked or absent",
@@ -107,7 +136,7 @@ export function batteryQuestions() {
     // The same question with the answer order reversed: a position-swap control.
     asserts_b: choice(
       "What does the test's assertion actually check?",
-      Object.fromEntries([...ASSERT_KINDS].reverse().map((kind) => [kind, ASSERTS_MEANING[kind]])),
+      Object.fromEntries(Object.entries(ASSERTS_MEANING).reverse()),
     ),
     positive: noul(
       "Does this test include at least one positive assertion on the output the code under test produces, rather than only asserting that something is absent or does not throw?",

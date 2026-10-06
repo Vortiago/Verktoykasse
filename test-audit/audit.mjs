@@ -4,39 +4,42 @@
 
 import process from "node:process";
 import { changeContext, collect, extractTests, isTestFile } from "./change/index.mjs";
-import { classify, tokensOf, usageMeter } from "./classifier/index.mjs";
+import { classify, usageMeter } from "./classifier/index.mjs";
 import { mapPool } from "./lib/pool.mjs";
 import config from "./config.mjs";
 
 /**
  * @param {{ base?: string, head?: string, staged?: boolean, files?: string[] }} [args]
- * @param {{ config?: object, cwd?: string, ask?: Function, url?: string, model?: string, signal?: AbortSignal }} [opts]
+ * @param {{ cwd?: string, url?: string, model?: string }} [opts]
  * @returns {Promise<{ results: any[], ref: string, usage: { calls: number, tokens: number } }>}
  */
 export async function runAudit(args = {}, opts = {}) {
-  const cfg = opts.config ?? config;
   const cwd = opts.cwd ?? process.cwd();
-  const change = collect({ base: args.base, head: args.head, staged: args.staged, files: args.files, cwd });
+  // A named file is trusted as a test file; a discovered one must look like
+  // one. The filter runs before the read, so only test files are read.
+  const change = collect({
+    base: args.base,
+    head: args.head,
+    staged: args.staged,
+    files: args.files,
+    cwd,
+    filter: args.files ? undefined : isTestFile,
+  });
 
   const tests = [];
   for (const file of change.files) {
-    // A named file is trusted as a test file; a discovered one must look like one.
-    if (!args.files && !isTestFile(file.path)) continue;
     for (const test of extractTests(file.text, file.path)) tests.push(test);
   }
   if (tests.length === 0) return { results: [], ref: change.ref, usage: { calls: 0, tokens: 0 } };
 
   const meter = usageMeter();
-  const context = changeContext(change.diff, cfg.changeContextCap);
-  const results = await mapPool(tests, cfg.concurrency, (test) =>
+  const context = changeContext(change.diff, config.changeContextCap);
+  const results = await mapPool(tests, config.concurrency, (test) =>
     classify(test, {
-      ask: opts.ask,
-      config: cfg,
       url: opts.url,
       model: opts.model,
       changeContext: context,
       onResponse: meter.onResponse,
-      signal: opts.signal,
     }),
   );
   return { results, ref: change.ref, usage: meter.usage };

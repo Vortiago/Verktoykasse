@@ -26,19 +26,23 @@ export async function runSelftest(opts = {}) {
   const cases = labels.cases.map(prepareCase);
   const targets = opts.targets?.length ? opts.targets : [{ url: cfg.baseUrl, model: cfg.model, label: cfg.model }];
 
-  const entries = [];
-  for (const target of targets) {
-    const meter = usageMeter();
-    let done = 0;
-    const total = cases.length;
-    const rows = await mapPool(cases, cfg.concurrency, async (item) => {
-      const row = await runCase(item, { cfg, target, onResponse: meter.onResponse });
-      done += 1;
-      opts.onProgress?.({ target: target.label, index: done, total, status: rowStatus(row), test: item.label.test });
-      return row;
-    });
-    entries.push({ target, rows, verdict: judge(rows, labels.acceptance), usage: meter.usage });
-  }
+  // The targets are independent endpoints, so their pools run side by side;
+  // each endpoint still takes `concurrency` calls at a time, no more than it
+  // would take alone.
+  const entries = await Promise.all(
+    targets.map(async (target) => {
+      const meter = usageMeter();
+      let done = 0;
+      const total = cases.length;
+      const rows = await mapPool(cases, cfg.concurrency, async (item) => {
+        const row = await runCase(item, { cfg, target, onResponse: meter.onResponse });
+        done += 1;
+        opts.onProgress?.({ target: target.label, index: done, total, status: rowStatus(row), test: item.label.test });
+        return row;
+      });
+      return { target, rows, verdict: judge(rows, labels.acceptance), usage: meter.usage };
+    }),
+  );
   const pass = entries.every((entry) => entry.verdict.pass);
   const text = opts.benchmark ? formatBenchmark(entries) : entries.length === 1 ? formatSingle(entries[0]) : formatMatrix(entries);
   return { text, code: pass ? 0 : 1 };

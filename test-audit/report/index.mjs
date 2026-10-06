@@ -7,7 +7,7 @@ import { formatJson } from "./json.mjs";
 import { formatMarkdown } from "./markdown.mjs";
 
 export { formatText, formatJson, formatMarkdown };
-export { canFailText, eyesResults, pad } from "./format.mjs";
+export { canFailText, escapeCell, pad } from "./format.mjs";
 
 /** Exit 1 when any test escalates. A slop or weak verdict always escalates. */
 export function exitCode(results) {

@@ -12,6 +12,19 @@ export function location(test) {
   return `${test.file}:${test.line}`;
 }
 
+/** The seven result cells, in column order; each face renders them its own way. */
+export function rowCells(result) {
+  return [
+    result.score.label ?? "unclassified",
+    result.needsEyes ? "yes" : "-",
+    result.type ?? "unclassified",
+    canFailText(result.canFail),
+    result.asserts.value ?? "unclassified",
+    location(result.test),
+    result.test.name,
+  ];
+}
+
 /** "1 needs eyes", "2 need eyes": the verb agrees with the count. */
 export function eyesPhrase(eyes) {
   return `${eyes} ${eyes === 1 ? "needs" : "need"} eyes`;
@@ -36,8 +49,9 @@ export function summary(results, meta) {
   return `Summary: ${parts.join(", ") || "no tests"}. ${unstable} unstable. ${eyesPhrase(eyes)}.${usage}`;
 }
 
-/** Pad to a column, with an ellipsis when the text is too long. */
+/** Pad to a column. A width of 0 or less means no cap and no padding. */
 export function pad(text, width) {
+  if (width <= 0) return text;
   const value = text.length > width ? `${text.slice(0, width - 1)}…` : text;
   return value.padEnd(width);
 }

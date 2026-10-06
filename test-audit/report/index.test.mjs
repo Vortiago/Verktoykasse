@@ -2,7 +2,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { exitCode, formatAudit, formatText, formatJson, formatMarkdown } from "./index.mjs";
+import { exitCode, formatAudit, formatText, formatJson, formatMarkdown, pad } from "./index.mjs";
 
 /** A minimal verdict record; only the fields the report reads are filled. */
 function result(overrides = {}) {
@@ -48,6 +48,11 @@ test("formatMarkdown emits a table and an escalation list", () => {
   assert.match(md, /\| Verdict \| Eyes \|/);
   assert.match(md, /### Needs eyes/);
   assert.match(md, /asserts nothing/);
+});
+
+test("pad does not truncate when the width is 0", () => {
+  assert.equal(pad("adds", 0), "adds");
+  assert.equal(pad("a longer name", 6), "a lon…");
 });
 
 test("formatAudit picks the face, and an empty change reads the same in every face", () => {

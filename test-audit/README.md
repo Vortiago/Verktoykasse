@@ -207,8 +207,8 @@ sources and which are house inferences.
   enough. It says that each added test is a real guard.
 - The extractor reads `test` and `it` calls with a literal or a computed name. It
   folds a `test.each` table into one test and flags a computed name. The
-  extractor does not match the tagged-template form or the generic form
-  (`test.each<T>`).
+  extractor does not match the tagged-template form, the generic form
+  (`test.each<T>`), or a test called on a runner object (`t.test(...)`).
 - The core modules are `.mjs`, so the `tsc` gate does not check them. They import
   `node:*`, and the gate carries no `@types/node`. The `node --test` suite guards
   them instead.

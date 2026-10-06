@@ -13,11 +13,15 @@ import process from "node:process";
  * file. A file that cannot be read (deleted, binary) is dropped. Git resolves
  * paths against the repository root, so a run from a subdirectory still reads
  * every touched file.
- * @param {{ base?: string, head?: string, staged?: boolean, files?: string[], cwd?: string }} [opts]
+ * A `filter` drops discovered paths before their text is read; named files are
+ * read unfiltered, because the caller named them on purpose.
+ * @param {{ base?: string, head?: string, staged?: boolean, files?: string[], cwd?: string, filter?: (path: string) => boolean }} [opts]
  * @returns {{ diff: string, files: Array<{ path: string, text: string }>, ref: string }}
  */
 export function collect(opts = {}) {
-  const { base, head, staged = false, files, cwd = process.cwd() } = opts;
+  const { base, head, staged = false, files, cwd = process.cwd(), filter } = opts;
+  assertRef("--base", base);
+  assertRef("--head", head);
 
   // Named files are read relative to where the caller stands, not the root.
   if (files && files.length) {
@@ -56,7 +60,7 @@ export function collect(opts = {}) {
     const untracked = parseNameOnly(tryGit(["ls-files", "--others", "--exclude-standard"], root) ?? "");
     paths = [...new Set([...paths, ...untracked])];
   }
-  const out = paths.map((path) => ({ path, text: readSource(source, path, root) })).filter(hasText);
+  const out = paths.filter((path) => !filter || filter(path)).map((path) => ({ path, text: readSource(source, path, root) })).filter(hasText);
   return { diff, files: out, ref };
 }
 
@@ -77,9 +81,26 @@ function readSource(source, path, root) {
 }
 
 /** The default branch to diff against, from `origin/HEAD`, with a fallback. */
+/**
+ * The default branch to diff against: `origin/HEAD`, then `origin/main`, then a
+ * local `main`, so a clone without the remote symbolic ref still runs.
+ * @param {string} root
+ */
 function defaultBase(root) {
   const ref = tryGit(["symbolic-ref", "--quiet", "refs/remotes/origin/HEAD"], root);
-  return ref ? ref.trim().replace(/^refs\/remotes\//, "") : "origin/main";
+  if (ref) return ref.trim().replace(/^refs\/remotes\//, "");
+  if (tryGit(["rev-parse", "--verify", "--quiet", "origin/main"], root)) return "origin/main";
+  if (tryGit(["rev-parse", "--verify", "--quiet", "main"], root)) return "main";
+  return "origin/main";
+}
+
+/**
+ * A ref that starts with `-` is read by git as an option, not a ref, and the
+ * plugin passes a model-controlled value here.
+ * @param {string} flag @param {string | undefined} value
+ */
+function assertRef(flag, value) {
+  if (value && value.startsWith("-")) throw new Error(`${flag} is not a ref: ${value}`);
 }
 
 /** @param {{ path: string, text: string | undefined }} file */
@@ -102,7 +123,7 @@ function readWorktree(path, base) {
  * @param {string[]} args @param {string} cwd
  */
 function git(args, cwd) {
-  const result = spawnSync("git", args, { cwd, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  const result = runGit(args, cwd);
   if (result.error) throw new Error(`git ${args.join(" ")}: ${result.error.message}`);
   if (result.status !== 0) {
     throw new Error(`git ${args.join(" ")}: ${(result.stderr || "").trim().slice(0, 300)}`);
@@ -112,6 +133,11 @@ function git(args, cwd) {
 
 /** @param {string[]} args @param {string} cwd @returns {string | undefined} */
 function tryGit(args, cwd) {
-  const result = spawnSync("git", args, { cwd, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  const result = runGit(args, cwd);
   return result.status === 0 ? result.stdout : undefined;
+}
+
+/** The spawn every git call shares: utf8 text, and a buffer that fits a big change. */
+function runGit(args, cwd) {
+  return spawnSync("git", args, { cwd, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
 }

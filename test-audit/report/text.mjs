@@ -1,7 +1,7 @@
 // The default face of an audit: a table, then the escalated tests with their
 // reasons, then the summary.
 
-import { canFailText, eyesResults, location, pad, summary } from "./format.mjs";
+import { eyesResults, location, pad, rowCells, summary } from "./format.mjs";
 
 /**
  * @param {any[]} results
@@ -15,16 +15,7 @@ export function formatText(results, meta = {}) {
   const widths = [8, 5, 14, 9, 16, 24, 0];
   lines.push(header.map((name, index) => pad(name, widths[index])).join(" "));
   for (const result of results) {
-    const cells = [
-      result.score.label ?? "unclassified",
-      result.needsEyes ? "yes" : "-",
-      result.type ?? "unclassified",
-      canFailText(result.canFail),
-      result.asserts.value ?? "unclassified",
-      location(result.test),
-      result.test.name,
-    ];
-    lines.push(cells.map((cell, index) => pad(cell, widths[index])).join(" "));
+    lines.push(rowCells(result).map((cell, index) => pad(cell, widths[index])).join(" "));
     if (result.flags.length) lines.push(`${" ".repeat(8)}flags: ${result.flags.join(", ")}`);
   }
 

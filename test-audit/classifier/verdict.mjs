@@ -3,33 +3,11 @@
 // objects without the model.
 
 import { trusted } from "./systemone.mjs";
-import { VERDICTS, CAN_FAIL_KEYS, DESCRIPTIVE_KEYS } from "./battery.mjs";
+import { ASSERT_PASS, CAN_FAIL_KEYS, CAN_FAIL_NEGATED, DESCRIPTIVE_KEYS, FLAG_BY_GATE, VERDICTS } from "./battery.mjs";
 import config from "../config.mjs";
 
 /** Verdicts at or below this level escalate. */
 const WEAK = VERDICTS.indexOf("weak");
-
-/** The flag a false answer to each descriptive question raises. */
-const FLAG_BY_GATE = {
-  observable: "implementation-coupled",
-  conditional: "conditional",
-  isolated: "order-dependent",
-  controlled: "uncontrolled-resource",
-  specific: "weak-assert",
-  named: "vague-name",
-  deterministic: "non-deterministic",
-  one_thing: "eager",
-  name_matches: "name-mismatch",
-  resilient: "structure-dependent",
-  diagnostic: "silent-failure",
-  fixture: "general-fixture",
-  fast: "slow",
-  readable: "obscure",
-  magic_number: "magic-number",
-  reads_output: "asserts-input",
-  automated: "manual",
-  restores: "state-leak",
-};
 
 /**
  * Reduce one test's answers to a verdict.
@@ -63,7 +41,7 @@ export function verdictFrom(test, answers, opts = {}) {
   // (runs, positive, can_fail, asserts, verdict) are what escalate.
   /** @type {string[]} */
   const flagList = [];
-  if (asserts && asserts !== "behaviour") flagList.push(asserts);
+  if (asserts && asserts !== ASSERT_PASS) flagList.push(asserts);
   for (const gate of DESCRIPTIVE_KEYS) {
     if (descriptive[gate] === false) flagList.push(FLAG_BY_GATE[gate]);
   }
@@ -89,7 +67,6 @@ export function verdictFrom(test, answers, opts = {}) {
     canFail: { values, mean, spread, state: canFailState },
     asserts: { value: asserts, a: assertsA, b: assertsB, trust: assertsTrusted, agrees: assertsTrusted && assertsA === assertsB },
     runs,
-    positive,
     type,
     descriptive,
     score: { value: scoreValue, label: verdict },
@@ -103,7 +80,7 @@ export function verdictFrom(test, answers, opts = {}) {
 /** P(can fail) from one phrasing, or null when the answer is not trusted. */
 function canFailValue(key, answer, cfg) {
   if (!answer || typeof answer.noul !== "number" || !trusted(answer, cfg.minMass)) return null;
-  return key === "can_fail_b" ? 1 - answer.noul : answer.noul;
+  return CAN_FAIL_NEGATED.has(key) ? 1 - answer.noul : answer.noul;
 }
 
 /** @param {number} present @param {number | null} spread @param {number} band */
@@ -139,7 +116,7 @@ function escalate({ error, answered, canFailState, canFailMean, spread, assertsT
   // call, or nothing at all is not a guard, so any other answer escalates.
   if (!assertsTrusted) reasons.push("asserts unclassified");
   else if (assertsA !== assertsB) reasons.push(`asserts unstable (${assertsA} vs ${assertsB})`);
-  else if (asserts !== "behaviour") reasons.push(`asserts ${asserts}`);
+  else if (asserts !== ASSERT_PASS) reasons.push(`asserts ${asserts}`);
   if (verdict === undefined) reasons.push("verdict unclassified");
   else if (VERDICTS.indexOf(verdict) <= WEAK) reasons.push(`verdict ${verdict}`);
   return reasons;
@@ -164,7 +141,7 @@ function scoreOf(answer, cfg) {
  * @returns {number | undefined}
  */
 function verdictIndexOf(score) {
-  if (score === undefined || score < -0.5 || score > VERDICTS.length - 0.5) return undefined;
+  if (score === undefined || score < -0.5 || score >= VERDICTS.length - 0.5) return undefined;
   return Math.round(score);
 }
 

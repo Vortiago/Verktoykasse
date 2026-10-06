@@ -9,16 +9,19 @@ const env = process.env;
 
 /**
  * Read a number from the environment, or use the fallback. A `0` is kept:
- * `Number(x) || fallback` would silently replace it with the fallback.
+ * `Number(x) || fallback` would silently replace it with the fallback. An
+ * empty string is unset, not zero.
  * @param {string} name
  * @param {number} fallback
  */
 function num(name, fallback) {
-  const value = Number(env[name]);
+  const raw = env[name];
+  if (raw === undefined || raw === "") return fallback;
+  const value = Number(raw);
   return Number.isFinite(value) ? value : fallback;
 }
 
-export const config = {
+const config = {
   /** SystemOne base URL. Defaults to a local Ollama server. */
   baseUrl: env.TEST_AUDIT_SYSTEMONE_URL || "http://127.0.0.1:11434",
   /** The decision model the base serves. */

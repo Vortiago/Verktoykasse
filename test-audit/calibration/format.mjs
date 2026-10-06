@@ -1,8 +1,8 @@
 // The calibration faces: a detailed table for one endpoint, a comparison matrix
 // for several, and a per-test benchmark in markdown.
 
-import { canFailText, pad } from "../report/index.mjs";
-import { DESCRIPTIVE_KEYS } from "../classifier/index.mjs";
+import { canFailText, escapeCell, pad } from "../report/index.mjs";
+import { DESCRIPTIVE_KEYS, VERDICTS } from "../classifier/index.mjs";
 import { rowStatus, shortStatus } from "./judge.mjs";
 
 /** The detailed view for one endpoint and model. */
@@ -56,37 +56,16 @@ export function formatMatrix(entries) {
   return lines.join("\n");
 }
 
-/** A short column name for each descriptive check, in the benchmark table. */
-const CHECK_ABBREVIATION = {
-  observable: "obs",
-  conditional: "cond",
-  isolated: "iso",
-  controlled: "ctl",
-  specific: "spec",
-  named: "name",
-  deterministic: "det",
-  one_thing: "one",
-  name_matches: "nm",
-  resilient: "res",
-  diagnostic: "diag",
-  fixture: "fix",
-  fast: "fast",
-  readable: "read",
-  magic_number: "magic",
-  reads_output: "out",
-  automated: "auto",
-  restores: "rest",
-};
+/** The verdicts worst first, so an entry that needs attention appears early. */
+const VERDICT_ORDER = [...VERDICTS, "unclassified"];
 
 /**
- * The benchmark report: for every test, the result of every check, in markdown.
- * A `+` is a clean answer, a `-` is the smell the check looks for, and a `.` is
- * an unanswered check. The columns come from the battery, so a new question
- * appears here without an edit.
+ * The benchmark report: one entry per test, worst verdict first, with the result
+ * of every check underneath and the reasons the test escalates. The checks come
+ * from the battery, so a new question appears here without an edit.
  */
 export function formatBenchmark(entries) {
-  const header = ["Test", "Defect", "can_fail", "spread", "asserts", "runs", ...DESCRIPTIVE_KEYS.map((key) => CHECK_ABBREVIATION[key] ?? key), "verdict", "eyes"];
-  const lines = [`# test-audit benchmark`, ""];
+  const lines = [];
   for (const entry of entries) {
     const { rows, verdict, usage, target } = entry;
     lines.push(`## ${target.label}`, "");
@@ -96,40 +75,45 @@ export function formatBenchmark(entries) {
     lines.push("");
     lines.push(defectLine(verdict));
     lines.push("");
-    lines.push(`| ${header.join(" | ")} |`);
-    lines.push(`| ${header.map(() => "---").join(" | ")} |`);
-    for (const row of rows) {
-      const { label, result, error } = row;
-      if (!result) {
-        const blank = header.length - 3;
-        lines.push(`| ${md(label.test)} | ${label.defect ?? "-"} | ${md(error ?? "no answer")} |${" |".repeat(blank)}`);
-        continue;
-      }
-      const d = result.descriptive;
-      const cells = [
-        md(label.test),
-        label.defect ?? "-",
-        canFailText(result.canFail),
-        result.canFail.spread === null ? "-" : result.canFail.spread.toFixed(2),
-        result.asserts.value ?? "unclassified",
-        result.runs === true ? "yes" : result.runs === false ? "-" : "?",
-        ...DESCRIPTIVE_KEYS.map((key) => checkSymbol(d[key])),
-        result.score.label ?? "unclassified",
-        result.needsEyes ? "yes" : "-",
-      ];
-      lines.push(`| ${cells.join(" | ")} |`);
-    }
-    const eyes = rows.filter((row) => row.result?.needsEyes);
-    if (eyes.length) {
-      lines.push("");
-      lines.push("Needs eyes:");
-      for (const row of eyes) lines.push(`- \`${row.label.test}\` (${row.label.defect ?? "-"}): ${row.result.reasons.join("; ")}`);
-    }
+    lines.push(`Checks, in order: ${DESCRIPTIVE_KEYS.join(", ")}.`);
+    lines.push("Each check is clean, the smell it looks for, or unanswered. `can_fail` is the mean P(can fail) over three phrasings; a `!` marks a spread above the band.");
     lines.push("");
+    for (const row of [...rows].sort(byVerdict)) {
+      lines.push(...testEntry(row), "");
+    }
   }
-  lines.push(`Checks, in column order: ${DESCRIPTIVE_KEYS.map((key) => `\`${CHECK_ABBREVIATION[key] ?? key}\` ${key}`).join(", ")}.`);
-  lines.push("`+` clean, `-` the smell the check looks for, `.` unanswered. `can_fail` is the mean P(can fail) over three phrasings; `spread` above the band is instability.");
   return lines.join("\n");
+}
+
+/** Worst verdict first, then by test name. */
+function byVerdict(a, b) {
+  const rank = (row) => VERDICT_ORDER.indexOf(row.result?.score.label ?? "unclassified");
+  return rank(a) - rank(b) || a.label.test.localeCompare(b.label.test);
+}
+
+/** One test's entry: its defect, each check's result, then its verdict. */
+function testEntry(row) {
+  const { label, result, error } = row;
+  const lines = [`### \`${escapeCell(label.test)}\` — ${label.defect ?? "unknown defect"}`, ""];
+  if (!result) {
+    lines.push(`No answer: ${escapeCell(error ?? "unknown")}.`, "", "**verdict: unclassified** · needs eyes: no answer", "");
+    return lines;
+  }
+  lines.push(`- can_fail ${canFailText(result.canFail)} (spread ${result.canFail.spread === null ? "-" : result.canFail.spread.toFixed(2)}) · asserts ${result.asserts.value ?? "unclassified"} · runs ${yesNo(result.runs)}`);
+  const clean = DESCRIPTIVE_KEYS.filter((key) => result.descriptive[key] === true);
+  const smells = DESCRIPTIVE_KEYS.filter((key) => result.descriptive[key] === false);
+  const unanswered = DESCRIPTIVE_KEYS.filter((key) => result.descriptive[key] === undefined);
+  if (clean.length) lines.push(`- clean: ${clean.join(", ")}`);
+  if (smells.length) lines.push(`- smells: ${smells.join(", ")}`);
+  if (unanswered.length) lines.push(`- unanswered: ${unanswered.join(", ")}`);
+  const eyes = result.needsEyes ? ` · needs eyes: ${result.reasons.join("; ")}` : "";
+  lines.push(`- **verdict: ${result.score.label ?? "unclassified"}**${eyes}`);
+  return lines;
+}
+
+/** @param {boolean | undefined} value */
+function yesNo(value) {
+  return value === true ? "yes" : value === false ? "no" : "unanswered";
 }
 
 /** @param {ReturnType<import("./judge.mjs").judge>} verdict */
@@ -148,16 +132,4 @@ function defectLine(verdict) {
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([defect, group]) => `${defect} ${group.escalated}/${group.total}${group.escalated === group.total ? "" : "!"}`);
   return `defects escalated: ${parts.join(", ") || "none"}`;
-}
-
-/** A check result as one markdown-safe mark. */
-function checkSymbol(value) {
-  if (value === true) return "+";
-  if (value === false) return "-";
-  return ".";
-}
-
-/** Escape a pipe so a test name cannot break the table. */
-function md(text) {
-  return String(text).replaceAll("|", "\\|");
 }
