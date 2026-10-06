@@ -4,5 +4,6 @@
   "canFail": true,
   "mustEscalate": true,
   "mixed": false,
+  "reads_output": false,
   "note": "The assertion holds because it reads the input object, not the value the code returned."
 }

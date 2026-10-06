@@ -3,5 +3,6 @@
   "defect": "shape-only",
   "canFail": true,
   "mustEscalate": true,
+  "asserts": "shape-only",
   "note": "shape-not-value: a shape change can fail it, the content is never checked"
 }

@@ -4,5 +4,6 @@
   "canFail": true,
   "mustEscalate": true,
   "mixed": false,
+  "asserts": "interaction-only",
   "note": "A changed call count fails the test, yet the payload of each call is never asserted."
 }

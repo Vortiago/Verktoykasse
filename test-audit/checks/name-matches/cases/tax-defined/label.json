@@ -4,5 +4,6 @@
   "canFail": false,
   "mustEscalate": true,
   "mixed": false,
+  "name_matches": false,
   "note": "The name promises a tax value, while toBeDefined is true for any defined value."
 }

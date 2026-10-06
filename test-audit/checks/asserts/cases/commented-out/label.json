@@ -2,5 +2,6 @@
   "test": "parses config",
   "defect": "commented-out",
   "mustEscalate": true,
+  "asserts": "nothing",
   "note": "commented-out assertion beside a tautology"
 }

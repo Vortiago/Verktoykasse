@@ -4,5 +4,6 @@
   "canFail": false,
   "mustEscalate": true,
   "mixed": false,
+  "conditional": false,
   "note": "The early return makes the assertion unreachable, so the test cannot fail."
 }

@@ -3,5 +3,6 @@
   "defect": "name-only",
   "canFail": false,
   "mustEscalate": true,
+  "name_matches": false,
   "note": "name-only: toBeDefined is true for any defined value"
 }

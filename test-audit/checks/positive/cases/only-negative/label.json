@@ -3,5 +3,6 @@
   "defect": "only-negative",
   "canFail": true,
   "mustEscalate": true,
+  "positive": false,
   "note": "no positive/negative pair"
 }

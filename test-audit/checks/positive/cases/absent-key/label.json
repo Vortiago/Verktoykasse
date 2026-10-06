@@ -4,5 +4,6 @@
   "canFail": true,
   "mustEscalate": true,
   "mixed": false,
+  "positive": false,
   "note": "Only the absent lookup is checked, so a reader that always returns null would pass."
 }

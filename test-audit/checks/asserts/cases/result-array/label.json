@@ -4,5 +4,6 @@
   "canFail": true,
   "mustEscalate": true,
   "mixed": false,
+  "asserts": "shape-only",
   "note": "The array check can fail when the return type changes, but no route value is ever asserted."
 }

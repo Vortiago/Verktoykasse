@@ -4,5 +4,8 @@
   "canFail": true,
   "mustEscalate": false,
   "mixed": false,
+  "asserts": "behaviour",
+  "runs": true,
+  "positive": true,
   "note": "a real guard"
 }

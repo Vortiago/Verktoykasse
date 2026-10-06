@@ -4,5 +4,6 @@
   "canFail": true,
   "mustEscalate": true,
   "mixed": false,
+  "asserts": "shape-only",
   "note": "The keys can change and fail the test, but the field values pass unexamined."
 }

@@ -4,5 +4,6 @@
   "canFail": false,
   "mustEscalate": true,
   "mixed": false,
+  "asserts": "hardcoded-data",
   "note": "The expected value is the code under test own constant, so the test agrees by construction and cannot fail."
 }

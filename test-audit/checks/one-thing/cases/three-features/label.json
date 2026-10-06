@@ -4,5 +4,6 @@
   "canFail": true,
   "mustEscalate": false,
   "mixed": false,
+  "one_thing": false,
   "note": "A real pipeline check, but parse, format and lint are three features asserted in one body."
 }

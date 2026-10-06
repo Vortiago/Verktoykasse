@@ -4,5 +4,6 @@
   "canFail": true,
   "mustEscalate": true,
   "mixed": false,
+  "asserts": "interaction-only",
   "note": "A missing call fails the test, though the mock stands in for behaviour it never verifies."
 }

@@ -3,5 +3,6 @@
   "defect": "skipped",
   "mustEscalate": true,
   "mixed": false,
+  "runs": false,
   "note": "The test is marked xit, so it never runs."
 }

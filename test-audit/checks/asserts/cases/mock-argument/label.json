@@ -4,5 +4,6 @@
   "canFail": true,
   "mustEscalate": true,
   "mixed": false,
+  "asserts": "interaction-only",
   "note": "The mock argument shape can change and fail the test, while the real output stays unchecked."
 }

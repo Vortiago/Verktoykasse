@@ -4,5 +4,9 @@
   "canFail": true,
   "mustEscalate": false,
   "deterministic": true,
+  "asserts": "behaviour",
+  "runs": true,
+  "positive": true,
+  "type": "unit",
   "note": "a clean unit guard"
 }
