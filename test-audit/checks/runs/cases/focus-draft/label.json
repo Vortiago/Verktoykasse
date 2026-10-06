@@ -1,0 +1,36 @@
+[
+  {
+    "test": "saves the draft",
+    "defect": "focused",
+    "mustEscalate": true,
+    "mixed": false,
+    "note": "The it.only focuses the file and narrows the whole run.",
+    "sources": [
+      {
+        "name": "Meszaros, xUnit Test Patterns (Obscure Test)",
+        "url": "http://xunitpatterns.com/"
+      },
+      {
+        "name": "verify-prd-implemented test-patterns (Skipped / disabled / focused)",
+        "url": "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md"
+      }
+    ]
+  },
+  {
+    "test": "loads the draft",
+    "defect": "focused",
+    "mustEscalate": true,
+    "mixed": false,
+    "note": "The plain test inherits the file-level focus from it.only.",
+    "sources": [
+      {
+        "name": "Meszaros, xUnit Test Patterns (Obscure Test)",
+        "url": "http://xunitpatterns.com/"
+      },
+      {
+        "name": "verify-prd-implemented test-patterns (Skipped / disabled / focused)",
+        "url": "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md"
+      }
+    ]
+  }
+]

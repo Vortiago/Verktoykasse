@@ -1,0 +1,13 @@
+{
+  "test": "the schema is sound",
+  "defect": "ambiguous",
+  "mustEscalate": true,
+  "mixed": true,
+  "note": "A tautology sits beside a weak shape assertion, so the paraphrased gates disagree.",
+  "sources": [
+    {
+      "name": "Wang et al., Self-Consistency Improves Chain of Thought Reasoning (2023): paraphrased gates",
+      "url": "https://arxiv.org/abs/2203.11171"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "test": "validates email addresses",
+  "defect": "name-only",
+  "canFail": false,
+  "mustEscalate": true,
+  "mixed": false,
+  "note": "The name promises validation, while a truthy check passes for any non-empty value.",
+  "sources": [
+    {
+      "name": "Meszaros, xUnit Test Patterns (Obscure Test)",
+      "url": "http://xunitpatterns.com/"
+    },
+    {
+      "name": "verify-prd-implemented test-patterns (Skipped / disabled / focused)",
+      "url": "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md"
+    }
+  ]
+}

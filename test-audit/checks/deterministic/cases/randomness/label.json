@@ -1,0 +1,15 @@
+{
+  "test": "the sorter keeps every random value",
+  "defect": "non-deterministic",
+  "canFail": true,
+  "mustEscalate": false,
+  "mixed": false,
+  "deterministic": false,
+  "note": "A real sorting property, but the random input makes a failure hard to reproduce.",
+  "sources": [
+    {
+      "name": "Kent Beck, Test Desiderata (deterministic)",
+      "url": "https://kentbeck.github.io/TestDesiderata/"
+    }
+  ]
+}

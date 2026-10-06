@@ -82,7 +82,7 @@ declare module "node:path" {
 }
 
 declare module "node:url" {
-  export function fileURLToPath(url: string): string;
+  export function fileURLToPath(url: string | URL): string;
 }
 
 declare module "node:child_process" {

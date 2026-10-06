@@ -1,0 +1,7 @@
+{
+  "test": "regression #42: a single import resolves",
+  "defect": "clean",
+  "canFail": true,
+  "mustEscalate": false,
+  "note": "a clean regression guard"
+}

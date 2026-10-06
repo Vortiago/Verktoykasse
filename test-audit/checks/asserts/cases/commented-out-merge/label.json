@@ -1,0 +1,18 @@
+{
+  "test": "merges the options",
+  "defect": "commented-out",
+  "canFail": false,
+  "mustEscalate": true,
+  "mixed": false,
+  "note": "The real assertion is commented out, beside a tautology.",
+  "sources": [
+    {
+      "name": "Meszaros, xUnit Test Patterns (Obscure Test)",
+      "url": "http://xunitpatterns.com/"
+    },
+    {
+      "name": "verify-prd-implemented test-patterns (Skipped / disabled / focused)",
+      "url": "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md"
+    }
+  ]
+}

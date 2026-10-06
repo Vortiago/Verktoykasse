@@ -1,0 +1,7 @@
+{
+  "test": "the world is sane",
+  "defect": "ambiguous",
+  "mustEscalate": true,
+  "mixed": true,
+  "note": "half tautology, half weak shape assertion"
+}

@@ -1,0 +1,14 @@
+{
+  "test": "the two totals match",
+  "defect": "self-reference",
+  "canFail": false,
+  "mustEscalate": true,
+  "mixed": false,
+  "note": "One helper backs both sides, so any change to it moves both sides together.",
+  "sources": [
+    {
+      "name": "Kent Beck, Test Desiderata",
+      "url": "https://kentbeck.github.io/TestDesiderata/"
+    }
+  ]
+}

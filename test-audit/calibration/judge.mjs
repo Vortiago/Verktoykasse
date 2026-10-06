@@ -8,11 +8,14 @@
 /** @typedef {import("../types.d.ts").AuditResult} AuditResult */
 /** @typedef {import("../types.d.ts").CalibrationRow} CalibrationRow */
 
+/** The acceptance bar: the least share of committed can_fail answers that must match the label. */
+export const ACCEPTANCE = { canFailAgreement: 0.9 };
+
 /**
  * @param {CalibrationRow[]} rows
- * @param {{ canFailAgreement: number }} acceptance
+ * @param {{ canFailAgreement: number }} [acceptance]
  */
-export function judge(rows, acceptance) {
+export function judge(rows, acceptance = ACCEPTANCE) {
   let resolved = 0;
   let correct = 0;
   let silentPasses = 0;

@@ -1,0 +1,17 @@
+{
+  "test": "rejects a stale token",
+  "defect": "skipped",
+  "mustEscalate": true,
+  "mixed": false,
+  "note": "The test is marked skipped, so it never runs.",
+  "sources": [
+    {
+      "name": "Meszaros, xUnit Test Patterns (Obscure Test)",
+      "url": "http://xunitpatterns.com/"
+    },
+    {
+      "name": "verify-prd-implemented test-patterns (Skipped / disabled / focused)",
+      "url": "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "test": "reports no booking for a free slot",
+  "defect": "wrong-reason",
+  "canFail": true,
+  "mixed": false,
+  "note": "The lookup is empty only because the fixture never creates the booking it queries. Only the mutation check proves this, so escalation is welcome but not required.",
+  "sources": [
+    {
+      "name": "verify-prd-implemented test-patterns (Passes for the wrong reason; No negative/positive pair)",
+      "url": "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md"
+    }
+  ]
+}

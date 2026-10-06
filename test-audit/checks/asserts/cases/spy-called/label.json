@@ -1,0 +1,14 @@
+{
+  "test": "notifies the listener",
+  "defect": "interaction-only",
+  "canFail": true,
+  "mustEscalate": true,
+  "mixed": false,
+  "note": "A missing call fails the test, though the mock stands in for behaviour it never verifies.",
+  "sources": [
+    {
+      "name": "testsmells.org, Open Catalog of Test Smells",
+      "url": "https://testsmells.org/"
+    }
+  ]
+}

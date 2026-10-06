@@ -11,7 +11,7 @@
 //   node cli.mjs --files a.test.mjs  audit named files
 //   node cli.mjs --json              full record
 //   node cli.mjs --url http://127.0.0.1:11434 --model nimble   point at any SystemOne endpoint
-//   node cli.mjs --selftest          live calibration over the corpus in calibration/
+//   node cli.mjs --selftest          live calibration over the cases in checks/*/cases/
 //   node cli.mjs --selftest --targets "http://127.0.0.1:11434|nimble, http://127.0.0.1:11435|winnow:e4b"
 //
 // A transport failure is an audit failure, not a skip: the affected test
@@ -35,7 +35,7 @@ const USAGE = `test-audit: a SystemOne classifier for the tests a change adds
   --model <id>       decision model the base serves
   --json             print the full record
   --markdown         print a review comment
-  --selftest         live calibration over calibration/ (needs an endpoint)
+  --selftest         live calibration over the cases in checks/ (needs an endpoint)
   --benchmark        with --selftest, print a markdown benchmark report
   --targets <list>   comma-separated "url|model" or "model" entries to compare
   --models <list>    comma-separated models on the configured URL to compare

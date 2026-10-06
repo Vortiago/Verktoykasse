@@ -1,0 +1,7 @@
+{
+  "test": "builds the graph",
+  "defect": "ambiguous",
+  "mustEscalate": true,
+  "mixed": true,
+  "note": "two shape assertions"
+}

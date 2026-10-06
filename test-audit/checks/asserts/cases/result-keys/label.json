@@ -1,0 +1,14 @@
+{
+  "test": "loads the profile fields",
+  "defect": "shape-only",
+  "canFail": true,
+  "mustEscalate": true,
+  "mixed": false,
+  "note": "The keys can change and fail the test, but the field values pass unexamined.",
+  "sources": [
+    {
+      "name": "testsmells.org, Open Catalog of Test Smells",
+      "url": "https://testsmells.org/"
+    }
+  ]
+}

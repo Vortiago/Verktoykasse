@@ -1,0 +1,14 @@
+{
+  "test": "returns a list of routes",
+  "defect": "shape-only",
+  "canFail": true,
+  "mustEscalate": true,
+  "mixed": false,
+  "note": "The array check can fail when the return type changes, but no route value is ever asserted.",
+  "sources": [
+    {
+      "name": "testsmells.org, Open Catalog of Test Smells",
+      "url": "https://testsmells.org/"
+    }
+  ]
+}

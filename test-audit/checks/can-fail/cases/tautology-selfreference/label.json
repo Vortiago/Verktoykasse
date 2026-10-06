@@ -1,0 +1,7 @@
+{
+  "test": "reader round trips",
+  "defect": "self-reference",
+  "canFail": false,
+  "mustEscalate": true,
+  "note": "tautology: both sides call the same production code"
+}

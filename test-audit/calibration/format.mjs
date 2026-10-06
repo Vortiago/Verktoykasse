@@ -90,7 +90,7 @@ const VERDICT_KEYS = [...CAN_FAIL_KEYS, ...ASSERTS_KEYS, ...Object.values(ESCALA
 /** Every other question, in battery order: `type`, the descriptive questions, and any new one. */
 const OTHER_KEYS = Object.keys(BATTERY).filter((key) => !VERDICT_KEYS.includes(key));
 /** The label fields the "known defect" line states in its own words. */
-const LABEL_KEYS = new Set(["file", "test", "defect", "canFail", "mustEscalate", "mixed", "note", "code", "group", "sources"]);
+const LABEL_KEYS = new Set(["check", "file", "test", "defect", "canFail", "mustEscalate", "mixed", "note", "code", "sources"]);
 
 /**
  * The benchmark report in markdown. A summary for each target comes first: the
@@ -209,16 +209,21 @@ function glanceSection(entry, prefix) {
     "",
     "The cases that are not OK come first, then the others by defect family. A test name links to its details.",
     "",
-    "| # | Test | Known defect | Expected | Result | Status |",
-    "| --- | --- | --- | --- | --- | --- |",
+    "| # | Test | Check | Known defect | Expected | Result | Status |",
+    "| --- | --- | --- | --- | --- | --- | --- |",
   ];
   orderedRows(entry.rows).forEach((row, index) => {
     const number = index + 1;
     const status = rowStatus(row) === "ok" ? "OK" : `**${statusName(row)}**`;
     const test = `[${code(row.label.test).replaceAll("|", "\\|")}](#${prefix}case-${number})`;
-    lines.push(`| ${number} | ${test} | ${escapeCell(family(row))} | ${expectedOutcome(row.label)} | ${escapeCell(resultText(row))} | ${status} |`);
+    lines.push(`| ${number} | ${test} | ${checkLink(row.label)} | ${escapeCell(family(row))} | ${expectedOutcome(row.label)} | ${escapeCell(resultText(row))} | ${status} |`);
   });
   return lines;
+}
+
+/** The check a case belongs to, linked to its check file. @param {CalibrationLabel} label */
+function checkLink(label) {
+  return `[${code(label.check)}](checks/${label.check}/check.mjs)`;
 }
 
 /** One collapsible block for each case, in report order. @param {CalibrationEntry} entry @param {string} prefix */
@@ -245,7 +250,7 @@ function caseBlock(row, number, prefix, missing) {
     if (test.fixtures?.length) lines.push("", "Fixtures:", "", ...fenced(test.fixtures.join("\n\n"), languageOf(label.file)));
   }
   if (row.code) {
-    const where = label.code ? `, [${code(label.code)}](calibration/${label.code})` : "";
+    const where = label.code ? `, [${code(label.code)}](${label.code})` : "";
     lines.push(`Code under test${where}:`, "", ...fenced(row.code, languageOf(label.code ?? label.file)));
   }
   lines.push(`- ${knownDefect(row)}`);
@@ -260,6 +265,7 @@ function knownDefect(row) {
   const { label, test } = row;
   const parts = [label.defect === "clean" ? "**Known defect:** none, a clean test." : `**Known defect:** ${label.defect ?? "not named"}.`];
   if (label.mixed) parts.push("It is a mixed case, so its answers can disagree.");
+  parts.push(`**Check:** ${checkLink(label)}.`);
   const expected = [label.mixed || label.mustEscalate === true ? "escalate" : label.mustEscalate === false ? "pass" : "escalate or pass"];
   if (label.canFail !== undefined) expected.push(`${code("can_fail")} ${yesNo(label.canFail)}`);
   for (const [key, value] of labelAnswers(label)) expected.push(`${code(key)} ${valueText(value)}`);
@@ -270,7 +276,7 @@ function knownDefect(row) {
   if (label.note) parts.push(`Note: ${label.note}${/[.!?]$/.test(label.note) ? "" : "."}`);
   if (test) {
     const scope = test.scope?.length ? `, inside ${test.scope.map(code).join(" > ")}` : "";
-    parts.push(`Case file [${code(label.file)}](calibration/${label.file}), line ${test.line}${scope}.`);
+    parts.push(`Case file [${code(label.file)}](${label.file}), line ${test.line}${scope}.`);
     if (test.flags?.length) parts.push(`Extractor notes: ${test.flags.map(code).join(", ")}.`);
   } else {
     parts.push(`No test source: ${row.error ?? "the case file holds no test with this name"}.`);
@@ -426,7 +432,8 @@ function legend() {
   return [
     "## Legend",
     "",
-    "- **Case**: one labelled test in `calibration/cases/`. Its label in `calibration/labels/` states the known defect and the expected outcome.",
+    "- **Case**: one labelled test in `checks/<check>/cases/<case>/`. `case.mjs` holds the test, `label.json` states the known defect and the expected outcome, and `code.mjs`, if the case has one, holds the code under test.",
+    "- **Check**: the check that the case is meant to catch, in `checks/<check>/check.mjs`. A clean case and a mixed case belong to the `verdict` check.",
     "- **Escalate**: the tool sends the test to a human, so the test **needs eyes**. Each reason says why. A test with no reason **passes**.",
     `- **can_fail**: the probability that a change to the code under test can make the test fail. The tool asks it in ${CAN_FAIL_KEYS.length} phrasings and takes the mean. The **spread** is the highest value minus the lowest. A spread above \`TEST_AUDIT_STABLE_BAND\` makes the value borderline or unstable, and the test escalates.`,
     `- **Twin pair**: ${gates.join(" and ")}. The tool asks each twice. The value counts only when both phrasings agree. A "no" escalates.`,

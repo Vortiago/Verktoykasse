@@ -1,0 +1,8 @@
+{
+  "test": "add handles negatives",
+  "defect": "clean",
+  "canFail": true,
+  "mustEscalate": false,
+  "deterministic": true,
+  "note": "a clean unit guard"
+}

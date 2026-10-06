@@ -1,0 +1,14 @@
+{
+  "test": "publishes twice",
+  "defect": "interaction-only",
+  "canFail": true,
+  "mustEscalate": true,
+  "mixed": false,
+  "note": "A changed call count fails the test, yet the payload of each call is never asserted.",
+  "sources": [
+    {
+      "name": "testsmells.org, Open Catalog of Test Smells",
+      "url": "https://testsmells.org/"
+    }
+  ]
+}

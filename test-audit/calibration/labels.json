@@ -1,6 +1,0 @@
-{
-  "//": "Labels for the live calibration corpus. `canFail` is the expected answer to the falsifiable question; `mustEscalate` is a test the audit must never pass silently; `mixed` is a test whose expected outcome is escalation. `file` is relative to this directory. The cases live in labels/, one fragment per defect family.",
-  "acceptance": {
-    "canFailAgreement": 0.9
-  }
-}

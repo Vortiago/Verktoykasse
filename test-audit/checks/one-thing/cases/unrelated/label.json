@@ -1,0 +1,14 @@
+{
+  "test": "creating a user validates, stores and notifies",
+  "defect": "eager",
+  "canFail": true,
+  "mustEscalate": false,
+  "mixed": false,
+  "note": "A real user-creation check, but validation, storage and notification are three unrelated behaviours.",
+  "sources": [
+    {
+      "name": "Meszaros, xUnit Test Patterns (Eager Test)",
+      "url": "http://xunitpatterns.com/"
+    }
+  ]
+}

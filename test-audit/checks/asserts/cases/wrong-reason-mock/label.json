@@ -1,0 +1,7 @@
+{
+  "test": "saves the user",
+  "defect": "wrong-reason",
+  "canFail": true,
+  "mustEscalate": true,
+  "note": "passes for the wrong reason: only the mock call is checked"
+}

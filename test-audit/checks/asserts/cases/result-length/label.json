@@ -1,0 +1,14 @@
+{
+  "test": "builds three steps",
+  "defect": "shape-only",
+  "canFail": true,
+  "mustEscalate": true,
+  "mixed": false,
+  "note": "A wrong count fails the test, yet the step contents are never checked.",
+  "sources": [
+    {
+      "name": "testsmells.org, Open Catalog of Test Smells",
+      "url": "https://testsmells.org/"
+    }
+  ]
+}

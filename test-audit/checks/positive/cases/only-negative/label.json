@@ -1,0 +1,7 @@
+{
+  "test": "no edge for a comment",
+  "defect": "only-negative",
+  "canFail": true,
+  "mustEscalate": true,
+  "note": "no positive/negative pair"
+}

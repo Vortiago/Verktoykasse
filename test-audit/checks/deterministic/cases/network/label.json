@@ -1,0 +1,15 @@
+{
+  "test": "the remote catalogue lists the widget",
+  "defect": "non-deterministic",
+  "canFail": true,
+  "mustEscalate": false,
+  "mixed": false,
+  "deterministic": false,
+  "note": "A real catalogue check, but a live fetch makes the result depend on the network.",
+  "sources": [
+    {
+      "name": "Kent Beck, Test Desiderata (deterministic)",
+      "url": "https://kentbeck.github.io/TestDesiderata/"
+    }
+  ]
+}

@@ -10,6 +10,8 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { BATTERY, CHECKS, ESCALATE_ON_FALSE, FLAG_BY_GATE, NEGATED, RUBRIC } from "./index.mjs";
+import { CASE_FILE, CODE_FILE, LABEL_FILE, loadLabels } from "../calibration/labels.mjs";
+import { extractTests } from "../change/index.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -18,6 +20,16 @@ const FOLDERS = readdirSync(HERE, { withFileTypes: true })
   .filter((entry) => entry.isDirectory())
   .map((entry) => entry.name)
   .sort();
+
+/** Every case folder, as `<check>/<case>`, sorted. */
+const CASES = FOLDERS.flatMap((folder) => {
+  const cases = join(HERE, folder, "cases");
+  if (!existsSync(cases)) return [];
+  return readdirSync(cases).map((name) => `${folder}/${name}`);
+}).sort();
+
+/** The label fields a label.json may hold. The loader adds `check`, `file` and `code`. */
+const LABEL_FIELDS = new Set(["test", "defect", "canFail", "mustEscalate", "mixed", "deterministic", "note", "sources"]);
 
 /** The folder name of a check: the kebab-case form of its name. @param {string} name */
 const folderOf = (name) => name.replaceAll("_", "-");
@@ -73,5 +85,35 @@ test("every check names its sources", () => {
       assert.ok(source.name.length > 0, `a source of ${check.name} has no name`);
       if (source.url !== undefined) assert.match(source.url, /^https?:\/\//, `${check.name}: ${source.url}`);
     }
+  }
+});
+
+test("every case folder holds a case.mjs and a label.json, and at most a code.mjs beside them", () => {
+  assert.ok(CASES.length > 0);
+  for (const folder of CASES) {
+    const [check, name] = folder.split("/");
+    const entries = readdirSync(join(HERE, check, "cases", name)).sort();
+    assert.ok(entries.includes(CASE_FILE) && entries.includes(LABEL_FILE), `${folder} needs ${CASE_FILE} and ${LABEL_FILE}`);
+    assert.deepEqual(entries.filter((entry) => ![CASE_FILE, LABEL_FILE, CODE_FILE].includes(entry)), [], `${folder} holds another file`);
+  }
+});
+
+test("every label names a test in its case file, and every test in a case file has a label", () => {
+  const labels = loadLabels();
+  for (const folder of CASES) {
+    const [check, name] = folder.split("/");
+    const file = `checks/${check}/cases/${name}/${CASE_FILE}`;
+    const named = extractTests(readFileSync(join(HERE, "..", file), "utf8"), file).map((found) => found.name);
+    const labelled = labels.filter((label) => label.file === file).map((label) => label.test);
+    assert.ok(labelled.length > 0, `${folder} has no label`);
+    assert.deepEqual([...named].sort(), [...labelled].sort(), `the tests in ${file} and their labels`);
+    assert.equal(new Set(named).size, named.length, `two tests in ${file} share a name`);
+  }
+});
+
+test("a label holds only the label fields, and names its defect", () => {
+  for (const label of loadLabels()) {
+    for (const key of Object.keys(label)) assert.ok(LABEL_FIELDS.has(key) || ["check", "file", "code"].includes(key), `${label.file}: field ${key}`);
+    assert.ok(typeof label.defect === "string" && label.defect.length > 0, `${label.file}: no defect`);
   }
 });

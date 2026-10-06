@@ -1,0 +1,14 @@
+{
+  "test": "the service reports its version",
+  "defect": "clean",
+  "canFail": true,
+  "mustEscalate": false,
+  "mixed": false,
+  "note": "a real guard",
+  "sources": [
+    {
+      "name": "Kent Beck, Test Desiderata",
+      "url": "https://kentbeck.github.io/TestDesiderata/"
+    }
+  ]
+}

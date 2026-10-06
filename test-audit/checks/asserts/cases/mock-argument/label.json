@@ -1,0 +1,14 @@
+{
+  "test": "forwards the payload",
+  "defect": "interaction-only",
+  "canFail": true,
+  "mustEscalate": true,
+  "mixed": false,
+  "note": "The mock argument shape can change and fail the test, while the real output stays unchecked.",
+  "sources": [
+    {
+      "name": "testsmells.org, Open Catalog of Test Smells",
+      "url": "https://testsmells.org/"
+    }
+  ]
+}

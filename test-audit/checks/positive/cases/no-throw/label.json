@@ -1,0 +1,14 @@
+{
+  "test": "parses a well formed header",
+  "defect": "only-negative",
+  "canFail": true,
+  "mustEscalate": true,
+  "mixed": false,
+  "note": "Only that the call does not throw is checked, and the parsed output is never asserted.",
+  "sources": [
+    {
+      "name": "verify-prd-implemented test-patterns (Passes for the wrong reason; No negative/positive pair)",
+      "url": "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md"
+    }
+  ]
+}

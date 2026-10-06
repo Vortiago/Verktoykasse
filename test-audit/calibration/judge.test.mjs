@@ -6,9 +6,6 @@ import assert from "node:assert/strict";
 import { judge, rowStatus } from "./judge.mjs";
 import { loadLabels } from "./labels.mjs";
 import { codeContext } from "./runner.mjs";
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 
 /** @typedef {import("../types.d.ts").CalibrationLabel} CalibrationLabel */
 /** @typedef {import("../types.d.ts").CalibrationRow} CalibrationRow */
@@ -16,14 +13,14 @@ import { fileURLToPath } from "node:url";
 /**
  * A labelled row with a result whose can-fail mean and escalation are set. The
  * judge reads only those, so the rest of the result is empty, and the label's
- * case file is derived from its test name.
- * @param {Omit<CalibrationLabel, "file">} label
+ * check and case file are derived from its test name.
+ * @param {Omit<CalibrationLabel, "check" | "file">} label
  * @param {{ mean?: number | null, state?: string, needsEyes?: boolean, error?: string }} [opts]
  * @returns {CalibrationRow}
  */
 function row(label, { mean = 0.99, state = "stable", needsEyes = false, error } = {}) {
   return {
-    label: { file: `cases/${label.test}.case.mjs`, ...label },
+    label: { check: "verdict", file: `checks/verdict/cases/${label.test}/case.mjs`, ...label },
     result: {
       test: { file: `${label.test}.test.mjs`, line: 1, name: label.test, path: [] },
       answers: {},
@@ -99,19 +96,24 @@ test("judge groups escalation by defect, so a whole family that slips shows", ()
   assert.equal(verdict.pass, false);
 });
 
-test("loadLabels merges every fragment", () => {
-  const { acceptance, cases } = loadLabels();
-  assert.equal(typeof acceptance.canFailAgreement, "number");
-  assert.ok(cases.length >= 18);
-  for (const label of cases) {
-    assert.ok(typeof label.file === "string" && label.file.startsWith("cases/"));
+test("judge holds the run to the acceptance bar when the caller sets none", () => {
+  const rows = [row({ test: "a", canFail: true }, { mean: 0.99 }), row({ test: "b", canFail: true }, { mean: 0.2 })];
+  assert.equal(judge(rows).minAgreement, 0.9);
+  assert.equal(judge(rows).pass, false);
+});
+
+test("loadLabels gives each label its check and its case file from the folder", () => {
+  const labels = loadLabels();
+  assert.ok(labels.length >= 18);
+  for (const label of labels) {
+    assert.match(label.file, new RegExp(`^checks/${label.check}/cases/[^/]+/case\\.mjs$`));
     assert.ok(typeof label.test === "string");
   }
-  assert.ok(cases.some((label) => label.defect === "tautology"));
+  assert.ok(labels.some((label) => label.defect === "tautology"));
 });
 
 test("a label that resolves to no test fails the run", () => {
-  const rows = [{ label: { file: "cases/missing.case.mjs", test: "missing", mustEscalate: true }, error: "test not found: missing" }];
+  const rows = [{ label: { check: "verdict", file: "checks/verdict/cases/missing/case.mjs", test: "missing", mustEscalate: true }, error: "test not found: missing" }];
   const verdict = judge(rows, { canFailAgreement: 0.9 });
   assert.equal(verdict.unresolved, 1);
   assert.equal(verdict.pass, false);
@@ -164,11 +166,7 @@ test("a case the endpoint never answered fails the run", () => {
   assert.equal(rowStatus(rows[0]), "ERROR");
 });
 
-test("every label's code file reads, and the runner sends it as a new-file diff", () => {
-  const here = dirname(fileURLToPath(import.meta.url));
-  const withCode = loadLabels().cases.filter((label) => label.code);
-  assert.ok(withCode.length > 0);
-  for (const label of withCode) assert.ok(readFileSync(join(here, String(label.code)), "utf8").length > 0, label.code);
+test("the runner sends the code under test as a new-file diff at a neutral path", () => {
   const diff = codeContext("export const a = 1;\n");
   assert.equal(diff, "diff --git a/src/example.mjs b/src/example.mjs\nnew file mode 100644\n--- /dev/null\n+++ b/src/example.mjs\n@@ -0,0 +1,1 @@\n+export const a = 1;");
 });

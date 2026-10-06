@@ -1,0 +1,14 @@
+{
+  "test": "the build is green",
+  "defect": "tautology",
+  "canFail": false,
+  "mustEscalate": true,
+  "mixed": false,
+  "note": "The assertion holds for every build, so breaking the code cannot fail it.",
+  "sources": [
+    {
+      "name": "Kent Beck, Test Desiderata",
+      "url": "https://kentbeck.github.io/TestDesiderata/"
+    }
+  ]
+}

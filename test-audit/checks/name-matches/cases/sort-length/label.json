@@ -1,0 +1,18 @@
+{
+  "test": "sorts rows by name",
+  "defect": "name-only",
+  "canFail": false,
+  "mustEscalate": true,
+  "mixed": false,
+  "note": "The name promises a sort, while the length check holds for any permutation.",
+  "sources": [
+    {
+      "name": "Meszaros, xUnit Test Patterns (Obscure Test)",
+      "url": "http://xunitpatterns.com/"
+    },
+    {
+      "name": "verify-prd-implemented test-patterns (Skipped / disabled / focused)",
+      "url": "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md"
+    }
+  ]
+}

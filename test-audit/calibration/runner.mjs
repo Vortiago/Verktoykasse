@@ -4,7 +4,7 @@
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { extractTests } from "../change/index.mjs";
 import { classify, usageMeter } from "../classifier/index.mjs";
 import { mapPool } from "../lib/pool.mjs";
@@ -13,13 +13,15 @@ import { judge, rowStatus } from "./judge.mjs";
 import { formatBenchmark, formatMatrix, formatSingle } from "./format.mjs";
 import config from "../config.mjs";
 
-const HERE = dirname(fileURLToPath(import.meta.url));
+/** test-audit/: the label paths are relative to it. */
+const ROOT = fileURLToPath(new URL("../", import.meta.url));
 
-/** The file name the model sees for every case. A case file's own name states
- * its label (`tautology-constant.case.mjs`), so sending it would leak the answer. */
-const CASE_FILE = "example.test.mjs";
+/** The file name the model sees for every case. A case's path states its label
+ * (`checks/can-fail/cases/tautology-constant/`), so sending it would leak the
+ * answer. */
+const NEUTRAL_TEST_PATH = "example.test.mjs";
 /** The neutral path the code under test sits at in the change context. */
-const CODE_FILE = "src/example.mjs";
+const NEUTRAL_CODE_PATH = "src/example.mjs";
 
 /** @typedef {import("../types.d.ts").AuditTest} AuditTest */
 /** @typedef {import("../types.d.ts").CalibrationLabel} CalibrationLabel */
@@ -31,9 +33,8 @@ const CODE_FILE = "src/example.mjs";
  * @returns {Promise<{ text: string, code: number }>}
  */
 export async function runSelftest(opts) {
-  const labels = loadLabels();
   // Read and parse every case once; every target reuses it.
-  const cases = labels.cases.map(prepareCase);
+  const cases = loadLabels().map(prepareCase);
 
   /** @param {{ url: string, model: string }} target */
   const runTarget = async (target) => {
@@ -46,7 +47,7 @@ export async function runSelftest(opts) {
       opts.onProgress?.({ target: target.model, index: done, total, status: rowStatus(row), test: item.label.test });
       return row;
     });
-    return { target, rows, verdict: judge(rows, labels.acceptance), usage: meter.usage };
+    return { target, rows, verdict: judge(rows), usage: meter.usage };
   };
 
   // One lane per URL. The targets on one URL (`--models`) share its endpoint,
@@ -76,9 +77,9 @@ export async function runSelftest(opts) {
  */
 function prepareCase(label) {
   try {
-    const text = readFileSync(join(HERE, label.file), "utf8");
-    const test = extractTests(text, CASE_FILE).find((candidate) => candidate.name === label.test);
-    const code = label.code ? readFileSync(join(HERE, label.code), "utf8") : undefined;
+    const text = readFileSync(join(ROOT, label.file), "utf8");
+    const test = extractTests(text, NEUTRAL_TEST_PATH).find((candidate) => candidate.name === label.test);
+    const code = label.code ? readFileSync(join(ROOT, label.code), "utf8") : undefined;
     return { label, test, code };
   } catch (err) {
     return { label, error: `cannot read ${label.file}: ${err instanceof Error ? err.message : err}` };
@@ -93,7 +94,7 @@ function prepareCase(label) {
  */
 export function codeContext(code) {
   const lines = code.replace(/\n$/, "").split("\n");
-  return [`diff --git a/${CODE_FILE} b/${CODE_FILE}`, "new file mode 100644", "--- /dev/null", `+++ b/${CODE_FILE}`, `@@ -0,0 +1,${lines.length} @@`, ...lines.map((line) => `+${line}`)].join("\n");
+  return [`diff --git a/${NEUTRAL_CODE_PATH} b/${NEUTRAL_CODE_PATH}`, "new file mode 100644", "--- /dev/null", `+++ b/${NEUTRAL_CODE_PATH}`, `@@ -0,0 +1,${lines.length} @@`, ...lines.map((line) => `+${line}`)].join("\n");
 }
 
 /**

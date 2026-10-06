@@ -1,0 +1,18 @@
+{
+  "test": "computes the tax due",
+  "defect": "name-only",
+  "canFail": false,
+  "mustEscalate": true,
+  "mixed": false,
+  "note": "The name promises a tax value, while toBeDefined is true for any defined value.",
+  "sources": [
+    {
+      "name": "Meszaros, xUnit Test Patterns (Obscure Test)",
+      "url": "http://xunitpatterns.com/"
+    },
+    {
+      "name": "verify-prd-implemented test-patterns (Skipped / disabled / focused)",
+      "url": "https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md"
+    }
+  ]
+}

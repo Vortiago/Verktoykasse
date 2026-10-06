@@ -1,0 +1,7 @@
+{
+  "test": "store round trips a value",
+  "defect": "clean",
+  "canFail": true,
+  "mustEscalate": false,
+  "note": "a clean integration guard"
+}

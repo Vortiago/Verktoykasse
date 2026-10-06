@@ -1,0 +1,14 @@
+{
+  "test": "taxes the standard rate",
+  "defect": "hardcoded-data",
+  "canFail": false,
+  "mustEscalate": true,
+  "mixed": false,
+  "note": "The expected value is the code under test own constant, so the test agrees by construction and cannot fail.",
+  "sources": [
+    {
+      "name": "testsmells.org, Open Catalog of Test Smells",
+      "url": "https://testsmells.org/"
+    }
+  ]
+}

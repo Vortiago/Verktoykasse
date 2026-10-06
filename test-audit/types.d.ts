@@ -112,9 +112,15 @@ export interface AuditUsage {
   tokens: number;
 }
 
-/** One labelled case of the calibration corpus (calibration/labels/). */
+/**
+ * One labelled case of the calibration corpus: a `label.json` in
+ * checks/<check>/cases/<case>/. The loader adds `check`, `file` and `code` from
+ * the folder, so a label.json does not hold them.
+ */
 export interface CalibrationLabel {
-  /** The case file, relative to calibration/. */
+  /** The check folder the case belongs to: the check meant to catch its defect. */
+  check: string;
+  /** The case file, relative to test-audit/. */
   file: string;
   /** The name of the test in that file. */
   test: string;
@@ -129,12 +135,12 @@ export interface CalibrationLabel {
   deterministic?: boolean;
   /** What the case shows, in prose. */
   note?: string;
-  /** A file beside the case that holds the code under test. The runner sends it
-   * as the change context, the way a real audit sends the non-test diff. */
+  /** The file beside the case that holds the code under test, relative to
+   * test-audit/. The runner sends it as the change context, the way a real
+   * audit sends the non-test diff. */
   code?: string;
-  /** The fragment in labels/ the case comes from, and the sources it cites. */
-  group?: string;
-  sources?: Array<{ name: string; url?: string }>;
+  /** The sources the case cites. */
+  sources?: Source[];
 }
 
 /** One labelled case after a run: its result, or why it has none. */
