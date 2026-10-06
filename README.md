@@ -154,6 +154,23 @@ symlinks with no hook wiring. A *rules directory* (an `install.sh` and no
 `SKILL.md`) is skipped there: it wires Claude-only files, so it has no skill
 directory to link.
 
+### Without a clone: Claude Code on the web
+
+`bootstrap.sh` installs on a machine that has no clone, such as a Claude Code
+web session. It clones the repo to `~/.local/share/verktoykasse`, or updates the
+clone it made before, and runs `install.sh` with the same arguments. Put this in
+the environment's setup script:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Vortiago/Verktoykasse/main/bootstrap.sh \
+  | bash -s -- clean-code simplified-technical-english
+```
+
+Name what to install. Any skill name works too. Set `VERKTOYKASSE_REF` to a
+branch, tag or full commit SHA to pin a version, and `VERKTOYKASSE_DIR` to move
+the clone. The installed files are symlinks into the clone. A skill installer
+that prompts takes its non-interactive default.
+
 A rules file reaches a session as a symlink under `~/.claude/rules/`. Cowork
 desktop sessions skip a symlinked rules file that points outside the working
 directory, so the pattern is inert there.
