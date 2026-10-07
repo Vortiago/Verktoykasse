@@ -19,8 +19,9 @@ opencode plugin add 'github:Vortiago/Verktoykasse#main::path:opencode-test-audit
 - Run `/test-audit`. It audits the working-tree change against the default
   branch and posts the report into the chat.
 - Let the agent call the `test-audit` tool. The agent can set `base`, `head`,
-  `staged` or `files` to scope the audit. The tool returns the same markdown
-  report.
+  `staged` or `files` to scope the audit. The tool returns the same report:
+  one line for each test to drop, fix, or look at, with its reasons and whether
+  the tool is sure.
 
 The plugin audits the project directory of the session
 (`ctx.location.directory`). It sends its calls to the configured SystemOne

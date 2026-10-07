@@ -1,8 +1,0 @@
-{
-  "test": "reads the major version",
-  "defect": "weak-assert",
-  "canFail": true,
-  "mixed": false,
-  "specific": false,
-  "note": "Any positive major passes. Escalation is welcome but not required."
-}

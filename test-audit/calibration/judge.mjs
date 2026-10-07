@@ -9,6 +9,7 @@
 
 import { CHECKS } from "../checks/index.mjs";
 import { labelChecks } from "./labels.mjs";
+import { findingOf } from "../classifier/finding.mjs";
 
 /** @typedef {import("../types.d.ts").AuditResult} AuditResult */
 /** @typedef {import("../types.d.ts").CalibrationRow} CalibrationRow */
@@ -27,6 +28,7 @@ export function judge(rows) {
   let mixedRouted = 0;
   let mixedTotal = 0;
   let falsePositives = 0;
+  let sureFalsePositives = 0;
   let goodTotal = 0;
   /** Per check: the labelled values the tool committed to, and how many match.
    * @type {Record<string, { correct: number, total: number }>} */
@@ -57,6 +59,8 @@ export function judge(rows) {
     if (label.mustEscalate === false) {
       goodTotal += 1;
       if (result.needsEyes) falsePositives += 1;
+      // The costly kind: the finding tells the reader to act, and says it is sure.
+      if (result.needsEyes && findingOf(result).sure) sureFalsePositives += 1;
     }
     for (const [name, expected] of labelChecks(label)) {
       const value = result.checks[name]?.value;
@@ -80,6 +84,7 @@ export function judge(rows) {
     mixedRouted,
     mixedTotal,
     falsePositives,
+    sureFalsePositives,
     goodTotal,
     checkAnswers,
     unresolved,

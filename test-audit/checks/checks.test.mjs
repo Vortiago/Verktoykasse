@@ -71,7 +71,7 @@ test("each rubric definition appears in the rubric once", () => {
   for (const check of defined) assert.equal(RUBRIC.split(String(check.rubric)).length, 2, `the ${check.name} definition`);
   assert.deepEqual(
     CHECKS.filter((check) => !check.rubric).map((check) => check.name),
-    ["asserts", "name_matches"],
+    [],
   );
 });
 

@@ -1,0 +1,9 @@
+{
+  "test": "slugify lowercases through normalise",
+  "defect": "structure-dependent",
+  "canFail": true,
+  "mustEscalate": false,
+  "mixed": false,
+  "asserts": "behaviour",
+  "note": "The spy pins an internal helper. The strongest assertion still checks the result."
+}

@@ -1,9 +1,0 @@
-{
-  "test": "splits a version into its parts",
-  "defect": "clean",
-  "canFail": true,
-  "mustEscalate": false,
-  "mixed": false,
-  "specific": true,
-  "note": "toEqual on the whole value."
-}

@@ -95,10 +95,10 @@ test("each check a label names is scored against the label", () => {
   const rows = [
     row(/** @type {any} */ ({ test: "a", deterministic: true, asserts: "behaviour" }), GOOD),
     row(/** @type {any} */ ({ test: "b", deterministic: true }), { ...GOOD, deterministic: noul(0.1) }),
-    row(/** @type {any} */ ({ test: "c", named: false }), GOOD),
+    row(/** @type {any} */ ({ test: "c", restores: false }), GOOD),
   ];
   const verdict = judge(rows);
-  assert.deepEqual(verdict.checkAnswers, { asserts: { correct: 1, total: 1 }, deterministic: { correct: 1, total: 2 }, named: { correct: 0, total: 1 } });
+  assert.deepEqual(verdict.checkAnswers, { asserts: { correct: 1, total: 1 }, deterministic: { correct: 1, total: 2 }, restores: { correct: 0, total: 1 } });
   assert.deepEqual(rows.map(rowStatus), ["ok", "CHECK", "CHECK"]);
   // A check value that differs is reported, not an acceptance failure.
   assert.equal(verdict.pass, true);
@@ -178,4 +178,17 @@ test("selectLabels picks cases by folder or test name, and rejects a name that m
   );
   assert.equal(selectLabels(labels, undefined).length, labels.length);
   assert.throws(() => selectLabels(labels, ["no-such-case"]), /no case matches: no-such-case/);
+});
+
+test("a false positive counts as sure only when its finding is sure", () => {
+  const clean = /** @type {any} */ ({ test: "a", mustEscalate: false, canFail: true });
+  const rows = [
+    // A firm "no positive assertion" on a clean case: the reader would act on a sound test.
+    row(clean, { ...GOOD, positive_a: noul(0.05), positive_b: noul(0.95) }),
+    // Phrasings that disagree: a look, marked unsure.
+    row(clean, { ...GOOD, can_fail_a: noul(0.95), can_fail_b: noul(0.7), can_fail_c: noul(0.98) }),
+  ];
+  const verdict = judge(rows);
+  assert.equal(verdict.falsePositives, 2);
+  assert.equal(verdict.sureFalsePositives, 1);
 });

@@ -1,12 +1,13 @@
-// canonical source: test-audit/report/index.mjs@4ba9d42 sha256:9948414bf560ea6957a8b38cdedf1c8c910c0e6b98ea5a68595173b31e447a4e - vendored copy, do not edit here
+// canonical source: test-audit/report/index.mjs@68e72cd sha256:261a450150e6e52c93d419adccbb6dd34dafddf29e424aed2151cb60d13ce985 - vendored copy, do not edit here
 // The report: the text, json, and markdown faces of one audit, plus the exit
 // code. Wording follows Simplified Technical English, like the rest of the repo.
 
 import { eyesResults } from "./format.mjs";
 import { formatText } from "./text.mjs";
 import { formatMarkdown } from "./markdown.mjs";
+import { formatBrief } from "./brief.mjs";
 
-export { formatText, formatMarkdown };
+export { formatBrief, formatText, formatMarkdown };
 export { canFailText, escapeCell, pad } from "./format.mjs";
 
 /** @typedef {import("../types.d.ts").AuditResult} AuditResult */
@@ -24,16 +25,18 @@ export function exitCode(results) {
 }
 
 /**
- * The report for one audit, in one of the three faces. An empty change reads the
- * same in the text and markdown faces; the json face always emits a record, so a
- * script that parses it never meets prose.
+ * The report for one audit, in one of the four faces. The brief face is the
+ * default: one line per test to act on, for an LLM. An empty change reads the
+ * same in the brief, text, and markdown faces; the json face always emits a
+ * record, so a script that parses it never meets prose.
  * @param {{ results: AuditResult[], ref?: string, model?: string, usage?: AuditUsage }} audit
- * @param {{ format?: "text" | "json" | "markdown" }} [opts]
+ * @param {{ format?: "brief" | "text" | "json" | "markdown" }} [opts]
  */
 export function formatAudit(audit, opts = {}) {
   const meta = { ref: audit.ref, model: audit.model, usage: audit.usage };
   if (opts.format === "json") return JSON.stringify({ ...meta, results: audit.results }, null, 2);
   if (audit.results.length === 0) return "Test audit: no tests in the change.";
   if (opts.format === "markdown") return formatMarkdown(audit.results, meta);
-  return formatText(audit.results, meta);
+  if (opts.format === "text") return formatText(audit.results, meta);
+  return formatBrief(audit.results, meta);
 }

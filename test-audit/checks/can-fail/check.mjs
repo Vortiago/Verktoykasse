@@ -35,24 +35,20 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   name: "can_fail",
   role: "can-fail",
   questions: {
-    // All three ask one judgement: does the test fail when the behaviour it
-    // names breaks? An "any change can fail it" reading splits from it on every
-    // shape or interaction test, so no phrasing asks about any change.
     can_fail_a: noul(
-      "Break the behaviour this test names, in the code under test only. Does the test then fail? Any break counts, including one that changes only the shape of the result or makes the call throw.",
-      "the test fails when the named behaviour is broken",
-      "the test still passes when the named behaviour is broken",
+      "Can breaking the named behaviour in the code under test make this test fail?",
+      "some break makes it fail",
+      "no break makes it fail",
     ),
-    // The negated twin. After polarity normalisation it must agree with `a`.
     can_fail_b: noul(
-      "Does this test keep passing however the code under test breaks the behaviour this test names?",
-      "no break of the named behaviour makes the test fail",
-      "some break of the named behaviour makes the test fail",
+      "Does this test pass however the code under test breaks the named behaviour?",
+      "it always passes",
+      "some break makes it fail",
     ),
     can_fail_c: noul(
-      "If the behaviour this test names regresses, does the test fail?",
-      "a regression in that behaviour makes the test fail",
-      "a regression in that behaviour leaves the test passing",
+      "If the named behaviour regresses, can this test turn red?",
+      "a regression can fail it",
+      "a regression leaves it passing",
     ),
   },
   negated: ["can_fail_b"],

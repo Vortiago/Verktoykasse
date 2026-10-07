@@ -1,0 +1,8 @@
+{
+  "test": "reads the port from the sample file",
+  "defect": "uncontrolled-resource",
+  "canFail": true,
+  "mustEscalate": false,
+  "mixed": false,
+  "note": "The file is assumed present; its content does not change between runs."
+}

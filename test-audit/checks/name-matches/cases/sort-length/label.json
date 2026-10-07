@@ -1,9 +1,0 @@
-{
-  "test": "sorts rows by name",
-  "defect": "name-only",
-  "canFail": false,
-  "mustEscalate": true,
-  "mixed": false,
-  "name_matches": false,
-  "note": "The name promises a sort, while the length check holds for any permutation."
-}

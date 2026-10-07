@@ -34,10 +34,10 @@ test-audit/
           case.mjs        the test; its header names the defect and the sources, and the model never sees it
           label.json      the known defect and the expected outcome
           code.mjs        the code under test, if the right answer depends on it
-    can-fail/  asserts/  positive/  type/  verdict/  and 18 descriptive checks
+    can-fail/  asserts/  positive/  type/  verdict/  and 5 descriptive checks
   change/                 read the diff and find the tests
   classifier/             ask one SystemOne call per test, and apply the verdict rules
-  report/                 print a verdict, a summary, and an exit code
+  report/                 print one finding per test, a summary, and an exit code
   calibration/            run the cases against an endpoint, and judge the run
 ```
 
@@ -54,6 +54,7 @@ node test-audit/cli.mjs --base main         # the working tree against the merge
 node test-audit/cli.mjs --head feature      # the range <default branch>...feature
 node test-audit/cli.mjs --staged            # the staged change
 node test-audit/cli.mjs --files a.test.mjs  # named files
+node test-audit/cli.mjs --table             # a table of every test, not one line per finding
 node test-audit/cli.mjs --json              # the full record, as JSON
 node test-audit/cli.mjs --markdown          # a review comment, in markdown
 node test-audit/cli.mjs --url http://127.0.0.1:11434 --model nimble   # one endpoint and decision model
@@ -78,22 +79,33 @@ A transport failure is an audit failure, not a skip.
 
 ## Read the report
 
-The text report has three parts:
+The report is for an LLM that decides what to do with each test. It gives one
+line for each test that needs an action, the worst first, and a summary line:
 
-1. A table with one row per test: `VERDICT`, `EYES`, `TYPE`, `CAN-FAIL`,
-   `ASSERTS`, `LOCATION` and `NAME`. A `flags:` line under a row lists the flags
-   of that test.
-2. A `Needs eyes:` list. It gives each escalated test and the reasons it
-   escalates.
-3. A summary line: the count of each verdict, the count of unstable tests, and
-   the calls and tokens used.
+```
+drop  src/a.test.mjs:12  "the build is green"  cannot fail; slop guard  (sure)
+fix   src/b.test.mjs:40  "loads the profile"  asserts only the shape  (sure)
+look  src/c.test.mjs:7  "the retry lands"  can_fail unstable (spread 0.48)  (unsure, possibly a false positive)
+4 tests: 1 drop, 1 fix, 1 look, 1 ok. 4 calls, 21000 tokens.
+```
 
-The verdict is the answer to the `verdict` question: slop, weak, good or strong.
-The levels depend only on whether the test can fail and what it asserts. A
-descriptive smell, such as a flaky or slow test, raises its flag but does not
-lower the verdict. It is `unclassified` when the endpoint gave no trusted answer.
-`CAN-FAIL` is the mean probability that the test fails when the behaviour it
-names breaks, over the three `can_fail_*` phrasings. A `!` after the value means the spread between the phrasings is above the band.
+| Action | Meaning |
+| --- | --- |
+| `drop` | The test cannot guard anything: it cannot fail, it asserts nothing, or its expected value comes from the code under test. |
+| `fix` | The test runs a weak check (only a shape, a mock call, or its input; no positive assertion; a weak verdict), it does not run, or it is flaky, order-dependent, leaks state, holds conditional logic, or needs a person. |
+| `look` | The tool is not sure: the phrasings disagree, an answer is missing, or answers contradict each other. The finding may be a false positive. |
+| `ok` | Nothing to report. The test gets no line. |
+
+`sure` means the answers behind the finding agree and sit well away from 0.5 or
+from a verdict boundary. `unsure, possibly a false positive` means they do not,
+so the reader should check the test before it acts. `classifier/finding.mjs`
+holds the rules.
+
+`--table` prints a table of every test instead: the verdict, whether it needs
+eyes, the type, the `can_fail` mean, the assert kind, and the flags. The verdict
+is slop, weak, good or strong, and depends only on whether the test can fail
+and what it asserts. `CAN-FAIL` is the mean over the three `can_fail_*`
+phrasings; a `!` after it means their spread is above the band.
 
 ### When a test needs eyes
 
@@ -122,12 +134,10 @@ failure it hunts, so it escalates instead.
 
 ### Flags
 
-A flag describes a test. It does not escalate the test on its own. The
-descriptive questions raise these flags: `implementation-coupled`,
-`conditional`, `order-dependent`, `uncontrolled-resource`, `weak-assert`,
-`vague-name`, `non-deterministic`, `eager`, `name-mismatch`,
-`structure-dependent`, `silent-failure`, `general-fixture`, `slow`, `obscure`,
-`magic-number`, `asserts-input`, `manual`, and `state-leak`. An `asserts` kind
+A flag describes a test. It does not escalate the test on its own, but the
+brief report turns a flag that makes a test unreliable into a `fix`. The
+descriptive questions raise these flags: `conditional`, `order-dependent`,
+`non-deterministic`, `manual`, and `state-leak`. An `asserts` kind
 other than `behaviour` is also a flag, for example `shape-only`, when both
 phrasings give it. The extractor adds its own notes: `each` for a table test,
 `dynamic-name` for a computed name, and `focus-in-file` when an only or focus
@@ -207,7 +217,7 @@ also report `mass`.
 
 ### The battery
 
-The battery is 29 questions about one test, from 24 checks. All questions share
+The battery is 16 questions about one test, from 11 checks. All questions share
 one state and travel in one call. Each check is a folder in `checks/`, and
 `checks/index.mjs` sets the order. The role of a check tells the verdict rules
 in `classifier/verdict.mjs` what to do with its answers. So a new check needs
@@ -220,31 +230,23 @@ only its folder and one line in `checks/index.mjs`.
 | [`positive`](checks/positive/check.mjs) | `positive_a`, `positive_b` (negated) | gate: no positive assertion | only-negative test | 7 |
 | [`runs`](checks/runs/check.mjs) | `runs_a`, `runs_b` (negated) | gate: does not run, or narrows the run | a skip or todo marker on the test or on a describe around it, or an only or focus marker anywhere in the file | 6 |
 | [`type`](checks/type/check.mjs) | `type` | type | regression, characterization, or smoke by purpose; else unit, integration, or e2e | 5 |
-| [`observable`](checks/observable/check.mjs) | `observable` | flag `implementation-coupled` | a private field, an internal helper call, or internal call order | 2 |
 | [`conditional`](checks/conditional/check.mjs) | `conditional` | flag `conditional` | a branch, a loop over a value that may be empty, an early return, or a catch that can leave an assertion unrun | 3 |
 | [`isolated`](checks/isolated/check.mjs) | `isolated` | flag `order-dependent` | a value another test sets, or shared mutable state no hook resets | 2 |
-| [`controlled`](checks/controlled/check.mjs) | `controlled` | flag `uncontrolled-resource` | a file, server, environment variable, or clock that the test does not create or fake | 2 |
-| [`specific`](checks/specific/check.mjs) | `specific` | flag `weak-assert` | a weak matcher (defined, truthy, a type, a length, a bound, a folded boolean) | 2 |
-| [`named`](checks/named/check.mjs) | `named` | flag `vague-name` | a vague name, or only the name of the unit | 2 |
 | [`deterministic`](checks/deterministic/check.mjs) | `deterministic` | flag `non-deterministic` | a sleep, the real clock, the network, real randomness, an unguaranteed order | 8 |
-| [`one-thing`](checks/one-thing/check.mjs) | `one_thing` | flag `eager` | several unrelated behaviours in one body | 3 |
-| [`name-matches`](checks/name-matches/check.mjs) | `name_matches` | flag `name-mismatch` | a body that asserts something other than the name, or a name that states no behaviour | 4 |
-| [`resilient`](checks/resilient/check.mjs) | `resilient` | flag `structure-dependent` | an internal import, a spy on a helper, a private field, or a pinned call order | 2 |
-| [`diagnostic`](checks/diagnostic/check.mjs) | `diagnostic` | flag `silent-failure` | a bare boolean check, or a repeated assertion with no index | 2 |
-| [`fixture`](checks/fixture/check.mjs) | `fixture` | flag `general-fixture` | a value that nothing shown builds, or a fixture far larger than the test needs | 2 |
-| [`fast`](checks/fast/check.mjs) | `fast` | flag `slow` | a sleep, a poll, a network or disk call, or a large computation | 2 |
-| [`readable`](checks/readable/check.mjs) | `readable` | flag `obscure` | an input or expected value hidden in a helper, an import, or an undefined name | 2 |
-| [`magic-number`](checks/magic-number/check.mjs) | `magic_number` | flag `magic-number` | a literal whose meaning must be looked up in the code under test | 2 |
-| [`reads-output`](checks/reads-output/check.mjs) | `reads_output` | flag `asserts-input` | the assertion reads its own input or setup, or only that no error was thrown | 2 |
 | [`automated`](checks/automated/check.mjs) | `automated` | flag `manual` | a print-only test, or a step a person must do | 2 |
 | [`restores`](checks/restores/check.mjs) | `restores` | flag `state-leak` | a global, environment variable, timer, mock, or spy left changed | 3 |
-| [`verdict`](checks/verdict/check.mjs) | `verdict` | verdict | slop, weak, good, strong, by what the test asserts; its cases are the clean and the mixed tests | 16 |
+| [`verdict`](checks/verdict/check.mjs) | `verdict` | verdict | slop, weak, good, strong, by what the test asserts; its cases are the clean and the mixed tests, and the cases of the smells the battery no longer asks | 45 |
 
 Five answers carry the verdict: the `positive_*` pair, the `runs_*` pair, the
 `can_fail_*` set, the `asserts_*` pair, and `verdict`. Each pair holds one
 negated twin, so one confident wrong answer cannot pass a test alone. A pair
 whose phrasings disagree beyond the band escalates, like `can_fail`. The other
-18 questions are the descriptive questions. Each one raises a flag.
+5 questions are the descriptive questions. Each one raises a flag.
+
+The battery asks only what changes the action on a test. Questions are short;
+the definitions they lean on are in the rubric, which every call shares, so
+the endpoint can cache it. Each question costs its full length on every call,
+and a word in the rubric is read once.
 
 ### Trust
 
@@ -263,6 +265,7 @@ The tool trusts an answer in two ways:
 node test-audit/cli.mjs --selftest          # live calibration over the labelled corpus
 node test-audit/cli.mjs --selftest --targets "http://127.0.0.1:11434|nimble, http://127.0.0.1:11435|winnow:e4b"
 node test-audit/cli.mjs --selftest --models "nimble,tev1"   # several models on one URL
+node test-audit/cli.mjs --selftest --cases "result-keys,adds two numbers"   # only these cases, by folder or test name
 node test-audit/cli.mjs --selftest --benchmark   # a per-case report, in markdown
 ```
 

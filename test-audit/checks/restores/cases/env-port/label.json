@@ -5,6 +5,5 @@
   "mustEscalate": false,
   "mixed": false,
   "restores": true,
-  "controlled": true,
   "note": "The afterEach restores PORT."
 }

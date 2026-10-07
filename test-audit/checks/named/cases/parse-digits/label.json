@@ -1,9 +1,0 @@
-{
-  "test": "works",
-  "defect": "vague-name",
-  "canFail": true,
-  "mustEscalate": false,
-  "mixed": false,
-  "named": false,
-  "note": "The name says nothing about the behaviour."
-}

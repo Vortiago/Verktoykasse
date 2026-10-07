@@ -1,102 +1,94 @@
 {
   "can_fail_a": {
     "type": "noul",
-    "instructions": "Break the behaviour this test names, in the code under test only. Does the test then fail? Any break counts, including one that changes only the shape of the result or makes the call throw.",
+    "instructions": "Can breaking the named behaviour in the code under test make this test fail?",
     "criteria": {
-      "true": "the test fails when the named behaviour is broken",
-      "false": "the test still passes when the named behaviour is broken"
+      "true": "some break makes it fail",
+      "false": "no break makes it fail"
     }
   },
   "can_fail_b": {
     "type": "noul",
-    "instructions": "Does this test keep passing however the code under test breaks the behaviour this test names?",
+    "instructions": "Does this test pass however the code under test breaks the named behaviour?",
     "criteria": {
-      "true": "no break of the named behaviour makes the test fail",
-      "false": "some break of the named behaviour makes the test fail"
+      "true": "it always passes",
+      "false": "some break makes it fail"
     }
   },
   "can_fail_c": {
     "type": "noul",
-    "instructions": "If the behaviour this test names regresses, does the test fail?",
+    "instructions": "If the named behaviour regresses, can this test turn red?",
     "criteria": {
-      "true": "a regression in that behaviour makes the test fail",
-      "false": "a regression in that behaviour leaves the test passing"
+      "true": "a regression can fail it",
+      "false": "a regression leaves it passing"
     }
   },
   "asserts_a": {
     "type": "choice",
-    "instructions": "Taken together, what do the assertions of this test check about the code under test? Pick the kind of the strongest assertion.",
+    "instructions": "Which assertion kind is the strongest assertion in this test?",
     "criteria": {
-      "behaviour": "an output value or effect of the code under test, compared with an expected value the test fixes itself: a literal, a constant the test file declares, or a value the test computes without calling the code under test",
-      "hardcoded-data": "an expected value taken from the code under test itself, such as a constant it exports or a second call to the same code, so both sides agree by construction",
-      "input-only": "its own input or setup, not what the code under test produced",
-      "shape-only": "only the type, length, keys, presence, or definedness of a result, not its content, even when compared with a literal such as a list of key names",
-      "interaction-only": "only that a mock or spy was called, how often, or with what, not the result it stands in for",
-      "nothing": "no assertion, a tautology such as true === true, or only that the call did not throw"
+      "behaviour": "the output, against an expected value",
+      "hardcoded-data": "a value from the code under test itself",
+      "input-only": "its own input or setup",
+      "shape-only": "only type, length, keys, or presence",
+      "interaction-only": "only a mock or spy call",
+      "nothing": "nothing, a tautology, or only no throw"
     }
   },
   "asserts_b": {
     "type": "choice",
-    "instructions": "What does the strongest assertion in this test check?",
+    "instructions": "What does the strongest assertion check?",
     "criteria": {
-      "nothing": "no assertion, a tautology such as true === true, or only that the call did not throw",
-      "interaction-only": "only that a mock or spy was called, how often, or with what, not the result it stands in for",
-      "shape-only": "only the type, length, keys, presence, or definedness of a result, not its content, even when compared with a literal such as a list of key names",
-      "input-only": "its own input or setup, not what the code under test produced",
-      "hardcoded-data": "an expected value taken from the code under test itself, such as a constant it exports or a second call to the same code, so both sides agree by construction",
-      "behaviour": "an output value or effect of the code under test, compared with an expected value the test fixes itself: a literal, a constant the test file declares, or a value the test computes without calling the code under test"
+      "nothing": "nothing, a tautology, or only no throw",
+      "interaction-only": "only a mock or spy call",
+      "shape-only": "only type, length, keys, or presence",
+      "input-only": "its own input or setup",
+      "hardcoded-data": "a value from the code under test itself",
+      "behaviour": "the output, against an expected value"
     }
   },
   "positive_a": {
     "type": "noul",
-    "instructions": "Does at least one assertion name a value that the code under test must produce, such as a literal, an object, a thrown error with its message, or the true or false result the name asks for? An empty array, string, or object, null, or undefined does not count, even written as a literal.",
+    "instructions": "Does at least one assertion expect a non-empty value?",
     "criteria": {
-      "true": "at least one assertion names a value that must be produced",
-      "false": "every assertion checks only that something is null, undefined, empty, or did not throw"
+      "true": "at least one expects a non-empty value",
+      "false": "every assertion expects empty, null, undefined, or no throw"
     }
   },
   "positive_b": {
     "type": "noul",
-    "instructions": "Does every assertion in this test check only that something is null, undefined, empty, or did not throw? An expected empty array, string, or object counts as empty.",
+    "instructions": "Does every assertion expect only empty, null, undefined, or no throw?",
     "criteria": {
-      "true": "every assertion checks only that something is null, undefined, empty, or did not throw",
-      "false": "at least one assertion names a value that must be produced"
+      "true": "every assertion expects empty, null, undefined, or no throw",
+      "false": "at least one expects a non-empty value"
     }
   },
   "runs_a": {
     "type": "noul",
-    "instructions": "Does this test run, and does every other test in the file run? Read the test head, the scope field, and the flags field. A skip, todo, or skipIf marker, or an x prefix such as xit or xdescribe, on the test or on a describe around it stops this test. An only or focus marker anywhere in the file, such as it.only, fit, or fdescribe, shows as the flag focus-in-file and leaves other tests out.",
+    "instructions": "Does this test run, with no marker in the file narrowing the run?",
     "criteria": {
-      "true": "this test runs, and no marker in the file leaves another test out",
-      "false": "a marker stops this test, or a marker in the file leaves other tests out"
+      "true": "it runs, and nothing narrows the run",
+      "false": "a marker stops it or narrows the run"
     }
   },
   "runs_b": {
     "type": "noul",
-    "instructions": "Does a marker stop this test or narrow the run? Read the test head, the scope field, and the flags field. A skip, todo, or skipIf marker, or an x prefix such as xit or xdescribe, on the test or on a describe around it stops this test. An only or focus marker anywhere in the file, such as it.only, fit, or fdescribe, shows as the flag focus-in-file and leaves other tests out.",
+    "instructions": "Does a marker stop this test or narrow the run?",
     "criteria": {
-      "true": "a marker stops this test, or a marker in the file leaves other tests out",
-      "false": "this test runs, and no marker in the file leaves another test out"
+      "true": "a marker stops it or narrows the run",
+      "false": "it runs, and nothing narrows the run"
     }
   },
   "type": {
     "type": "choice",
-    "instructions": "What type of test is this? If the name cites a bug or an issue, answer regression. If the test pins current output as a baseline before a change, answer characterization. If it only checks that something runs or exists, answer smoke. Otherwise answer by scope: unit, integration, or e2e.",
+    "instructions": "What type of test is this?",
     "criteria": {
-      "unit": "one small unit in isolation, with its collaborators mocked or absent",
-      "integration": "several units together, such as code with a real database, filesystem, or module",
-      "regression": "the name cites a past bug or issue that the test keeps from returning",
-      "e2e": "drives the whole system through its public interface",
-      "smoke": "only checks that something runs or exists, at a coarse level",
-      "characterization": "pins current output as a baseline before a change"
-    }
-  },
-  "observable": {
-    "type": "noul",
-    "instructions": "Does the assertion read an output or an effect that a caller of the public interface could see? A return value, a thrown error, a change the caller can read back, or a message sent through an injected port is observable. A private field, an underscore member, an internal helper call, or the order of internal calls is not.",
-    "criteria": {
-      "true": "it asserts an output or effect a caller could see",
-      "false": "it asserts a private internal, an internal helper call, or internal call order"
+      "unit": "one unit, collaborators mocked or absent",
+      "integration": "several real units together",
+      "regression": "the name cites a past bug or issue",
+      "e2e": "the whole system through its public interface",
+      "smoke": "only that something runs or exists",
+      "characterization": "pins current output before a change"
     }
   },
   "conditional": {
@@ -115,108 +107,12 @@
       "false": "it reads state that another test sets, or mutable state shared with other tests"
     }
   },
-  "controlled": {
-    "type": "noul",
-    "instructions": "Does the test create or fake every external thing it reads, such as a file, a server, an environment variable, or the clock? Answer yes when it reads none.",
-    "criteria": {
-      "true": "it creates or fakes every external resource it reads, or it reads none",
-      "false": "it reads a file, server, environment variable, or clock that it does not create or fake"
-    }
-  },
-  "specific": {
-    "type": "noul",
-    "instructions": "Does the assertion pin the expected value with an exact matcher, such as toBe, toEqual, toStrictEqual, or toThrow with a message? Answer no when it uses a weak form that also passes on wrong output: toBeDefined, toBeTruthy, typeof, Array.isArray, a length, a bound such as toBeGreaterThan(0), or a boolean folded from a comparison.",
-    "criteria": {
-      "true": "the assertion pins the expected value",
-      "false": "the assertion is a weak form that also passes on wrong output"
-    }
-  },
-  "named": {
-    "type": "noul",
-    "instructions": "Does the test's name state the behaviour it checks, rather than a vague label such as works, test1, should be fine, or only the name of the unit, such as add or parser?",
-    "criteria": {
-      "true": "the name says which behaviour the test checks",
-      "false": "the name is a vague label that does not say which behaviour the test checks"
-    }
-  },
   "deterministic": {
     "type": "noul",
     "instructions": "Does this test give the same result on every run? It does not when it reads the real clock or real randomness, calls the network, waits on a sleep, or relies on an order nothing guarantees. A clock, timer, or random source that the test fakes or seeds is under its control and is fine.",
     "criteria": {
       "true": "the result is the same on every run of the same code",
       "false": "the result can differ between runs of the same code"
-    }
-  },
-  "one_thing": {
-    "type": "noul",
-    "instructions": "Does this test check one behaviour, rather than several unrelated behaviours at once? Several assertions on one result count as one behaviour. Several actions on different units, each with its own assertion, count as several.",
-    "criteria": {
-      "true": "it checks one behaviour",
-      "false": "it is an eager test that checks several unrelated behaviours"
-    }
-  },
-  "name_matches": {
-    "type": "noul",
-    "instructions": "Does the test body assert the behaviour its name states? If the name states no behaviour, answer no. A body that checks only that the result is truthy, defined, or of a type does not assert the behaviour.",
-    "criteria": {
-      "true": "the body asserts the behaviour the name promises",
-      "false": "the name states no behaviour, or it states one and the body asserts something else or something trivial"
-    }
-  },
-  "resilient": {
-    "type": "noul",
-    "instructions": "Would a refactor that keeps the public behaviour of the code under test keep this test green? Answer no when the test imports an internal module, spies on an internal helper, reads a private field, pins the order of internal calls, or pins an internal structure in a snapshot.",
-    "criteria": {
-      "true": "the test reaches the code only through its public interface and asserts only results, so a refactor keeps it green",
-      "false": "the test pins an internal module, helper, field, call order, or structure, so a refactor breaks it"
-    }
-  },
-  "diagnostic": {
-    "type": "noul",
-    "instructions": "Does each assertion compare a value with a matcher that reports the expected and the received value, such as toBe or toEqual? A bare boolean check such as expect(a === b).toBe(true) or assert(ok), a comparison folded into one boolean, or one assertion repeated in a loop with no index hides which value was wrong.",
-    "criteria": {
-      "true": "each failure shows the received value and the expected value",
-      "false": "a failure shows only true or false, or cannot say which value failed"
-    }
-  },
-  "fixture": {
-    "type": "noul",
-    "instructions": "Does the test, or a hook in fixtures or code in setup, build the data the test reads, and no more? Answer no when the test reads a value that nothing shown builds, or when the fixture holds far more than the behaviour needs.",
-    "criteria": {
-      "true": "it builds the data it reads, and only that",
-      "false": "it reads a value that nothing shown builds, or it leans on a fixture far larger than it needs"
-    }
-  },
-  "fast": {
-    "type": "noul",
-    "instructions": "Does the test finish without a sleep, a poll, a network or disk call, or a loop over a large input? An await on an in-memory promise is fine.",
-    "criteria": {
-      "true": "it does none of these",
-      "false": "it sleeps, polls, calls the network or disk, or computes over a large input"
-    }
-  },
-  "readable": {
-    "type": "noul",
-    "instructions": "Does the test show the input, the action, and the expected result? Answer no when the input or the expected value comes from a helper, an import, or a name that nothing shown defines, or when the comparison hides in a boolean.",
-    "criteria": {
-      "true": "the input, the action, and the expected result are visible in the test",
-      "false": "the input or the expected value is hidden, or the comparison hides in a boolean"
-    }
-  },
-  "magic_number": {
-    "type": "noul",
-    "instructions": "Can a reader tell what each literal in the assertion means from the test name, the input, or a name beside it? A plain result of the input, such as 180 seconds for 3 minutes, is fine. A code, a flag, or a total that the reader must look up in the code under test is a magic number.",
-    "criteria": {
-      "true": "the meaning of each literal is clear from the test",
-      "false": "a literal must be looked up in the code under test"
-    }
-  },
-  "reads_output": {
-    "type": "noul",
-    "instructions": "Does the assertion read the value the code under test produced, rather than its own input, its setup, or only that no error was thrown? A test that asserts its argument is unchanged counts as yes only when its name says the code must not change it.",
-    "criteria": {
-      "true": "it asserts the returned or observed output",
-      "false": "it asserts its own input, its setup, or merely that the call did not throw"
     }
   },
   "automated": {
@@ -237,7 +133,7 @@
   },
   "verdict": {
     "type": "score",
-    "instructions": "Overall, is this test a real guard? Slop: it asserts nothing, or it cannot fail at all, such as a tautology or two sides that both come from the code under test. Weak: it asserts only a shape, a mock call, an absence, or its own input passed straight through, so it misses most ways the named behaviour can break. Good: it asserts a value or effect that the named behaviour decides. Strong: good, with an exact expected value that would fail loudly. An expected value the test computes itself without the code under test, such as a sorted copy of its input, is a real expected value. Judge only what the assertions check: a smell from the other definitions, such as slow, flaky, the real clock, randomness, the network, a manual step, uncontrolled, a vague name, a magic number, or a state leak, does not lower the level.",
+    "instructions": "How strong a guard is this test: slop, weak, good, or strong?",
     "criteria": [
       "slop",
       "weak",

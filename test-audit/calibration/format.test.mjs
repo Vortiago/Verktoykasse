@@ -48,7 +48,7 @@ const SILENT = row(
 const SHAPE = row(
   { check: "asserts", file: "checks/asserts/cases/shape/case.mjs", test: "returns a list", defect: "shape-only", canFail: true, mustEscalate: true, code: "checks/asserts/cases/shape/code.mjs" },
   "test(\"returns a list\", () => {\n  // ```\n  expect(Array.isArray(list())).toBe(true);\n})",
-  { ...goodAnswers(), can_fail_a: noul(0.9), can_fail_b: noul(0.8), asserts_a: choice("shape-only"), asserts_b: choice("shape-only"), named: noul(0.1), reads_output: noul(0.2), positive_a: noul(0.2), positive_b: noul(0.8), verdict: score(0.2) },
+  { ...goodAnswers(), can_fail_a: noul(0.9), can_fail_b: noul(0.8), asserts_a: choice("shape-only"), asserts_b: choice("shape-only"), deterministic: noul(0.1), restores: noul(0.2), positive_a: noul(0.2), positive_b: noul(0.8), verdict: score(0.2) },
   "export function list() {\n  return [1];\n}\n",
 );
 
@@ -117,7 +117,7 @@ test("an escalated case ties each reason to the answers behind it, a twin pair w
 
 test("the descriptive answers fit in one line", () => {
   const block = caseBlock(formatBenchmark([entry([SHAPE])]), 1);
-  assert.ok(block.includes("\n- **Descriptive:** 16 clean · smells: `named` (vague-name), `reads_output` (asserts-input) · unanswered: none · `type` unit (0.90).\n"));
+  assert.ok(block.includes("\n- **Descriptive:** 3 clean · smells: `deterministic` (non-deterministic), `restores` (state-leak) · unanswered: none · `type` unit (0.90).\n"));
 });
 
 test("a case with code under test shows it in its own block", () => {

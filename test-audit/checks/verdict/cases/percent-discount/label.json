@@ -1,0 +1,8 @@
+{
+  "test": "takes ten percent off the total",
+  "defect": "clean",
+  "canFail": true,
+  "mustEscalate": false,
+  "mixed": false,
+  "note": "A minimal local fixture."
+}

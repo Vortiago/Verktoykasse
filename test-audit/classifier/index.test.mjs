@@ -129,7 +129,7 @@ test("descriptive gates report as flags without escalating", () => {
   const off = Object.fromEntries(keys.map((key) => [key, noul(0.1)]));
   const result = verdictFrom(TEST, { ...goodAnswers(), ...off });
   assert.equal(result.needsEyes, false);
-  for (const flag of ["implementation-coupled", "conditional", "order-dependent", "uncontrolled-resource", "weak-assert", "vague-name", "non-deterministic", "eager", "name-mismatch", "structure-dependent", "silent-failure", "general-fixture", "slow", "obscure", "magic-number", "asserts-input", "manual", "state-leak"]) {
+  for (const flag of ["conditional", "order-dependent", "non-deterministic", "manual", "state-leak"]) {
     assert.ok(result.flags.includes(flag), flag);
   }
 });

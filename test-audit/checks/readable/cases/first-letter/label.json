@@ -1,9 +1,0 @@
-{
-  "test": "capitalises a lower case name",
-  "defect": "clean",
-  "canFail": true,
-  "mustEscalate": false,
-  "mixed": false,
-  "readable": true,
-  "note": "Everything is visible."
-}

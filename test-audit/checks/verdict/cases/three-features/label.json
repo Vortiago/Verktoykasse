@@ -1,0 +1,8 @@
+{
+  "test": "the pipeline parses, formats and lints",
+  "defect": "eager",
+  "canFail": true,
+  "mustEscalate": false,
+  "mixed": false,
+  "note": "A real pipeline check, but parse, format and lint are three features asserted in one body."
+}

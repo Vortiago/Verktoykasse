@@ -1,4 +1,4 @@
-// canonical source: test-audit/config.mjs@4ba9d42 sha256:cc54826008f42f4ea1ffef41d95fbf2ecd44fe4555de20eed72a0f482c5db38b - vendored copy, do not edit here
+// canonical source: test-audit/config.mjs@68e72cd sha256:cc54826008f42f4ea1ffef41d95fbf2ecd44fe4555de20eed72a0f482c5db38b - vendored copy, do not edit here
 // test-audit configuration. Env-driven, with portable defaults.
 //
 // The base URL points at any Jev-compatible SystemOne endpoint: a local Ollama

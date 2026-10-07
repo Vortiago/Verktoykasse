@@ -1,4 +1,4 @@
-// canonical source: test-audit/checks/runs/check.mjs@9ae1caa sha256:6f0b41ad29710045e97cbde8343aa418ec453e5c8b2019d5a55ca269034f7b8d - vendored copy, do not edit here
+// canonical source: test-audit/checks/runs/check.mjs@aa397d5 sha256:ecd99521001cb25690eec8f12b598c29001550287c8f8e152d64181847e67977 - vendored copy, do not edit here
 // The runs check: does the test run, and does the rest of its file run? A skip,
 // todo, or skipIf marker or an x prefix on the test or on a describe around it
 // stops it from guarding anything. An only or focus marker anywhere in the file,
@@ -22,26 +22,23 @@ import { noul } from "../../classifier/systemone.mjs";
 export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   name: "runs",
   role: "gate",
-  // A skip or todo stops this test; an only or focus marker, on this test or
-  // another, stops the rest of the file. Both escalate, under one reason.
   reason: "does not run, or narrows the run",
   questions: {
-    // The model sees one test. `scope` (the describe heads around it) and the
-    // `focus-in-file` flag carry the rest of the file, so each phrasing names them.
     runs_a: noul(
-      "Does this test run, and does every other test in the file run? Read the test head, the scope field, and the flags field. A skip, todo, or skipIf marker, or an x prefix such as xit or xdescribe, on the test or on a describe around it stops this test. An only or focus marker anywhere in the file, such as it.only, fit, or fdescribe, shows as the flag focus-in-file and leaves other tests out.",
-      "this test runs, and no marker in the file leaves another test out",
-      "a marker stops this test, or a marker in the file leaves other tests out",
+      "Does this test run, with no marker in the file narrowing the run?",
+      "it runs, and nothing narrows the run",
+      "a marker stops it or narrows the run",
     ),
-    // The negated twin of `runs_a`.
     runs_b: noul(
-      "Does a marker stop this test or narrow the run? Read the test head, the scope field, and the flags field. A skip, todo, or skipIf marker, or an x prefix such as xit or xdescribe, on the test or on a describe around it stops this test. An only or focus marker anywhere in the file, such as it.only, fit, or fdescribe, shows as the flag focus-in-file and leaves other tests out.",
-      "a marker stops this test, or a marker in the file leaves other tests out",
-      "this test runs, and no marker in the file leaves another test out",
+      "Does a marker stop this test or narrow the run?",
+      "a marker stops it or narrows the run",
+      "it runs, and nothing narrows the run",
     ),
   },
   negated: ["runs_b"],
-  rubric: `Runs: no skip, todo, or skipIf marker and no x prefix is on the test or on a
-  describe in its scope, so the test runs. No only or focus marker is anywhere in
-  the file (the flag focus-in-file), so no other test is left out of the run.`,
+  rubric: `Runs: read the test head, the scope field, and the flags field. A skip, todo, or
+  skipIf marker, or an x prefix such as xit or xdescribe, on the test or on a
+  describe around it stops the test. An only or focus marker anywhere in the file,
+  such as it.only, fit, or fdescribe, shows as the flag focus-in-file and narrows
+  the run.`,
 });

@@ -1,0 +1,9 @@
+{
+  "test": "resolves the route of a request",
+  "defect": "obscure",
+  "canFail": true,
+  "mustEscalate": false,
+  "mixed": false,
+  "asserts": "behaviour",
+  "note": "The values are hidden in a test fixture module, not taken from the code under test."
+}

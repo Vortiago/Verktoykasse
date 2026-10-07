@@ -33,30 +33,19 @@ FILES=(
   checks/automated/check.mjs
   checks/can-fail/check.mjs
   checks/conditional/check.mjs
-  checks/controlled/check.mjs
   checks/deterministic/check.mjs
-  checks/diagnostic/check.mjs
-  checks/fast/check.mjs
-  checks/fixture/check.mjs
   checks/isolated/check.mjs
-  checks/magic-number/check.mjs
-  checks/name-matches/check.mjs
-  checks/named/check.mjs
-  checks/observable/check.mjs
-  checks/one-thing/check.mjs
   checks/positive/check.mjs
-  checks/readable/check.mjs
-  checks/reads-output/check.mjs
-  checks/resilient/check.mjs
   checks/restores/check.mjs
   checks/runs/check.mjs
-  checks/specific/check.mjs
   checks/type/check.mjs
   checks/verdict/check.mjs
+  classifier/finding.mjs
   classifier/index.mjs
   classifier/systemone.mjs
   classifier/verdict.mjs
   lib/pool.mjs
+  report/brief.mjs
   report/format.mjs
   report/index.mjs
   report/markdown.mjs

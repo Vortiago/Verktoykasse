@@ -14,10 +14,10 @@ interface AuditArgs {
   files?: string[]
 }
 
-/** The markdown report for one audit. */
+/** The brief report for one audit: one line per test to drop, fix, or look at. */
 async function report(directory: string, args: AuditArgs): Promise<string> {
   const audit = await runAudit(args, { cwd: directory })
-  return formatAudit(audit, { format: "markdown" })
+  return formatAudit(audit, { format: "brief" })
 }
 
 /** One line for a failed audit, the same in both faces. */

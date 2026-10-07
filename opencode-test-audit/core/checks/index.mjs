@@ -1,4 +1,4 @@
-// canonical source: test-audit/checks/index.mjs@9ae1caa sha256:309f9bde1e08d14dc96d85801429a9795fcce9a0294293e3e5dd3a74429c306c - vendored copy, do not edit here
+// canonical source: test-audit/checks/index.mjs@68e72cd sha256:364b8c066570e9d4b43db4075dc99b44ad670d24d0f1dcce96896c5b93993085 - vendored copy, do not edit here
 // The checks: one folder for each judgement the tool asks the model about a test.
 // Each `<check>/check.mjs` holds the check's questions, its rubric definition,
 // and its role in the verdict; its header comment names its sources. Its
@@ -13,22 +13,9 @@ import asserts from "./asserts/check.mjs";
 import positive from "./positive/check.mjs";
 import runs from "./runs/check.mjs";
 import type from "./type/check.mjs";
-import observable from "./observable/check.mjs";
 import conditional from "./conditional/check.mjs";
 import isolated from "./isolated/check.mjs";
-import controlled from "./controlled/check.mjs";
-import specific from "./specific/check.mjs";
-import named from "./named/check.mjs";
 import deterministic from "./deterministic/check.mjs";
-import oneThing from "./one-thing/check.mjs";
-import nameMatches from "./name-matches/check.mjs";
-import resilient from "./resilient/check.mjs";
-import diagnostic from "./diagnostic/check.mjs";
-import fixture from "./fixture/check.mjs";
-import fast from "./fast/check.mjs";
-import readable from "./readable/check.mjs";
-import magicNumber from "./magic-number/check.mjs";
-import readsOutput from "./reads-output/check.mjs";
 import automated from "./automated/check.mjs";
 import restores from "./restores/check.mjs";
 import verdict from "./verdict/check.mjs";
@@ -48,22 +35,9 @@ export const CHECKS = [
   positive,
   runs,
   type,
-  observable,
   conditional,
   isolated,
-  controlled,
-  specific,
-  named,
   deterministic,
-  oneThing,
-  nameMatches,
-  resilient,
-  diagnostic,
-  fixture,
-  fast,
-  readable,
-  magicNumber,
-  readsOutput,
   automated,
   restores,
   verdict,
@@ -72,30 +46,18 @@ export const CHECKS = [
 /**
  * The checks that define a term in the rubric, in rubric order. The order goes
  * from what makes a guard (falsifiable, positive, runs) to the smells, and ends
- * with the type and the verdict. `asserts` and `name_matches` add no definition:
- * their criteria carry the meaning.
+ * with the type and the verdict.
  */
 const RUBRIC_ORDER = [
   canFail,
+  asserts,
   positive,
   runs,
-  observable,
   conditional,
   isolated,
-  controlled,
-  specific,
-  named,
-  resilient,
-  diagnostic,
-  fixture,
-  fast,
-  readable,
-  magicNumber,
-  readsOutput,
   automated,
   restores,
   deterministic,
-  oneThing,
   type,
   verdict,
 ];

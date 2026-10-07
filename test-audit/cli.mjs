@@ -33,6 +33,7 @@ const USAGE = `test-audit: a SystemOne classifier for the tests a change adds
   --files <path...>  audit named files
   --url <base>       SystemOne base URL (Ollama 0.35+, llama-arbiter, or TypeSafe)
   --model <id>       decision model the base serves
+  --table            print a table of every test, not one line per test to act on
   --json             print the full record
   --markdown         print a review comment
   --selftest         live calibration over the cases in checks/ (needs an endpoint)
@@ -69,7 +70,7 @@ async function main() {
     return code;
   }
   const audit = await runAudit(args, { cwd: process.cwd(), url: args.url, model: args.model });
-  const format = args.json ? "json" : args.markdown ? "markdown" : "text";
+  const format = args.json ? "json" : args.markdown ? "markdown" : args.table ? "text" : "brief";
   console.log(formatAudit(audit, { format }));
   return exitCode(audit.results);
 }
@@ -117,6 +118,7 @@ function parseArgs(argv) {
       targets: { type: "string" },
       models: { type: "string" },
       cases: { type: "string" },
+      table: { type: "boolean", default: false },
       json: { type: "boolean", default: false },
       markdown: { type: "boolean", default: false },
       selftest: { type: "boolean", default: false },

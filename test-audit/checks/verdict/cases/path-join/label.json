@@ -1,0 +1,8 @@
+{
+  "test": "joins two path parts with a slash",
+  "defect": "clean",
+  "canFail": true,
+  "mustEscalate": false,
+  "mixed": false,
+  "note": "The return value is observable."
+}

@@ -15,40 +15,31 @@ Falsifiable: some break of the named behaviour in the code under test makes
   both sides call the same code), an assertion on data the code copies straight
   from its input, or one that runs zero times. A shape, truthy, or no-throw check
   can still fail.
-Positive assertion: at least one assertion names a value the code must produce,
-  such as a literal, an object, or a thrown error with its message. A test that
-  checks only null, undefined, empty (such as toEqual([])), or no throw has none.
-Runs: no skip, todo, or skipIf marker and no x prefix is on the test or on a
-  describe in its scope, so the test runs. No only or focus marker is anywhere in
-  the file (the flag focus-in-file), so no other test is left out of the run.
-Observable behaviour: a return value, a thrown error, a change the caller can
-  read back, or a message sent through an injected port. A private field, an
-  internal helper call, or the order of internal calls is not observable.
+Assertion kinds, best first. behaviour: an output value or effect of the code
+  under test, against an expected value the test fixes itself: a literal, a
+  constant the test declares, or a value it computes without the code under test.
+  hardcoded-data: the expected value comes from the code under test, such as its
+  exported constant or a second call, so both sides always agree.
+  input-only: its own input or setup. shape-only: only the type, length, keys
+  (also Object.keys against a list), presence, or definedness. interaction-only:
+  only that a mock or spy was called, how often, or with what. nothing: no
+  assertion, a tautology, or only that the call did not throw.
+Positive assertion: at least one assertion expects a non-empty value the code
+  must produce, such as a literal, an object, a true or false result, or a thrown
+  error with its message. Empty means [], "", {}, null, or undefined, also when
+  written as a literal such as toEqual([]). A test that expects only empty values
+  or no throw has none.
+Runs: read the test head, the scope field, and the flags field. A skip, todo, or
+  skipIf marker, or an x prefix such as xit or xdescribe, on the test or on a
+  describe around it stops the test. An only or focus marker anywhere in the file,
+  such as it.only, fit, or fdescribe, shows as the flag focus-in-file and narrows
+  the run.
 Conditional test logic: a branch, a loop over a value that may be empty, an
   early return, or a catch that can leave an assertion unrun or swallow its
   failure, so the test may assert nothing on some inputs.
 Isolated: the test reads only what it or a before-each hook builds, so it passes
   alone and in any order. Isolated is about what the test reads; Restores state
   is about what it leaves.
-Controlled resources: the test creates or fakes every file, server, environment
-  variable, and clock it reads. A test that reads none is controlled.
-Specific assertion: an exact matcher pins the expected value. Weak forms
-  (toBeDefined, toBeTruthy, typeof, Array.isArray, a length, a bound, a folded
-  boolean) pass on wrong output.
-Name: states the behaviour the test checks, not a vague label or only the unit name.
-Structure-insensitive: the test reaches the code only through its public
-  interface, so a refactor that keeps the behaviour does not break it.
-Diagnostic: a failure shows the received and the expected value. A bare boolean
-  check, or one assertion repeated in a loop with no index, does not.
-Local fixture: the test, its hooks, or its setup build the data it reads, and no
-  more. A value that nothing shown builds is a mystery guest.
-Fast: no sleep, poll, network or disk call, or large computation.
-Readable: the input, the action, and the expected result are visible in the test,
-  its hooks, or its setup.
-Magic number: a literal in the assertion whose meaning the reader must look up
-  in the code under test. A plain result of the input is not one.
-Asserts the output: the assertion reads the value the code under test produced,
-  not its own input, its setup, or merely that no error was thrown.
 Automated: the test reaches pass or fail with no person doing or reading anything.
 Restores state: the test, or an after hook, restores every global, environment
   variable, timer, module mock, spy, and shared object it changes. A test that
@@ -56,15 +47,17 @@ Restores state: the test, or an after hook, restores every global, environment
 Deterministic: same result every run of the same code, with no sleep, real
   clock, network, real randomness, or unguaranteed order. A faked or seeded clock,
   timer, or random source is fine.
-One behaviour: the body checks one thing. Several assertions on one result are
-  one behaviour; several actions on different units are several.
-Type: regression, characterization, or smoke by purpose first; otherwise unit,
-  integration, or e2e by what it exercises.
-Verdict: slop, weak, good, or strong. Slop: it asserts nothing, or it cannot fail
-  at all (a tautology, or both sides from the code under test). Weak: it asserts
-  only a shape, a mock call, an absence, or its own input passed straight through,
-  so it misses most ways the named behaviour can break. Good: it asserts a value or
-  effect that the named behaviour decides. Strong: good, with an exact expected
-  value that would fail loudly. A value the test computes without the code under
-  test, such as a sorted copy of its input, is an expected value. No smell from
-  the other definitions lowers the level.
+Type: by purpose first. regression: the name cites a bug or an issue.
+  characterization: it pins current output as a baseline before a change. smoke: it
+  only checks that something runs or exists. Otherwise by scope: unit (one unit,
+  collaborators mocked or absent), integration (several units with a real
+  database, filesystem, or module), or e2e (the whole system through its public
+  interface).
+Verdict: slop, weak, good, or strong, by what the assertions check. Slop: it
+  asserts nothing, or it cannot fail at all (a tautology, or both sides from the
+  code under test). Weak: it asserts only a shape, a mock call, an absence, or its
+  own input passed straight through, so it misses most ways the named behaviour
+  can break. Good: it asserts a value or effect that the named behaviour decides.
+  Strong: good, with an exact expected value that would fail loudly. A value the
+  test computes without the code under test, such as a sorted copy of its input,
+  is an expected value. No smell from the other definitions lowers the level.

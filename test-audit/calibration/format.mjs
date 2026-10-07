@@ -144,6 +144,7 @@ function summarySection(entry, numbered) {
   lines.push(`| Cases | ${rows.length} | The labelled tests in the corpus. |`);
   lines.push(`| Silent passes | ${verdict.silentPasses} | Defect cases that did not escalate. Must be 0. |`);
   lines.push(`| False positives | ${verdict.falsePositives} of ${verdict.goodTotal} | Cases that should pass, but escalated. Lower is better. |`);
+  lines.push(`| Sure false positives | ${verdict.sureFalsePositives} of ${verdict.falsePositives} | False positives whose finding says it is sure, so the reader acts on a sound test. Lower is better. |`);
   lines.push(
     `| can_fail agreement | ${verdict.correct} of ${verdict.resolved} (${percent(verdict.agreement)}) | The can_fail answers that match the label. Only the cases where the tool committed to a value count. Must be ${percent(verdict.minAgreement)} or more. |`,
   );
@@ -482,7 +483,7 @@ function summaryLine(verdict) {
   return (
     `can_fail agreement: ${verdict.correct}/${verdict.resolved} resolved (${percent(verdict.agreement)}). ` +
     `Silent passes: ${verdict.silentPasses}. Mixed routed: ${verdict.mixedRouted}/${verdict.mixedTotal}. ` +
-    `False positives: ${verdict.falsePositives}/${verdict.goodTotal}. ` +
+    `False positives: ${verdict.falsePositives}/${verdict.goodTotal} (${verdict.sureFalsePositives} sure). ` +
     `Checks: ${Object.entries(verdict.checkAnswers)
       .map(([name, tally]) => `${name} ${tally.correct}/${tally.total}`)
       .join(", ") || "none labelled"}.` +

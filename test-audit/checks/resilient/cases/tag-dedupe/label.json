@@ -1,9 +1,0 @@
-{
-  "test": "removes duplicate tags",
-  "defect": "clean",
-  "canFail": true,
-  "mustEscalate": false,
-  "mixed": false,
-  "resilient": true,
-  "note": "Public interface, result only."
-}

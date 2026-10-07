@@ -1,9 +1,0 @@
-{
-  "test": "creating a user validates, stores and notifies",
-  "defect": "eager",
-  "canFail": true,
-  "mustEscalate": false,
-  "mixed": false,
-  "one_thing": false,
-  "note": "A real user-creation check, but validation, storage and notification are three unrelated behaviours."
-}

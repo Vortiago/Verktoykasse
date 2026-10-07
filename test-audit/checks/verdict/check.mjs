@@ -20,20 +20,14 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   role: "verdict",
   levels: LEVELS,
   questions: {
-    // The levels use only the axes that decide a guard. A descriptive smell
-    // never escalates, so it must not lower the level either: a flaky but real
-    // guard is good, with its flags.
-    verdict: score(
-      "Overall, is this test a real guard? Slop: it asserts nothing, or it cannot fail at all, such as a tautology or two sides that both come from the code under test. Weak: it asserts only a shape, a mock call, an absence, or its own input passed straight through, so it misses most ways the named behaviour can break. Good: it asserts a value or effect that the named behaviour decides. Strong: good, with an exact expected value that would fail loudly. An expected value the test computes itself without the code under test, such as a sorted copy of its input, is a real expected value. Judge only what the assertions check: a smell from the other definitions, such as slow, flaky, the real clock, randomness, the network, a manual step, uncontrolled, a vague name, a magic number, or a state leak, does not lower the level.",
-      LEVELS,
-    ),
+    verdict: score("How strong a guard is this test: slop, weak, good, or strong?", LEVELS),
   },
-  rubric: `Verdict: slop, weak, good, or strong. Slop: it asserts nothing, or it cannot fail
-  at all (a tautology, or both sides from the code under test). Weak: it asserts
-  only a shape, a mock call, an absence, or its own input passed straight through,
-  so it misses most ways the named behaviour can break. Good: it asserts a value or
-  effect that the named behaviour decides. Strong: good, with an exact expected
-  value that would fail loudly. A value the test computes without the code under
-  test, such as a sorted copy of its input, is an expected value. No smell from
-  the other definitions lowers the level.`,
+  rubric: `Verdict: slop, weak, good, or strong, by what the assertions check. Slop: it
+  asserts nothing, or it cannot fail at all (a tautology, or both sides from the
+  code under test). Weak: it asserts only a shape, a mock call, an absence, or its
+  own input passed straight through, so it misses most ways the named behaviour
+  can break. Good: it asserts a value or effect that the named behaviour decides.
+  Strong: good, with an exact expected value that would fail loudly. A value the
+  test computes without the code under test, such as a sorted copy of its input,
+  is an expected value. No smell from the other definitions lowers the level.`,
 });

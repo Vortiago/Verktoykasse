@@ -1,0 +1,8 @@
+{
+  "test": "sorts by price ascending",
+  "defect": "silent-failure",
+  "canFail": true,
+  "mustEscalate": false,
+  "mixed": false,
+  "note": "A failure prints expected true, received false."
+}

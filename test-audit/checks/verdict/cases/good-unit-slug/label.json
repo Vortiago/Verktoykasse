@@ -9,11 +9,6 @@
   "positive": true,
   "type": "unit",
   "verdict": "strong",
-  "named": true,
-  "name_matches": true,
-  "reads_output": true,
-  "one_thing": true,
   "deterministic": true,
-  "observable": true,
   "note": "a real guard"
 }

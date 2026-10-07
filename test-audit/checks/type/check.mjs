@@ -22,20 +22,19 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   name: "type",
   role: "type",
   questions: {
-    // The kinds mix two axes, scope and purpose, so the instruction gives the
-    // order in which they decide: purpose first, then scope.
-    type: choice(
-      "What type of test is this? If the name cites a bug or an issue, answer regression. If the test pins current output as a baseline before a change, answer characterization. If it only checks that something runs or exists, answer smoke. Otherwise answer by scope: unit, integration, or e2e.",
-      {
-        unit: "one small unit in isolation, with its collaborators mocked or absent",
-        integration: "several units together, such as code with a real database, filesystem, or module",
-        regression: "the name cites a past bug or issue that the test keeps from returning",
-        e2e: "drives the whole system through its public interface",
-        smoke: "only checks that something runs or exists, at a coarse level",
-        characterization: "pins current output as a baseline before a change",
-      },
-    ),
+    type: choice("What type of test is this?", {
+      unit: "one unit, collaborators mocked or absent",
+      integration: "several real units together",
+      regression: "the name cites a past bug or issue",
+      e2e: "the whole system through its public interface",
+      smoke: "only that something runs or exists",
+      characterization: "pins current output before a change",
+    }),
   },
-  rubric: `Type: regression, characterization, or smoke by purpose first; otherwise unit,
-  integration, or e2e by what it exercises.`,
+  rubric: `Type: by purpose first. regression: the name cites a bug or an issue.
+  characterization: it pins current output as a baseline before a change. smoke: it
+  only checks that something runs or exists. Otherwise by scope: unit (one unit,
+  collaborators mocked or absent), integration (several units with a real
+  database, filesystem, or module), or e2e (the whole system through its public
+  interface).`,
 });

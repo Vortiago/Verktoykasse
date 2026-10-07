@@ -81,6 +81,12 @@ show a defect, or whose score is slop or weak. The audit escalates the test to a
 human. It never passes the test silently.
 _Avoid_: flagged, failed
 
+**Finding**:
+What the reader of an audit should do with one test: drop it, fix it, look at
+it, or nothing (ok). It carries its reasons, and whether the tool is sure. An
+unsure finding may be a false positive. A test that needs eyes is never ok.
+_Avoid_: result, recommendation
+
 ### Web toolkit
 
 **Declarative face**:

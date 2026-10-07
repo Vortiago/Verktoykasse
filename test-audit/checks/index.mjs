@@ -12,22 +12,9 @@ import asserts from "./asserts/check.mjs";
 import positive from "./positive/check.mjs";
 import runs from "./runs/check.mjs";
 import type from "./type/check.mjs";
-import observable from "./observable/check.mjs";
 import conditional from "./conditional/check.mjs";
 import isolated from "./isolated/check.mjs";
-import controlled from "./controlled/check.mjs";
-import specific from "./specific/check.mjs";
-import named from "./named/check.mjs";
 import deterministic from "./deterministic/check.mjs";
-import oneThing from "./one-thing/check.mjs";
-import nameMatches from "./name-matches/check.mjs";
-import resilient from "./resilient/check.mjs";
-import diagnostic from "./diagnostic/check.mjs";
-import fixture from "./fixture/check.mjs";
-import fast from "./fast/check.mjs";
-import readable from "./readable/check.mjs";
-import magicNumber from "./magic-number/check.mjs";
-import readsOutput from "./reads-output/check.mjs";
 import automated from "./automated/check.mjs";
 import restores from "./restores/check.mjs";
 import verdict from "./verdict/check.mjs";
@@ -47,22 +34,9 @@ export const CHECKS = [
   positive,
   runs,
   type,
-  observable,
   conditional,
   isolated,
-  controlled,
-  specific,
-  named,
   deterministic,
-  oneThing,
-  nameMatches,
-  resilient,
-  diagnostic,
-  fixture,
-  fast,
-  readable,
-  magicNumber,
-  readsOutput,
   automated,
   restores,
   verdict,
@@ -71,30 +45,18 @@ export const CHECKS = [
 /**
  * The checks that define a term in the rubric, in rubric order. The order goes
  * from what makes a guard (falsifiable, positive, runs) to the smells, and ends
- * with the type and the verdict. `asserts` and `name_matches` add no definition:
- * their criteria carry the meaning.
+ * with the type and the verdict.
  */
 const RUBRIC_ORDER = [
   canFail,
+  asserts,
   positive,
   runs,
-  observable,
   conditional,
   isolated,
-  controlled,
-  specific,
-  named,
-  resilient,
-  diagnostic,
-  fixture,
-  fast,
-  readable,
-  magicNumber,
-  readsOutput,
   automated,
   restores,
   deterministic,
-  oneThing,
   type,
   verdict,
 ];

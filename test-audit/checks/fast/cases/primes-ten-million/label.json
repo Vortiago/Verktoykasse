@@ -1,9 +1,0 @@
-{
-  "test": "finds the largest prime below ten million",
-  "defect": "slow",
-  "canFail": true,
-  "mustEscalate": false,
-  "mixed": false,
-  "fast": false,
-  "note": "The sieve over ten million numbers is heavy work."
-}
