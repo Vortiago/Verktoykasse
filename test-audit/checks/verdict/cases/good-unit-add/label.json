@@ -8,5 +8,6 @@
   "runs": true,
   "positive": true,
   "verdict": "good",
-  "note": "a clean unit guard"
+  "note": "a clean unit guard",
+  "resilient": true
 }

@@ -7,9 +7,12 @@
 // - Gerard Meszaros, xUnit Test Patterns (2007): Conditional Test Logic
 //   http://xunitpatterns.com/Conditional%20Test%20Logic.html
 //   A branch or a loop in a test can leave the assertion unrun.
-// - testsmells.org, Open Catalog of Test Smells: Conditional Test Logic
+// - testsmells.org, Open Catalog of Test Smells: Conditional Test Logic,
+//   Exception Handling
 //   https://testsmells.org/pages/testsmells.html
-//   Control flow in a test method is a smell that a tool can find.
+//   Control flow in a test method, or a catch around the code under test, is a
+//   smell that a tool can find. The question narrows Meszaros to what can leave
+//   an assertion unrun, which is what changes the action.
 
 import { noul } from "../../classifier/systemone.mjs";
 

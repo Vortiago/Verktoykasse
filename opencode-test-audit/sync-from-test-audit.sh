@@ -37,6 +37,7 @@ FILES=(
   checks/isolated/check.mjs
   checks/positive/check.mjs
   checks/restores/check.mjs
+  checks/resilient/check.mjs
   checks/runs/check.mjs
   checks/verdict/check.mjs
   classifier/finding.mjs

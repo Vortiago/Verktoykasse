@@ -1,8 +1,8 @@
 // The runs check: does the test run, and does the rest of its file run? A skip,
 // todo, or skipIf marker or an x prefix on the test or on a describe around it
 // stops it from guarding anything. An only or focus marker anywhere in the file,
-// this test included, leaves the other tests out of the run. Asked as a twin pair;
-// `runs_b` is the negated twin.
+// this test included, leaves the other tests out of the run. Asked as a twin pair
+// of two plain phrasings.
 //
 // The twin rule and its sources are in classifier/verdict.mjs.
 //

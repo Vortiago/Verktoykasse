@@ -1,4 +1,4 @@
-// canonical source: test-audit/checks/conditional/check.mjs@c34fea8 sha256:4d34bd94b901080b0d2833273891bc713b61125f5567ac5af684f732a009de59 - vendored copy, do not edit here
+// canonical source: test-audit/checks/conditional/check.mjs@45c4fac sha256:e61a61fadd4bdce48ffb730a492ab748eda430b2dfcde5f93cde194be92cbae7 - vendored copy, do not edit here
 // The conditional check: does every assertion always run? A branch, a loop over
 // a value that may be empty, an early return, or a catch that can leave one unrun
 // lets the test assert nothing on some inputs. A "no"
@@ -8,9 +8,12 @@
 // - Gerard Meszaros, xUnit Test Patterns (2007): Conditional Test Logic
 //   http://xunitpatterns.com/Conditional%20Test%20Logic.html
 //   A branch or a loop in a test can leave the assertion unrun.
-// - testsmells.org, Open Catalog of Test Smells: Conditional Test Logic
+// - testsmells.org, Open Catalog of Test Smells: Conditional Test Logic,
+//   Exception Handling
 //   https://testsmells.org/pages/testsmells.html
-//   Control flow in a test method is a smell that a tool can find.
+//   Control flow in a test method, or a catch around the code under test, is a
+//   smell that a tool can find. The question narrows Meszaros to what can leave
+//   an assertion unrun, which is what changes the action.
 
 import { noul } from "../../classifier/systemone.mjs";
 

@@ -14,6 +14,8 @@
 // that makes a test unreliable (flaky, a state leak) turns an ok test into a
 // fix, because the reader should act on it.
 
+import { CHECKS } from "../checks/index.mjs";
+
 /** @typedef {import("../types.d.ts").AuditResult} AuditResult */
 /** @typedef {import("../types.d.ts").CheckResult} CheckResult */
 
@@ -26,7 +28,7 @@ const MARGIN = 0.25;
 const KIND_FLOOR = 0.75;
 
 /** The assert kinds that drop the test, and the ones that need a fix, with their reason. */
-const DROP_KINDS = { nothing: "asserts nothing", "hardcoded-data": "expected value comes from the code under test" };
+const DROP_KINDS = { nothing: "asserts nothing", "from-code": "expected value comes from the code under test" };
 const FIX_KINDS = {
   "shape-only": "asserts only the shape",
   "interaction-only": "asserts only a mock call",
@@ -41,7 +43,11 @@ const SMELLS = {
   conditional: "conditional logic",
   manual: "needs a person",
   "focus-in-file": "a focus marker narrows the run",
+  "structure-dependent": "reaches into internals",
 };
+
+/** The descriptive check that raises each flag, so a smell can say how sure it is. */
+const SMELL_CHECKS = new Map(CHECKS.flatMap((check) => (check.role === "descriptive" ? [/** @type {const} */ ([check.flag, check])] : [])));
 
 /**
  * @param {AuditResult} result
@@ -85,13 +91,14 @@ export function findingOf(result) {
   // owns still reaches the reader.
   const firmReasons = new Set([...firm].flatMap((check) => check.reasons));
   const doubts = result.reasons.filter((reason) => !firmReasons.has(reason));
-  const smells = result.flags.filter((flag) => flag in SMELLS).map((flag) => SMELLS[/** @type {keyof typeof SMELLS} */ (flag)]);
+  const smellFlags = result.flags.filter((flag) => flag in SMELLS);
+  const smells = smellFlags.map((flag) => SMELLS[/** @type {keyof typeof SMELLS} */ (flag)]);
 
   if (drop.length) return { action: "drop", reasons: [...drop, ...fix].map((entry) => entry.reason).concat(smells), sure: drop.some((entry) => entry.sure) };
   if (fix.length) return { action: "fix", reasons: fix.map((entry) => entry.reason).concat(smells), sure: fix.some((entry) => entry.sure) };
   // A test that escalates is never ok, even when no reason above names it.
   if (doubts.length || result.needsEyes) return { action: "look", reasons: [...(doubts.length ? doubts : ["needs eyes"]), ...smells], sure: false };
-  if (smells.length) return { action: "fix", reasons: smells, sure: true };
+  if (smells.length) return { action: "fix", reasons: smells, sure: smellFlags.some((flag) => smellSure(result, flag)) };
   return { action: "ok", reasons: [], sure: true };
 }
 
@@ -99,6 +106,18 @@ export function findingOf(result) {
 function wide(check) {
   const mean = check.group?.mean;
   return typeof mean === "number" && Math.abs(mean - 0.5) >= MARGIN;
+}
+
+/**
+ * A smell is sure when its answer sits well away from 0.5. A flag no question
+ * raises, such as the extractor's focus-in-file, is a fact, so it is sure.
+ * @param {AuditResult} result @param {string} flag
+ */
+function smellSure(result, flag) {
+  const check = SMELL_CHECKS.get(flag);
+  if (!check) return true;
+  const value = result.answers[Object.keys(check.questions)[0]]?.noul;
+  return typeof value === "number" && Math.abs(value - 0.5) >= MARGIN;
 }
 
 /**

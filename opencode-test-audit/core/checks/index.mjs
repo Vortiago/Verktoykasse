@@ -1,4 +1,4 @@
-// canonical source: test-audit/checks/index.mjs@c34fea8 sha256:55f0ad2830e8f543ae449378898a9fc2809972896422ebfb754fe53a02fe9581 - vendored copy, do not edit here
+// canonical source: test-audit/checks/index.mjs@45c4fac sha256:1bba058441f5486d9b59d94de1d11a3abf1d586ca64395b80a66b5cdedd97132 - vendored copy, do not edit here
 // The checks: one folder for each judgement the tool asks the model about a test.
 // Each `<check>/check.mjs` holds the check's questions and its role in the
 // verdict; its header comment names its sources. Its `cases/` folder holds the
@@ -19,6 +19,7 @@ import isolated from "./isolated/check.mjs";
 import deterministic from "./deterministic/check.mjs";
 import automated from "./automated/check.mjs";
 import restores from "./restores/check.mjs";
+import resilient from "./resilient/check.mjs";
 import verdict from "./verdict/check.mjs";
 
 /** @typedef {import("../types.d.ts").Check} Check */
@@ -40,6 +41,7 @@ export const CHECKS = [
   deterministic,
   automated,
   restores,
+  resilient,
   verdict,
 ];
 

@@ -1,14 +1,14 @@
-// canonical source: test-audit/checks/restores/check.mjs@c34fea8 sha256:36f365ebb17b3b10d2ac118672ff319fd04962ca2a109741c7727cfba1cccea7 - vendored copy, do not edit here
-// The restores check: does the test, or an after hook, restore every global,
-// environment variable, timer, module mock, spy, and shared object that it
-// changes? A test that changes none restores state. A "no" raises the `state-leak` flag.
+// canonical source: test-audit/checks/restores/check.mjs@45c4fac sha256:b6f3c2cbb7661b31610d1ec4003b916bca9bb303dd6c5ed83dc4238835974556 - vendored copy, do not edit here
+// The restores check: does the test, or an after hook, put back every global,
+// environment variable, timer, mock, file, and shared object that it changes? A
+// test that changes none restores state. A "no" raises the `state-leak` flag.
 //
 // Sources:
 // - Kent Beck, Test Desiderata (2019): Isolated
 //   https://kentbeck.github.io/TestDesiderata/
 //   A test gives the same result in any order of the run.
-// - Gerard Meszaros, xUnit Test Patterns (2007): Interacting Tests, Test Run
-//   War (in Erratic Test)
+// - Gerard Meszaros, xUnit Test Patterns (2007): Interacting Tests,
+//   Unrepeatable Test (in Erratic Test)
 //   http://xunitpatterns.com/Erratic%20Test.html
 //   A test that leaves shared state changed makes another test pass or fail.
 
@@ -20,8 +20,8 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   flag: "state-leak",
   questions: {
     restores: noul(
-      "Does this test leave every global, environment variable, timer, mock, and shared object as it found them?",
-      "yes: it changes none, or restores them",
+      "Does this test, or an after hook, put back every global, env variable, timer, mock, file, or shared object it changes?",
+      "yes: it changes none, or puts them back",
       "no: it leaves one changed",
     ),
   },

@@ -1,7 +1,0 @@
-{
-  "test": "indexes both words",
-  "defect": "implementation-coupled",
-  "canFail": true,
-  "mixed": false,
-  "note": "The assertion reads the private _index field. Escalation is welcome but not required."
-}

@@ -59,7 +59,7 @@ import config from "../config.mjs";
 const YES = 0.5;
 
 /** The assert kinds that leave a test unable to guard anything: the verdict is slop. */
-const SLOP_KINDS = ["nothing", "hardcoded-data"];
+const SLOP_KINDS = ["nothing", "from-code"];
 /** The assert kinds that check something, but not the behaviour: the verdict is weak. */
 const WEAK_KINDS = ["shape-only", "interaction-only", "input-only"];
 

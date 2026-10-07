@@ -9,5 +9,6 @@
   "positive": true,
   "verdict": "good",
   "deterministic": true,
-  "note": "a real guard"
+  "note": "a real guard",
+  "resilient": true
 }

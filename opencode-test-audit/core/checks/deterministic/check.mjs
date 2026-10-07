@@ -1,10 +1,10 @@
-// canonical source: test-audit/checks/deterministic/check.mjs@c34fea8 sha256:a39654c1724a67ccb705bacb10b8cfb4a5bc0764903dfa03023c3c1d9f2f8dc7 - vendored copy, do not edit here
-// The deterministic check: does the test give the same result on every run? A
-// sleep, the real clock, the network, real randomness, or an unguaranteed order
-// can make the same code give a different result. A faked or seeded source is
-// fine. A "no" raises the
-// `non-deterministic` flag. A flaky guard is still a guard, so it reports and
-// does not escalate.
+// canonical source: test-audit/checks/deterministic/check.mjs@45c4fac sha256:7b9898da27b087be64ec3e9c3eddc00356efd95f7051880936b3793efe46faab - vendored copy, do not edit here
+// The deterministic check: does the test give the same result on every run and
+// machine? A sleep, the real clock, the network, real randomness, an
+// unguaranteed order, or a file, database, or environment variable the test does
+// not create or fake can change the result. A faked or seeded source is fine. A
+// "no" raises the `non-deterministic` flag: it does not escalate, and the
+// finding asks for a fix.
 //
 // Sources:
 // - Kent Beck, Test Desiderata (2019): Deterministic, Isolated
@@ -28,9 +28,9 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   flag: "non-deterministic",
   questions: {
     deterministic: noul(
-      "Does this test give the same result on every run?",
-      "yes: no real clock, randomness, network, sleep, or unguaranteed order, or it is faked or seeded",
-      "no: it uses the real clock, randomness, the network, a sleep, or an unguaranteed order",
+      "Does this test give the same result on every run and machine?",
+      "yes: no real clock, randomness, sleep, network, file, database, or env it does not create or fake",
+      "no: it reads one as it finds it",
     ),
   },
 });

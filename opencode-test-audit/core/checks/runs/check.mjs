@@ -1,9 +1,9 @@
-// canonical source: test-audit/checks/runs/check.mjs@c34fea8 sha256:d4a74f496c247fe4efcab517e9ef552059c7b7aef56eccdac77ef5b4a01b1ed5 - vendored copy, do not edit here
+// canonical source: test-audit/checks/runs/check.mjs@45c4fac sha256:5cd320d4fc0d21e9933a49032fe9c5a3f03807e335f1b771588e92032be4d51d - vendored copy, do not edit here
 // The runs check: does the test run, and does the rest of its file run? A skip,
 // todo, or skipIf marker or an x prefix on the test or on a describe around it
 // stops it from guarding anything. An only or focus marker anywhere in the file,
-// this test included, leaves the other tests out of the run. Asked as a twin pair;
-// `runs_b` is the negated twin.
+// this test included, leaves the other tests out of the run. Asked as a twin pair
+// of two plain phrasings.
 //
 // The twin rule and its sources are in classifier/verdict.mjs.
 //

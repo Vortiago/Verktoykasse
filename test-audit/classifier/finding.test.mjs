@@ -68,3 +68,11 @@ test("an assert kind the phrasings give a low probability is not sure", () => {
   const finding = findingFor({ asserts_a: low("shape-only"), asserts_b: low("shape-only") });
   assert.deepEqual(finding, { action: "fix", reasons: ["asserts only the shape"], sure: false });
 });
+
+test("a smell near 0.5 needs a fix, but is unsure", () => {
+  assert.deepEqual(findingFor({ deterministic: noul(0.4) }), { action: "fix", reasons: ["flaky"], sure: false });
+});
+
+test("a test that reaches into internals needs a fix", () => {
+  assert.deepEqual(findingFor({ resilient: noul(0.05) }), { action: "fix", reasons: ["reaches into internals"], sure: true });
+});

@@ -1,4 +1,4 @@
-// canonical source: test-audit/classifier/verdict.mjs@c34fea8 sha256:7e56978911156378f335c6251bb5438e0eaf2a397bd791500e6d919fdc91184d - vendored copy, do not edit here
+// canonical source: test-audit/classifier/verdict.mjs@45c4fac sha256:55d4810812fd23e28e264cd3e9c9ec196d6897722bcb267650df8fd683f44581 - vendored copy, do not edit here
 // The verdict rules: reduce one test's answers to a verdict, a set of flags, and
 // the reasons it escalates. Pure, so the rules are tested on hand-written answer
 // objects without the model.
@@ -60,7 +60,7 @@ import config from "../config.mjs";
 const YES = 0.5;
 
 /** The assert kinds that leave a test unable to guard anything: the verdict is slop. */
-const SLOP_KINDS = ["nothing", "hardcoded-data"];
+const SLOP_KINDS = ["nothing", "from-code"];
 /** The assert kinds that check something, but not the behaviour: the verdict is weak. */
 const WEAK_KINDS = ["shape-only", "interaction-only", "input-only"];
 

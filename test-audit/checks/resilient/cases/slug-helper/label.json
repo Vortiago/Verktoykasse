@@ -5,5 +5,6 @@
   "mustEscalate": false,
   "mixed": false,
   "asserts": "behaviour",
-  "note": "The spy pins an internal helper. The strongest assertion still checks the result."
+  "note": "The spy pins an internal helper. The strongest assertion still checks the result.",
+  "resilient": false
 }

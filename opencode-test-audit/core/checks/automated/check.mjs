@@ -1,13 +1,13 @@
-// canonical source: test-audit/checks/automated/check.mjs@c34fea8 sha256:0f2e4ee16c3fbccb3235649e5c3a35ca0f37391e579c0d0820180465becfabae - vendored copy, do not edit here
-// The automated check: does the test reach pass or fail with no person doing or
-// reading anything? A "no" raises the `manual` flag.
+// canonical source: test-audit/checks/automated/check.mjs@45c4fac sha256:ed7d0e30d344ab54f587e14605bbf83f143be46172d7dfb67d4e130970f680d7 - vendored copy, do not edit here
+// The automated check: does the test pass or fail with no person setting it up,
+// acting, or reading? A "no" raises the `manual` flag.
 //
 // Sources:
 // - Kent Beck, Test Desiderata (2019): Automated
 //   https://kentbeck.github.io/TestDesiderata/
 //   A test runs without human intervention.
 // - Gerard Meszaros, xUnit Test Patterns (2007): Manual Intervention
-//   http://xunitpatterns.com/
+//   http://xunitpatterns.com/Manual%20Intervention.html
 //   A test that needs a person to set it up or to check the result is not a
 //   self-checking test.
 // - Web Platform Tests, Review Checklist: manual tests
@@ -22,9 +22,9 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   flag: "manual",
   questions: {
     automated: noul(
-      "Does this test pass or fail with no person acting or reading?",
-      "yes: it checks itself",
-      "no: a person must act or read its output",
+      "Does this test pass or fail with no person involved?",
+      "yes: no person must set up, act, or read",
+      "no: a person must",
     ),
   },
 });

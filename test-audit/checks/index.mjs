@@ -18,6 +18,7 @@ import isolated from "./isolated/check.mjs";
 import deterministic from "./deterministic/check.mjs";
 import automated from "./automated/check.mjs";
 import restores from "./restores/check.mjs";
+import resilient from "./resilient/check.mjs";
 import verdict from "./verdict/check.mjs";
 
 /** @typedef {import("../types.d.ts").Check} Check */
@@ -39,6 +40,7 @@ export const CHECKS = [
   deterministic,
   automated,
   restores,
+  resilient,
   verdict,
 ];
 

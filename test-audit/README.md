@@ -33,7 +33,7 @@ test-audit/
           case.mjs        the test; its header names the defect and the sources, and the model never sees it
           label.json      the known defect and the expected outcome
           code.mjs        the code under test, if the right answer depends on it
-    can-fail/  asserts/  positive/  verdict/  and 5 descriptive checks
+    can-fail/  asserts/  positive/  verdict/  and 6 descriptive checks
   change/                 read the diff and find the tests
   classifier/             ask one SystemOne call per test, and apply the verdict rules
   report/                 print one finding per test, a summary, and an exit code
@@ -134,7 +134,7 @@ failure it hunts, so it escalates instead.
 A flag describes a test. It does not escalate the test on its own, but the
 brief report turns a flag that makes a test unreliable into a `fix`. The
 descriptive questions raise these flags: `conditional`, `order-dependent`,
-`non-deterministic`, `manual`, and `state-leak`. An `asserts` kind
+`non-deterministic`, `manual`, `state-leak`, and `structure-dependent`. An `asserts` kind
 other than `behaviour` is also a flag, for example `shape-only`, when both
 phrasings give it. The extractor adds its own notes: `each` for a table test,
 `dynamic-name` for a computed name, and `focus-in-file` when an only or focus
@@ -220,7 +220,7 @@ reads the probabilities and `mass` instead.
 
 ### The battery
 
-The battery is 13 questions about one test, from 10 checks. All questions share
+The battery is 14 questions about one test, from 11 checks. All questions share
 one state and travel in one call. Each check is a folder in `checks/`, and
 `checks/index.mjs` sets the order. The role of a check tells the verdict rules
 in `classifier/verdict.mjs` what to do with its answers. So a new check needs
@@ -229,7 +229,7 @@ only its folder and one line in `checks/index.mjs`.
 | Check | Questions | Role | Looks for | Cases |
 | --- | --- | --- | --- | --- |
 | [`can-fail`](checks/can-fail/check.mjs) | `can_fail_a`, `can_fail_c` | can-fail | tautology, self-reference, vacuous test, passes-with-zero | 9 |
-| [`asserts`](checks/asserts/check.mjs) | `asserts_a`, `asserts_b` (order swapped) | asserts | hardcoded data, input only, shape only, interaction only, nothing, or unclear; judged by the strongest assertion | 14 |
+| [`asserts`](checks/asserts/check.mjs) | `asserts_a`, `asserts_b` (order swapped) | asserts | an expected value from the code, input only, shape only, interaction only, nothing, or unclear; judged by the assertion closest to the behaviour | 14 |
 | [`positive`](checks/positive/check.mjs) | `positive_a`, `positive_b` | gate: no positive assertion | only-negative test | 7 |
 | [`runs`](checks/runs/check.mjs) | `runs_a`, `runs_b` | gate: does not run, or narrows the run | a skip or todo marker on the test or on a describe around it, or an only or focus marker anywhere in the file | 6 |
 | [`conditional`](checks/conditional/check.mjs) | `conditional` | flag `conditional` | a branch, a loop over a value that may be empty, an early return, or a catch that can leave an assertion unrun | 3 |
@@ -237,14 +237,15 @@ only its folder and one line in `checks/index.mjs`.
 | [`deterministic`](checks/deterministic/check.mjs) | `deterministic` | flag `non-deterministic` | a sleep, the real clock, the network, real randomness, an unguaranteed order | 8 |
 | [`automated`](checks/automated/check.mjs) | `automated` | flag `manual` | a print-only test, or a step a person must do | 2 |
 | [`restores`](checks/restores/check.mjs) | `restores` | flag `state-leak` | a global, environment variable, timer, mock, or shared object left changed | 3 |
-| [`verdict`](checks/verdict/check.mjs) | none: computed | verdict | slop, weak, or good, from the answers above; its cases are the clean and the mixed tests, and the cases of the smells the battery no longer asks | 50 |
+| [`resilient`](checks/resilient/check.mjs) | `resilient` | flag `structure-dependent` | an internal import, a spy on a helper, a private member, or a pinned internal call order | 4 |
+| [`verdict`](checks/verdict/check.mjs) | none: computed | verdict | slop, weak, or good, from the answers above; its cases are the clean and the mixed tests, and the cases of the smells the battery no longer asks | 46 |
 
 Four checks carry the verdict: `can_fail`, `asserts`, `positive`, and `runs`.
 Each asks its judgement twice, in two plain phrasings: a decision model answers
 a negation less reliably, so no phrasing is negated. A pair whose phrasings
 disagree beyond the band escalates, so one confident wrong answer cannot pass a
 test alone. The `asserts` pair also lists its kinds in reverse order, as a
-position control, and an `unclear` answer escalates. The other 5 questions are
+position control, and an `unclear` answer escalates. The other 6 questions are
 the descriptive questions. Each one raises a flag.
 
 The verdict is not asked. Code computes it: slop when the test cannot fail,

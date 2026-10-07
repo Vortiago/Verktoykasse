@@ -4,5 +4,6 @@
   "canFail": true,
   "mustEscalate": false,
   "mixed": false,
-  "note": "Public interface, result only."
+  "note": "Public interface, result only.",
+  "resilient": true
 }

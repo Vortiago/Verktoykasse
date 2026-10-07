@@ -9,52 +9,52 @@
   },
   "can_fail_c": {
     "type": "noul",
-    "instructions": "If the named behaviour regresses, does this test turn red?",
+    "instructions": "Would some wrong output of the behaviour this test names fail it?",
     "criteria": {
-      "true": "yes: a regression fails it",
-      "false": "no: a regression leaves it passing"
+      "true": "yes: a wrong output fails it",
+      "false": "no: every output passes it"
     }
   },
   "asserts_a": {
     "type": "choice",
-    "instructions": "What does the strongest assertion check?",
+    "instructions": "Of all assertions, what does the one closest to the behaviour check?",
     "criteria": {
       "behaviour": "the output, against a value the test fixes or computes without the code",
-      "hardcoded-data": "the output, against a value from the code under test itself",
-      "input-only": "only the test's own input or setup",
-      "shape-only": "only type, length, keys, presence, or that it is truthy or defined",
-      "interaction-only": "only that a mock or spy was called",
+      "from-code": "the output, against a value from the code under test or a re-implementation of it in the test",
+      "input-only": "only the test's own input or setup, or an output field copied straight from the input",
+      "shape-only": "only type, length, keys, presence, a bound, or that it is truthy or defined",
+      "interaction-only": "only that a mock or spy was called, not with what",
       "nothing": "nothing, a tautology, or only no throw",
       "unclear": null
     }
   },
   "asserts_b": {
     "type": "choice",
-    "instructions": "What does the strongest assertion check?",
+    "instructions": "Of all assertions, what does the one closest to the behaviour check?",
     "criteria": {
       "unclear": null,
       "nothing": "nothing, a tautology, or only no throw",
-      "interaction-only": "only that a mock or spy was called",
-      "shape-only": "only type, length, keys, presence, or that it is truthy or defined",
-      "input-only": "only the test's own input or setup",
-      "hardcoded-data": "the output, against a value from the code under test itself",
+      "interaction-only": "only that a mock or spy was called, not with what",
+      "shape-only": "only type, length, keys, presence, a bound, or that it is truthy or defined",
+      "input-only": "only the test's own input or setup, or an output field copied straight from the input",
+      "from-code": "the output, against a value from the code under test or a re-implementation of it in the test",
       "behaviour": "the output, against a value the test fixes or computes without the code"
     }
   },
   "positive_a": {
     "type": "noul",
-    "instructions": "Does an assertion expect a non-empty value that the code must produce?",
+    "instructions": "Does an assertion need a value a do-nothing stub could not return?",
     "criteria": {
-      "true": "yes: a literal, an object, true or false, or an error message",
-      "false": "no: only empty ([], \"\", {}), null, undefined, or no throw"
+      "true": "yes: a non-zero number, a non-empty string or object, true, or an error with its message",
+      "false": "no: only empty, zero, false, null, undefined, or no throw"
     }
   },
   "positive_b": {
     "type": "noul",
-    "instructions": "Does this test check a value the code returns, not only that it is empty or did not throw?",
+    "instructions": "Does this test fail against a stub that returns nothing and never throws?",
     "criteria": {
-      "true": "yes: it checks a real value",
-      "false": "no: only empty, null, undefined, or no throw"
+      "true": "yes: an assertion needs a real value",
+      "false": "no: it passes an empty or null result"
     }
   },
   "runs_a": {
@@ -83,34 +83,42 @@
   },
   "isolated": {
     "type": "noul",
-    "instructions": "Does this test build everything it reads, so it passes alone and in any order?",
+    "instructions": "Does this test pass alone and in any order, reading nothing another test sets or changes?",
     "criteria": {
-      "true": "yes: it, or a before-each hook, builds what it reads",
-      "false": "no: it reads a value another test sets, or a shared object no hook resets"
+      "true": "yes: what it reads is built by it, a hook, or a fixture no test changes",
+      "false": "no: it reads a value another test sets or changes"
     }
   },
   "deterministic": {
     "type": "noul",
-    "instructions": "Does this test give the same result on every run?",
+    "instructions": "Does this test give the same result on every run and machine?",
     "criteria": {
-      "true": "yes: no real clock, randomness, network, sleep, or unguaranteed order, or it is faked or seeded",
-      "false": "no: it uses the real clock, randomness, the network, a sleep, or an unguaranteed order"
+      "true": "yes: no real clock, randomness, sleep, network, file, database, or env it does not create or fake",
+      "false": "no: it reads one as it finds it"
     }
   },
   "automated": {
     "type": "noul",
-    "instructions": "Does this test pass or fail with no person acting or reading?",
+    "instructions": "Does this test pass or fail with no person involved?",
     "criteria": {
-      "true": "yes: it checks itself",
-      "false": "no: a person must act or read its output"
+      "true": "yes: no person must set up, act, or read",
+      "false": "no: a person must"
     }
   },
   "restores": {
     "type": "noul",
-    "instructions": "Does this test leave every global, environment variable, timer, mock, and shared object as it found them?",
+    "instructions": "Does this test, or an after hook, put back every global, env variable, timer, mock, file, or shared object it changes?",
     "criteria": {
-      "true": "yes: it changes none, or restores them",
+      "true": "yes: it changes none, or puts them back",
       "false": "no: it leaves one changed"
+    }
+  },
+  "resilient": {
+    "type": "noul",
+    "instructions": "Does this test reach and read the code only through its public interface?",
+    "criteria": {
+      "true": "yes: a public import, and it asserts a return, a throw, or an effect a caller sees",
+      "false": "no: an internal import, a spy on a helper, a private or _ member, or a pinned internal call order"
     }
   }
 }

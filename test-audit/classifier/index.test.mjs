@@ -91,7 +91,7 @@ test("asserts that disagree escalate, and any non-behaviour assertion escalates"
   assert.equal(disagree.checks.asserts.group?.state, "unstable");
   assert.match(disagree.reasons.join(" "), /asserts unstable/);
 
-  for (const kind of ["nothing", "shape-only", "hardcoded-data", "interaction-only", "input-only", "unclear"]) {
+  for (const kind of ["nothing", "shape-only", "from-code", "interaction-only", "input-only", "unclear"]) {
     const result = verdictFrom(TEST, { ...goodAnswers(), asserts_a: choice(kind), asserts_b: choice(kind) });
     assert.equal(result.needsEyes, true, kind);
     assert.match(result.reasons.join(" "), new RegExp(`asserts ${kind}`));
@@ -109,7 +109,7 @@ test("a test with no positive assertion escalates, and its verdict is weak", () 
 test("the verdict is computed from the answers that carry it", () => {
   const level = (/** @type {Record<string, any>} */ answers) => verdictFrom(TEST, { ...goodAnswers(), ...answers }).score.label;
   assert.equal(level({ asserts_a: choice("nothing"), asserts_b: choice("nothing") }), "slop");
-  assert.equal(level({ asserts_a: choice("hardcoded-data"), asserts_b: choice("hardcoded-data") }), "slop");
+  assert.equal(level({ asserts_a: choice("from-code"), asserts_b: choice("from-code") }), "slop");
   assert.equal(level({ asserts_a: choice("shape-only"), asserts_b: choice("shape-only") }), "weak");
   assert.equal(level({ can_fail_a: noul(0.1), can_fail_c: noul(0.1) }), "slop");
   // Phrasings that disagree commit to nothing, so there is no verdict.

@@ -1,8 +1,9 @@
-// canonical source: test-audit/checks/positive/check.mjs@c34fea8 sha256:549148829bd1d05b6078111a071db9cb617d7003b4df44deaeaf5913d685fd0d - vendored copy, do not edit here
-// The positive check: does at least one assertion name a value the code must
-// produce, such as a literal, an object, or a thrown error with its message? A
-// test that checks only null, undefined, empty, or a non-throw passes for
-// code that does nothing. Asked as a twin pair; `positive_b` is the negated twin.
+// canonical source: test-audit/checks/positive/check.mjs@45c4fac sha256:39bdb3f26ed062ca90fbb3e210c0a9efc8f4b4c4af194858a07ffffb9ce26efd - vendored copy, do not edit here
+// The positive check: does at least one assertion need a value that a
+// do-nothing stub could not return, such as a non-empty literal, an object, or a
+// thrown error with its message? A test that checks only empty, zero, false,
+// null, undefined, or a non-throw passes for code that does nothing. Asked as a
+// twin pair of two plain phrasings.
 //
 // The twin rule and its sources are in classifier/verdict.mjs.
 //
@@ -25,14 +26,14 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   reason: "no positive assertion",
   questions: {
     positive_a: noul(
-      "Does an assertion expect a non-empty value that the code must produce?",
-      "yes: a literal, an object, true or false, or an error message",
-      "no: only empty ([], \"\", {}), null, undefined, or no throw",
+      "Does an assertion need a value a do-nothing stub could not return?",
+      "yes: a non-zero number, a non-empty string or object, true, or an error with its message",
+      "no: only empty, zero, false, null, undefined, or no throw",
     ),
     positive_b: noul(
-      "Does this test check a value the code returns, not only that it is empty or did not throw?",
-      "yes: it checks a real value",
-      "no: only empty, null, undefined, or no throw",
+      "Does this test fail against a stub that returns nothing and never throws?",
+      "yes: an assertion needs a real value",
+      "no: it passes an empty or null result",
     ),
   },
   negated: [],

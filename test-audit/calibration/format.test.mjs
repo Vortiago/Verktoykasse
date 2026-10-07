@@ -115,7 +115,7 @@ test("an escalated case ties each reason to the answers behind it, a twin pair w
 
 test("the descriptive answers fit in one line", () => {
   const block = caseBlock(formatBenchmark([entry([SHAPE])]), 1);
-  assert.ok(block.includes("\n- **Descriptive:** 3 clean · smells: `deterministic` (non-deterministic), `restores` (state-leak) · unanswered: none.\n"));
+  assert.ok(block.includes("\n- **Descriptive:** 4 clean · smells: `deterministic` (non-deterministic), `restores` (state-leak) · unanswered: none.\n"));
 });
 
 test("a case with code under test shows it in its own block", () => {

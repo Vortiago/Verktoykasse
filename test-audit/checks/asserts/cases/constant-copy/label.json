@@ -1,9 +1,9 @@
 {
   "test": "taxes the standard rate",
-  "defect": "hardcoded-data",
+  "defect": "from-code",
   "canFail": false,
   "mustEscalate": true,
   "mixed": false,
-  "asserts": "hardcoded-data",
+  "asserts": "from-code",
   "note": "The expected value is the code under test own constant, so the test agrees by construction and cannot fail."
 }

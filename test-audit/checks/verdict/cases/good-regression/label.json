@@ -8,5 +8,6 @@
   "positive": true,
   "verdict": "good",
   "deterministic": true,
-  "note": "a clean regression guard"
+  "note": "a clean regression guard",
+  "resilient": true
 }

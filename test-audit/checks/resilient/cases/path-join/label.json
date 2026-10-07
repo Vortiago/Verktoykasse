@@ -4,5 +4,6 @@
   "canFail": true,
   "mustEscalate": false,
   "mixed": false,
-  "note": "The return value is observable."
+  "note": "The return value is observable.",
+  "resilient": true
 }
