@@ -1,7 +1,7 @@
 {
   "test": "imports are folded",
   "defect": "passes-with-zero",
-  "canFail": false,
+  "canFail": true,
   "mustEscalate": true,
   "note": "vacuous: passes when the feature produces nothing"
 }

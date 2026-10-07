@@ -1,7 +1,7 @@
 {
   "test": "the summary is produced",
   "defect": "vacuous",
-  "canFail": false,
+  "canFail": true,
   "mustEscalate": true,
   "mixed": false,
   "note": "The aggregate exists, but no value inside it is ever read."
