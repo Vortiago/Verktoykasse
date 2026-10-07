@@ -35,8 +35,10 @@ present-continuous form shown while the task runs. The statuses are `pending`,
    `compaction` session hook sets a one-shot flag, and the next `context` hook
    consumes it. This is deterministic, because both hooks run in the model call
    itself. An event subscription would race the next call.
-2. **Stop-sign nudge.** When a session stops with open tasks, the plugin sends
-   one user turn:
+2. **Stop-sign nudge.** When a run succeeds and leaves open tasks, the plugin
+   sends one user turn. The signal is `session.execution.succeeded` (or
+   `session.idle` on a server that still emits it). An interrupted or failed run
+   emits neither, so it is never nudged:
 
    ```text
    You have N tasks left. Here is the current state:
@@ -97,8 +99,9 @@ A model that knows Claude Code already knows these tools.
 
 ## Limits
 
-- The plugin cannot tell a deliberate stop from a natural one, so the nudge can
-  follow a stop that a person made. The reminder count bounds this.
+- An interrupt is never nudged, but the plugin cannot tell a run that ended
+  because the model chose to stop from one that ended because it finished. The
+  reminder count bounds this.
 - The plugin does not exclude a read-only plan session. A plan session that
   records tasks can receive a nudge to finish them.
 - The per-session maps are never cleared on session deletion. The leak is small.

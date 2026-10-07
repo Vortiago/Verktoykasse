@@ -17,6 +17,8 @@ import {
 
 const MAX_NUDGES = 2
 const INJECTION_HEADER = "Current task list:"
+// session.idle is the older, deprecated signal; a server that still emits it keeps working.
+const STOP_EVENTS = new Set(["session.execution.succeeded", "session.idle"])
 
 interface State {
   afterCompaction: Set<string>
@@ -167,10 +169,13 @@ function notFound(taskId: string): string {
 }
 
 // Send one user turn on each session stop that leaves tasks open, up to MAX_NUDGES.
+// A run that succeeds ends with session.execution.succeeded; OpenCode 2.0.24 emits no
+// session.idle, and an interrupted or failed run emits neither, so a stop a person or a
+// supervisor made is never nudged back to life.
 async function runNudger(ctx: Context, state: State, signal: AbortSignal): Promise<void> {
   try {
     for await (const event of ctx.event.subscribe({ signal })) {
-      if (event.type === "session.idle") await nudge(ctx, state, event.data.sessionID)
+      if (STOP_EVENTS.has(event.type)) await nudge(ctx, state, event.data.sessionID)
     }
   } catch {
     // The stream ends when the plugin unloads (abort). Nothing to recover.
