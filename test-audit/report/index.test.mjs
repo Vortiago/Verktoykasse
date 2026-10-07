@@ -101,3 +101,8 @@ test("the brief face gives one line per test to act on, worst first, and says ho
     ].join("\n"),
   );
 });
+
+test("the brief face marks a test the endpoint never answered as not judged", () => {
+  const failed = result({ needsEyes: true, reasons: ["no answers (fetch failed)"], error: "fetch failed" });
+  assert.match(formatAudit({ results: [failed] }), /^look {2}add\.test\.mjs:1 {2}"adds" {2}no answer \(fetch failed\) {2}\(not judged\)$/m);
+});

@@ -1,4 +1,4 @@
-// canonical source: test-audit/report/brief.mjs@68e72cd sha256:daee96d52bbd5e0e7f2fb28a7e2a71a0a5a50ebe9db57b8c0dbc4b7249764f75 - vendored copy, do not edit here
+// canonical source: test-audit/report/brief.mjs@cc13b61 sha256:3811cfbbb3900a217c11ba84ae047d6f6ea2bcdca37f15dc6b2e22e186d1d310 - vendored copy, do not edit here
 // The brief face: one line per test that needs an action, for an LLM to read.
 // Each line names the action, the place, the test, the reasons, and how sure the
 // tool is. An ok test gets no line. The worst actions come first.
@@ -22,7 +22,8 @@ export function formatBrief(results, meta = {}) {
     found
       .filter(({ finding }) => finding.action === action)
       .map(({ result, finding }) => {
-        const certainty = finding.sure ? "sure" : "unsure, possibly a false positive";
+        // A test the endpoint never answered is not judged, so it is no false positive either.
+        const certainty = result.error ? "not judged" : finding.sure ? "sure" : "unsure, possibly a false positive";
         return `${action}  ${location(result.test)}  ${JSON.stringify(result.test.name)}  ${finding.reasons.join("; ")}  (${certainty})`;
       }),
   );

@@ -21,7 +21,8 @@ export function formatBrief(results, meta = {}) {
     found
       .filter(({ finding }) => finding.action === action)
       .map(({ result, finding }) => {
-        const certainty = finding.sure ? "sure" : "unsure, possibly a false positive";
+        // A test the endpoint never answered is not judged, so it is no false positive either.
+        const certainty = result.error ? "not judged" : finding.sure ? "sure" : "unsure, possibly a false positive";
         return `${action}  ${location(result.test)}  ${JSON.stringify(result.test.name)}  ${finding.reasons.join("; ")}  (${certainty})`;
       }),
   );
