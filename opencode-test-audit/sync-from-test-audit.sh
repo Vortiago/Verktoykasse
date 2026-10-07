@@ -27,6 +27,7 @@ FILES=(
   change/code-only.mjs
   change/collect.mjs
   change/extract.mjs
+  change/python.mjs
   change/index.mjs
   checks/index.mjs
   checks/asserts/check.mjs

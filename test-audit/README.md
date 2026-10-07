@@ -60,7 +60,8 @@ node test-audit/cli.mjs --url http://127.0.0.1:11434 --model nimble   # one endp
 node test-audit/cli.mjs --help              # all options
 ```
 
-The working tree includes untracked files. The default branch is `origin/HEAD`.
+Python test files are read too; see [Limits](#limits) for what the extractor
+recognises. The working tree includes untracked files. The default branch is `origin/HEAD`.
 If `origin/HEAD` is not set, the tool uses `origin/main`, then `main`.
 
 In a test file that the change modifies, the tool audits only the tests whose
@@ -350,7 +351,15 @@ are a baseline to run again.
   paraphrase spread and the cross-question rule are then the only guard.
 - The tool judges tests, not coverage. It never says that a change is tested
   enough. It says whether each added test is a real guard.
-- The extractor reads `test` and `it` calls with a literal or a computed name,
+- The Python extractor reads pytest and unittest files (`test_*.py`,
+  `*_test.py`, or a `.py` under a `tests` folder, never `conftest.py`): a
+  module-level `test*` function, async too, and the `test*` methods of a class
+  named `Test*` or based on a `TestCase`. A `@pytest.fixture` function, a
+  `setUp` or `setup_method`, and the module and class constants travel with each
+  test. A skip marker (`@pytest.mark.skip`/`skipif`, `@unittest.skip*`, a
+  module `pytestmark`) flags it as skipped, and `parametrize` or hypothesis's
+  `given` as `each`. Fixtures in `conftest.py` are not read.
+- The JavaScript extractor reads `test` and `it` calls with a literal or a computed name,
   with a member chain such as `test.skip.each` or `test.skipIf(cond)`, and
   node:test's `suite`, `before` and `after` beside `describe` and its hooks. It
   folds a `test.each` table into one test and flags a computed name. The

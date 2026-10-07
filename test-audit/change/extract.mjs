@@ -8,6 +8,7 @@
 
 import { argSpan, splitTop } from "../tools/js-scan.mjs";
 import { codeOnly } from "./code-only.mjs";
+import { extractPythonTests, isPythonTestFile } from "./python.mjs";
 
 /** @typedef {import("../types.d.ts").AuditTest} AuditTest */
 
@@ -53,7 +54,7 @@ const FIXTURES = new Set(["beforeEach", "beforeAll", "afterEach", "afterAll", "b
  * @param {string} path
  */
 export function isTestFile(path) {
-  return TEST_FILE.test(path);
+  return TEST_FILE.test(path) || isPythonTestFile(path);
 }
 
 /**
@@ -63,6 +64,7 @@ export function isTestFile(path) {
  * @returns {AuditTest[]}
  */
 export function extractTests(text, file) {
+  if (file.endsWith(".py")) return extractPythonTests(text, file);
   /** @type {AuditTest[]} */
   const out = [];
   // The code-only view and the line index are one scan per file, not one per

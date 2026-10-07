@@ -1,4 +1,4 @@
-// canonical source: test-audit/change/extract.mjs@c2891f2 sha256:4e1e8eaa84e2ada7ed962b6fbdfef9bce5dc50e094eb07e798623190cdd9f1b8 - vendored copy, do not edit here
+// canonical source: test-audit/change/extract.mjs@f927696 sha256:98de345a3fa8049395cadd027d6232f9f1a8ddedc38ffd86ec8fdb6b512b3ac0 - vendored copy, do not edit here
 // Test extraction: the parse half of the audit. It takes the text of one file
 // and returns the test blocks inside it. No git, no filesystem, no network, so
 // a fixture string exercises every branch. The read half lives in collect.mjs.
@@ -9,6 +9,7 @@
 
 import { argSpan, splitTop } from "../tools/js-scan.mjs";
 import { codeOnly } from "./code-only.mjs";
+import { extractPythonTests, isPythonTestFile } from "./python.mjs";
 
 /** @typedef {import("../types.d.ts").AuditTest} AuditTest */
 
@@ -54,7 +55,7 @@ const FIXTURES = new Set(["beforeEach", "beforeAll", "afterEach", "afterAll", "b
  * @param {string} path
  */
 export function isTestFile(path) {
-  return TEST_FILE.test(path);
+  return TEST_FILE.test(path) || isPythonTestFile(path);
 }
 
 /**
@@ -64,6 +65,7 @@ export function isTestFile(path) {
  * @returns {AuditTest[]}
  */
 export function extractTests(text, file) {
+  if (file.endsWith(".py")) return extractPythonTests(text, file);
   /** @type {AuditTest[]} */
   const out = [];
   // The code-only view and the line index are one scan per file, not one per

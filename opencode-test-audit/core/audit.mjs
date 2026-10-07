@@ -1,4 +1,4 @@
-// canonical source: test-audit/audit.mjs@4ba9d42 sha256:f94468e385f7cb8af06877b110743293cc6e4e68b98db9b9f2e090d6a0953327 - vendored copy, do not edit here
+// canonical source: test-audit/audit.mjs@f927696 sha256:3753ba8c28f9eab87f0288edd27baa9bdb876542313d5dadd1c1f14b1c67d065 - vendored copy, do not edit here
 // One audit: read the change, extract its tests, and classify each with one
 // SystemOne call. The CLI and the OpenCode plugin both call `runAudit`, so they
 // share one pipeline.
@@ -10,7 +10,7 @@ import { mapPool } from "./lib/pool.mjs";
 import config from "./config.mjs";
 
 /** A file named as a test file: `.test.` or `.spec.`, not only under `__tests__/`. */
-const TEST_NAME = /\.(?:test|spec)\.[cm]?[jt]sx?$/;
+const TEST_NAME = /\.(?:test|spec)\.[cm]?[jt]sx?$|(?:^|[\\/])(?:test_[^\\/]*|[^\\/]*_test)\.py$/;
 
 /** @typedef {import("./types.d.ts").AuditResult} AuditResult */
 /** @typedef {import("./types.d.ts").AuditUsage} AuditUsage */

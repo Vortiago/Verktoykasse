@@ -9,7 +9,7 @@ import { mapPool } from "./lib/pool.mjs";
 import config from "./config.mjs";
 
 /** A file named as a test file: `.test.` or `.spec.`, not only under `__tests__/`. */
-const TEST_NAME = /\.(?:test|spec)\.[cm]?[jt]sx?$/;
+const TEST_NAME = /\.(?:test|spec)\.[cm]?[jt]sx?$|(?:^|[\\/])(?:test_[^\\/]*|[^\\/]*_test)\.py$/;
 
 /** @typedef {import("./types.d.ts").AuditResult} AuditResult */
 /** @typedef {import("./types.d.ts").AuditUsage} AuditUsage */
