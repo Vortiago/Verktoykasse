@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
 # PreToolUse guard for Claude Code. It refuses direct edits and commits on the
-# DEFAULT branch of a bare+sibling repo (the `<repo>/main` worktree). main should
-# only advance through merge or pull. Author changes on a feature worktree.
+# DEFAULT branch of a bare+sibling repo (the `<repo>/main` worktree), and a switch
+# of that worktree to another branch. main should only advance through merge or
+# pull. Author changes on a feature worktree.
 #
 # Canonical copy lives in the Verktøykasse `worktrees` skill and is symlinked to
 # ~/.claude/hooks/guard-default-branch.sh by worktrees/install.sh. Edit it here.
 #
 # Matches:
 #   Edit | Write | NotebookEdit                    → checks tool_input.file_path
-#   Bash | PowerShell, only `git commit` / `git add …`  → checks the session cwd
+#   Bash | PowerShell, only `git commit` / `git add …` / `git switch` / `git checkout`
+#                                                   → checks the session cwd
 #
 # Contract (https://code.claude.com/docs/en/hooks#pretooluse):
 #   stdin JSON {tool_name, tool_input{file_path|command}, cwd}
@@ -27,6 +29,30 @@ input=$(cat)
 # (file_path / command) is extracted per-branch below, where it may be.
 IFS=$'\t' read -r tool cwd <<<"$(jq -r '[.tool_name, .cwd] | @tsv' <<<"$input")"
 [[ -n "$cwd" ]] || cwd=$PWD
+
+# True when a `git switch` or `git checkout` command takes the work tree off the
+# default branch: a new branch, a detached HEAD, or another branch. A checkout of
+# a path, or after `--`, restores files and stays.
+leaves_branch() {  # command, work tree, default branch
+  local rest sub w words
+  rest=${1#*git switch} sub=switch
+  [[ "$rest" != "$1" ]] || { rest=${1#*git checkout}; sub=checkout; }
+  rest=${rest%%[;&|]*}   # this command only, not the next one in a chain
+  read -ra words <<<"$rest"
+  for w in "${words[@]}"; do
+    case "$w" in
+      -c|-C|--create|--force-create|--orphan|-b|-B|-d|--detach) return 0 ;;
+      --) return 1 ;;
+      -*) continue ;;
+      "$3") return 1 ;;
+    esac
+    [[ "$sub" == switch ]] && return 0
+    git -C "$2" rev-parse -q --verify "refs/heads/$w" >/dev/null \
+      || git -C "$2" rev-parse -q --verify "refs/remotes/origin/$w" >/dev/null
+    return
+  done
+  return 1   # a bare `git switch` or `git checkout` moves nothing
+}
 
 # Resolve the target directory + the verb used in the block message.
 case "$tool" in
@@ -48,8 +74,14 @@ case "$tool" in
     verb=commit
     cmd=$(jq -r '.tool_input.command // empty' <<<"$input")
     # Only authoring commands. pull/merge/fetch/rebase advance main legitimately
-    # and contain neither verb, so they fall through to exit 0.
-    case "$cmd" in *"git commit"*|*"git add "*) dir=$cwd ;; *) exit 0 ;; esac
+    # and contain none of these verbs, so they fall through to exit 0. A switch
+    # moves the default worktree off its branch, and every later edit there
+    # then passes this guard, so a switch counts as authoring too.
+    case "$cmd" in
+      *"git commit"*|*"git add "*) dir=$cwd ;;
+      *"git switch"*|*"git checkout"*) verb=switch; dir=$cwd ;;
+      *) exit 0 ;;
+    esac
     ;;
   *) exit 0 ;;
 esac
@@ -75,10 +107,16 @@ if [[ -z "$default" ]]; then
 fi
 
 [[ "$branch" == "$default" ]] || exit 0   # on a feature branch → allow
+[[ "$verb" != switch ]] || leaves_branch "$cmd" "$dir" "$default" || exit 0
 
 repo=$(basename "$(dirname "$common")")
+if [[ "$verb" == switch ]]; then
+  action="switch the \`$branch\` worktree of $repo to another branch"
+else
+  action="$verb on the default branch \`$branch\` of $repo"
+fi
 cat >&2 <<EOF
-✗ Refusing to $verb on the default branch \`$branch\` of $repo (bare+sibling layout).
+✗ Refusing to $action (bare+sibling layout).
   main should only advance through merge or pull. Author changes on a feature branch.
   → Create a worktree and work there:
         /worktrees $repo <branch>     (or  \$REPOS_ROOT/.new-worktree.sh $repo <branch>)

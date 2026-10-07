@@ -31,9 +31,9 @@ mkrepo() { # $1 = default branch name — echoes <base>; git chatter stays off s
 ck() { # desc  want(0 allow / 2 block)  json  [env assignment]
   local rc
   if [ -n "${4:-}" ]; then
-    out=$(printf '%s' "$3" | env "$4" bash "$hook" 2>/dev/null); rc=$?
+    printf '%s' "$3" | env "$4" bash "$hook" >/dev/null 2>&1; rc=$?
   else
-    out=$(printf '%s' "$3" | bash "$hook" 2>/dev/null); rc=$?
+    printf '%s' "$3" | bash "$hook" >/dev/null 2>&1; rc=$?
   fi
   if [ "$rc" = "$2" ]; then echo "ok   $1"
   else echo "FAIL $1 (rc=$rc want=$2)"; fail=1; fi
@@ -63,6 +63,20 @@ ck "git pull on default"           0 "$(bash_ "git pull"         "$base/main")"
 ck "git merge on default"          0 "$(bash_ "git merge origin/main" "$base/main")"
 ck "git commit on feature"         0 "$(bash_ "git commit -m x" "$base/feature")"
 ck "non-git-author Bash on main"   0 "$(bash_ "ls -la"          "$base/main")"
+
+# --- switching the default worktree to another branch is authoring on it too ---
+git -C "$base/feature" branch -q other >&2
+ck "git switch -c on default"      2 "$(bash_ "git switch -c fix/x"       "$base/main")"
+ck "git switch --create on default" 2 "$(bash_ "git switch --create fix/x" "$base/main")"
+ck "git switch to a branch"        2 "$(bash_ "git switch other"          "$base/main")"
+ck "git switch --detach on default" 2 "$(bash_ "git switch --detach"      "$base/main")"
+ck "git checkout -b on default"    2 "$(bash_ "git checkout -b fix/x"     "$base/main")"
+ck "git checkout a branch"         2 "$(bash_ "git checkout other"        "$base/main")"
+ck "git switch to the default"     0 "$(bash_ "git switch main"           "$base/main")"
+ck "git checkout -- a file"        0 "$(bash_ "git checkout -- f.txt"     "$base/main")"
+ck "git checkout a path"           0 "$(bash_ "git checkout f.txt"        "$base/main")"
+ck "git switch -c on feature"      0 "$(bash_ "git switch -c fix/x"       "$base/feature")"
+ck "pwsh switch -c on default"     2 "$(pwsh_ "git switch -c fix/x"       "$base/main")"
 
 # --- PowerShell is a separate tool on Windows and runs git the same way ---
 ck "pwsh commit on default"        2 "$(pwsh_ "git commit -m x" "$base/main")"

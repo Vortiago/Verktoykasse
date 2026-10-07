@@ -79,12 +79,17 @@ and `git commit`/`git add` when the target tree is on the repo's default
 branch. Feature work must not land on main directly, and main advances only
 through merge or pull.
 
+It also blocks a `git switch` or `git checkout` that takes the default worktree
+to another branch, a new branch or a detached HEAD. After such a switch, every
+edit in `<repo>/main` would pass the guard. A checkout of a path, or after
+`--`, still restores files.
+
 - Scope: bare+sibling layout only. It fails open elsewhere, on ordinary repos,
   detached HEAD, bare root, `worktree-seed/`, non-git paths.
 - Default = `origin/HEAD`. If unset, it falls back to `main`/`master` only.
 - Unaffected: feature worktrees, and `git pull`/`merge`/`fetch`/`rebase` on main.
-- Best-effort on `Bash` and `PowerShell`: matches the literal `git commit`/`git
-  add` verbs (so a `cd … && git commit` or a quoted mention can slip or
+- Best-effort on `Bash` and `PowerShell`: matches the literal `git commit`,
+  `git add`, `git switch` and `git checkout` verbs (so a `cd … && git commit` or a quoted mention can slip or
   over-match), so it fails open.
 - Override: `WORKTREES_ALLOW_MAIN_EDITS=1` (launch env, user-only).
 - Verify: `bash worktrees/selftest.sh`.
