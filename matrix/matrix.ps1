@@ -166,10 +166,11 @@ $term = Join-Path $lib 'terminal'
 #
 # On macOS outside tmux there is no nameable tab, so none.ps1 serves no map.
 
-# Who wants the tab map, spelled once: $hostHwnd and $needTabs both read it and
-# must not drift. -ExposeOnSSH is in it because a click on the other machine is
-# answered out of this machine's map.
-$wantTabs = [bool]($ThisWindow -or $Click -or $ExposeOnSSH)
+# Every run reads the tabs. -ThisWindow, -Click and -ExposeOnSSH each need the
+# map for their own answer, and the lane order needs it for all of them: a window
+# and a tab number live on a tab, never on a session. A run that built no map
+# ordered its lanes by start time instead, so the same sessions drew in a
+# different order depending on which flags were set.
 $backend = if ($IsWindows)    { 'windows-terminal.ps1' }
            elseif ($env:TMUX) { 'tmux.ps1' }
            elseif ($IsMacOS)  { 'none.ps1' }
@@ -230,6 +231,12 @@ if ($Remote -or $ExposeOnSSH) {
 $tabState = New-TabState
 $tabClock = [System.Diagnostics.Stopwatch]::StartNew()
 
+# The lane order the screen gets, remembered between polls. A tab match on Windows
+# Terminal is a title score and it can flip, and acting on a flip trades two lanes
+# and repaints both. Update-LaneOrder re-sorts only when the sessions, or the
+# sessions that have a tab, change.
+$laneOrder = New-LaneOrderState
+
 # This machine reporting outward. It shares whichever loop runs, so a lane the
 # user sees here is the same lane the other machine sees.
 $expose = $null
@@ -280,7 +287,7 @@ $scopeFix = if ($backend -eq 'none.ps1') { 'Drop -ThisWindow to show every sessi
 # takes the foreground terminal, which is only reliably ours right after the user
 # typed the command. Konsole and tmux both read an exported variable and are exact
 # whenever this runs.
-$hostHwnd = if ($wantTabs) { Get-OwnTerminalWindow } else { 0 }
+$hostHwnd = Get-OwnTerminalWindow
 
 # Enable ANSI escape processing (a no-op where it is already on).
 try {
@@ -305,16 +312,20 @@ try {
 
 $glyphs = Get-RainGlyph -Ascii:$useAscii
 
-# -ThisWindow and -Click both need the tab map. Windows Terminal keeps every window
-# in one process: a window is identified by its handle, a session by the tab whose
-# title matches it. Konsole is the same, one process for every window, but the
-# session-to-tab match there is a pid walk, not a title match. tmux scopes on its
-# own session and matches on pane_pid, so its tab objects carry that session id.
+# The tab map, which every run wants and a backend can still refuse to serve.
+# Windows Terminal keeps every window in one process: a window is identified by
+# its handle, a session by the tab whose title matches it. Konsole is the same,
+# one process for every window, but the session-to-tab match there is a pid walk,
+# not a title match. tmux scopes on its own session and matches on pane_pid, so
+# its tab objects carry that session id.
 #
-# -ExposeOnSSH needs it too, for a different answer out of the same map: the
-# window id each session sits in, which travels in the frame so a click on the
-# other machine has somewhere to send.
-$needTabs = $wantTabs
+# -ThisWindow filters on it, -Click routes on it, -ExposeOnSSH reads the window
+# each session sits in out of it, and the lane order sorts on it.
+#
+# A backend that cannot answer leaves the map empty, which every reader already
+# handles: the lanes fall back to start order, and each flag that lost something
+# says so below.
+$needTabs = $true
 if ($needTabs) {
     $why = Test-TabSupport -Hwnd $hostHwnd
     if ($why) {
@@ -373,6 +384,12 @@ function Get-LiveSession {
         if ($ThisWindow) {
             $live = @($live | Where-Object { $script:tabState.Map[$_.SessionId].Hwnd -eq $hostHwnd })
         }
+
+        # Before Update-Expose, because the frame below is built out of $live: this
+        # is what puts this machine's window-and-tab order on the wire, with no
+        # field added to it. The rain reading the frame keeps that order for the
+        # machine's own block. No state here, because that rain runs its own.
+        $live = @(Sort-SessionLane -Session $live -Map $script:tabState.Map -Hwnd $hostHwnd)
     }
 
     # Local sessions only, and before the machines are folded in: a rain that both
@@ -403,6 +420,11 @@ function Get-LiveSession {
                          -Read $script:tcpSeam.Read -Write $script:tcpSeam.Write -Close $script:tcpSeam.Close
         $live = @($live) + @(Get-RemoteSession -Hub $script:hub -Now $now)
     }
+
+    # The order the lanes are drawn in. After the machines, because their block
+    # sits behind every window, and it is the whole list this holds still.
+    $live = @(Update-LaneOrder -Session $live -Map $script:tabState.Map `
+                               -Hwnd $hostHwnd -State $script:laneOrder)
 
     # No comma-wrap: the caller's @() would nest the whole array into one element.
     $live

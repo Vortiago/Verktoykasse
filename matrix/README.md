@@ -121,6 +121,42 @@ Nothing here touches the pipe.
 Liveness is a PID check plus the recorded `procStart` FILETIME. The FILETIME
 stops a recycled PID from resurrecting a dead session.
 
+## Lane order
+
+Lanes read left to right the way the tabs behind them do. This window's tabs
+first, in tab order, then every other window's, then the machines reporting in.
+A session no tab matched goes last of all.
+
+That needs the tab map, so **every run reads the tabs**, not only the runs that
+pass `-ThisWindow`, `-Click` or `-ExposeOnSSH`. The read is the same rationed
+one those flags always paid for: it runs when a session appears, goes or changes
+status, and a permanent miss decays to one read every 30 s. A bare run with
+`showStatusInTerminalTab` off pays that decayed read for the whole run and
+matches nothing, which is the cost of one order whatever the flags are.
+
+Where a backend answers no tabs at all, the map is empty and the lanes keep the
+order they had before: oldest session first, then the machines. That is a Mac
+outside tmux, Windows outside Windows Terminal, and Linux outside Konsole and
+tmux. Ordering every local lane behind every remote one, which is what "no tab
+matched goes last" says on its own, would be a worse screen than the one it
+replaced.
+
+Windows orders its windows by handle, Konsole and tmux by their own ids. All
+three are arbitrary but fixed for the window's life, which is what a lane needs.
+Z-order is the alternative and it changes on every click, so the lanes would
+follow the focus around.
+
+The order is re-sorted only when the sessions change, or when the set of
+sessions holding a tab changes. On Windows Terminal a tab match is a title
+score, and two sessions in one window with overlapping prompts can trade tabs
+for one rebuild and trade back. Acting on that trade swaps two lanes and
+repaints both columns. The cost of not acting is a renumber: drag or close a
+tab, and the lanes hold their old order until a session appears or goes.
+Konsole and tmux match on a pid and never flap.
+
+A session whose tab has not caught up rains at the far right until the re-try
+matches it, and then it moves into its window.
+
 ## Keys
 
 `q` exits, upper or lower case. Ctrl+C exits too, because the rain runs stdin
@@ -145,7 +181,8 @@ end it.
 
 `-ThisWindow` keeps only the sessions in the same terminal window as the rain.
 `-Click` makes a left click on a lane switch to that session's tab. Both rest on
-the same tab map. On Windows the backend is Windows Terminal over UI Automation:
+the same tab map, which every run builds anyway for the lane order. On Windows
+the backend is Windows Terminal over UI Automation:
 
 | Step | How |
 | --- | --- |
@@ -190,7 +227,8 @@ QuickEdit is off while the rain runs, so that window cannot select text with
 the mouse. It goes back on at exit.
 
 Both flags need `showStatusInTerminalTab` on in Claude Code. Without it the
-tabs carry no glyph and nothing matches.
+tabs carry no glyph and nothing matches, and the lane order falls back to oldest
+session first.
 
 ### Konsole, on Linux
 
@@ -475,8 +513,9 @@ lib/
   lanes.ps1             sessions to lanes
   sessions.ps1          Claude's session registry, and the /proc process-table readers
   terminal/
-    tabmap.ps1          session to tab, over time, and the pid match both Linux
-                        backends answer with. Knows no platform
+    tabmap.ps1          session to tab, over time, the lane order read off it,
+                        and the pid match both Linux backends answer with.
+                        Knows no platform
     windows-terminal.ps1  the UI Automation backend
     konsole.ps1           the D-Bus backend
     tmux.ps1              the backend that runs inside tmux: a session is the scope, a window the tab
