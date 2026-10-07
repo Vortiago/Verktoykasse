@@ -9,7 +9,7 @@ TEST_AUDIT_CONCURRENCY=3 TEST_AUDIT_TIMEOUT_MS=600000 node cli.mjs --selftest --
 
 > The run took 66m11s on llama-arbiter branch `systemone-speed`, with the 16-question battery. On the same router the 29-question battery took 88m38s, and before the router changes it took 95m56s.
 > "Sure false positives" counted an assert kind as sure whenever both phrasings agreed. The finding rules now also need a probability of 0.75 or more for that kind.
-> Node's `fetch` stops at 300 s for a response, whatever `TEST_AUDIT_TIMEOUT_MS` says.
+> The client then used `fetch`, which gives up after 300 s whatever `TEST_AUDIT_TIMEOUT_MS` says. It now posts with `node:http`, so only the timeout ends a call.
 
 This file records a calibration run of `test-audit` over the labelled corpus. Each case is one test with a known defect, or a clean test. The [legend](#legend) explains the terms.
 

@@ -37,7 +37,17 @@ declare function setTimeout(callback: (_: void) => void, ms?: number): unknown;
 declare class URL {
   constructor(url: string, base?: string | URL);
   readonly href: string;
+  readonly protocol: string;
 }
+
+interface Buffer {
+  toString(encoding: "utf8"): string;
+}
+
+declare var Buffer: {
+  byteLength(text: string): number;
+  concat(chunks: Buffer[]): Buffer;
+};
 
 interface AbortSignal {
   readonly aborted: boolean;
@@ -61,6 +71,49 @@ declare function fetch(
 ): Promise<FetchResponse>;
 
 // ── node:* modules ─────────────────────────────────────────────────────────
+
+/** The slice of node:http and node:https that a JSON POST and a test server use. */
+interface NodeIncomingMessage {
+  readonly statusCode?: number;
+  on(event: "data", listener: (chunk: Buffer) => void): this;
+  on(event: "end", listener: () => void): this;
+  on(event: "error", listener: (err: Error) => void): this;
+}
+
+interface NodeClientRequest {
+  on(event: "error", listener: (err: Error) => void): this;
+  end(body?: string): this;
+}
+
+type NodeRequest = (
+  url: URL,
+  options: { method?: string; headers?: Record<string, string | number>; signal?: AbortSignal },
+  callback: (res: NodeIncomingMessage) => void,
+) => NodeClientRequest;
+
+declare module "node:http" {
+  export const request: NodeRequest;
+  interface ServerResponse {
+    writeHead(status: number, headers?: Record<string, string>): this;
+    end(body?: string): this;
+  }
+  interface Server {
+    listen(port: number, host: string, callback: () => void): this;
+    address(): unknown;
+    close(): this;
+  }
+  export function createServer(handler: (req: NodeIncomingMessage, res: ServerResponse) => void): Server;
+}
+
+declare module "node:https" {
+  export const request: NodeRequest;
+}
+
+declare module "node:net" {
+  export interface AddressInfo {
+    port: number;
+  }
+}
 
 declare module "node:process" {
   const process: NodeProcess;
@@ -131,6 +184,7 @@ declare module "node:assert/strict" {
     deepEqual<T>(actual: unknown, expected: T, message?: string | Error): asserts actual is T;
     match(value: string, regExp: RegExp, message?: string | Error): void;
     throws(block: () => unknown, error?: RegExp, message?: string | Error): void;
+    rejects(promise: Promise<unknown>, error?: RegExp, message?: string | Error): Promise<void>;
   }
   const assert: Assert;
   export default assert;

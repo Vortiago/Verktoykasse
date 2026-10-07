@@ -1,4 +1,4 @@
-// canonical source: test-audit/classifier/systemone.mjs@4ba9d42 sha256:4a089ed76ca07b6725c3148bd2bd418202a67ae2f791b11f823fcfe154463672 - vendored copy, do not edit here
+// canonical source: test-audit/classifier/systemone.mjs@e71279c sha256:dabaf37a21b81762ff59230b4200d30ca1ec564e4b2d19973d88d439c99ce822 - vendored copy, do not edit here
 // SystemOne client for test-audit. One Jev-compatible typed-question endpoint:
 // a local Ollama 0.35 or later, llama-arbiter, Ollaya, or any TypeSafe server.
 //
@@ -27,6 +27,8 @@
 // A small, fast model as a one-token classifier for each question is an
 // engineering choice, not a published finding.
 
+import { request as httpRequest } from "node:http";
+import { request as httpsRequest } from "node:https";
 import config from "../config.mjs";
 
 /** @typedef {"choice" | "score" | "noul"} QuestionType */
@@ -45,20 +47,36 @@ export async function ask(state, questions, opts = {}) {
   const { url = config.baseUrl, model = config.model, timeoutMs = config.timeoutMs, onResponse } = opts;
   const body = { model, state, questions };
 
-  const timeout = AbortSignal.timeout(timeoutMs);
-  const res = await fetch(`${url.replace(/\/+$/, "")}/v1/systemone`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-    signal: timeout,
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`systemone ${res.status}: ${text.slice(0, 300)}`);
-  }
-  const json = /** @type {SystemOneResponse} */ (await res.json());
+  const res = await post(`${url.replace(/\/+$/, "")}/v1/systemone`, JSON.stringify(body), timeoutMs);
+  if (res.status < 200 || res.status > 299) throw new Error(`systemone ${res.status}: ${res.text.slice(0, 300)}`);
+  const json = /** @type {SystemOneResponse} */ (JSON.parse(res.text));
   onResponse?.(json);
   return json.answers ?? {};
+}
+
+/**
+ * POST a JSON body and read the whole reply. Not fetch: Node's fetch gives up
+ * when the response headers take more than 300 s, whatever the signal says, and
+ * a busy endpoint answers a full battery slower than that. Here only `timeoutMs`
+ * ends the call.
+ * @param {string} url @param {string} body @param {number} timeoutMs
+ * @returns {Promise<{ status: number, text: string }>}
+ */
+function post(url, body, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const target = new URL(url);
+    const send = target.protocol === "https:" ? httpsRequest : httpRequest;
+    const headers = { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(body) };
+    const req = send(target, { method: "POST", headers, signal: AbortSignal.timeout(timeoutMs) }, (res) => {
+      /** @type {Buffer[]} */
+      const chunks = [];
+      res.on("data", (chunk) => chunks.push(chunk));
+      res.on("end", () => resolve({ status: res.statusCode ?? 0, text: Buffer.concat(chunks).toString("utf8") }));
+      res.on("error", reject);
+    });
+    req.on("error", reject);
+    req.end(body);
+  });
 }
 
 /**
