@@ -1,144 +1,116 @@
 {
   "can_fail_a": {
     "type": "noul",
-    "instructions": "Can breaking the named behaviour in the code under test make this test fail?",
+    "instructions": "Can a bug in the behaviour this test names make the test fail?",
     "criteria": {
-      "true": "some break makes it fail",
-      "false": "no break makes it fail"
-    }
-  },
-  "can_fail_b": {
-    "type": "noul",
-    "instructions": "Does this test pass however the code under test breaks the named behaviour?",
-    "criteria": {
-      "true": "it always passes",
-      "false": "some break makes it fail"
+      "true": "yes: some bug in that behaviour fails it",
+      "false": "no: it passes whatever the code does, as with a tautology, both sides from the code, or an assertion that never runs"
     }
   },
   "can_fail_c": {
     "type": "noul",
-    "instructions": "If the named behaviour regresses, can this test turn red?",
+    "instructions": "If the named behaviour regresses, does this test turn red?",
     "criteria": {
-      "true": "a regression can fail it",
-      "false": "a regression leaves it passing"
+      "true": "yes: a regression fails it",
+      "false": "no: a regression leaves it passing"
     }
   },
   "asserts_a": {
     "type": "choice",
-    "instructions": "Which assertion kind is the strongest assertion in this test?",
+    "instructions": "What does the strongest assertion check?",
     "criteria": {
-      "behaviour": "the output, against an expected value",
-      "hardcoded-data": "a value from the code under test itself",
-      "input-only": "its own input or setup",
-      "shape-only": "only type, length, keys, or presence",
-      "interaction-only": "only a mock or spy call",
-      "nothing": "nothing, a tautology, or only no throw"
+      "behaviour": "the output, against a value the test fixes or computes without the code",
+      "hardcoded-data": "the output, against a value from the code under test itself",
+      "input-only": "only the test's own input or setup",
+      "shape-only": "only type, length, keys, presence, or that it is truthy or defined",
+      "interaction-only": "only that a mock or spy was called",
+      "nothing": "nothing, a tautology, or only no throw",
+      "unclear": null
     }
   },
   "asserts_b": {
     "type": "choice",
     "instructions": "What does the strongest assertion check?",
     "criteria": {
+      "unclear": null,
       "nothing": "nothing, a tautology, or only no throw",
-      "interaction-only": "only a mock or spy call",
-      "shape-only": "only type, length, keys, or presence",
-      "input-only": "its own input or setup",
-      "hardcoded-data": "a value from the code under test itself",
-      "behaviour": "the output, against an expected value"
+      "interaction-only": "only that a mock or spy was called",
+      "shape-only": "only type, length, keys, presence, or that it is truthy or defined",
+      "input-only": "only the test's own input or setup",
+      "hardcoded-data": "the output, against a value from the code under test itself",
+      "behaviour": "the output, against a value the test fixes or computes without the code"
     }
   },
   "positive_a": {
     "type": "noul",
-    "instructions": "Does at least one assertion expect a non-empty value?",
+    "instructions": "Does an assertion expect a non-empty value that the code must produce?",
     "criteria": {
-      "true": "at least one expects a non-empty value",
-      "false": "every assertion expects empty, null, undefined, or no throw"
+      "true": "yes: a literal, an object, true or false, or an error message",
+      "false": "no: only empty ([], \"\", {}), null, undefined, or no throw"
     }
   },
   "positive_b": {
     "type": "noul",
-    "instructions": "Does every assertion expect only empty, null, undefined, or no throw?",
+    "instructions": "Does this test check a value the code returns, not only that it is empty or did not throw?",
     "criteria": {
-      "true": "every assertion expects empty, null, undefined, or no throw",
-      "false": "at least one expects a non-empty value"
+      "true": "yes: it checks a real value",
+      "false": "no: only empty, null, undefined, or no throw"
     }
   },
   "runs_a": {
     "type": "noul",
-    "instructions": "Does this test run, with no marker in the file narrowing the run?",
+    "instructions": "Does this test run, with no marker narrowing the run?",
     "criteria": {
-      "true": "it runs, and nothing narrows the run",
-      "false": "a marker stops it or narrows the run"
+      "true": "yes: no skip, todo, or x marker on it or its describe, and no focus-in-file flag",
+      "false": "no: a skip, todo, skipIf, or x marker stops it, or an only or focus marker narrows the file"
     }
   },
   "runs_b": {
     "type": "noul",
-    "instructions": "Does a marker stop this test or narrow the run?",
+    "instructions": "Is this test free of skip, todo, only, and focus markers, in its head, its scope, and its flags?",
     "criteria": {
-      "true": "a marker stops it or narrows the run",
-      "false": "it runs, and nothing narrows the run"
-    }
-  },
-  "type": {
-    "type": "choice",
-    "instructions": "What type of test is this?",
-    "criteria": {
-      "unit": "one unit, collaborators mocked or absent",
-      "integration": "several real units together",
-      "regression": "the name cites a past bug or issue",
-      "e2e": "the whole system through its public interface",
-      "smoke": "only that something runs or exists",
-      "characterization": "pins current output before a change"
+      "true": "yes: no such marker",
+      "false": "no: a marker is there"
     }
   },
   "conditional": {
     "type": "noul",
-    "instructions": "Does every assertion in this test always run? Answer no when a branch, a loop over a value that may be empty, an early return, or a try/catch can leave an assertion unrun or swallow its failure.",
+    "instructions": "Does every assertion always run?",
     "criteria": {
-      "true": "every assertion always runs",
-      "false": "a branch, loop, early return, or catch can leave an assertion unrun or swallow its failure"
+      "true": "yes: no branch, loop, early return, or catch can skip or swallow one",
+      "false": "no: a branch, a loop over a value that may be empty, an early return, or a catch can skip or swallow one"
     }
   },
   "isolated": {
     "type": "noul",
-    "instructions": "Does this test read only values that it builds itself, or that a hook in fixtures builds before each test? Answer no when it reads a value that another test must set, or mutable state in setup that is shared with other tests and that no hook resets. An object the file declares once, such as a registry, that this test reads but another test fills, is shared state.",
+    "instructions": "Does this test build everything it reads, so it passes alone and in any order?",
     "criteria": {
-      "true": "it builds what it reads, so it passes alone and in any order",
-      "false": "it reads state that another test sets, or mutable state shared with other tests"
+      "true": "yes: it, or a before-each hook, builds what it reads",
+      "false": "no: it reads a value another test sets, or a shared object no hook resets"
     }
   },
   "deterministic": {
     "type": "noul",
-    "instructions": "Does this test give the same result on every run? It does not when it reads the real clock or real randomness, calls the network, waits on a sleep, or relies on an order nothing guarantees. A clock, timer, or random source that the test fakes or seeds is under its control and is fine.",
+    "instructions": "Does this test give the same result on every run?",
     "criteria": {
-      "true": "the result is the same on every run of the same code",
-      "false": "the result can differ between runs of the same code"
+      "true": "yes: no real clock, randomness, network, sleep, or unguaranteed order, or it is faked or seeded",
+      "false": "no: it uses the real clock, randomness, the network, a sleep, or an unguaranteed order"
     }
   },
   "automated": {
     "type": "noul",
-    "instructions": "Does this test reach a pass or fail with no person doing or reading anything?",
+    "instructions": "Does this test pass or fail with no person acting or reading?",
     "criteria": {
-      "true": "it is self-checking and unattended",
-      "false": "it has no assertion and only prints, or it waits for a person to act or to read its output"
+      "true": "yes: it checks itself",
+      "false": "no: a person must act or read its output"
     }
   },
   "restores": {
     "type": "noul",
-    "instructions": "Does the test leave every global, environment variable, timer, module mock, spy, and shared object that the file or its setup declares as it found them? A restore in an after hook in fixtures counts. A test that changes none of these counts as yes.",
+    "instructions": "Does this test leave every global, environment variable, timer, mock, and shared object as it found them?",
     "criteria": {
-      "true": "it changes none of these, or it restores what it changes",
-      "false": "it leaves a global, environment variable, timer, mock, spy, or shared object changed"
+      "true": "yes: it changes none, or restores them",
+      "false": "no: it leaves one changed"
     }
-  },
-  "verdict": {
-    "type": "score",
-    "instructions": "How strong a guard is this test: slop, weak, good, or strong?",
-    "criteria": [
-      "slop",
-      "weak",
-      "good",
-      "strong"
-    ]
   }
 }

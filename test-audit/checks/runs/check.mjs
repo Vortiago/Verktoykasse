@@ -24,20 +24,15 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   reason: "does not run, or narrows the run",
   questions: {
     runs_a: noul(
-      "Does this test run, with no marker in the file narrowing the run?",
-      "it runs, and nothing narrows the run",
-      "a marker stops it or narrows the run",
+      "Does this test run, with no marker narrowing the run?",
+      "yes: no skip, todo, or x marker on it or its describe, and no focus-in-file flag",
+      "no: a skip, todo, skipIf, or x marker stops it, or an only or focus marker narrows the file",
     ),
     runs_b: noul(
-      "Does a marker stop this test or narrow the run?",
-      "a marker stops it or narrows the run",
-      "it runs, and nothing narrows the run",
+      "Is this test free of skip, todo, only, and focus markers, in its head, its scope, and its flags?",
+      "yes: no such marker",
+      "no: a marker is there",
     ),
   },
-  negated: ["runs_b"],
-  rubric: `Runs: read the test head, the scope field, and the flags field. A skip, todo, or
-  skipIf marker, or an x prefix such as xit or xdescribe, on the test or on a
-  describe around it stops the test. An only or focus marker anywhere in the file,
-  such as it.only, fit, or fdescribe, shows as the flag focus-in-file and narrows
-  the run.`,
+  negated: [],
 });

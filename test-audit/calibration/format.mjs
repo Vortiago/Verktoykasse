@@ -294,7 +294,7 @@ function knownDefect(row) {
  * What decided the outcome. Each check that can escalate gets a sentence: its
  * phrasings, the value they give, and its reasons. A check that escalates, or
  * that commits to the wrong can_fail value, gets its own line. One last line
- * holds the others. The type and the descriptive checks are in their own line.
+ * holds the others. The descriptive checks are in their own line.
  * @param {CalibrationLabel} label @param {AuditResult} result
  */
 function decided(label, result) {
@@ -302,7 +302,7 @@ function decided(label, result) {
   /** @type {string[]} */
   const quiet = [];
   for (const check of CHECKS) {
-    if (check.role === "type" || check.role === "descriptive") continue;
+    if (check.role === "descriptive" || check.role === "verdict") continue;
     const reasons = result.checks[check.name]?.reasons ?? [];
     const note = check.role === "can-fail" ? canFailNote(label, result) : { text: "", wrong: false };
     const escalates = reasons.length ? `**Escalates:** ${reasons.join(", ")}.` : "";
@@ -359,20 +359,16 @@ function descriptive(result) {
   const smells = [];
   /** @type {string[]} */
   const unanswered = [];
-  /** @type {string[]} */
-  const others = [];
   let clean = 0;
   for (const check of CHECKS) {
-    if (check.role === "type") {
-      for (const key of Object.keys(check.questions)) others.push(`${code(key)} ${answerText(key, result.answers[key])}`);
-    } else if (check.role === "descriptive") {
+    if (check.role === "descriptive") {
       const value = result.checks[check.name]?.value;
       if (value === true) clean += 1;
       else if (value === false) smells.push(`${code(check.name)} (${check.flag})`);
       else unanswered.push(code(check.name));
     }
   }
-  const parts = [`${clean} clean`, `smells: ${smells.join(", ") || "none"}`, `unanswered: ${unanswered.join(", ") || "none"}`, ...others];
+  const parts = [`${clean} clean`, `smells: ${smells.join(", ") || "none"}`, `unanswered: ${unanswered.join(", ") || "none"}`];
   return `**Descriptive:** ${parts.join(" · ")}.`;
 }
 
@@ -397,8 +393,7 @@ function legend() {
   const [asserts] = CHECKS.filter((check) => check.role === "asserts");
   const [verdict] = CHECKS.filter((check) => check.role === "verdict");
   const gates = CHECKS.filter((check) => check.role === "gate").map((check) => `${code(check.name)} (${Object.keys(check.questions).map(code).join(", ")})`);
-  const negated = CHECKS.flatMap((check) => check.negated ?? []);
-  const levels = verdict.levels;
+  const levels = verdict.role === "verdict" ? verdict.levels : [];
   return [
     "## Legend",
     "",
@@ -406,12 +401,11 @@ function legend() {
     "- **Check**: the check that the case is meant to catch, in `checks/<check>/check.mjs`. A mixed case, and a clean case that pins no single check, belong to the `verdict` check. A label can also name a check and the value it must give.",
     "- **Escalate**: the tool sends the test to a human, so the test **needs eyes**. Each reason says why. A test with no reason **passes**.",
     `- **can_fail**: the probability that a change to the code under test can make the test fail. The tool asks it in ${Object.keys(canFail.questions).length} phrasings and takes the mean. The **spread** is the highest value minus the lowest. A spread above \`TEST_AUDIT_STABLE_BAND\` makes the value borderline or unstable, and the test escalates.`,
-    `- **Twin pair**: ${gates.join(" and ")}. The tool asks each twice. The value counts only when both phrasings agree. A "no" escalates.`,
-    `- **Negated phrasing**: ${negated.map(code).join(", ")} ask the opposite, so their "no" is the good answer.`,
+    `- **Twin pair**: ${gates.join(" and ")}. The tool asks each twice, in two plain phrasings. The value counts only when both agree. A "no" escalates.`,
     `- **asserts**: what the assertion checks. Only ${code(Object.keys(asserts.kinds)[0])} is a real guard. ${Object.keys(asserts.questions).map(code).join(" and ")} list the options in opposite order, and must agree.`,
-    `- **verdict**: a score from 0 (${levels[0]}) to ${levels.length - 1} (${levels[levels.length - 1]}). A verdict of weak or lower escalates.`,
+    `- **verdict**: ${levels.join(", ")}, computed from the answers, not asked: ${levels[0]} when the test cannot fail or asserts nothing, ${levels[1]} when it checks only a shape, a mock call, or its input, or has no positive assertion. It adds no reason of its own.`,
     '- **Descriptive question**: a "no" is a **smell**. It raises the flag in brackets. It does not escalate the test.',
-    "- **Number in brackets**: for a yes/no question, the probability of yes. For a choice, the probability of the chosen option. For the verdict, the score.",
+    "- **Number in brackets**: for a yes/no question, the probability of yes. For a choice, the probability of the chosen option.",
     "- **unanswered**: the endpoint gave no answer. **untrusted**: the answer has a `mass` below `TEST_AUDIT_MIN_MASS`. **not scored**: the tool did not commit to a can_fail value, so the agreement does not count the case.",
     "- **Status** of a case:",
     ...Object.values(STATUS).map((status) => `  - **${status.name}**: ${status.meaning}`),
@@ -429,7 +423,7 @@ function legend() {
 /** What a question checks, from its criteria. @param {Question} question */
 function checksText(question) {
   if (Array.isArray(question.criteria)) return `scale: ${question.criteria.join(", ")}`;
-  if (question.type === "noul") return `yes: ${question.criteria.true}`;
+  if (question.type === "noul") return String(question.criteria.true);
   return `one of: ${Object.keys(question.criteria).join(", ")}`;
 }
 

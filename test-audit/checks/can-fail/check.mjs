@@ -36,25 +36,15 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   role: "can-fail",
   questions: {
     can_fail_a: noul(
-      "Can breaking the named behaviour in the code under test make this test fail?",
-      "some break makes it fail",
-      "no break makes it fail",
-    ),
-    can_fail_b: noul(
-      "Does this test pass however the code under test breaks the named behaviour?",
-      "it always passes",
-      "some break makes it fail",
+      "Can a bug in the behaviour this test names make the test fail?",
+      "yes: some bug in that behaviour fails it",
+      "no: it passes whatever the code does, as with a tautology, both sides from the code, or an assertion that never runs",
     ),
     can_fail_c: noul(
-      "If the named behaviour regresses, can this test turn red?",
-      "a regression can fail it",
-      "a regression leaves it passing",
+      "If the named behaviour regresses, does this test turn red?",
+      "yes: a regression fails it",
+      "no: a regression leaves it passing",
     ),
   },
-  negated: ["can_fail_b"],
-  rubric: `Falsifiable: some break of the named behaviour in the code under test makes
-  the test fail. Not falsifiable: no break can, as in a tautology (true === true, or
-  both sides call the same code), an assertion on data the code copies straight
-  from its input, or one that runs zero times. A shape, truthy, or no-throw check
-  can still fail.`,
+  negated: [],
 });

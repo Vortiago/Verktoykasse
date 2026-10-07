@@ -17,8 +17,8 @@ export const score = (value, mass = 0.99) => ({ type: "score", probabilities: {}
 
 /**
  * A passing battery: every yes/no question says the good answer (a negated
- * phrasing says no), every asserts phrasing says the one real guard, the type
- * is its first label, and the verdict is the top level.
+ * phrasing says no), every asserts phrasing says the one real guard, and any
+ * other choice its first label.
  * @returns {Record<string, AuditAnswer>}
  */
 export function goodAnswers() {

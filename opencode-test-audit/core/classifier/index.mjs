@@ -1,4 +1,4 @@
-// canonical source: test-audit/classifier/index.mjs@9ae1caa sha256:9340007cc0f2374a257d44ecb3d7137db5280e892cd832b24f1a19e2fac218cf - vendored copy, do not edit here
+// canonical source: test-audit/classifier/index.mjs@c34fea8 sha256:1bbf85ec9e5cd35306ae32ad83041e895652c37f8421e9e7f9a8420e2925b195 - vendored copy, do not edit here
 // The classifier: ask the battery about one test and reduce the answers to a
 // verdict. This is the module's interface. `classify` takes an injectable `ask`,
 // so the whole decision path (batching, polarity, spread, escalation) is tested
@@ -6,7 +6,7 @@
 // unstable verdict-carrying answer escalates the test, and never a tie-break.
 
 import { ask as systemoneAsk } from "./systemone.mjs";
-import { BATTERY, RUBRIC } from "../checks/index.mjs";
+import { BATTERY } from "../checks/index.mjs";
 import { verdictFrom } from "./verdict.mjs";
 import config from "../config.mjs";
 
@@ -25,8 +25,7 @@ export { questionValue, verdictFrom } from "./verdict.mjs";
 const MIN_CONTEXT = 200;
 
 /**
- * The per-test state. The shared rubric comes first, so a truncation never drops
- * the definitions; then the test record, then the change context. The test is
+ * The per-test state: the test record, then the change context. The test is
  * the subject, so it takes the room first and the context gets what is left: a
  * long test squeezes the context, not its own tail, where the assertions sit.
  * The source sits early in the record, so a test longer than the cap still
@@ -54,9 +53,9 @@ export function buildState(test, changeContext = "", cap = config.stateCap) {
     null,
     2,
   );
-  const room = Math.max(400, cap - RUBRIC.length - 32);
+  const room = Math.max(400, cap - 32);
   const testText = record.length > room ? `${record.slice(0, room)}\n… [test truncated]` : record;
-  const state = `${RUBRIC}\n\nTest:\n${testText}`;
+  const state = `Test:\n${testText}`;
   const contextRoom = cap - state.length - 32;
   if (!changeContext || contextRoom < MIN_CONTEXT) return state;
   const context = changeContext.length > contextRoom ? `${changeContext.slice(0, contextRoom)}\n… [context truncated]` : changeContext;

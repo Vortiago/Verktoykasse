@@ -1,4 +1,4 @@
-// canonical source: test-audit/checks/isolated/check.mjs@0252a4d sha256:e7dc61f69f66c719eccb31c7c2c2ba440cc3881deedb6d424d98ef0a5d6ee576 - vendored copy, do not edit here
+// canonical source: test-audit/checks/isolated/check.mjs@c34fea8 sha256:d606241639b209529284838b64541f68040640e19e0c1cf2f874b2a01e622e66 - vendored copy, do not edit here
 // The isolated check: does the test read only what it or a before-each hook
 // builds, so it passes alone and in any order? It is about what the test reads;
 // `restores` is about what it leaves. A "no" raises the `order-dependent` flag.
@@ -20,12 +20,9 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   flag: "order-dependent",
   questions: {
     isolated: noul(
-      "Does this test read only values that it builds itself, or that a hook in fixtures builds before each test? Answer no when it reads a value that another test must set, or mutable state in setup that is shared with other tests and that no hook resets. An object the file declares once, such as a registry, that this test reads but another test fills, is shared state.",
-      "it builds what it reads, so it passes alone and in any order",
-      "it reads state that another test sets, or mutable state shared with other tests",
+      "Does this test build everything it reads, so it passes alone and in any order?",
+      "yes: it, or a before-each hook, builds what it reads",
+      "no: it reads a value another test sets, or a shared object no hook resets",
     ),
   },
-  rubric: `Isolated: the test reads only what it or a before-each hook builds, so it passes
-  alone and in any order. Isolated is about what the test reads; Restores state
-  is about what it leaves.`,
 });

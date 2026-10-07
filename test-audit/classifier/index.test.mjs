@@ -5,9 +5,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { buildState, classify } from "./index.mjs";
-import { BATTERY, CHECKS, RUBRIC } from "../checks/index.mjs";
+import { BATTERY, CHECKS } from "../checks/index.mjs";
 import { verdictFrom } from "./verdict.mjs";
-import { choice, goodAnswers, noul, score } from "../test-fixtures.mjs";
+import { choice, goodAnswers, noul } from "../test-fixtures.mjs";
 
 /** @typedef {import("../types.d.ts").AuditTest} AuditTest */
 
@@ -18,28 +18,31 @@ test("the second asserts phrasing lists the kinds in reverse order", () => {
   assert.deepEqual(Object.keys(BATTERY.asserts_b.criteria), [...Object.keys(BATTERY.asserts_a.criteria)].reverse());
 });
 
-test("buildState sends the rubric, the test, and the context", () => {
-  const full = buildState(TEST, "the change", 10_000);
-  assert.match(full, /Rubric for judging a test/);
-  assert.match(full, /expect\(add\(1, 1\)\)/);
-  assert.match(full, /the change/);
+test("no question is negated: each is asked the plain way round", () => {
+  for (const check of CHECKS) assert.deepEqual(check.negated ?? [], [], check.name);
 });
 
-test("buildState keeps the rubric and truncates the test under pressure", () => {
+test("buildState sends the test and the context, and no rubric", () => {
+  const full = buildState(TEST, "the change", 10_000);
+  assert.match(full, /^Test:\n/);
+  assert.match(full, /expect\(add\(1, 1\)\)/);
+  assert.match(full, /the change/);
+  assert.doesNotMatch(full, /Rubric/);
+});
+
+test("buildState truncates a test longer than the cap", () => {
   const big = { ...TEST, source: `test("big", () => { ${"expect(x).toBe(1); ".repeat(200)}});` };
-  const capped = buildState(big, "", RUBRIC.length + 300);
-  assert.match(capped, /Rubric for judging a test/);
-  assert.match(capped, /test truncated/);
+  assert.match(buildState(big, "", 600), /test truncated/);
 });
 
 test("a long test keeps its assertion, and the change context gives way", () => {
   const setup = Array.from({ length: 40 }, (_, i) => `  const v${i} = await setupThing${i}({ id: ${i}, name: "fixture-${i}" });`);
   const long = { ...TEST, source: `test("long", async () => {\n${setup.join("\n")}\n  expect(total).toBe(4200);\n});` };
-  const state = buildState(long, "c".repeat(3000), 8000);
+  const state = buildState(long, "c".repeat(3000), 5000);
   assert.match(state, /toBe\(4200\)/);
   assert.equal(state.includes("test truncated"), false);
   assert.match(state, /context truncated/);
-  assert.equal(state.length <= 8000 + "\n… [context truncated]".length, true);
+  assert.equal(state.length <= 5000 + "\n… [context truncated]".length, true);
 });
 
 test("buildState carries an enclosing describe head and the extractor's notes", () => {
@@ -50,19 +53,18 @@ test("buildState carries an enclosing describe head and the extractor's notes", 
   assert.equal(buildState(TEST, "", 10_000).includes('"scope"'), false);
 });
 
-test("a clean test does not escalate", () => {
+test("a clean test does not escalate, and its verdict is good", () => {
   const result = verdictFrom(TEST, goodAnswers());
   assert.equal(result.needsEyes, false);
   assert.deepEqual(result.reasons, []);
-  assert.equal(result.score.label, "strong");
+  assert.equal(result.score.label, "good");
   assert.equal(result.canFail?.state, "stable");
   assert.equal(result.asserts, "behaviour");
   assert.equal(result.checks.can_fail.value, true);
 });
 
 test("a paraphrase spread above the band is instability, not a tie to break", () => {
-  // The tautology the live probe missed: one phrasing says yes, its twins say no.
-  const result = verdictFrom(TEST, { ...goodAnswers(), can_fail_a: noul(0.92), can_fail_b: noul(0.99), can_fail_c: noul(0.88) });
+  const result = verdictFrom(TEST, { ...goodAnswers(), can_fail_a: noul(0.92), can_fail_c: noul(0.1) });
   assert.equal(result.canFail?.state, "unstable");
   assert.equal(result.needsEyes, true);
   assert.match(result.reasons.join(" "), /can_fail unstable/);
@@ -89,7 +91,7 @@ test("asserts that disagree escalate, and any non-behaviour assertion escalates"
   assert.equal(disagree.checks.asserts.group?.state, "unstable");
   assert.match(disagree.reasons.join(" "), /asserts unstable/);
 
-  for (const kind of ["nothing", "shape-only", "hardcoded-data", "interaction-only"]) {
+  for (const kind of ["nothing", "shape-only", "hardcoded-data", "interaction-only", "input-only", "unclear"]) {
     const result = verdictFrom(TEST, { ...goodAnswers(), asserts_a: choice(kind), asserts_b: choice(kind) });
     assert.equal(result.needsEyes, true, kind);
     assert.match(result.reasons.join(" "), new RegExp(`asserts ${kind}`));
@@ -97,29 +99,25 @@ test("asserts that disagree escalate, and any non-behaviour assertion escalates"
   }
 });
 
-test("a test with no positive assertion escalates", () => {
-  const result = verdictFrom(TEST, { ...goodAnswers(), positive_a: noul(0.1), positive_b: noul(0.9) });
+test("a test with no positive assertion escalates, and its verdict is weak", () => {
+  const result = verdictFrom(TEST, { ...goodAnswers(), positive_a: noul(0.1), positive_b: noul(0.1) });
   assert.equal(result.needsEyes, true);
   assert.match(result.reasons.join(" "), /no positive assertion/);
+  assert.equal(result.score.label, "weak");
 });
 
-test("a weak or slop verdict escalates", () => {
-  assert.match(verdictFrom(TEST, { ...goodAnswers(), verdict: score(0) }).reasons.join(" "), /verdict slop/);
-  assert.match(verdictFrom(TEST, { ...goodAnswers(), verdict: score(1) }).reasons.join(" "), /verdict weak/);
-  assert.match(verdictFrom(TEST, { ...goodAnswers(), verdict: noul(0.5) }).reasons.join(" "), /verdict unclassified/);
-});
-
-test("a score between levels rounds to the nearest level", () => {
-  const result = verdictFrom(TEST, { ...goodAnswers(), verdict: score(2.25) });
-  assert.equal(result.score.label, "good");
-  assert.equal(result.needsEyes, false);
-  const low = verdictFrom(TEST, { ...goodAnswers(), verdict: score(0.4) });
-  assert.equal(low.score.label, "slop");
-  assert.equal(low.needsEyes, true);
+test("the verdict is computed from the answers that carry it", () => {
+  const level = (/** @type {Record<string, any>} */ answers) => verdictFrom(TEST, { ...goodAnswers(), ...answers }).score.label;
+  assert.equal(level({ asserts_a: choice("nothing"), asserts_b: choice("nothing") }), "slop");
+  assert.equal(level({ asserts_a: choice("hardcoded-data"), asserts_b: choice("hardcoded-data") }), "slop");
+  assert.equal(level({ asserts_a: choice("shape-only"), asserts_b: choice("shape-only") }), "weak");
+  assert.equal(level({ can_fail_a: noul(0.1), can_fail_c: noul(0.1) }), "slop");
+  // Phrasings that disagree commit to nothing, so there is no verdict.
+  assert.equal(level({ asserts_b: choice("shape-only") }), undefined);
 });
 
 test("a test that does not run escalates", () => {
-  const result = verdictFrom(TEST, { ...goodAnswers(), runs_a: noul(0.1), runs_b: noul(0.9) });
+  const result = verdictFrom(TEST, { ...goodAnswers(), runs_a: noul(0.1), runs_b: noul(0.1) });
   assert.equal(result.needsEyes, true);
   assert.match(result.reasons.join(" "), /does not run/);
 });
@@ -134,13 +132,13 @@ test("descriptive gates report as flags without escalating", () => {
   }
 });
 
-test("a good verdict beside a stable cannot-fail answer escalates", () => {
-  // The three phrasings agree the test cannot fail, yet the verdict says strong.
-  const result = verdictFrom(TEST, { ...goodAnswers(), can_fail_a: noul(0.2), can_fail_b: noul(0.8), can_fail_c: noul(0.25) });
+test("cannot fail beside a behaviour assertion is a contradiction, and escalates", () => {
+  // Each answer is stable, so only a rule across questions sees the conflict.
+  const result = verdictFrom(TEST, { ...goodAnswers(), can_fail_a: noul(0.2), can_fail_c: noul(0.25) });
   assert.equal(result.canFail?.state, "stable");
   assert.equal(result.checks.can_fail.value, false);
   assert.equal(result.needsEyes, true);
-  assert.match(result.reasons.join(" "), /can_fail contradicts the verdict/);
+  assert.match(result.reasons.join(" "), /can_fail contradicts asserts/);
 });
 
 test("a transport failure is an audit failure", () => {
@@ -167,22 +165,9 @@ test("classify asks once with the state and the whole battery", async () => {
 
 test("answers without mass are accepted, so an Ollama response works", () => {
   // Ollama 0.35 reports no `mass`; only the fields the question needs are sent.
-  const answers = {
-    can_fail_a: { noul: 0.99 },
-    can_fail_b: { noul: 0.01 },
-    can_fail_c: { noul: 0.98 },
-    asserts_a: { choice: "behaviour" },
-    asserts_b: { choice: "behaviour" },
-    positive_a: { noul: 0.99 },
-    positive_b: { noul: 0.01 },
-    runs_a: { noul: 0.99 },
-    runs_b: { noul: 0.01 },
-    type: { choice: "unit" },
-    deterministic: { noul: 0.99 },
-    one_thing: { noul: 0.99 },
-    name_matches: { noul: 0.99 },
-    verdict: { score: 3 },
-  };
+  const answers = Object.fromEntries(
+    Object.entries(goodAnswers()).map(([key, answer]) => [key, "choice" in answer ? { choice: answer.choice } : { noul: answer.noul }]),
+  );
   const result = verdictFrom(TEST, answers);
   assert.equal(result.canFail?.state, "stable");
   assert.equal(result.asserts, "behaviour");
@@ -197,7 +182,7 @@ test("the extractor's flags and the positive answer reach the result", () => {
 });
 
 test("a twin that disagrees escalates, so one confident wrong answer cannot pass alone", () => {
-  const result = verdictFrom(TEST, { ...goodAnswers(), positive_a: noul(0.92), positive_b: noul(0.9) });
+  const result = verdictFrom(TEST, { ...goodAnswers(), positive_a: noul(0.92), positive_b: noul(0.1) });
   assert.equal(result.checks.positive.value, undefined);
   assert.equal(result.needsEyes, true);
   assert.match(result.reasons.join(" "), /positive unstable \(spread 0\.82\)/);
@@ -211,10 +196,10 @@ test("a twin with one phrasing unanswered escalates", () => {
 });
 
 test("each check yields one result, and the reasons come in role order", () => {
-  const answers = { ...goodAnswers(), can_fail_c: noul(0.4), asserts_a: choice("nothing"), asserts_b: choice("nothing"), runs_a: noul(0.1), runs_b: noul(0.9), verdict: score(1) };
+  const answers = { ...goodAnswers(), can_fail_c: noul(0.4), asserts_a: choice("nothing"), asserts_b: choice("nothing"), runs_a: noul(0.1), runs_b: noul(0.1) };
   const result = verdictFrom(TEST, answers, { error: "partial" });
   assert.deepEqual(Object.keys(result.checks), CHECKS.map((check) => check.name));
-  assert.deepEqual(result.reasons, ["no answers (partial)", "can_fail unstable (spread 0.59)", "does not run, or narrows the run", "asserts nothing", "verdict weak"]);
+  assert.deepEqual(result.reasons, ["no answers (partial)", "can_fail unstable (spread 0.59)", "does not run, or narrows the run", "asserts nothing"]);
   assert.deepEqual(result.checks.runs, { value: false, group: result.checks.runs.group, reasons: ["does not run, or narrows the run"], flags: [] });
   assert.deepEqual(result.checks.asserts.flags, ["nothing"]);
 });
@@ -223,7 +208,4 @@ test("an exact tie escalates instead of passing", () => {
   const gate = verdictFrom(TEST, { ...goodAnswers(), runs_a: noul(0.5), runs_b: noul(0.5) });
   assert.equal(gate.checks.runs.value, undefined);
   assert.match(gate.reasons.join(" "), /runs undecided/);
-  const level = verdictFrom(TEST, { ...goodAnswers(), verdict: score(1.5) });
-  assert.equal(level.score.label, "weak");
-  assert.equal(level.needsEyes, true);
 });

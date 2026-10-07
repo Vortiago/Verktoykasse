@@ -6,11 +6,15 @@
 // its answers. The rules read the rest from the check itself: its negated
 // phrasings, its assert kinds, its escalation reason, its flag, and its levels.
 //
-// The twin rule: each verdict-carrying judgement is asked in two or three
-// phrasings, one of them negated. The rules align their polarity and trust the
-// value only when the spread is inside TEST_AUDIT_STABLE_BAND. A disagreement
-// escalates to a human. A third phrasing never breaks the tie. The `asserts`
-// pair also lists its kinds in reverse order, as a position control.
+// The twin rule: each verdict-carrying judgement is asked in two phrasings, both
+// asked the plain way round: a decision model answers a negation less
+// reliably. The rules trust the value only when the spread is inside
+// TEST_AUDIT_STABLE_BAND. A disagreement escalates to a human; it is never
+// broken by a vote. The `asserts` pair also lists its kinds in reverse order,
+// as a position control, and offers `unclear`, which escalates.
+//
+// The verdict is not asked. It is computed from the answers that carry it, so
+// each question judges one thing, and code owns the composition.
 //
 // Sources:
 // - Xuezhi Wang et al., Self-Consistency Improves Chain of Thought Reasoning
@@ -34,8 +38,11 @@
 //   https://www.martinfowler.com/articles/sensors-for-coding-agents.html
 //   An inferential sensor reports, and a human decides. So a disagreement
 //   escalates and is never resolved by a vote.
-// The band default (0.25), the four verdict levels, and the rule that a
-// confident "cannot fail" contradicts a good verdict are house choices.
+// - TypeSafe AI, System One docs: one specific, well-scoped question each;
+//   double negatives are answered less reliably; code owns composition.
+//   https://docs.typesafe.ai/
+// The band default (0.25), the three verdict levels, and the rule that "cannot
+// fail" contradicts a behaviour assertion are house choices.
 
 import { trusted } from "./systemone.mjs";
 import { CHECKS } from "../checks/index.mjs";
@@ -51,11 +58,13 @@ import config from "../config.mjs";
 /** A yes/no answer at or above this reads as yes. */
 const YES = 0.5;
 
-/** A verdict at or below this level escalates. */
-const WEAK = "weak";
+/** The assert kinds that leave a test unable to guard anything: the verdict is slop. */
+const SLOP_KINDS = ["nothing", "hardcoded-data"];
+/** The assert kinds that check something, but not the behaviour: the verdict is weak. */
+const WEAK_KINDS = ["shape-only", "interaction-only", "input-only"];
 
 /** The roles whose reasons escalate a test, in the order the result lists them. */
-const REASON_ORDER = ["can-fail", "gate", "asserts", "verdict"];
+const REASON_ORDER = ["can-fail", "gate", "asserts"];
 
 /** The check that asks each question, keyed by the question. */
 const OWNER = new Map(CHECKS.flatMap((check) => Object.keys(check.questions).map((key) => /** @type {const} */ ([key, check]))));
@@ -73,9 +82,7 @@ export function verdictFrom(test, answers, opts = {}) {
   const checks = {};
   /** @type {CheckResult | undefined} */
   let canFail;
-  /** @type {CheckResult | undefined} */
-  let verdict;
-  /** @type {Pick<AuditResult, "asserts" | "type" | "score">} */
+  /** @type {Pick<AuditResult, "asserts" | "score">} */
   const views = { score: {} };
   for (const check of CHECKS) {
     switch (check.role) {
@@ -105,12 +112,6 @@ export function verdictFrom(test, answers, opts = {}) {
         views.asserts = kind;
         break;
       }
-      case "type": {
-        const [key] = Object.keys(check.questions);
-        views.type = field(answers[key], "choice", "string");
-        checks[check.name] = { value: views.type, reasons: [], flags: [] };
-        break;
-      }
       case "descriptive": {
         // A descriptive answer reports as a flag. It never escalates.
         const [key] = Object.keys(check.questions);
@@ -118,28 +119,30 @@ export function verdictFrom(test, answers, opts = {}) {
         checks[check.name] = { value, reasons: [], flags: value === false ? [check.flag] : [] };
         break;
       }
-      case "verdict": {
-        const [key] = Object.keys(check.questions);
-        const score = scoreOf(answers[key]);
-        const label = levelOf(score, check.levels);
-        /** @type {string[]} */
-        const reasons = [];
-        if (label === undefined) reasons.push(`${check.name} unclassified`);
-        else if (check.levels.indexOf(label) <= check.levels.indexOf(WEAK)) reasons.push(`${check.name} ${label}`);
-        verdict = checks[check.name] = { value: label, reasons, flags: [] };
-        views.score = { value: score, label };
+      case "verdict":
+        // No questions: the verdict is computed below, from the other checks.
         break;
-      }
     }
   }
-  // A confident "cannot fail" beside a good verdict is a contradiction: a guard
-  // that never goes red cannot be good. The spread cannot see this, because the
-  // three phrasings agree; only a cross-question rule catches it. A verdict with
-  // no reason is good or better.
-  const mean = canFail?.group?.mean;
-  if (canFail && typeof mean === "number" && mean < YES && verdict?.reasons.length === 0) {
-    canFail.reasons.push("can_fail contradicts the verdict");
+
+  // The verdict, from the answers that carry it. It adds no reason: each answer
+  // behind a slop or weak level already escalates on its own.
+  const kind = views.asserts;
+  const verdictCheck = CHECKS.find((check) => check.role === "verdict");
+  /** @type {string | undefined} */
+  let level;
+  if (canFail?.value === false || (kind && SLOP_KINDS.includes(kind))) level = "slop";
+  else if ((kind && WEAK_KINDS.includes(kind)) || checks.positive?.value === false) level = "weak";
+  else if (canFail?.value === true && kind === "behaviour") level = "good";
+  if (verdictCheck?.role === "verdict") {
+    checks[verdictCheck.name] = { value: level, reasons: [], flags: [] };
+    if (level) views.score = { value: verdictCheck.levels.indexOf(level), label: level };
   }
+
+  // Answers that contradict each other: a test that cannot fail cannot also
+  // check the behaviour. Each answer is stable on its own, so only a rule across
+  // questions sees it.
+  if (canFail?.value === false && kind === "behaviour") canFail.reasons.push("can_fail contradicts asserts");
 
   const reasons = [
     ...(opts.error ? [`no answers (${opts.error})`] : []),
@@ -153,7 +156,6 @@ export function verdictFrom(test, answers, opts = {}) {
     checks,
     canFail: canFail?.group,
     asserts: views.asserts,
-    type: views.type,
     score: views.score,
     flags,
     needsEyes: reasons.length > 0,
@@ -175,7 +177,6 @@ export function questionValue(key, answer) {
   const type = check?.questions[key].type;
   if (type === "noul") return boolOf(answer);
   if (type === "choice") return field(answer, "choice", "string");
-  if (check?.role === "verdict") return levelOf(scoreOf(answer), check.levels);
   return undefined;
 }
 
@@ -257,23 +258,4 @@ function field(answer, key, kind) {
 function boolOf(answer) {
   const value = field(answer, "noul", "number");
   return value === undefined ? undefined : value >= YES;
-}
-
-/** @param {AuditAnswer | undefined} answer @returns {number | undefined} */
-function scoreOf(answer) {
-  const score = field(answer, "score", "number");
-  return Number.isFinite(score) ? score : undefined;
-}
-
-/**
- * The score answer is a continuous expected level, so it lands between two
- * levels. Round to the nearest level, a tie down; a value off the scale is not a verdict.
- * @param {number | undefined} score @param {string[]} levels
- * @returns {string | undefined}
- */
-function levelOf(score, levels) {
-  if (score === undefined || score < -0.5 || score >= levels.length - 0.5) return undefined;
-  // A score halfway between two levels takes the lower one, so a tie between
-  // weak and good escalates rather than passes.
-  return levels[Math.ceil(score - 0.5)];
 }

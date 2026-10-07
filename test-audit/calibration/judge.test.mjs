@@ -7,7 +7,7 @@ import { judge, rowStatus } from "./judge.mjs";
 import { loadLabels, selectLabels } from "./labels.mjs";
 import { codeContext } from "./case-state.mjs";
 import { verdictFrom } from "../classifier/verdict.mjs";
-import { goodAnswers, noul, score } from "../test-fixtures.mjs";
+import { choice, goodAnswers, noul } from "../test-fixtures.mjs";
 
 /** @typedef {import("../types.d.ts").AuditAnswer} AuditAnswer */
 /** @typedef {import("../types.d.ts").CalibrationLabel} CalibrationLabel */
@@ -29,11 +29,11 @@ function row(label, answers, error) {
 /** A real guard: it can fail, and nothing escalates. */
 const GOOD = goodAnswers();
 /** A stable "cannot fail": the phrasings agree, so the tool commits to no. It escalates. */
-const CANNOT_FAIL = { ...GOOD, can_fail_a: noul(0.1), can_fail_b: noul(0.9), can_fail_c: noul(0.1) };
-/** A good can_fail beside a slop verdict: it escalates. */
-const SLOP = { ...GOOD, verdict: score(0) };
+const CANNOT_FAIL = { ...GOOD, can_fail_a: noul(0.1), can_fail_c: noul(0.1), asserts_a: choice("nothing"), asserts_b: choice("nothing") };
+/** A good can_fail beside an assertion that checks nothing, a slop verdict: it escalates. */
+const SLOP = { ...GOOD, asserts_a: choice("nothing"), asserts_b: choice("nothing") };
 /** Phrasings that disagree beyond the band: the tool commits to no value. */
-const UNSTABLE = { ...GOOD, can_fail_a: noul(0.9), can_fail_b: noul(0.9), can_fail_c: noul(0.1) };
+const UNSTABLE = { ...GOOD, can_fail_a: noul(0.9), can_fail_c: noul(0.1) };
 
 test("a clean run passes", () => {
   const rows = [row({ test: "slop", canFail: false, mustEscalate: true }, CANNOT_FAIL), row({ test: "good", canFail: true, mustEscalate: false }, GOOD)];
@@ -105,7 +105,7 @@ test("each check a label names is scored against the label", () => {
 });
 
 test("a labelled check that did not commit is not counted as wrong", () => {
-  const rows = [row(/** @type {any} */ ({ test: "a", runs: true }), { ...GOOD, runs_a: noul(0.9), runs_b: noul(0.9) })];
+  const rows = [row(/** @type {any} */ ({ test: "a", runs: true }), { ...GOOD, runs_a: noul(0.9), runs_b: noul(0.1) })];
   assert.deepEqual(judge(rows).checkAnswers, {});
   assert.ok(rowStatus(rows[0]) !== "CHECK");
 });
@@ -137,16 +137,15 @@ test("a reply with no trusted answer fails the run too", () => {
 });
 
 test("agreement counts a can-fail value only when every phrasing answered", () => {
-  const { can_fail_b: _b, can_fail_c: _c, ...single } = CANNOT_FAIL;
-  const { can_fail_c: _only, ...twoOfThree } = CANNOT_FAIL;
+  const { can_fail_c: _c, ...single } = CANNOT_FAIL;
   const partial = row({ test: "a", canFail: true }, single);
-  const verdict = judge([partial, row({ test: "b", canFail: true }, twoOfThree)]);
+  const verdict = judge([partial]);
   assert.equal(verdict.resolved, 0);
   assert.equal(rowStatus(partial), "ok");
 });
 
 test("a mean of exactly 0.5 is undecided and escalates, as the audit reads it", () => {
-  const verdict = judge([row({ test: "a", canFail: true }, { ...GOOD, can_fail_a: noul(0.5), can_fail_b: noul(0.5), can_fail_c: noul(0.5) })]);
+  const verdict = judge([row({ test: "a", canFail: true }, { ...GOOD, can_fail_a: noul(0.5), can_fail_c: noul(0.5) })]);
   assert.equal(verdict.correct, 0);
   assert.equal(verdict.resolved, 0);
 });
@@ -174,7 +173,7 @@ test("selectLabels picks cases by folder or test name, and rejects a name that m
   );
   assert.deepEqual(
     selectLabels(labels, ["adds two numbers"]).map((label) => label.file),
-    ["checks/type/cases/pure-add/case.mjs"],
+    ["checks/verdict/cases/pure-add/case.mjs"],
   );
   assert.equal(selectLabels(labels, undefined).length, labels.length);
   assert.throws(() => selectLabels(labels, ["no-such-case"]), /no case matches: no-such-case/);
@@ -184,9 +183,9 @@ test("a false positive counts as sure only when its finding is sure", () => {
   const clean = /** @type {any} */ ({ test: "a", mustEscalate: false, canFail: true });
   const rows = [
     // A firm "no positive assertion" on a clean case: the reader would act on a sound test.
-    row(clean, { ...GOOD, positive_a: noul(0.05), positive_b: noul(0.95) }),
+    row(clean, { ...GOOD, positive_a: noul(0.05), positive_b: noul(0.05) }),
     // Phrasings that disagree: a look, marked unsure.
-    row(clean, { ...GOOD, can_fail_a: noul(0.95), can_fail_b: noul(0.7), can_fail_c: noul(0.98) }),
+    row(clean, { ...GOOD, can_fail_a: noul(0.95), can_fail_c: noul(0.3) }),
   ];
   const verdict = judge(rows);
   assert.equal(verdict.falsePositives, 2);

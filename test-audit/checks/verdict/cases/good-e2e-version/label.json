@@ -7,6 +7,5 @@
   "asserts": "behaviour",
   "runs": true,
   "positive": true,
-  "type": "e2e",
   "note": "a real guard"
 }

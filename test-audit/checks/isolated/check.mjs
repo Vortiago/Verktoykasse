@@ -19,12 +19,9 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   flag: "order-dependent",
   questions: {
     isolated: noul(
-      "Does this test read only values that it builds itself, or that a hook in fixtures builds before each test? Answer no when it reads a value that another test must set, or mutable state in setup that is shared with other tests and that no hook resets. An object the file declares once, such as a registry, that this test reads but another test fills, is shared state.",
-      "it builds what it reads, so it passes alone and in any order",
-      "it reads state that another test sets, or mutable state shared with other tests",
+      "Does this test build everything it reads, so it passes alone and in any order?",
+      "yes: it, or a before-each hook, builds what it reads",
+      "no: it reads a value another test sets, or a shared object no hook resets",
     ),
   },
-  rubric: `Isolated: the test reads only what it or a before-each hook builds, so it passes
-  alone and in any order. Isolated is about what the test reads; Restores state
-  is about what it leaves.`,
 });

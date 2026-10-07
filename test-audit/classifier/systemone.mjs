@@ -31,7 +31,7 @@ import { request as httpsRequest } from "node:https";
 import config from "../config.mjs";
 
 /** @typedef {"choice" | "score" | "noul"} QuestionType */
-/** @typedef {{ type: QuestionType, instructions: string, criteria: Record<string, string> | string[] }} Question */
+/** @typedef {{ type: QuestionType, instructions: string, criteria: Record<string, string | null> | string[] }} Question */
 /** @typedef {import("../types.d.ts").AuditAnswer} AuditAnswer */
 /** @typedef {{ answers?: Record<string, AuditAnswer>, usage?: Record<string, unknown> }} SystemOneResponse */
 
@@ -89,8 +89,8 @@ export const noul = (instructions, yes, no) => ({
 });
 
 /**
- * Pick one named answer.
- * @param {string} instructions @param {Record<string, string>} criteria
+ * Pick one named answer. A null criterion means the name speaks for itself.
+ * @param {string} instructions @param {Record<string, string | null>} criteria
  */
 export const choice = (instructions, criteria) => ({
   type: /** @type {QuestionType} */ ("choice"),

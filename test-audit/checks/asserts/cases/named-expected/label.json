@@ -7,6 +7,6 @@
   "asserts": "behaviour",
   "runs": true,
   "positive": true,
-  "verdict": "strong",
+  "verdict": "good",
   "note": "The expected value is a constant the test file declares, so the assertion checks behaviour."
 }

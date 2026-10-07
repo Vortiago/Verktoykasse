@@ -1,4 +1,4 @@
-// canonical source: test-audit/checks/automated/check.mjs@9ae1caa sha256:e53cb79f91620615c858c36ba5b5147b228a95493490598f81083c848b631408 - vendored copy, do not edit here
+// canonical source: test-audit/checks/automated/check.mjs@c34fea8 sha256:0f2e4ee16c3fbccb3235649e5c3a35ca0f37391e579c0d0820180465becfabae - vendored copy, do not edit here
 // The automated check: does the test reach pass or fail with no person doing or
 // reading anything? A "no" raises the `manual` flag.
 //
@@ -22,10 +22,9 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   flag: "manual",
   questions: {
     automated: noul(
-      "Does this test reach a pass or fail with no person doing or reading anything?",
-      "it is self-checking and unattended",
-      "it has no assertion and only prints, or it waits for a person to act or to read its output",
+      "Does this test pass or fail with no person acting or reading?",
+      "yes: it checks itself",
+      "no: a person must act or read its output",
     ),
   },
-  rubric: `Automated: the test reaches pass or fail with no person doing or reading anything.`,
 });

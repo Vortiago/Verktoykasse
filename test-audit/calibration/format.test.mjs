@@ -8,7 +8,7 @@ import { formatBenchmark, formatMatrix, formatSingle } from "./format.mjs";
 import { judge } from "./judge.mjs";
 import { BATTERY } from "../checks/index.mjs";
 import { verdictFrom } from "../classifier/verdict.mjs";
-import { choice, goodAnswers, noul, score } from "../test-fixtures.mjs";
+import { choice, goodAnswers, noul } from "../test-fixtures.mjs";
 
 /** @typedef {import("../types.d.ts").AuditTest} AuditTest */
 /** @typedef {import("../types.d.ts").CalibrationLabel} CalibrationLabel */
@@ -37,7 +37,7 @@ const CLEAN = row(
   goodAnswers(),
 );
 
-/** A tautology that the endpoint calls a strong guard: a silent pass. */
+/** A tautology that the endpoint calls a good guard: a silent pass. */
 const SILENT = row(
   { check: "can-fail", file: "checks/can-fail/cases/tautology/case.mjs", test: "the world is sane", defect: "tautology", canFail: false, mustEscalate: true },
   'test("the world is sane", () => {\n  expect(true).toBe(true);\n})',
@@ -48,7 +48,7 @@ const SILENT = row(
 const SHAPE = row(
   { check: "asserts", file: "checks/asserts/cases/shape/case.mjs", test: "returns a list", defect: "shape-only", canFail: true, mustEscalate: true, code: "checks/asserts/cases/shape/code.mjs" },
   "test(\"returns a list\", () => {\n  // ```\n  expect(Array.isArray(list())).toBe(true);\n})",
-  { ...goodAnswers(), can_fail_a: noul(0.9), can_fail_b: noul(0.8), asserts_a: choice("shape-only"), asserts_b: choice("shape-only"), deterministic: noul(0.1), restores: noul(0.2), positive_a: noul(0.2), positive_b: noul(0.8), verdict: score(0.2) },
+  { ...goodAnswers(), can_fail_a: noul(0.9), can_fail_c: noul(0.3), asserts_a: choice("shape-only"), asserts_b: choice("shape-only"), deterministic: noul(0.1), restores: noul(0.2), positive_a: noul(0.2), positive_b: noul(0.2) },
   "export function list() {\n  return [1];\n}\n",
 );
 
@@ -81,9 +81,9 @@ test("the benchmark starts with the summary, the families, and the links to the 
 test("the glance table has one row for each case, the cases that are not OK first, each linked to its details", () => {
   const text = formatBenchmark([entry([CLEAN, SHAPE, SILENT])]);
   assert.ok(text.includes("| # | Test | Check | Known defect | Expected | Result | Status |"));
-  assert.ok(text.includes("| 1 | [`the world is sane`](#case-1) | [`can-fail`](checks/can-fail/check.mjs) | tautology | escalate | strong, passes | **SILENT pass** |"));
-  assert.ok(text.includes("| 2 | [`adds two numbers`](#case-2) | [`verdict`](checks/verdict/check.mjs) | clean | pass | strong, passes | OK |"));
-  assert.ok(text.includes("| 3 | [`returns a list`](#case-3) | [`asserts`](checks/asserts/check.mjs) | shape-only | escalate | slop, needs eyes | OK |"));
+  assert.ok(text.includes("| 1 | [`the world is sane`](#case-1) | [`can-fail`](checks/can-fail/check.mjs) | tautology | escalate | good, passes | **SILENT pass** |"));
+  assert.ok(text.includes("| 2 | [`adds two numbers`](#case-2) | [`verdict`](checks/verdict/check.mjs) | clean | pass | good, passes | OK |"));
+  assert.ok(text.includes("| 3 | [`returns a list`](#case-3) | [`asserts`](checks/asserts/check.mjs) | shape-only | escalate | weak, needs eyes | OK |"));
 });
 
 test("a case that is not OK is an open details block, and an OK case is closed", () => {
@@ -99,25 +99,23 @@ test("a case shows its source, its label in plain words, and what decided it", (
   assert.ok(block.includes("- **Known defect:** none, a clean test. **Check:** [`verdict`](checks/verdict/check.mjs)."));
   assert.ok(block.includes("**Expected:** pass, `can_fail` yes. Note: A real guard. Case file [`checks/verdict/cases/good-add/case.mjs`](checks/verdict/cases/good-add/case.mjs), line 2."));
   assert.ok(block.includes("Sources: [Beck, Test Desiderata](https://example.org/desiderata)."));
-  assert.ok(block.includes("- **What decided it:** strong, passes.\n  - No escalation: `can_fail_a` yes (0.99) · `can_fail_b` no (0.01) · `can_fail_c` yes (0.99) → can_fail: 0.99, spread 0.00 (stable). Label yes: match."));
+  assert.ok(block.includes("- **What decided it:** good, passes.\n  - No escalation: `can_fail_a` yes (0.99) · `can_fail_c` yes (0.99) → can_fail: 0.99, spread 0.00 (stable). Label yes: match."));
   assert.ok(block.includes("`asserts_a` behaviour (0.90) · `asserts_b` behaviour (0.90) → asserts: behaviour."));
-  assert.ok(block.includes("`verdict` strong (3.00)."));
   assert.ok(!block.includes("Code under test"), "no code block without code");
 });
 
 test("an escalated case ties each reason to the answers behind it, a twin pair with each phrasing", () => {
   const block = caseBlock(formatBenchmark([entry([SHAPE])]), 1);
   assert.ok(block.includes("````js\n"), "the fence is longer than the backtick run in the source");
-  assert.match(block, /\n {2}- `can_fail_a` yes \(0\.90\) · `can_fail_b` yes \(0\.80\) · `can_fail_c` yes \(0\.99\) → can_fail: 0\.\d\d, spread 0\.\d\d \(\w+\)\. \*\*Escalates:\*\* can_fail \w+ \(spread 0\.\d\d\)\. Label yes: not scored\.\n/);
+  assert.match(block, /\n {2}- `can_fail_a` yes \(0\.90\) · `can_fail_c` no \(0\.30\) → can_fail: 0\.\d\d, spread 0\.\d\d \(\w+\)\. \*\*Escalates:\*\* can_fail \w+ \(spread 0\.\d\d\)\. Label yes: not scored\.\n/);
   assert.ok(block.includes("\n  - `asserts_a` shape-only (0.90) · `asserts_b` shape-only (0.90) → asserts: shape-only. **Escalates:** asserts shape-only.\n"));
-  assert.ok(block.includes("\n  - `positive_a` no (0.20) · `positive_b` yes (0.80) → positive: no. **Escalates:** no positive assertion.\n"));
-  assert.ok(block.includes("\n  - `verdict` slop (0.20). **Escalates:** verdict slop.\n"));
-  assert.ok(block.includes("\n  - No escalation: `runs_a` yes (0.99) · `runs_b` no (0.01) → runs: yes.\n"));
+  assert.ok(block.includes("\n  - `positive_a` no (0.20) · `positive_b` no (0.20) → positive: no. **Escalates:** no positive assertion.\n"));
+  assert.ok(block.includes("\n  - No escalation: `runs_a` yes (0.99) · `runs_b` yes (0.99) → runs: yes.\n"));
 });
 
 test("the descriptive answers fit in one line", () => {
   const block = caseBlock(formatBenchmark([entry([SHAPE])]), 1);
-  assert.ok(block.includes("\n- **Descriptive:** 3 clean · smells: `deterministic` (non-deterministic), `restores` (state-leak) · unanswered: none · `type` unit (0.90).\n"));
+  assert.ok(block.includes("\n- **Descriptive:** 3 clean · smells: `deterministic` (non-deterministic), `restores` (state-leak) · unanswered: none.\n"));
 });
 
 test("a case with code under test shows it in its own block", () => {
@@ -153,7 +151,7 @@ test("several targets get their own summary and their own anchors", () => {
 
 test("the single and matrix views still render", () => {
   const single = formatSingle(entry([CLEAN, SILENT]));
-  assert.match(single, /the world is sane\s+tautology\s+no\s+0\.99\s+stable\s+strong\s+-\s+SILENT/);
+  assert.match(single, /the world is sane\s+tautology\s+no\s+0\.99\s+stable\s+good\s+-\s+SILENT/);
   assert.match(single, /Acceptance: FAIL/);
   const matrix = formatMatrix([entry([CLEAN, SILENT]), entry([CLEAN, SILENT])]);
   assert.match(matrix, /the world is sane\s+tautology\s+S\s+S/);

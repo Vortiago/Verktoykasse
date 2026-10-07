@@ -20,8 +20,6 @@ interface CheckBase {
   questions: Record<string, Question>;
   /** The question keys whose yes and no are swapped. The verdict rules flip their value. */
   negated?: string[];
-  /** The definition this check adds to the shared rubric, if any. The header comment of the check file names its sources. */
-  rubric?: string;
 }
 
 /**
@@ -31,15 +29,14 @@ interface CheckBase {
  * - `can-fail`: a paraphrase set. Its mean is the can-fail value.
  * - `asserts`: a choice pair. Only the first kind is a real guard.
  * - `gate`: a yes/no twin pair. A "no" escalates with `reason`.
- * - `type`: a choice that the report shows and that never escalates.
  * - `descriptive`: a yes/no question. A "no" raises `flag`.
- * - `verdict`: the score, on `levels`, lowest first.
+ * - `verdict`: no questions. The rules compute its level, on `levels`, lowest
+ *   first, from the answers of the other checks.
  */
 export type Check =
   | (CheckBase & { role: "can-fail" })
-  | (CheckBase & { role: "asserts"; kinds: Record<string, string> })
+  | (CheckBase & { role: "asserts"; kinds: Record<string, string | null> })
   | (CheckBase & { role: "gate"; reason: string })
-  | (CheckBase & { role: "type" })
   | (CheckBase & { role: "descriptive"; flag: string })
   | (CheckBase & { role: "verdict"; levels: string[] });
 
@@ -96,7 +93,7 @@ export interface Paraphrase {
 /** What the verdict rules make of one check's answers. */
 export interface CheckResult {
   /**
-   * The value the check commits to: yes or no, an assert kind, a test type, or
+   * The value the check commits to: yes or no, an assert kind, or
    * a verdict level. Undefined when a phrasing is unanswered, or when the
    * phrasings disagree.
    */
@@ -119,8 +116,6 @@ export interface AuditResult {
   canFail?: Paraphrase;
   /** The assert kind both phrasings agree on: the value of the asserts check. */
   asserts?: string;
-  /** The test type: the value of the type check. */
-  type?: string;
   /** The verdict: the raw score, and the level it rounds to. */
   score: { value?: number; label?: string };
   /** The extractor's notes, then the flags of the checks, each once. */

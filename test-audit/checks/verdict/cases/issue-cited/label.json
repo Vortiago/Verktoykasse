@@ -4,6 +4,5 @@
   "canFail": true,
   "mustEscalate": false,
   "mixed": false,
-  "type": "regression",
   "note": "The name cites a past issue."
 }

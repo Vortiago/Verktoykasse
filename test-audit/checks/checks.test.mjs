@@ -1,15 +1,15 @@
 // Unit tests for the check slices. Each folder in checks/ is one check, so these
-// tests keep the folders, the battery, and the rubric in step. The battery and
-// the rubric are what the model sees, so they must match the snapshots byte for
-// byte. A change to a question or a definition is a calibration change: run the
-// selftest, record it in BENCHMARK.md, then update the snapshot.
+// tests keep the folders, the battery, and the cases in step. The battery is
+// what the model sees, so it must match the snapshot byte for byte. A change to
+// a question is a calibration change: run the selftest, record it in
+// BENCHMARK.md, then update the snapshot.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { BATTERY, CHECKS, RUBRIC } from "./index.mjs";
+import { BATTERY, CHECKS } from "./index.mjs";
 import { CASE_FILE, CODE_FILE, LABEL_FIELDS, LABEL_FILE, LOADED_FIELDS, ROOT, headerOf, labelChecks, loadLabels, sourcesOf } from "../calibration/labels.mjs";
 import { extractTests } from "../change/index.mjs";
 import { buildState } from "../classifier/index.mjs";
@@ -52,10 +52,6 @@ test("every check folder holds a check.mjs, and index.mjs lists each check once"
   assert.deepEqual(CHECKS.map((check) => folderOf(check.name)).sort(), FOLDERS);
 });
 
-test("the rubric is the snapshot, byte for byte", () => {
-  assert.equal(`${RUBRIC}\n`, readFileSync(join(HERE, "rubric.snapshot.txt"), "utf8"));
-});
-
 test("the battery is the snapshot, byte for byte", () => {
   assert.equal(`${JSON.stringify(BATTERY, null, 2)}\n`, readFileSync(join(HERE, "battery.snapshot.json"), "utf8"));
 });
@@ -64,15 +60,6 @@ test("a question key is its check's name, or the name and a phrasing letter", ()
   for (const check of CHECKS) {
     for (const key of Object.keys(check.questions)) assert.match(key, new RegExp(`^${check.name}(_[a-z])?$`), `${key} in ${check.name}`);
   }
-});
-
-test("each rubric definition appears in the rubric once", () => {
-  const defined = CHECKS.filter((check) => check.rubric);
-  for (const check of defined) assert.equal(RUBRIC.split(String(check.rubric)).length, 2, `the ${check.name} definition`);
-  assert.deepEqual(
-    CHECKS.filter((check) => !check.rubric).map((check) => check.name),
-    [],
-  );
 });
 
 test("a check negates only its own questions, and a descriptive check asks one question", () => {
@@ -128,7 +115,6 @@ test("a check value in a label is one that check can give", () => {
       const allowed =
         check.role === "asserts" ? Object.keys(check.kinds)
         : check.role === "verdict" ? check.levels
-        : check.role === "type" ? Object.keys(Object.values(check.questions)[0].criteria)
         : [true, false];
       assert.ok(allowed.includes(value), `${label.file}: ${name} ${value} is not one of ${allowed.join(", ")}`);
     }

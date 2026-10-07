@@ -1,4 +1,4 @@
-// canonical source: test-audit/classifier/systemone.mjs@e71279c sha256:dabaf37a21b81762ff59230b4200d30ca1ec564e4b2d19973d88d439c99ce822 - vendored copy, do not edit here
+// canonical source: test-audit/classifier/systemone.mjs@c34fea8 sha256:dd5ceefc3aa4fae9f5b79e2553c3b5d228521d91decc0c59394ae397bae1afd5 - vendored copy, do not edit here
 // SystemOne client for test-audit. One Jev-compatible typed-question endpoint:
 // a local Ollama 0.35 or later, llama-arbiter, Ollaya, or any TypeSafe server.
 //
@@ -32,7 +32,7 @@ import { request as httpsRequest } from "node:https";
 import config from "../config.mjs";
 
 /** @typedef {"choice" | "score" | "noul"} QuestionType */
-/** @typedef {{ type: QuestionType, instructions: string, criteria: Record<string, string> | string[] }} Question */
+/** @typedef {{ type: QuestionType, instructions: string, criteria: Record<string, string | null> | string[] }} Question */
 /** @typedef {import("../types.d.ts").AuditAnswer} AuditAnswer */
 /** @typedef {{ answers?: Record<string, AuditAnswer>, usage?: Record<string, unknown> }} SystemOneResponse */
 
@@ -90,8 +90,8 @@ export const noul = (instructions, yes, no) => ({
 });
 
 /**
- * Pick one named answer.
- * @param {string} instructions @param {Record<string, string>} criteria
+ * Pick one named answer. A null criterion means the name speaks for itself.
+ * @param {string} instructions @param {Record<string, string | null>} criteria
  */
 export const choice = (instructions, criteria) => ({
   type: /** @type {QuestionType} */ ("choice"),

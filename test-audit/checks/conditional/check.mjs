@@ -19,12 +19,9 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   flag: "conditional",
   questions: {
     conditional: noul(
-      "Does every assertion in this test always run? Answer no when a branch, a loop over a value that may be empty, an early return, or a try/catch can leave an assertion unrun or swallow its failure.",
-      "every assertion always runs",
-      "a branch, loop, early return, or catch can leave an assertion unrun or swallow its failure",
+      "Does every assertion always run?",
+      "yes: no branch, loop, early return, or catch can skip or swallow one",
+      "no: a branch, a loop over a value that may be empty, an early return, or a catch can skip or swallow one",
     ),
   },
-  rubric: `Conditional test logic: a branch, a loop over a value that may be empty, an
-  early return, or a catch that can leave an assertion unrun or swallow its
-  failure, so the test may assert nothing on some inputs.`,
 });

@@ -6,8 +6,7 @@
   "asserts": "behaviour",
   "runs": true,
   "positive": true,
-  "type": "regression",
-  "verdict": "strong",
+  "verdict": "good",
   "deterministic": true,
   "note": "a clean regression guard"
 }

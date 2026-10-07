@@ -1,4 +1,4 @@
-// canonical source: test-audit/config.mjs@68e72cd sha256:cc54826008f42f4ea1ffef41d95fbf2ecd44fe4555de20eed72a0f482c5db38b - vendored copy, do not edit here
+// canonical source: test-audit/config.mjs@c34fea8 sha256:4cdb78fc264f41bb04223038e27988d896dc209eb310fdb96bae640fd1986ba4 - vendored copy, do not edit here
 // test-audit configuration. Env-driven, with portable defaults.
 //
 // The base URL points at any Jev-compatible SystemOne endpoint: a local Ollama
@@ -36,7 +36,7 @@ const config = {
   /** Per-call timeout. AbortSignal.timeout takes a whole number of ms up to 2^31 - 1. */
   timeoutMs: num("TEST_AUDIT_TIMEOUT_MS", 120_000, (value) => Number.isInteger(value) && value > 0 && value < 2 ** 31),
   /** Cap on the per-test state, in characters. */
-  stateCap: num("TEST_AUDIT_STATE_CAP", 8000),
+  stateCap: num("TEST_AUDIT_STATE_CAP", 5000),
   /** Cap on the non-test diff context carried in the state, in characters. */
   changeContextCap: num("TEST_AUDIT_CHANGE_CAP", 3000),
 };

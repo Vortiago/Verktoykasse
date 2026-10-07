@@ -15,12 +15,11 @@ export function location(test) {
   return `${test.file}:${test.line}`;
 }
 
-/** The seven result cells, in column order; each face renders them its own way. @param {AuditResult} result */
+/** The six result cells, in column order; each face renders them its own way. @param {AuditResult} result */
 export function rowCells(result) {
   return [
     result.score.label ?? "unclassified",
     result.needsEyes ? "yes" : "-",
-    result.type ?? "unclassified",
     canFailText(result.canFail),
     result.asserts ?? "unclassified",
     location(result.test),

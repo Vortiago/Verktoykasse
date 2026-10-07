@@ -1,4 +1,4 @@
-// canonical source: test-audit/checks/conditional/check.mjs@9ae1caa sha256:b6638c6a76d01d0387af1769bd581cbda97446f77eb332359a1e6b853fe84cbc - vendored copy, do not edit here
+// canonical source: test-audit/checks/conditional/check.mjs@c34fea8 sha256:4d34bd94b901080b0d2833273891bc713b61125f5567ac5af684f732a009de59 - vendored copy, do not edit here
 // The conditional check: does every assertion always run? A branch, a loop over
 // a value that may be empty, an early return, or a catch that can leave one unrun
 // lets the test assert nothing on some inputs. A "no"
@@ -20,12 +20,9 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   flag: "conditional",
   questions: {
     conditional: noul(
-      "Does every assertion in this test always run? Answer no when a branch, a loop over a value that may be empty, an early return, or a try/catch can leave an assertion unrun or swallow its failure.",
-      "every assertion always runs",
-      "a branch, loop, early return, or catch can leave an assertion unrun or swallow its failure",
+      "Does every assertion always run?",
+      "yes: no branch, loop, early return, or catch can skip or swallow one",
+      "no: a branch, a loop over a value that may be empty, an early return, or a catch can skip or swallow one",
     ),
   },
-  rubric: `Conditional test logic: a branch, a loop over a value that may be empty, an
-  early return, or a catch that can leave an assertion unrun or swallow its
-  failure, so the test may assert nothing on some inputs.`,
 });

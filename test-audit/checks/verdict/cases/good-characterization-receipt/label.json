@@ -7,7 +7,7 @@
   "asserts": "behaviour",
   "runs": true,
   "positive": true,
-  "verdict": "strong",
+  "verdict": "good",
   "deterministic": true,
   "note": "a real guard"
 }

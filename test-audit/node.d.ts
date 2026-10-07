@@ -183,6 +183,7 @@ declare module "node:assert/strict" {
     equal<T>(actual: unknown, expected: T, message?: string | Error): asserts actual is T;
     deepEqual<T>(actual: unknown, expected: T, message?: string | Error): asserts actual is T;
     match(value: string, regExp: RegExp, message?: string | Error): void;
+    doesNotMatch(value: string, regExp: RegExp, message?: string | Error): void;
     throws(block: () => unknown, error?: RegExp, message?: string | Error): void;
     rejects(promise: Promise<unknown>, error?: RegExp, message?: string | Error): Promise<void>;
   }

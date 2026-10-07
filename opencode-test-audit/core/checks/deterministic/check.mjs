@@ -1,4 +1,4 @@
-// canonical source: test-audit/checks/deterministic/check.mjs@9ae1caa sha256:8e77521c8e3a50eb76cfbf113f140b8d5f35e81df46f326540ee2c77bc572125 - vendored copy, do not edit here
+// canonical source: test-audit/checks/deterministic/check.mjs@c34fea8 sha256:a39654c1724a67ccb705bacb10b8cfb4a5bc0764903dfa03023c3c1d9f2f8dc7 - vendored copy, do not edit here
 // The deterministic check: does the test give the same result on every run? A
 // sleep, the real clock, the network, real randomness, or an unguaranteed order
 // can make the same code give a different result. A faked or seeded source is
@@ -28,12 +28,9 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   flag: "non-deterministic",
   questions: {
     deterministic: noul(
-      "Does this test give the same result on every run? It does not when it reads the real clock or real randomness, calls the network, waits on a sleep, or relies on an order nothing guarantees. A clock, timer, or random source that the test fakes or seeds is under its control and is fine.",
-      "the result is the same on every run of the same code",
-      "the result can differ between runs of the same code",
+      "Does this test give the same result on every run?",
+      "yes: no real clock, randomness, network, sleep, or unguaranteed order, or it is faked or seeded",
+      "no: it uses the real clock, randomness, the network, a sleep, or an unguaranteed order",
     ),
   },
-  rubric: `Deterministic: same result every run of the same code, with no sleep, real
-  clock, network, real randomness, or unguaranteed order. A faked or seeded clock,
-  timer, or random source is fine.`,
 });

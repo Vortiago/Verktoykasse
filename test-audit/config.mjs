@@ -35,7 +35,7 @@ const config = {
   /** Per-call timeout. AbortSignal.timeout takes a whole number of ms up to 2^31 - 1. */
   timeoutMs: num("TEST_AUDIT_TIMEOUT_MS", 120_000, (value) => Number.isInteger(value) && value > 0 && value < 2 ** 31),
   /** Cap on the per-test state, in characters. */
-  stateCap: num("TEST_AUDIT_STATE_CAP", 8000),
+  stateCap: num("TEST_AUDIT_STATE_CAP", 5000),
   /** Cap on the non-test diff context carried in the state, in characters. */
   changeContextCap: num("TEST_AUDIT_CHANGE_CAP", 3000),
 };

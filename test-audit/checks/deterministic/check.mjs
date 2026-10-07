@@ -27,12 +27,9 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   flag: "non-deterministic",
   questions: {
     deterministic: noul(
-      "Does this test give the same result on every run? It does not when it reads the real clock or real randomness, calls the network, waits on a sleep, or relies on an order nothing guarantees. A clock, timer, or random source that the test fakes or seeds is under its control and is fine.",
-      "the result is the same on every run of the same code",
-      "the result can differ between runs of the same code",
+      "Does this test give the same result on every run?",
+      "yes: no real clock, randomness, network, sleep, or unguaranteed order, or it is faked or seeded",
+      "no: it uses the real clock, randomness, the network, a sleep, or an unguaranteed order",
     ),
   },
-  rubric: `Deterministic: same result every run of the same code, with no sleep, real
-  clock, network, real randomness, or unguaranteed order. A faked or seeded clock,
-  timer, or random source is fine.`,
 });

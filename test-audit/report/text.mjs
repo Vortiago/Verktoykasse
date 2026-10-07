@@ -14,8 +14,8 @@ export function formatText(results, meta = {}) {
   const lines = [];
   lines.push(`Audit of ${meta.ref ?? "the working tree"}: ${plural(results.length, "test")}`);
   lines.push("");
-  const header = ["VERDICT", "EYES", "TYPE", "CAN-FAIL", "ASSERTS", "LOCATION", "NAME"];
-  const widths = [8, 5, 14, 9, 16, 24, 0];
+  const header = ["VERDICT", "EYES", "CAN-FAIL", "ASSERTS", "LOCATION", "NAME"];
+  const widths = [8, 5, 9, 16, 24, 0];
   lines.push(header.map((name, index) => pad(name, widths[index])).join(" "));
   for (const result of results) {
     lines.push(rowCells(result).map((cell, index) => pad(cell, widths[index])).join(" "));

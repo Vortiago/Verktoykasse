@@ -1,4 +1,4 @@
-// canonical source: test-audit/checks/runs/check.mjs@aa397d5 sha256:ecd99521001cb25690eec8f12b598c29001550287c8f8e152d64181847e67977 - vendored copy, do not edit here
+// canonical source: test-audit/checks/runs/check.mjs@c34fea8 sha256:d4a74f496c247fe4efcab517e9ef552059c7b7aef56eccdac77ef5b4a01b1ed5 - vendored copy, do not edit here
 // The runs check: does the test run, and does the rest of its file run? A skip,
 // todo, or skipIf marker or an x prefix on the test or on a describe around it
 // stops it from guarding anything. An only or focus marker anywhere in the file,
@@ -25,20 +25,15 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   reason: "does not run, or narrows the run",
   questions: {
     runs_a: noul(
-      "Does this test run, with no marker in the file narrowing the run?",
-      "it runs, and nothing narrows the run",
-      "a marker stops it or narrows the run",
+      "Does this test run, with no marker narrowing the run?",
+      "yes: no skip, todo, or x marker on it or its describe, and no focus-in-file flag",
+      "no: a skip, todo, skipIf, or x marker stops it, or an only or focus marker narrows the file",
     ),
     runs_b: noul(
-      "Does a marker stop this test or narrow the run?",
-      "a marker stops it or narrows the run",
-      "it runs, and nothing narrows the run",
+      "Is this test free of skip, todo, only, and focus markers, in its head, its scope, and its flags?",
+      "yes: no such marker",
+      "no: a marker is there",
     ),
   },
-  negated: ["runs_b"],
-  rubric: `Runs: read the test head, the scope field, and the flags field. A skip, todo, or
-  skipIf marker, or an x prefix such as xit or xdescribe, on the test or on a
-  describe around it stops the test. An only or focus marker anywhere in the file,
-  such as it.only, fit, or fdescribe, shows as the flag focus-in-file and narrows
-  the run.`,
+  negated: [],
 });

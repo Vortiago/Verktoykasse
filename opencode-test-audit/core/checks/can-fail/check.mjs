@@ -1,4 +1,4 @@
-// canonical source: test-audit/checks/can-fail/check.mjs@aa397d5 sha256:60c0030c33c1c1360b83dddd2b2fa32d8b89ea14b7eae9df40c112f2cfd8cfbf - vendored copy, do not edit here
+// canonical source: test-audit/checks/can-fail/check.mjs@c34fea8 sha256:92a3d691dc35d8ae427674506545a70378b9ba7ae21b5b400831199fbf26ef7a - vendored copy, do not edit here
 // The can-fail check: does the test fail when the behaviour it names breaks in
 // the code under test? A tautology, a self-reference, a shape or definedness
 // check, and a test that passes with zero results all say no. The tool asks three equivalent phrasings, one of them
@@ -37,25 +37,15 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   role: "can-fail",
   questions: {
     can_fail_a: noul(
-      "Can breaking the named behaviour in the code under test make this test fail?",
-      "some break makes it fail",
-      "no break makes it fail",
-    ),
-    can_fail_b: noul(
-      "Does this test pass however the code under test breaks the named behaviour?",
-      "it always passes",
-      "some break makes it fail",
+      "Can a bug in the behaviour this test names make the test fail?",
+      "yes: some bug in that behaviour fails it",
+      "no: it passes whatever the code does, as with a tautology, both sides from the code, or an assertion that never runs",
     ),
     can_fail_c: noul(
-      "If the named behaviour regresses, can this test turn red?",
-      "a regression can fail it",
-      "a regression leaves it passing",
+      "If the named behaviour regresses, does this test turn red?",
+      "yes: a regression fails it",
+      "no: a regression leaves it passing",
     ),
   },
-  negated: ["can_fail_b"],
-  rubric: `Falsifiable: some break of the named behaviour in the code under test makes
-  the test fail. Not falsifiable: no break can, as in a tautology (true === true, or
-  both sides call the same code), an assertion on data the code copies straight
-  from its input, or one that runs zero times. A shape, truthy, or no-throw check
-  can still fail.`,
+  negated: [],
 });

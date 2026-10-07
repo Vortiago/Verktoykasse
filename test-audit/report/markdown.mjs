@@ -16,11 +16,11 @@ export function formatMarkdown(results, meta = {}) {
   lines.push("");
   lines.push(`${plural(results.length, "test")}, ${eyesPhrase(escalatedResults.length)}.`);
   lines.push("");
-  lines.push("| Verdict | Eyes | Type | Can fail | Asserts | Test |");
-  lines.push("| --- | --- | --- | --- | --- | --- |");
+  lines.push("| Verdict | Eyes | Can fail | Asserts | Test |");
+  lines.push("| --- | --- | --- | --- | --- |");
   for (const result of results) {
-    const [verdict, eyes, type, canFail, asserts, where, name] = rowCells(result);
-    lines.push(`| ${verdict} | ${eyes} | ${type} | ${canFail} | ${asserts} | \`${escapeCell(where)}\` ${escapeCell(name)} |`);
+    const [verdict, eyes, canFail, asserts, where, name] = rowCells(result);
+    lines.push(`| ${verdict} | ${eyes} | ${canFail} | ${asserts} | \`${escapeCell(where)}\` ${escapeCell(name)} |`);
   }
   if (escalatedResults.length) {
     lines.push("");

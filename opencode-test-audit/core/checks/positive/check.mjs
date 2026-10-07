@@ -1,4 +1,4 @@
-// canonical source: test-audit/checks/positive/check.mjs@aa397d5 sha256:258c35a5092e95ae16de4c7130c4a724d654b4674eeed658213dcf0c6436afee - vendored copy, do not edit here
+// canonical source: test-audit/checks/positive/check.mjs@c34fea8 sha256:549148829bd1d05b6078111a071db9cb617d7003b4df44deaeaf5913d685fd0d - vendored copy, do not edit here
 // The positive check: does at least one assertion name a value the code must
 // produce, such as a literal, an object, or a thrown error with its message? A
 // test that checks only null, undefined, empty, or a non-throw passes for
@@ -25,20 +25,15 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   reason: "no positive assertion",
   questions: {
     positive_a: noul(
-      "Does at least one assertion expect a non-empty value?",
-      "at least one expects a non-empty value",
-      "every assertion expects empty, null, undefined, or no throw",
+      "Does an assertion expect a non-empty value that the code must produce?",
+      "yes: a literal, an object, true or false, or an error message",
+      "no: only empty ([], \"\", {}), null, undefined, or no throw",
     ),
     positive_b: noul(
-      "Does every assertion expect only empty, null, undefined, or no throw?",
-      "every assertion expects empty, null, undefined, or no throw",
-      "at least one expects a non-empty value",
+      "Does this test check a value the code returns, not only that it is empty or did not throw?",
+      "yes: it checks a real value",
+      "no: only empty, null, undefined, or no throw",
     ),
   },
-  negated: ["positive_b"],
-  rubric: `Positive assertion: at least one assertion expects a non-empty value the code
-  must produce, such as a literal, an object, a true or false result, or a thrown
-  error with its message. Empty means [], "", {}, null, or undefined, also when
-  written as a literal such as toEqual([]). A test that expects only empty values
-  or no throw has none.`,
+  negated: [],
 });

@@ -7,6 +7,5 @@
   "asserts": "behaviour",
   "runs": true,
   "positive": true,
-  "type": "integration",
   "note": "a real guard"
 }

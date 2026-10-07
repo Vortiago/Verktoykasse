@@ -24,20 +24,15 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   reason: "no positive assertion",
   questions: {
     positive_a: noul(
-      "Does at least one assertion expect a non-empty value?",
-      "at least one expects a non-empty value",
-      "every assertion expects empty, null, undefined, or no throw",
+      "Does an assertion expect a non-empty value that the code must produce?",
+      "yes: a literal, an object, true or false, or an error message",
+      "no: only empty ([], \"\", {}), null, undefined, or no throw",
     ),
     positive_b: noul(
-      "Does every assertion expect only empty, null, undefined, or no throw?",
-      "every assertion expects empty, null, undefined, or no throw",
-      "at least one expects a non-empty value",
+      "Does this test check a value the code returns, not only that it is empty or did not throw?",
+      "yes: it checks a real value",
+      "no: only empty, null, undefined, or no throw",
     ),
   },
-  negated: ["positive_b"],
-  rubric: `Positive assertion: at least one assertion expects a non-empty value the code
-  must produce, such as a literal, an object, a true or false result, or a thrown
-  error with its message. Empty means [], "", {}, null, or undefined, also when
-  written as a literal such as toEqual([]). A test that expects only empty values
-  or no throw has none.`,
+  negated: [],
 });

@@ -30,12 +30,13 @@ import { choice } from "../../classifier/systemone.mjs";
 
 /** The kinds of assertion, best first: the first kind is the one real guard. */
 const KINDS = {
-  behaviour: "the output, against an expected value",
-  "hardcoded-data": "a value from the code under test itself",
-  "input-only": "its own input or setup",
-  "shape-only": "only type, length, keys, or presence",
-  "interaction-only": "only a mock or spy call",
+  behaviour: "the output, against a value the test fixes or computes without the code",
+  "hardcoded-data": "the output, against a value from the code under test itself",
+  "input-only": "only the test's own input or setup",
+  "shape-only": "only type, length, keys, presence, or that it is truthy or defined",
+  "interaction-only": "only that a mock or spy was called",
   nothing: "nothing, a tautology, or only no throw",
+  unclear: null,
 };
 
 export default /** @satisfies {import("../../types.d.ts").Check} */ ({
@@ -43,16 +44,7 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   role: "asserts",
   kinds: KINDS,
   questions: {
-    asserts_a: choice("Which assertion kind is the strongest assertion in this test?", { ...KINDS }),
+    asserts_a: choice("What does the strongest assertion check?", { ...KINDS }),
     asserts_b: choice("What does the strongest assertion check?", Object.fromEntries(Object.entries(KINDS).reverse())),
   },
-  rubric: `Assertion kinds, best first. behaviour: an output value or effect of the code
-  under test, against an expected value the test fixes itself: a literal, a
-  constant the test declares, or a value it computes without the code under test.
-  hardcoded-data: the expected value comes from the code under test, such as its
-  exported constant or a second call, so both sides always agree.
-  input-only: its own input or setup. shape-only: only the type, length, keys
-  (also Object.keys against a list), presence, or definedness. interaction-only:
-  only that a mock or spy was called, how often, or with what. nothing: no
-  assertion, a tautology, or only that the call did not throw.`,
 });

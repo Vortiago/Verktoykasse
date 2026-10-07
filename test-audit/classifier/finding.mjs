@@ -22,8 +22,6 @@
 
 /** A yes/no mean closer to 0.5 than this is not sure. */
 const MARGIN = 0.25;
-/** A verdict score closer to a level boundary than this is not sure. */
-const SCORE_MARGIN = 0.2;
 /** An assert kind that any phrasing gives a lower probability than this is not sure. */
 const KIND_FLOOR = 0.75;
 
@@ -51,7 +49,7 @@ const SMELLS = {
  */
 export function findingOf(result) {
   if (result.error) return { action: "look", reasons: [`no answer (${result.error})`], sure: false };
-  const { can_fail: canFail, asserts, positive, runs, verdict } = result.checks;
+  const { can_fail: canFail, asserts, positive, runs } = result.checks;
 
   /** @type {Array<{ reason: string, sure: boolean }>} */
   const drop = [];
@@ -60,7 +58,8 @@ export function findingOf(result) {
   /** The check results whose reasons are firm findings, not doubts. */
   const firm = new Set();
 
-  if (canFail?.value === false) {
+  // "Cannot fail" beside a behaviour assertion is a contradiction, so a doubt.
+  if (canFail?.value === false && asserts?.value !== "behaviour") {
     drop.push({ reason: "cannot fail", sure: wide(canFail) });
     firm.add(canFail);
   }
@@ -80,12 +79,6 @@ export function findingOf(result) {
     fix.push({ reason: "no positive assertion", sure: wide(positive) });
     firm.add(positive);
   }
-  if (verdict?.value === "slop" || verdict?.value === "weak") {
-    const entry = { reason: `${verdict.value} guard`, sure: scoreSure(result.score.value) };
-    (verdict.value === "slop" ? drop : fix).push(entry);
-    firm.add(verdict);
-  }
-
   // Every other reason is a doubt: phrasings that disagree, a tie, a missing
   // answer, answers that contradict each other, or a file with no test the
   // extractor can read. They come from the result, so a reason that no check
@@ -117,11 +110,4 @@ function kindSure(result, kind) {
   return Object.entries(result.answers)
     .filter(([key]) => key.startsWith("asserts_"))
     .every(([, answer]) => (answer.probabilities?.[kind] ?? 1) >= KIND_FLOOR);
-}
-
-/** A verdict score well away from the boundary between two levels. @param {number | undefined} score */
-function scoreSure(score) {
-  if (score === undefined) return false;
-  const fraction = score - Math.floor(score);
-  return Math.abs(fraction - 0.5) >= SCORE_MARGIN;
 }

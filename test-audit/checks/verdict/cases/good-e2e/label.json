@@ -6,6 +6,5 @@
   "asserts": "behaviour",
   "runs": true,
   "positive": true,
-  "type": "e2e",
   "note": "a clean end-to-end guard"
 }

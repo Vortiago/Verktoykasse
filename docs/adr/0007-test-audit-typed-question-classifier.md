@@ -119,3 +119,32 @@ a high margin, and it was wrong.
 
 The acceptance rules, not the numbers, are the contract. Recorded runs, with the
 per-test results, live in `test-audit/BENCHMARK.md`.
+
+## Amendment, 2026-10-07: decision-model style, and findings for an LLM
+
+The reader of an audit is an LLM that decides which tests to look at, fix, or
+drop. So the tool is short, terse, as reliable as possible, and fast. A silent
+pass is the one expensive failure; a false positive is cheap when the finding
+says it is unsure. Two decisions above change to fit how a decision model is
+meant to be used (TypeSafe AI, System One docs, https://docs.typesafe.ai/):
+
+- **No shared rubric.** The state is the test record and the diff slice.
+  Accuracy falls as the state grows with text unrelated to a decision, so each
+  question carries its own one-line definition in its criteria.
+- **No negated twin.** A decision model answers a negation less reliably, and a
+  yes/no question leans toward the proposition it is handed. Each
+  verdict-carrying check asks its judgement in two plain phrasings; a spread
+  above the band still escalates. `asserts` keeps its order swap and gains an
+  `unclear` option, which escalates.
+
+And these follow:
+
+- **The verdict is computed, not asked.** A score is the weakest question type,
+  and the verdict depends only on the other answers. Code owns the
+  composition: slop, weak, or good. "Cannot fail" beside a behaviour assertion
+  is a contradiction, and escalates. `type` is dropped: it changed no action.
+- **The battery asks only what changes the action.** The 13 cosmetic or
+  overlapping smell checks are gone; flaky, order-dependent, state leak,
+  conditional logic, and manual stay.
+- **The report is one finding per test**: drop, fix, or look, the reasons, and
+  "sure" or "unsure, possibly a false positive" (`classifier/finding.mjs`).

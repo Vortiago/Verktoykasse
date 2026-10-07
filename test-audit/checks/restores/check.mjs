@@ -19,12 +19,9 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   flag: "state-leak",
   questions: {
     restores: noul(
-      "Does the test leave every global, environment variable, timer, module mock, spy, and shared object that the file or its setup declares as it found them? A restore in an after hook in fixtures counts. A test that changes none of these counts as yes.",
-      "it changes none of these, or it restores what it changes",
-      "it leaves a global, environment variable, timer, mock, spy, or shared object changed",
+      "Does this test leave every global, environment variable, timer, mock, and shared object as it found them?",
+      "yes: it changes none, or restores them",
+      "no: it leaves one changed",
     ),
   },
-  rubric: `Restores state: the test, or an after hook, restores every global, environment
-  variable, timer, module mock, spy, and shared object it changes. A test that
-  changes none restores state.`,
 });

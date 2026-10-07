@@ -5,7 +5,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { findingOf } from "./finding.mjs";
 import { verdictFrom } from "./verdict.mjs";
-import { choice, goodAnswers, noul, score } from "../test-fixtures.mjs";
+import { choice, goodAnswers, noul } from "../test-fixtures.mjs";
 
 const TEST = { file: "a.test.mjs", line: 1, name: "adds", path: [], source: "", fixtures: [], setup: [], imports: [], scope: [], flags: [] };
 
@@ -16,28 +16,33 @@ test("a clean test is ok", () => {
   assert.deepEqual(findingFor({}), { action: "ok", reasons: [], sure: true });
 });
 
-test("a test that cannot fail is dropped, and a confident answer is sure", () => {
-  const finding = findingFor({ can_fail_a: noul(0.02), can_fail_b: noul(0.97), can_fail_c: noul(0.03), verdict: score(0) });
+test("a test that cannot fail and asserts nothing is dropped, and a confident answer is sure", () => {
+  const finding = findingFor({ can_fail_a: noul(0.02), can_fail_c: noul(0.03), asserts_a: choice("nothing"), asserts_b: choice("nothing") });
   assert.equal(finding.action, "drop");
-  assert.deepEqual(finding.reasons, ["cannot fail", "slop guard"]);
+  assert.deepEqual(finding.reasons, ["cannot fail", "asserts nothing"]);
   assert.equal(finding.sure, true);
 });
 
+test("cannot fail beside a behaviour assertion is a contradiction, so a look", () => {
+  const finding = findingFor({ can_fail_a: noul(0.02), can_fail_c: noul(0.03) });
+  assert.deepEqual(finding, { action: "look", reasons: ["can_fail contradicts asserts"], sure: false });
+});
+
 test("a shape-only assertion needs a fix", () => {
-  const finding = findingFor({ asserts_a: choice("shape-only"), asserts_b: choice("shape-only"), verdict: score(1) });
+  const finding = findingFor({ asserts_a: choice("shape-only"), asserts_b: choice("shape-only") });
   assert.equal(finding.action, "fix");
-  assert.deepEqual(finding.reasons, ["asserts only the shape", "weak guard"]);
+  assert.deepEqual(finding.reasons, ["asserts only the shape"]);
 });
 
 test("a firm answer near the boundary is a fix, but unsure", () => {
-  const finding = findingFor({ positive_a: noul(0.4), positive_b: noul(0.6) });
+  const finding = findingFor({ positive_a: noul(0.4), positive_b: noul(0.4) });
   assert.equal(finding.action, "fix");
   assert.deepEqual(finding.reasons, ["no positive assertion"]);
   assert.equal(finding.sure, false);
 });
 
 test("phrasings that disagree are a look, and never sure", () => {
-  const finding = findingFor({ can_fail_a: noul(0.95), can_fail_b: noul(0.7), can_fail_c: noul(0.98) });
+  const finding = findingFor({ can_fail_a: noul(0.95), can_fail_c: noul(0.3) });
   assert.equal(finding.action, "look");
   assert.match(finding.reasons[0], /can_fail unstable/);
   assert.equal(finding.sure, false);

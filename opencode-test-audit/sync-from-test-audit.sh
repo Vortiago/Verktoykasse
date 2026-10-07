@@ -38,7 +38,6 @@ FILES=(
   checks/positive/check.mjs
   checks/restores/check.mjs
   checks/runs/check.mjs
-  checks/type/check.mjs
   checks/verdict/check.mjs
   classifier/finding.mjs
   classifier/index.mjs

@@ -1,4 +1,4 @@
-// canonical source: test-audit/report/format.mjs@4ba9d42 sha256:b5837c980c5c511d4f8de56c033cac94b06a3eb905aaad0a8f4d31f12d372eab - vendored copy, do not edit here
+// canonical source: test-audit/report/format.mjs@c34fea8 sha256:8de1eb6bcb950d6db47ddaae9aadcda6642e90c3b3052b64959be24f40a912da - vendored copy, do not edit here
 // The pieces the text and markdown reports share: how a can-fail value, a
 // location, and the summary line read.
 
@@ -16,12 +16,11 @@ export function location(test) {
   return `${test.file}:${test.line}`;
 }
 
-/** The seven result cells, in column order; each face renders them its own way. @param {AuditResult} result */
+/** The six result cells, in column order; each face renders them its own way. @param {AuditResult} result */
 export function rowCells(result) {
   return [
     result.score.label ?? "unclassified",
     result.needsEyes ? "yes" : "-",
-    result.type ?? "unclassified",
     canFailText(result.canFail),
     result.asserts ?? "unclassified",
     location(result.test),

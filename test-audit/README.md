@@ -17,24 +17,23 @@ inside OpenCode.
 
 The tool has one folder per check. A check is one judgement the tool asks the
 model about a test: one question, or a set of phrasings of one judgement. The
-folder holds all of the check: its questions, its rubric definition, its role in
-the verdict, its sources, and the calibration cases meant to catch its defect.
+folder holds all of the check: its questions, its role in the verdict, its
+sources, and the calibration cases meant to catch its defect.
 
 ```
 test-audit/
   checks/                 one folder per check
-    index.mjs             puts the checks together: the battery and the rubric
+    index.mjs             puts the checks together into the battery
     checks.test.mjs       keeps the folders, the battery, and the cases in step
-    rubric.snapshot.txt   the rubric the model sees, byte for byte
     battery.snapshot.json the questions the model sees, byte for byte
     runs/
-      check.mjs           the questions, the rubric definition, the role; its header names the sources
+      check.mjs           the questions and the role; its header names the sources
       cases/
         skip-token/
           case.mjs        the test; its header names the defect and the sources, and the model never sees it
           label.json      the known defect and the expected outcome
           code.mjs        the code under test, if the right answer depends on it
-    can-fail/  asserts/  positive/  type/  verdict/  and 5 descriptive checks
+    can-fail/  asserts/  positive/  verdict/  and 5 descriptive checks
   change/                 read the diff and find the tests
   classifier/             ask one SystemOne call per test, and apply the verdict rules
   report/                 print one finding per test, a summary, and an exit code
@@ -102,10 +101,10 @@ so the reader should check the test before it acts. `classifier/finding.mjs`
 holds the rules.
 
 `--table` prints a table of every test instead: the verdict, whether it needs
-eyes, the type, the `can_fail` mean, the assert kind, and the flags. The verdict
-is slop, weak, good or strong, and depends only on whether the test can fail
-and what it asserts. `CAN-FAIL` is the mean over the three `can_fail_*`
-phrasings; a `!` after it means their spread is above the band.
+eyes, the `can_fail` mean, the assert kind, and the flags. The verdict is slop,
+weak, or good, computed from whether the test can fail and what it asserts.
+`CAN-FAIL` is the mean over the two `can_fail_*` phrasings; a `!` after it
+means their spread is above the band.
 
 ### When a test needs eyes
 
@@ -121,10 +120,8 @@ A test escalates, and needs eyes, for each of these reasons:
 - The test has no positive assertion.
 - The strongest assertion checks something other than behaviour: hardcoded
   data, its own input, shape only, interaction only, or nothing.
-- The verdict is slop or weak.
-- A confident "cannot fail" sits beside a good or strong verdict.
-- A yes/no judgement lands exactly on 0.5, or the verdict score lands exactly
-  halfway between two levels. A tie takes the lower level.
+- "Cannot fail" sits beside an assertion that checks the behaviour.
+- A yes/no judgement lands exactly on 0.5.
 - A test file that the change touches holds no test the extractor can read. The
   report shows it as `(no test found)`, so a form the extractor misses is never
   a clean pass.
@@ -165,7 +162,7 @@ below. To compare several endpoints, see [Calibrate](#calibrate).
 | `TEST_AUDIT_STABLE_BAND` | `0.25` | paraphrase spread ceiling |
 | `TEST_AUDIT_CONCURRENCY` | `3` | calls in flight |
 | `TEST_AUDIT_TIMEOUT_MS` | `120000` | timeout for one call |
-| `TEST_AUDIT_STATE_CAP` | `8000` | characters in one test state |
+| `TEST_AUDIT_STATE_CAP` | `5000` | characters in one test state |
 | `TEST_AUDIT_CHANGE_CAP` | `3000` | characters of non-test diff context |
 
 ## OpenCode plugin
@@ -198,26 +195,32 @@ works for all runners. The tool reads the syntax only to find the test blocks.
 
 ### What the endpoint sees
 
-The state has three parts:
+SystemOne is an API for decision models: each question is judged alone against
+one state, in one pass, and the answer is a probability, not text. So the
+battery follows the documented style: one specific judgement per question, one
+line, asked the plain way round, with one-line criteria that separate the
+answers. Code composes the answers into a verdict and a finding.
 
-1. The rubric. It defines every concept the questions use, so the endpoint knows
-   what "falsifiable" and "conditional logic" mean.
-2. The test: the file, the path, the name, the source, the fixtures, and the
-   imports. When there are any, also the heads of the enclosing `describe`
+The state is the test and nothing else:
+
+1. The test record: the file, the path, the name, the source, the fixtures, and
+   the imports. When there are any, also the heads of the enclosing `describe`
    calls and the extractor's notes (`each`, `dynamic-name`, `focus-in-file`), so
    that `runs` can see a `describe.skip` or a focus marker in a sibling test.
-3. A capped slice of the non-test diff.
+2. A capped slice of the non-test diff.
 
-Each question adds its own `instructions` and `criteria`. The `criteria` say what
-each answer means, for example `{"true": "a change can make it fail", "false":
-"no change can make it fail"}`.
+There is no shared rubric: text unrelated to a decision lowers its accuracy, so
+each question carries its own definition in its criteria, for example
+`{"true": "yes: a regression fails it", "false": "no: a regression leaves it
+passing"}`.
 
 The reply holds `probabilities` and `confidence` for each answer. Some endpoints
-also report `mass`.
+also report `mass`. Each endpoint computes `confidence` its own way, so the tool
+reads the probabilities and `mass` instead.
 
 ### The battery
 
-The battery is 16 questions about one test, from 11 checks. All questions share
+The battery is 13 questions about one test, from 10 checks. All questions share
 one state and travel in one call. Each check is a folder in `checks/`, and
 `checks/index.mjs` sets the order. The role of a check tells the verdict rules
 in `classifier/verdict.mjs` what to do with its answers. So a new check needs
@@ -225,28 +228,30 @@ only its folder and one line in `checks/index.mjs`.
 
 | Check | Questions | Role | Looks for | Cases |
 | --- | --- | --- | --- | --- |
-| [`can-fail`](checks/can-fail/check.mjs) | `can_fail_a`, `can_fail_b` (negated), `can_fail_c` | can-fail | tautology, self-reference, vacuous test, passes-with-zero | 9 |
-| [`asserts`](checks/asserts/check.mjs) | `asserts_a`, `asserts_b` (order swapped) | asserts | hardcoded data, input only, shape only, interaction only, nothing; judged by the strongest assertion | 14 |
-| [`positive`](checks/positive/check.mjs) | `positive_a`, `positive_b` (negated) | gate: no positive assertion | only-negative test | 7 |
-| [`runs`](checks/runs/check.mjs) | `runs_a`, `runs_b` (negated) | gate: does not run, or narrows the run | a skip or todo marker on the test or on a describe around it, or an only or focus marker anywhere in the file | 6 |
-| [`type`](checks/type/check.mjs) | `type` | type | regression, characterization, or smoke by purpose; else unit, integration, or e2e | 5 |
+| [`can-fail`](checks/can-fail/check.mjs) | `can_fail_a`, `can_fail_c` | can-fail | tautology, self-reference, vacuous test, passes-with-zero | 9 |
+| [`asserts`](checks/asserts/check.mjs) | `asserts_a`, `asserts_b` (order swapped) | asserts | hardcoded data, input only, shape only, interaction only, nothing, or unclear; judged by the strongest assertion | 14 |
+| [`positive`](checks/positive/check.mjs) | `positive_a`, `positive_b` | gate: no positive assertion | only-negative test | 7 |
+| [`runs`](checks/runs/check.mjs) | `runs_a`, `runs_b` | gate: does not run, or narrows the run | a skip or todo marker on the test or on a describe around it, or an only or focus marker anywhere in the file | 6 |
 | [`conditional`](checks/conditional/check.mjs) | `conditional` | flag `conditional` | a branch, a loop over a value that may be empty, an early return, or a catch that can leave an assertion unrun | 3 |
-| [`isolated`](checks/isolated/check.mjs) | `isolated` | flag `order-dependent` | a value another test sets, or shared mutable state no hook resets | 2 |
+| [`isolated`](checks/isolated/check.mjs) | `isolated` | flag `order-dependent` | a value another test sets, or a shared object no hook resets | 2 |
 | [`deterministic`](checks/deterministic/check.mjs) | `deterministic` | flag `non-deterministic` | a sleep, the real clock, the network, real randomness, an unguaranteed order | 8 |
 | [`automated`](checks/automated/check.mjs) | `automated` | flag `manual` | a print-only test, or a step a person must do | 2 |
-| [`restores`](checks/restores/check.mjs) | `restores` | flag `state-leak` | a global, environment variable, timer, mock, or spy left changed | 3 |
-| [`verdict`](checks/verdict/check.mjs) | `verdict` | verdict | slop, weak, good, strong, by what the test asserts; its cases are the clean and the mixed tests, and the cases of the smells the battery no longer asks | 45 |
+| [`restores`](checks/restores/check.mjs) | `restores` | flag `state-leak` | a global, environment variable, timer, mock, or shared object left changed | 3 |
+| [`verdict`](checks/verdict/check.mjs) | none: computed | verdict | slop, weak, or good, from the answers above; its cases are the clean and the mixed tests, and the cases of the smells the battery no longer asks | 50 |
 
-Five answers carry the verdict: the `positive_*` pair, the `runs_*` pair, the
-`can_fail_*` set, the `asserts_*` pair, and `verdict`. Each pair holds one
-negated twin, so one confident wrong answer cannot pass a test alone. A pair
-whose phrasings disagree beyond the band escalates, like `can_fail`. The other
-5 questions are the descriptive questions. Each one raises a flag.
+Four checks carry the verdict: `can_fail`, `asserts`, `positive`, and `runs`.
+Each asks its judgement twice, in two plain phrasings: a decision model answers
+a negation less reliably, so no phrasing is negated. A pair whose phrasings
+disagree beyond the band escalates, so one confident wrong answer cannot pass a
+test alone. The `asserts` pair also lists its kinds in reverse order, as a
+position control, and an `unclear` answer escalates. The other 5 questions are
+the descriptive questions. Each one raises a flag.
 
-The battery asks only what changes the action on a test. Questions are short;
-the definitions they lean on are in the rubric, which every call shares, so
-the endpoint can cache it. Each question costs its full length on every call,
-and a word in the rubric is read once.
+The verdict is not asked. Code computes it: slop when the test cannot fail,
+asserts nothing, or takes its expected value from the code under test; weak
+when it checks only a shape, a mock call, or its input, or has no positive
+assertion; good otherwise. "Cannot fail" beside a behaviour assertion is a
+contradiction, and escalates.
 
 ### Trust
 
@@ -254,10 +259,10 @@ The tool trusts an answer in two ways:
 
 - `mass` says whether the endpoint answered at all. An answer with a `mass`
   below `TEST_AUDIT_MIN_MASS` is untrusted.
-- The spread says whether the judgement survives rewording. The three
-  `can_fail_*` questions ask the same thing in different words. The tool aligns
-  their polarity and compares them. A spread above `TEST_AUDIT_STABLE_BAND`
-  means the judgement is unstable.
+- The spread says whether the judgement survives rewording. Each
+  verdict-carrying check asks its judgement in two phrasings, and the tool
+  compares them. A spread above `TEST_AUDIT_STABLE_BAND` means the judgement is
+  unstable.
 
 ## Calibrate
 

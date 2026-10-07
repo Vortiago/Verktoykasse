@@ -1,34 +1,27 @@
-// canonical source: test-audit/checks/verdict/check.mjs@aa397d5 sha256:8145807f7a50002fd31fa9d9b8d89a69da349111b681cb02dccad38f9a77a6ea - vendored copy, do not edit here
-// The verdict check: overall, is this test a real guard? The answer is a score on
-// four levels, defined only by whether it can fail and what it asserts. Slop or
-// weak escalates. A descriptive smell does not lower the level, because a
-// descriptive check never escalates (ADR 0007). Its calibration cases are the clean tests
-// that must pass and the mixed tests that must escalate, because those judge the
-// whole verdict, not one smell.
+// canonical source: test-audit/checks/verdict/check.mjs@c34fea8 sha256:86a4152f32880a7ec77f333bb558131395b26862d9e956c2b289bb914ff71abe - vendored copy, do not edit here
+// The verdict check: overall, is this test a real guard? The tool does not ask
+// it. The rules in classifier/verdict.mjs compute it from the answers that carry
+// it: slop when the test cannot fail or asserts nothing, or its expected value
+// comes from the code under test; weak when it checks only a shape, a mock call,
+// or its own input, or has no positive assertion; good otherwise. A decision
+// model judges one thing per question, so code owns the composition. Its
+// calibration cases are the clean tests that must pass, the mixed tests that
+// must escalate, and the cases of the smells the battery no longer asks.
 //
 // Sources:
-// - house rule: the four levels and the cross-question rule (inference)
+// - TypeSafe AI, System One docs: "questions describe judgments; code owns
+//   composition, thresholds, and side effects"
+//   https://docs.typesafe.ai/
+// - house rule: the three levels (inference)
 //   No source states these levels. They are a synthesis of the sources of the
 //   other checks.
 
-import { score } from "../../classifier/systemone.mjs";
-
-/** The verdict levels, lowest first. A score answer's value is an index here. */
-const LEVELS = ["slop", "weak", "good", "strong"];
+/** The verdict levels, lowest first. */
+const LEVELS = ["slop", "weak", "good"];
 
 export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   name: "verdict",
   role: "verdict",
   levels: LEVELS,
-  questions: {
-    verdict: score("How strong a guard is this test: slop, weak, good, or strong?", LEVELS),
-  },
-  rubric: `Verdict: slop, weak, good, or strong, by what the assertions check. Slop: it
-  asserts nothing, or it cannot fail at all (a tautology, or both sides from the
-  code under test). Weak: it asserts only a shape, a mock call, an absence, or its
-  own input passed straight through, so it misses most ways the named behaviour
-  can break. Good: it asserts a value or effect that the named behaviour decides.
-  Strong: good, with an exact expected value that would fail loudly. A value the
-  test computes without the code under test, such as a sorted copy of its input,
-  is an expected value. No smell from the other definitions lowers the level.`,
+  questions: {},
 });

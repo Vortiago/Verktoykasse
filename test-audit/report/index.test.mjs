@@ -19,8 +19,7 @@ function result(overrides = {}) {
     checks: {},
     canFail: { values: [0.99, 0.99, 0.98], mean: 0.99, spread: 0.01, state: "stable", unstable: false },
     asserts: "behaviour",
-    type: "unit",
-    score: { value: 3, label: "strong" },
+    score: { value: 2, label: "good" },
     flags: [],
     needsEyes: false,
     reasons: [],
@@ -46,13 +45,13 @@ test("formatText names the escalated test and its reasons", () => {
   assert.match(text, /slop/);
   assert.match(text, /Needs eyes:/);
   assert.match(text, /can_fail unstable/);
-  assert.match(text, /Summary: 1 strong, 1 slop\. 0 unstable\. 1 needs eyes\./);
+  assert.match(text, /Summary: 1 good, 1 slop\. 0 unstable\. 1 needs eyes\./);
 });
 
 test("the json face emits the full record", () => {
   const json = JSON.parse(formatAudit({ results: [result()], ref: "HEAD", usage: { calls: 1, tokens: 5 } }, { format: "json" }));
   assert.equal(json.results.length, 1);
-  assert.equal(json.results[0].score.label, "strong");
+  assert.equal(json.results[0].score.label, "good");
   assert.equal(json.usage.calls, 1);
 });
 
