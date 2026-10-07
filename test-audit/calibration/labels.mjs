@@ -61,6 +61,22 @@ export function loadLabels() {
 }
 
 /**
+ * The labels that `names` select: a name matches the case folder, such as
+ * `result-keys`, or the test name. No names select every label. A name that
+ * selects nothing is an error, so a typo cannot shrink a run in silence.
+ * @param {CalibrationLabel[]} labels
+ * @param {string[] | undefined} names
+ * @returns {CalibrationLabel[]}
+ */
+export function selectLabels(labels, names) {
+  if (!names?.length) return labels;
+  const folderOf = (/** @type {CalibrationLabel} */ label) => label.file.split("/").at(-2) ?? "";
+  const unknown = names.filter((name) => !labels.some((label) => folderOf(label) === name || label.test === name));
+  if (unknown.length) throw new Error(`no case matches: ${unknown.join(", ")}`);
+  return labels.filter((label) => names.includes(folderOf(label)) || names.includes(label.test));
+}
+
+/**
  * The comment at the head of a file: the `//` lines before the first line of
  * code, without their markers.
  * @param {string} text

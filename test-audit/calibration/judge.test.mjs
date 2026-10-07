@@ -4,7 +4,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { judge, rowStatus } from "./judge.mjs";
-import { loadLabels } from "./labels.mjs";
+import { loadLabels, selectLabels } from "./labels.mjs";
 import { codeContext } from "./case-state.mjs";
 import { verdictFrom } from "../classifier/verdict.mjs";
 import { goodAnswers, noul, score } from "../test-fixtures.mjs";
@@ -164,4 +164,18 @@ test("a case the endpoint never answered fails the run", () => {
 test("the runner sends the code under test as a new-file diff at a neutral path", () => {
   const diff = codeContext("export const a = 1;\n");
   assert.equal(diff, "diff --git a/src/example.mjs b/src/example.mjs\nnew file mode 100644\n--- /dev/null\n+++ b/src/example.mjs\n@@ -0,0 +1,1 @@\n+export const a = 1;");
+});
+
+test("selectLabels picks cases by folder or test name, and rejects a name that matches nothing", () => {
+  const labels = loadLabels();
+  assert.deepEqual(
+    selectLabels(labels, ["result-keys"]).map((label) => label.test),
+    ["loads the profile fields"],
+  );
+  assert.deepEqual(
+    selectLabels(labels, ["adds two numbers"]).map((label) => label.file),
+    ["checks/type/cases/pure-add/case.mjs"],
+  );
+  assert.equal(selectLabels(labels, undefined).length, labels.length);
+  assert.throws(() => selectLabels(labels, ["no-such-case"]), /no case matches: no-such-case/);
 });

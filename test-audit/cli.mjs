@@ -39,6 +39,7 @@ const USAGE = `test-audit: a SystemOne classifier for the tests a change adds
   --benchmark        with --selftest, print a markdown benchmark report
   --targets <list>   comma-separated "url|model" or "model" entries to compare
   --models <list>    comma-separated models on the configured URL to compare
+  --cases <list>     with --selftest, run only these cases: a case folder name or a test name
   --help             this text
 
   TEST_AUDIT_SYSTEMONE_URL, TEST_AUDIT_MODEL, TEST_AUDIT_MIN_MASS,
@@ -53,11 +54,13 @@ async function main() {
     return 0;
   }
   if (args.benchmark && !args.selftest) throw new Error("--benchmark needs --selftest");
+  if (args.cases && !args.selftest) throw new Error("--cases needs --selftest");
   if (args.selftest) {
     const { runSelftest } = await import("./calibration/runner.mjs");
     const { text, code } = await runSelftest({
       targets: selftestTargets(args),
       benchmark: args.benchmark,
+      cases: args.cases,
       onProgress: (event) => {
         process.stderr.write(`  [${event.target} ${event.index}/${event.total}] ${event.status.padEnd(6)} ${event.test}\n`);
       },
@@ -113,6 +116,7 @@ function parseArgs(argv) {
       model: { type: "string" },
       targets: { type: "string" },
       models: { type: "string" },
+      cases: { type: "string" },
       json: { type: "boolean", default: false },
       markdown: { type: "boolean", default: false },
       selftest: { type: "boolean", default: false },
@@ -127,6 +131,7 @@ function parseArgs(argv) {
     files: values.files ? positionals : undefined,
     targets: values.targets === undefined ? undefined : list(values.targets),
     models: values.models === undefined ? undefined : list(values.models),
+    cases: values.cases === undefined ? undefined : list(values.cases),
   };
 }
 

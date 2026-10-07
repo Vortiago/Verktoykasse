@@ -4,7 +4,7 @@
 
 import { classify, usageMeter } from "../classifier/index.mjs";
 import { mapPool } from "../lib/pool.mjs";
-import { loadLabels } from "./labels.mjs";
+import { loadLabels, selectLabels } from "./labels.mjs";
 import { prepareCase } from "./case-state.mjs";
 import { judge, rowStatus } from "./judge.mjs";
 import { formatBenchmark, formatMatrix, formatSingle } from "./format.mjs";
@@ -14,12 +14,12 @@ import config from "../config.mjs";
 /** @typedef {import("./case-state.mjs").PreparedCase} PreparedCase */
 
 /**
- * @param {{ targets: Array<{url: string, model: string}>, benchmark?: boolean, onProgress?: (event: { target: string, index: number, total: number, status: string, test: string }) => void }} opts
+ * @param {{ targets: Array<{url: string, model: string}>, benchmark?: boolean, cases?: string[], onProgress?: (event: { target: string, index: number, total: number, status: string, test: string }) => void }} opts
  * @returns {Promise<{ text: string, code: number }>}
  */
 export async function runSelftest(opts) {
   // Read and parse every case, and build its change context, once; every target reuses it.
-  const cases = loadLabels().map(prepareCase);
+  const cases = selectLabels(loadLabels(), opts.cases).map(prepareCase);
 
   /** @param {{ url: string, model: string }} target */
   const runTarget = async (target) => {
