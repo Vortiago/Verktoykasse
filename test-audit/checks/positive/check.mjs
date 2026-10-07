@@ -25,14 +25,14 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   reason: "no positive assertion",
   questions: {
     positive_a: noul(
-      "Does an assertion need a value a do-nothing stub could not return?",
-      "yes: a non-zero number, a non-empty string or object, true, or an error with its message",
-      "no: only empty, zero, false, null, undefined, or no throw",
+      "Does an assertion expect a non-empty value?",
+      "yes: a literal, an object, true, or an error message",
+      "no: only empty, null, undefined, or no throw",
     ),
     positive_b: noul(
-      "Does this test fail against a stub that returns nothing and never throws?",
-      "yes: an assertion needs a real value",
-      "no: it passes an empty or null result",
+      "Does this test check a real value, not only empty, null, or no throw?",
+      "yes: it checks a real value",
+      "no: only empty, null, undefined, or no throw",
     ),
   },
   negated: [],

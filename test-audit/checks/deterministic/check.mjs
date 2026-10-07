@@ -27,9 +27,9 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   flag: "non-deterministic",
   questions: {
     deterministic: noul(
-      "Does this test give the same result on every run and machine?",
-      "yes: no real clock, randomness, sleep, network, file, database, or env it does not create or fake",
-      "no: it reads one as it finds it",
+      "Does this test give the same result on every run?",
+      "yes: nothing real-time, random, networked, or external, or it is faked",
+      "no: it uses the real clock, randomness, a sleep, the network, or an external file or env",
     ),
   },
 });

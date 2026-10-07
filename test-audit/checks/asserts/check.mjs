@@ -38,10 +38,10 @@ import { choice } from "../../classifier/systemone.mjs";
 /** The kinds of assertion, best first: the first kind is the one real guard. */
 const KINDS = {
   behaviour: "the output, against a value the test fixes or computes without the code",
-  "from-code": "the output, against a value from the code under test or a re-implementation of it in the test",
-  "input-only": "only the test's own input or setup, or an output field copied straight from the input",
-  "shape-only": "only type, length, keys, presence, a bound, or that it is truthy or defined",
-  "interaction-only": "only that a mock or spy was called, not with what",
+  "from-code": "the output, against a value from the code under test itself",
+  "input-only": "only the test's own input or setup",
+  "shape-only": "only type, length, its list of keys, presence, a bound, or that it is truthy or defined",
+  "interaction-only": "only that a mock was called",
   nothing: "nothing, a tautology, or only no throw",
   unclear: null,
 };
@@ -51,7 +51,7 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   role: "asserts",
   kinds: KINDS,
   questions: {
-    asserts_a: choice("Of all assertions, what does the one closest to the behaviour check?", { ...KINDS }),
-    asserts_b: choice("Of all assertions, what does the one closest to the behaviour check?", Object.fromEntries(Object.entries(KINDS).reverse())),
+    asserts_a: choice("What does the strongest assertion check?", { ...KINDS }),
+    asserts_b: choice("What does the strongest assertion check?", Object.fromEntries(Object.entries(KINDS).reverse())),
   },
 });

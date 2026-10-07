@@ -17,44 +17,44 @@
   },
   "asserts_a": {
     "type": "choice",
-    "instructions": "Of all assertions, what does the one closest to the behaviour check?",
+    "instructions": "What does the strongest assertion check?",
     "criteria": {
       "behaviour": "the output, against a value the test fixes or computes without the code",
-      "from-code": "the output, against a value from the code under test or a re-implementation of it in the test",
-      "input-only": "only the test's own input or setup, or an output field copied straight from the input",
-      "shape-only": "only type, length, keys, presence, a bound, or that it is truthy or defined",
-      "interaction-only": "only that a mock or spy was called, not with what",
+      "from-code": "the output, against a value from the code under test itself",
+      "input-only": "only the test's own input or setup",
+      "shape-only": "only type, length, its list of keys, presence, a bound, or that it is truthy or defined",
+      "interaction-only": "only that a mock was called",
       "nothing": "nothing, a tautology, or only no throw",
       "unclear": null
     }
   },
   "asserts_b": {
     "type": "choice",
-    "instructions": "Of all assertions, what does the one closest to the behaviour check?",
+    "instructions": "What does the strongest assertion check?",
     "criteria": {
       "unclear": null,
       "nothing": "nothing, a tautology, or only no throw",
-      "interaction-only": "only that a mock or spy was called, not with what",
-      "shape-only": "only type, length, keys, presence, a bound, or that it is truthy or defined",
-      "input-only": "only the test's own input or setup, or an output field copied straight from the input",
-      "from-code": "the output, against a value from the code under test or a re-implementation of it in the test",
+      "interaction-only": "only that a mock was called",
+      "shape-only": "only type, length, its list of keys, presence, a bound, or that it is truthy or defined",
+      "input-only": "only the test's own input or setup",
+      "from-code": "the output, against a value from the code under test itself",
       "behaviour": "the output, against a value the test fixes or computes without the code"
     }
   },
   "positive_a": {
     "type": "noul",
-    "instructions": "Does an assertion need a value a do-nothing stub could not return?",
+    "instructions": "Does an assertion expect a non-empty value?",
     "criteria": {
-      "true": "yes: a non-zero number, a non-empty string or object, true, or an error with its message",
-      "false": "no: only empty, zero, false, null, undefined, or no throw"
+      "true": "yes: a literal, an object, true, or an error message",
+      "false": "no: only empty, null, undefined, or no throw"
     }
   },
   "positive_b": {
     "type": "noul",
-    "instructions": "Does this test fail against a stub that returns nothing and never throws?",
+    "instructions": "Does this test check a real value, not only empty, null, or no throw?",
     "criteria": {
-      "true": "yes: an assertion needs a real value",
-      "false": "no: it passes an empty or null result"
+      "true": "yes: it checks a real value",
+      "false": "no: only empty, null, undefined, or no throw"
     }
   },
   "runs_a": {
@@ -91,10 +91,10 @@
   },
   "deterministic": {
     "type": "noul",
-    "instructions": "Does this test give the same result on every run and machine?",
+    "instructions": "Does this test give the same result on every run?",
     "criteria": {
-      "true": "yes: no real clock, randomness, sleep, network, file, database, or env it does not create or fake",
-      "false": "no: it reads one as it finds it"
+      "true": "yes: nothing real-time, random, networked, or external, or it is faked",
+      "false": "no: it uses the real clock, randomness, a sleep, the network, or an external file or env"
     }
   },
   "automated": {
@@ -107,10 +107,10 @@
   },
   "restores": {
     "type": "noul",
-    "instructions": "Does this test, or an after hook, put back every global, env variable, timer, mock, file, or shared object it changes?",
+    "instructions": "Does this test leave all shared state as it found it?",
     "criteria": {
-      "true": "yes: it changes none, or puts them back",
-      "false": "no: it leaves one changed"
+      "true": "yes: it changes none, or an after hook puts it back",
+      "false": "no: it leaves a global, env variable, timer, mock, or shared object changed"
     }
   },
   "resilient": {

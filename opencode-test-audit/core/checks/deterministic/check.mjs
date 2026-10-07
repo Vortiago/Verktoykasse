@@ -1,4 +1,4 @@
-// canonical source: test-audit/checks/deterministic/check.mjs@45c4fac sha256:7b9898da27b087be64ec3e9c3eddc00356efd95f7051880936b3793efe46faab - vendored copy, do not edit here
+// canonical source: test-audit/checks/deterministic/check.mjs@3cf9cf0 sha256:6b85f768ecdc14a905ee41a1de7ddcf3337f0d764dca94d18806e91b267f77c2 - vendored copy, do not edit here
 // The deterministic check: does the test give the same result on every run and
 // machine? A sleep, the real clock, the network, real randomness, an
 // unguaranteed order, or a file, database, or environment variable the test does
@@ -28,9 +28,9 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   flag: "non-deterministic",
   questions: {
     deterministic: noul(
-      "Does this test give the same result on every run and machine?",
-      "yes: no real clock, randomness, sleep, network, file, database, or env it does not create or fake",
-      "no: it reads one as it finds it",
+      "Does this test give the same result on every run?",
+      "yes: nothing real-time, random, networked, or external, or it is faked",
+      "no: it uses the real clock, randomness, a sleep, the network, or an external file or env",
     ),
   },
 });

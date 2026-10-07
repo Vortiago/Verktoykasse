@@ -19,9 +19,9 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   flag: "state-leak",
   questions: {
     restores: noul(
-      "Does this test, or an after hook, put back every global, env variable, timer, mock, file, or shared object it changes?",
-      "yes: it changes none, or puts them back",
-      "no: it leaves one changed",
+      "Does this test leave all shared state as it found it?",
+      "yes: it changes none, or an after hook puts it back",
+      "no: it leaves a global, env variable, timer, mock, or shared object changed",
     ),
   },
 });

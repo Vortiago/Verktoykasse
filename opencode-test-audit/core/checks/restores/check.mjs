@@ -1,4 +1,4 @@
-// canonical source: test-audit/checks/restores/check.mjs@45c4fac sha256:b6f3c2cbb7661b31610d1ec4003b916bca9bb303dd6c5ed83dc4238835974556 - vendored copy, do not edit here
+// canonical source: test-audit/checks/restores/check.mjs@3cf9cf0 sha256:47cb32b0f4f967ee576427d5c059301e27d9b79afbaaca4381c0ccb7f9734e15 - vendored copy, do not edit here
 // The restores check: does the test, or an after hook, put back every global,
 // environment variable, timer, mock, file, and shared object that it changes? A
 // test that changes none restores state. A "no" raises the `state-leak` flag.
@@ -20,9 +20,9 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   flag: "state-leak",
   questions: {
     restores: noul(
-      "Does this test, or an after hook, put back every global, env variable, timer, mock, file, or shared object it changes?",
-      "yes: it changes none, or puts them back",
-      "no: it leaves one changed",
+      "Does this test leave all shared state as it found it?",
+      "yes: it changes none, or an after hook puts it back",
+      "no: it leaves a global, env variable, timer, mock, or shared object changed",
     ),
   },
 });
