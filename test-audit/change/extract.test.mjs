@@ -196,6 +196,20 @@ test("a focus marker anywhere notes every test in the file", () => {
   assert.deepEqual(extractTests('it("loads", () => { expect(load()).toBe(1); });', "x.test.mjs")[0].flags, []);
 });
 
+test("a skip marker on the test or on a describe around it notes the test as skipped", () => {
+  const text = [
+    'test.skip("a", () => { expect(a()).toBe(1); });',
+    'xit("b", () => { expect(b()).toBe(1); });',
+    'test.todo("c");',
+    'describe.skip("d", () => { it("inner", () => { expect(d()).toBe(1); }); });',
+    'test("e", () => { expect(e()).toBe(1); });',
+  ].join("\n");
+  assert.deepEqual(
+    extractTests(text, "x.test.mjs").map((found) => [found.name, found.flags.includes("skipped")]),
+    [["a", true], ["b", true], ["c", true], ["inner", true], ["e", false]],
+  );
+});
+
 test("a chained or curried call head is still a test", () => {
   const text = [
     'test.skip.each([[1, 2]])("adds %i", (a, b) => { expect(a + 1).toBe(b); });',
@@ -204,7 +218,9 @@ test("a chained or curried call head is still a test", () => {
   ].join("\n");
   const found = extractTests(text, "x.test.mjs");
   assert.deepEqual(found.map((t) => t.name), ["adds %i", "reads a link", "runs at once"]);
-  assert.deepEqual(found[0].flags, ["each"]);
+  assert.deepEqual(found[0].flags, ["each", "skipped"]);
+  assert.deepEqual(found[1].flags, ["skipped"]);
+  assert.deepEqual(found[2].flags, []);
   assert.match(found[0].source, /^test\.skip\.each/);
 });
 

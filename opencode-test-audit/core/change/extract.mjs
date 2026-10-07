@@ -1,4 +1,4 @@
-// canonical source: test-audit/change/extract.mjs@9ae1caa sha256:f7157c33bbae1e79da3e207ec459917f4685c5d4dab67d2a8f4fba2634dcc637 - vendored copy, do not edit here
+// canonical source: test-audit/change/extract.mjs@c2891f2 sha256:4e1e8eaa84e2ada7ed962b6fbdfef9bce5dc50e094eb07e798623190cdd9f1b8 - vendored copy, do not edit here
 // Test extraction: the parse half of the audit. It takes the text of one file
 // and returns the test blocks inside it. No git, no filesystem, no network, so
 // a fixture string exercises every branch. The read half lives in collect.mjs.
@@ -25,6 +25,10 @@ const CALL =
 /** Members whose first call takes a table or a condition and returns the test
  * function, so the test is the second call: `test.each([...])("name", fn)`. */
 const CURRIED = new Set(["each", "for", "skipIf", "runIf"]);
+
+/** The keywords that skip a test or a describe, and the members that skip or may skip it. */
+const SKIP_KEYWORDS = new Set(["xdescribe", "xcontext", "xit", "xtest", "xspecify"]);
+const SKIP_MEMBERS = ["skip", "todo", "skipIf"];
 
 /** The second call of a curried head, matched right where the first ends. */
 const EACH_CALL = /\s*\(/y;
@@ -105,8 +109,9 @@ function lineAt(starts, offset) {
  * @param {string[]} heads the enclosing describes' call heads, outermost first
  * @param {string[]} outerSetup the setup code of the enclosing scopes, outermost first
  * @param {{ file: string, imports: string[], lineStarts: number[], out: AuditTest[], focused: boolean }} ctx
+ * @param {boolean} [skippedScope] an enclosing describe skips every test inside
  */
-function walk(text, code, start, end, path, inherited, heads, outerSetup, ctx) {
+function walk(text, code, start, end, path, inherited, heads, outerSetup, ctx, skippedScope = false) {
   const calls = findCalls(code, text, start, end);
   const fixtures = calls.filter((c) => FIXTURES.has(c.keyword)).map((c) => text.slice(c.callStart, c.callEnd));
   const scope = [...inherited, ...fixtures];
@@ -120,13 +125,14 @@ function walk(text, code, start, end, path, inherited, heads, outerSetup, ctx) {
     if (DESCRIBES.has(call.keyword)) {
       // The head (`describe.skip("parser", () => {`) travels with each test
       // inside, so a skip or only on the describe reaches the `runs` question.
-      if (call.body) walk(text, code, call.body.start, call.body.end, [...path, call.name], scope, [...heads, headOf(text, call.callStart, call.body.start)], setup, ctx);
+      if (call.body) walk(text, code, call.body.start, call.body.end, [...path, call.name], scope, [...heads, headOf(text, call.callStart, call.body.start)], setup, ctx, skippedScope || call.skipped);
       continue;
     }
     if (!TESTS.has(call.keyword)) continue;
     const flags = [];
     if (call.dynamicName) flags.push("dynamic-name");
     if (call.members.includes("each") || call.members.includes("for")) flags.push("each");
+    if (skippedScope || call.skipped) flags.push("skipped");
     ctx.out.push({
       file: ctx.file,
       line: lineAt(ctx.lineStarts, call.callStart),
@@ -270,7 +276,7 @@ export function splitDiff(diff) {
  * @param {string} text
  * @param {number} start
  * @param {number} end
- * @returns {Array<{ keyword: string, members: string[], focused: boolean, name: string, dynamicName: boolean, callStart: number, callEnd: number, body: {start: number, end: number} | null }>}
+ * @returns {Array<{ keyword: string, members: string[], focused: boolean, skipped: boolean, name: string, dynamicName: boolean, callStart: number, callEnd: number, body: {start: number, end: number} | null }>}
  */
 function findCalls(code, text, start, end) {
   // Scan the code-only view: comments, string, template, and regex bodies are
@@ -320,6 +326,7 @@ function findCalls(code, text, start, end) {
       keyword,
       members,
       focused: keyword === "fit" || keyword === "fdescribe" || members.includes("only"),
+      skipped: SKIP_KEYWORDS.has(keyword) || members.some((member) => SKIP_MEMBERS.includes(member)),
       name: literal ?? "(dynamic name)",
       dynamicName: literal === null,
       callStart,

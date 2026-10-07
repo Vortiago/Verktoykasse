@@ -9,6 +9,7 @@
 
 import { CHECKS } from "../checks/index.mjs";
 import { labelChecks } from "./labels.mjs";
+import { trusted } from "../classifier/systemone.mjs";
 import { findingOf } from "../classifier/finding.mjs";
 
 /** @typedef {import("../types.d.ts").AuditResult} AuditResult */
@@ -100,7 +101,9 @@ export function judge(rows) {
  */
 function answered(result) {
   if (result.error) return false;
-  return Object.values(result.checks).some((check) => check.value !== undefined || check.group?.values.some((value) => value !== null));
+  // The answers, not the checks: a check that reads only the extractor's flags,
+  // such as runs, has a value with no answer at all.
+  return Object.values(result.answers).some((answer) => trusted(answer));
 }
 
 /**

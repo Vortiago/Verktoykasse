@@ -1,4 +1,4 @@
-// canonical source: test-audit/types.d.ts@c34fea8 sha256:b23dd76560dbe16e14470d05e54f23d1d68a6df36e94a4ac446593d6e0360678 - vendored copy, do not edit here
+// canonical source: test-audit/types.d.ts@c2891f2 sha256:f2028b092db8b4e2bd6f4e0991928384af389b277bd1f7733af13a50dd3df100 - vendored copy, do not edit here
 // Shared shapes for the test-audit modules. The modules are `.mjs` with JSDoc
 // types, and the tsc gate checks them under strict (tsconfig.json). A module
 // imports a shape with `@typedef {import("../types.d.ts").AuditTest} AuditTest`,
@@ -28,16 +28,20 @@ interface CheckBase {
  * phrasings of one judgement. `role` says what the verdict rules do with the
  * answers:
  * - `can-fail`: a paraphrase set. Its mean is the can-fail value.
- * - `asserts`: a choice pair. Only the first kind is a real guard.
+ * - `asserts`: yes/no questions, one per property. Code picks the kind; only
+ *   the first kind is a real guard.
  * - `gate`: a yes/no twin pair. A "no" escalates with `reason`.
+ * - `runs`: no questions. The extractor's skipped and focus-in-file flags
+ *   escalate with `reason`.
  * - `descriptive`: a yes/no question. A "no" raises `flag`.
  * - `verdict`: no questions. The rules compute its level, on `levels`, lowest
  *   first, from the answers of the other checks.
  */
 export type Check =
   | (CheckBase & { role: "can-fail" })
-  | (CheckBase & { role: "asserts"; kinds: Record<string, string | null> })
+  | (CheckBase & { role: "asserts"; kinds: Record<string, string> })
   | (CheckBase & { role: "gate"; reason: string })
+  | (CheckBase & { role: "runs"; reason: string })
   | (CheckBase & { role: "descriptive"; flag: string })
   | (CheckBase & { role: "verdict"; levels: string[] });
 

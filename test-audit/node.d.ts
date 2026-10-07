@@ -125,6 +125,7 @@ declare module "node:fs" {
   export function readdirSync(path: string): string[];
   export function readdirSync(path: string, options: { withFileTypes: true }): Array<{ name: string; isDirectory(): boolean }>;
   export function existsSync(path: string): boolean;
+  export function appendFileSync(path: string, data: string): void;
   export function globSync(pattern: string, options: { cwd?: string | URL }): string[];
 }
 

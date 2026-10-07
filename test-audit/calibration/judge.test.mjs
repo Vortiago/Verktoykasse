@@ -7,7 +7,7 @@ import { judge, rowStatus } from "./judge.mjs";
 import { loadLabels, selectLabels } from "./labels.mjs";
 import { codeContext } from "./case-state.mjs";
 import { verdictFrom } from "../classifier/verdict.mjs";
-import { choice, goodAnswers, noul } from "../test-fixtures.mjs";
+import { assertsAs, goodAnswers, noul } from "../test-fixtures.mjs";
 
 /** @typedef {import("../types.d.ts").AuditAnswer} AuditAnswer */
 /** @typedef {import("../types.d.ts").CalibrationLabel} CalibrationLabel */
@@ -29,9 +29,9 @@ function row(label, answers, error) {
 /** A real guard: it can fail, and nothing escalates. */
 const GOOD = goodAnswers();
 /** A stable "cannot fail": the phrasings agree, so the tool commits to no. It escalates. */
-const CANNOT_FAIL = { ...GOOD, can_fail_a: noul(0.1), can_fail_c: noul(0.1), asserts_a: choice("nothing"), asserts_b: choice("nothing") };
+const CANNOT_FAIL = { ...GOOD, can_fail_a: noul(0.1), can_fail_c: noul(0.1), ...assertsAs("nothing") };
 /** A good can_fail beside an assertion that checks nothing, a slop verdict: it escalates. */
-const SLOP = { ...GOOD, asserts_a: choice("nothing"), asserts_b: choice("nothing") };
+const SLOP = { ...GOOD, ...assertsAs("nothing") };
 /** Phrasings that disagree beyond the band: the tool commits to no value. */
 const UNSTABLE = { ...GOOD, can_fail_a: noul(0.9), can_fail_c: noul(0.1) };
 
@@ -105,7 +105,7 @@ test("each check a label names is scored against the label", () => {
 });
 
 test("a labelled check that did not commit is not counted as wrong", () => {
-  const rows = [row(/** @type {any} */ ({ test: "a", runs: true }), { ...GOOD, runs_a: noul(0.9), runs_b: noul(0.1) })];
+  const rows = [row(/** @type {any} */ ({ test: "a", positive: true }), { ...GOOD, positive_a: noul(0.9), positive_b: noul(0.1) })];
   assert.deepEqual(judge(rows).checkAnswers, {});
   assert.ok(rowStatus(rows[0]) !== "CHECK");
 });

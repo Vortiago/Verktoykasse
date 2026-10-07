@@ -5,7 +5,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { findingOf } from "./finding.mjs";
 import { verdictFrom } from "./verdict.mjs";
-import { choice, goodAnswers, noul } from "../test-fixtures.mjs";
+import { assertsAs, goodAnswers, noul } from "../test-fixtures.mjs";
 
 const TEST = { file: "a.test.mjs", line: 1, name: "adds", path: [], source: "", fixtures: [], setup: [], imports: [], scope: [], flags: [] };
 
@@ -17,7 +17,7 @@ test("a clean test is ok", () => {
 });
 
 test("a test that cannot fail and asserts nothing is dropped, and a confident answer is sure", () => {
-  const finding = findingFor({ can_fail_a: noul(0.02), can_fail_c: noul(0.03), asserts_a: choice("nothing"), asserts_b: choice("nothing") });
+  const finding = findingFor({ can_fail_a: noul(0.02), can_fail_c: noul(0.03), ...assertsAs("nothing") });
   assert.equal(finding.action, "drop");
   assert.deepEqual(finding.reasons, ["cannot fail", "asserts nothing"]);
   assert.equal(finding.sure, true);
@@ -29,7 +29,7 @@ test("cannot fail beside a behaviour assertion is a contradiction, so a look", (
 });
 
 test("a shape-only assertion needs a fix", () => {
-  const finding = findingFor({ asserts_a: choice("shape-only"), asserts_b: choice("shape-only") });
+  const finding = findingFor({ ...assertsAs("shape-only") });
   assert.equal(finding.action, "fix");
   assert.deepEqual(finding.reasons, ["asserts only the shape"]);
 });
@@ -64,8 +64,7 @@ test("a reason that no check owns, such as a file with no readable test, is a lo
 });
 
 test("an assert kind the phrasings give a low probability is not sure", () => {
-  const low = (/** @type {string} */ kind) => ({ ...choice(kind), probabilities: { [kind]: 0.59, behaviour: 0.3 } });
-  const finding = findingFor({ asserts_a: low("shape-only"), asserts_b: low("shape-only") });
+  const finding = findingFor(assertsAs("shape-only", 0.15));
   assert.deepEqual(finding, { action: "fix", reasons: ["asserts only the shape"], sure: false });
 });
 

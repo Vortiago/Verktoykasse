@@ -15,37 +15,51 @@
       "false": "no: every output passes it"
     }
   },
-  "asserts_a": {
-    "type": "choice",
-    "instructions": "What does the strongest assertion check?",
+  "asserts_content": {
+    "type": "noul",
+    "instructions": "Does an assertion compare the content of the output with an expected value?",
     "criteria": {
-      "behaviour": "the output, against a value the test fixes or computes without the code",
-      "from-code": "the output, against a value from the code under test itself",
-      "input-only": "only the test's own input or setup",
-      "shape-only": "only type, length, its list of keys, presence, a bound, or that it is truthy or defined",
-      "interaction-only": "only that a mock was called",
-      "nothing": "nothing, a tautology, or only no throw",
-      "unclear": null
+      "true": "yes: it checks what the output holds",
+      "false": "no: only its type, length, keys, or truthiness, or nothing at all"
     }
   },
-  "asserts_b": {
-    "type": "choice",
-    "instructions": "What does the strongest assertion check?",
+  "asserts_own_value": {
+    "type": "noul",
+    "instructions": "Does the test write its expected value itself, as a literal or its own computation?",
     "criteria": {
-      "unclear": null,
-      "nothing": "nothing, a tautology, or only no throw",
-      "interaction-only": "only that a mock was called",
-      "shape-only": "only type, length, its list of keys, presence, a bound, or that it is truthy or defined",
-      "input-only": "only the test's own input or setup",
-      "from-code": "the output, against a value from the code under test itself",
-      "behaviour": "the output, against a value the test fixes or computes without the code"
+      "true": "yes: the test fixes it",
+      "false": "no: it comes from the code under test"
+    }
+  },
+  "asserts_shape_only": {
+    "type": "noul",
+    "instructions": "Do all assertions check only type, length, its list of keys, a bound, or truthiness?",
+    "criteria": {
+      "true": "yes: only the shape",
+      "false": "no: an assertion checks a value"
+    }
+  },
+  "asserts_mock_only": {
+    "type": "noul",
+    "instructions": "Are all assertions about whether a mock or spy was called?",
+    "criteria": {
+      "true": "yes: only mock calls",
+      "false": "no: an assertion checks a result"
+    }
+  },
+  "asserts_input_only": {
+    "type": "noul",
+    "instructions": "Do the assertions only read the test's own variables, never a value the code under test returned?",
+    "criteria": {
+      "true": "yes: only its own input or setup",
+      "false": "no: they read a value the code returned"
     }
   },
   "positive_a": {
     "type": "noul",
     "instructions": "Does an assertion expect a non-empty value?",
     "criteria": {
-      "true": "yes: a literal, an object, true, or an error message",
+      "true": "yes: a number, a string, true, an object, or an error message",
       "false": "no: only empty, null, undefined, or no throw"
     }
   },
@@ -55,22 +69,6 @@
     "criteria": {
       "true": "yes: it checks a real value",
       "false": "no: only empty, null, undefined, or no throw"
-    }
-  },
-  "runs_a": {
-    "type": "noul",
-    "instructions": "Does this test run, with no marker narrowing the run?",
-    "criteria": {
-      "true": "yes: no skip, todo, or x marker on it or its describe, and no focus-in-file flag",
-      "false": "no: a skip, todo, skipIf, or x marker stops it, or an only or focus marker narrows the file"
-    }
-  },
-  "runs_b": {
-    "type": "noul",
-    "instructions": "Is this test free of skip, todo, only, and focus markers, in its head, its scope, and its flags?",
-    "criteria": {
-      "true": "yes: no such marker",
-      "false": "no: a marker is there"
     }
   },
   "conditional": {

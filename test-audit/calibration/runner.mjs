@@ -8,6 +8,7 @@ import { loadLabels, selectLabels } from "./labels.mjs";
 import { prepareCase } from "./case-state.mjs";
 import { judge, rowStatus } from "./judge.mjs";
 import { formatBenchmark, formatMatrix, formatSingle } from "./format.mjs";
+import { appendFileSync } from "node:fs";
 import config from "../config.mjs";
 
 /** @typedef {import("../types.d.ts").CalibrationRow} CalibrationRow */
@@ -66,7 +67,12 @@ async function runCase(item, ctx) {
     url: ctx.target.url,
     model: ctx.target.model,
     changeContext: item.context,
-    onResponse: ctx.onResponse,
+    onResponse: (json) => {
+      ctx.onResponse(json);
+      // The full reply of each call, one JSON line, when TEST_AUDIT_RAW_LOG names
+      // a file: the raw material to recalibrate on, or to split a run by backend.
+      if (config.rawLog) appendFileSync(config.rawLog, `${JSON.stringify({ model: ctx.target.model, test: item.label.test, file: item.label.file, reply: json })}\n`);
+    },
   });
   return { ...item, result };
 }

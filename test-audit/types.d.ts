@@ -27,16 +27,20 @@ interface CheckBase {
  * phrasings of one judgement. `role` says what the verdict rules do with the
  * answers:
  * - `can-fail`: a paraphrase set. Its mean is the can-fail value.
- * - `asserts`: a choice pair. Only the first kind is a real guard.
+ * - `asserts`: yes/no questions, one per property. Code picks the kind; only
+ *   the first kind is a real guard.
  * - `gate`: a yes/no twin pair. A "no" escalates with `reason`.
+ * - `runs`: no questions. The extractor's skipped and focus-in-file flags
+ *   escalate with `reason`.
  * - `descriptive`: a yes/no question. A "no" raises `flag`.
  * - `verdict`: no questions. The rules compute its level, on `levels`, lowest
  *   first, from the answers of the other checks.
  */
 export type Check =
   | (CheckBase & { role: "can-fail" })
-  | (CheckBase & { role: "asserts"; kinds: Record<string, string | null> })
+  | (CheckBase & { role: "asserts"; kinds: Record<string, string> })
   | (CheckBase & { role: "gate"; reason: string })
+  | (CheckBase & { role: "runs"; reason: string })
   | (CheckBase & { role: "descriptive"; flag: string })
   | (CheckBase & { role: "verdict"; levels: string[] });
 

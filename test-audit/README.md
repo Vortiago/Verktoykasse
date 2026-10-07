@@ -112,9 +112,10 @@ A test escalates, and needs eyes, for each of these reasons:
 
 - The endpoint gave no answer, or a verdict-carrying answer is missing or
   untrusted.
-- The paraphrases disagree. The spread of the `can_fail_*` set, the `runs_*`
-  pair, or the `positive_*` pair is above `TEST_AUDIT_STABLE_BAND`, or
-  `asserts_a` and `asserts_b` differ.
+- The paraphrases disagree. The spread of the `can_fail_*` pair or the
+  `positive_*` pair is above `TEST_AUDIT_STABLE_BAND`, or the `asserts_*`
+  answers contradict each other, such as "compares content" beside "only the
+  shape".
 - The test does not run, or an only or focus marker in its file leaves other
   tests out of the run.
 - The test has no positive assertion.
@@ -164,6 +165,7 @@ below. To compare several endpoints, see [Calibrate](#calibrate).
 | `TEST_AUDIT_TIMEOUT_MS` | `120000` | timeout for one call |
 | `TEST_AUDIT_STATE_CAP` | `5000` | characters in one test state |
 | `TEST_AUDIT_CHANGE_CAP` | `3000` | characters of non-test diff context |
+| `TEST_AUDIT_RAW_LOG` | unset | with `--selftest`, a file to append each reply to, as one JSON line |
 
 ## OpenCode plugin
 
@@ -220,7 +222,9 @@ reads the probabilities and `mass` instead.
 
 ### The battery
 
-The battery is 14 questions about one test, from 11 checks. All questions share
+The battery is 15 yes/no questions about one test, from 11 checks. There is no
+choice question: two decision models picked the last option of a choice in
+either order. All questions share
 one state and travel in one call. Each check is a folder in `checks/`, and
 `checks/index.mjs` sets the order. The role of a check tells the verdict rules
 in `classifier/verdict.mjs` what to do with its answers. So a new check needs
@@ -229,9 +233,9 @@ only its folder and one line in `checks/index.mjs`.
 | Check | Questions | Role | Looks for | Cases |
 | --- | --- | --- | --- | --- |
 | [`can-fail`](checks/can-fail/check.mjs) | `can_fail_a`, `can_fail_c` | can-fail | tautology, self-reference, vacuous test, passes-with-zero | 9 |
-| [`asserts`](checks/asserts/check.mjs) | `asserts_a`, `asserts_b` (order swapped) | asserts | an expected value from the code, input only, shape only, interaction only, nothing, or unclear; judged by the assertion closest to the behaviour | 14 |
+| [`asserts`](checks/asserts/check.mjs) | `asserts_content`, `asserts_own_value`, `asserts_shape_only`, `asserts_mock_only`, `asserts_input_only` | asserts | an expected value from the code, input only, shape only, interaction only, or nothing; code picks the kind from the five answers | 14 |
 | [`positive`](checks/positive/check.mjs) | `positive_a`, `positive_b` | gate: no positive assertion | only-negative test | 7 |
-| [`runs`](checks/runs/check.mjs) | `runs_a`, `runs_b` | gate: does not run, or narrows the run | a skip or todo marker on the test or on a describe around it, or an only or focus marker anywhere in the file | 6 |
+| [`runs`](checks/runs/check.mjs) | none: the extractor's `skipped` and `focus-in-file` flags | runs: does not run, or narrows the run | a skip, todo, or x marker on the test or on a describe around it, or an only or focus marker anywhere in the file | 6 |
 | [`conditional`](checks/conditional/check.mjs) | `conditional` | flag `conditional` | a branch, a loop over a value that may be empty, an early return, or a catch that can leave an assertion unrun | 3 |
 | [`isolated`](checks/isolated/check.mjs) | `isolated` | flag `order-dependent` | a value another test sets, or a shared object no hook resets | 2 |
 | [`deterministic`](checks/deterministic/check.mjs) | `deterministic` | flag `non-deterministic` | a sleep, the real clock, the network, real randomness, an unguaranteed order | 8 |
@@ -241,12 +245,13 @@ only its folder and one line in `checks/index.mjs`.
 | [`verdict`](checks/verdict/check.mjs) | none: computed | verdict | slop, weak, or good, from the answers above; its cases are the clean and the mixed tests, and the cases of the smells the battery no longer asks | 46 |
 
 Four checks carry the verdict: `can_fail`, `asserts`, `positive`, and `runs`.
-Each asks its judgement twice, in two plain phrasings: a decision model answers
-a negation less reliably, so no phrasing is negated. A pair whose phrasings
-disagree beyond the band escalates, so one confident wrong answer cannot pass a
-test alone. The `asserts` pair also lists its kinds in reverse order, as a
-position control, and an `unclear` answer escalates. The other 6 questions are
-the descriptive questions. Each one raises a flag.
+`can_fail` and `positive` ask their judgement twice, in two plain phrasings: a
+decision model answers a negation less reliably, so no phrasing is negated. A
+pair whose phrasings disagree beyond the band escalates, so one confident wrong
+answer cannot pass a test alone. `asserts` asks one yes/no question per
+property, and code picks the kind; answers that contradict each other escalate.
+`runs` asks nothing: a marker is syntax, so the extractor reads it. The other 6
+questions are the descriptive questions. Each one raises a flag.
 
 The verdict is not asked. Code computes it: slop when the test cannot fail,
 asserts nothing, or takes its expected value from the code under test; weak

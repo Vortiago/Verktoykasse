@@ -148,3 +148,11 @@ And these follow:
   conditional logic, and manual stay.
 - **The report is one finding per test**: drop, fix, or look, the reasons, and
   "sure" or "unsure, possibly a false positive" (`classifier/finding.mjs`).
+- **Every question is yes/no.** On two decision models, `nimble` and `tev1`,
+  the `asserts` choice picked its last option in either order, at about 0.98.
+  The order swap caught it, so nothing passed silently, but nearly every clean
+  test escalated. `asserts` now asks five yes/no questions, one per property,
+  and code picks the kind; answers that contradict each other escalate.
+- **`runs` reads the extractor's flags.** A skip, todo, x, only, or focus
+  marker is syntax, so the extractor flags it (`skipped`, `focus-in-file`) and
+  the rules escalate on it. No question is asked.

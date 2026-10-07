@@ -24,8 +24,6 @@ import { CHECKS } from "../checks/index.mjs";
 
 /** A yes/no mean closer to 0.5 than this is not sure. */
 const MARGIN = 0.25;
-/** An assert kind that any phrasing gives a lower probability than this is not sure. */
-const KIND_FLOOR = 0.75;
 
 /** The assert kinds that drop the test, and the ones that need a fix, with their reason. */
 const DROP_KINDS = { nothing: "asserts nothing", "from-code": "expected value comes from the code under test" };
@@ -121,12 +119,11 @@ function smellSure(result, flag) {
 }
 
 /**
- * Every asserts phrasing gives the chosen kind a high probability. An answer
- * with no probabilities counts as sure, for an endpoint that reports none.
- * @param {AuditResult} result @param {string} kind
+ * Every asserts answer sits well away from 0.5, so the kind they give is sure.
+ * @param {AuditResult} result @param {string} _kind
  */
-function kindSure(result, kind) {
+function kindSure(result, _kind) {
   return Object.entries(result.answers)
     .filter(([key]) => key.startsWith("asserts_"))
-    .every(([, answer]) => (answer.probabilities?.[kind] ?? 1) >= KIND_FLOOR);
+    .every(([, answer]) => typeof answer.noul === "number" && Math.abs(answer.noul - 0.5) >= MARGIN);
 }

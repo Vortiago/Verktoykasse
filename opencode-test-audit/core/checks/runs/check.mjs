@@ -1,11 +1,10 @@
-// canonical source: test-audit/checks/runs/check.mjs@45c4fac sha256:5cd320d4fc0d21e9933a49032fe9c5a3f03807e335f1b771588e92032be4d51d - vendored copy, do not edit here
+// canonical source: test-audit/checks/runs/check.mjs@c2891f2 sha256:3af3be06feb2dfc34f1273985e9ee6a1fd950972f99916ad4c6db5cdc10e8d22 - vendored copy, do not edit here
 // The runs check: does the test run, and does the rest of its file run? A skip,
 // todo, or skipIf marker or an x prefix on the test or on a describe around it
-// stops it from guarding anything. An only or focus marker anywhere in the file,
-// this test included, leaves the other tests out of the run. Asked as a twin pair
-// of two plain phrasings.
-//
-// The twin rule and its sources are in classifier/verdict.mjs.
+// stops it from guarding anything. An only or focus marker anywhere in the file
+// leaves the other tests out of the run. The tool asks no question: the
+// extractor reads the markers and sets the `skipped` and `focus-in-file` flags,
+// and the rules read those. A marker is syntax, so it is a fact, not a judgement.
 //
 // Sources:
 // - testsmells.org, Open Catalog of Test Smells: Ignored Test
@@ -17,23 +16,9 @@
 //   A skip, an xit, an it.only elsewhere in the file, or an early return
 //   narrows the run.
 
-import { noul } from "../../classifier/systemone.mjs";
-
 export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   name: "runs",
-  role: "gate",
+  role: "runs",
   reason: "does not run, or narrows the run",
-  questions: {
-    runs_a: noul(
-      "Does this test run, with no marker narrowing the run?",
-      "yes: no skip, todo, or x marker on it or its describe, and no focus-in-file flag",
-      "no: a skip, todo, skipIf, or x marker stops it, or an only or focus marker narrows the file",
-    ),
-    runs_b: noul(
-      "Is this test free of skip, todo, only, and focus markers, in its head, its scope, and its flags?",
-      "yes: no such marker",
-      "no: a marker is there",
-    ),
-  },
-  negated: [],
+  questions: {},
 });

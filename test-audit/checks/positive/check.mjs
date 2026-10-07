@@ -26,7 +26,7 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   questions: {
     positive_a: noul(
       "Does an assertion expect a non-empty value?",
-      "yes: a literal, an object, true, or an error message",
+      "yes: a number, a string, true, an object, or an error message",
       "no: only empty, null, undefined, or no throw",
     ),
     positive_b: noul(

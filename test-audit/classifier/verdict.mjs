@@ -64,7 +64,10 @@ const SLOP_KINDS = ["nothing", "from-code"];
 const WEAK_KINDS = ["shape-only", "interaction-only", "input-only"];
 
 /** The roles whose reasons escalate a test, in the order the result lists them. */
-const REASON_ORDER = ["can-fail", "gate", "asserts"];
+const REASON_ORDER = ["can-fail", "runs", "gate", "asserts"];
+
+/** The extractor's flags that stop a test or narrow the run. */
+const RUN_FLAGS = ["skipped", "focus-in-file"];
 
 /** The check that asks each question, keyed by the question. */
 const OWNER = new Map(CHECKS.flatMap((check) => Object.keys(check.questions).map((key) => /** @type {const} */ ([key, check]))));
@@ -97,19 +100,25 @@ export function verdictFrom(test, answers, opts = {}) {
         break;
       }
       case "asserts": {
-        // The assertion must check the behaviour. A shape, a hardcoded table, a
-        // mock call, or nothing at all is not a guard, so any other kind escalates.
-        const group = phrasings(check, answers);
-        const [first] = group.values;
-        const kind = committed(group) && typeof first === "string" ? first : undefined;
+        // The assertion must check the behaviour. A shape, an expected value from
+        // the code, a mock call, its own input, or nothing at all is not a guard,
+        // so any other kind escalates.
+        const kind = assertKind(check, answers);
         const pass = Object.keys(check.kinds)[0];
         /** @type {string[]} */
         const reasons = [];
-        if (group.values.includes(null)) reasons.push(`${check.name} unclassified`);
-        else if (group.unstable) reasons.push(`${check.name} unstable (${group.values.join(" vs ")})`);
-        else if (kind !== pass) reasons.push(`${check.name} ${kind}`);
-        checks[check.name] = { value: kind, group, reasons, flags: kind && kind !== pass ? [kind] : [] };
-        views.asserts = kind;
+        if (kind.missing) reasons.push(`${check.name} not fully answered`);
+        else if (kind.conflict) reasons.push(`${check.name} unstable (${kind.conflict})`);
+        else if (kind.value !== pass) reasons.push(`${check.name} ${kind.value}`);
+        const value = kind.missing || kind.conflict ? undefined : kind.value;
+        checks[check.name] = { value, reasons, flags: value && value !== pass ? [value] : [] };
+        views.asserts = value;
+        break;
+      }
+      case "runs": {
+        // A marker is syntax, so the extractor reads it; the rule only reports it.
+        const marked = (test.flags ?? []).some((flag) => RUN_FLAGS.includes(flag));
+        checks[check.name] = { value: !marked, reasons: marked ? [check.reason] : [], flags: [] };
         break;
       }
       case "descriptive": {
@@ -178,6 +187,38 @@ export function questionValue(key, answer) {
   if (type === "noul") return boolOf(answer);
   if (type === "choice") return field(answer, "choice", "string");
   return undefined;
+}
+
+/**
+ * The assert kind from the yes/no answers of the asserts check. Each question
+ * judges one property; the kind is the worst one the answers name. "Compares
+ * content" beside "only the shape", "only a mock call", or "only its own input"
+ * is a contradiction. A missing or untrusted answer, or an exact tie, leaves no
+ * kind.
+ * @param {Check} check @param {Record<string, AuditAnswer>} answers
+ * @returns {{ value?: string, conflict?: string, missing?: boolean }}
+ */
+function assertKind(check, answers) {
+  /** @type {Record<string, boolean>} */
+  const says = {};
+  for (const key of Object.keys(check.questions)) {
+    const value = field(answers[key], "noul", "number");
+    if (value === undefined || value === YES) return { missing: true };
+    says[key.replace(`${check.name}_`, "")] = value > YES;
+  }
+  const only = [
+    ["shape_only", "shape-only"],
+    ["mock_only", "interaction-only"],
+    ["input_only", "input-only"],
+  ].filter(([key]) => says[key]);
+  if (says.content && only.length) return { conflict: `content vs ${only.map(([, kind]) => kind).join(", ")}` };
+  // A mock checked with the test's own value is still a mock check, so the mock comes first.
+  if (says.mock_only) return { value: "interaction-only" };
+  if (says.input_only) return { value: "input-only" };
+  if (says.shape_only) return { value: "shape-only" };
+  if (!says.content) return { value: "nothing" };
+  if (!says.own_value) return { value: "from-code" };
+  return { value: "behaviour" };
 }
 
 /**

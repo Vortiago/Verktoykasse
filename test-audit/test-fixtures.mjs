@@ -26,11 +26,29 @@ export function goodAnswers() {
   const answers = {};
   for (const check of CHECKS) {
     for (const [key, question] of Object.entries(check.questions)) {
-      if (check.role === "asserts") answers[key] = choice(Object.keys(check.kinds)[0]);
-      else if (Array.isArray(question.criteria)) answers[key] = score(question.criteria.length - 1);
+      if (Array.isArray(question.criteria)) answers[key] = score(question.criteria.length - 1);
       else if (question.type === "choice") answers[key] = choice(Object.keys(question.criteria)[0]);
       else answers[key] = noul(check.negated?.includes(key) ? 0.01 : 0.99);
     }
   }
   return answers;
+}
+
+/**
+ * The asserts answers that give one kind: the yes/no answer to each property
+ * question. Spread them over goodAnswers().
+ * @param {"behaviour" | "from-code" | "input-only" | "shape-only" | "interaction-only" | "nothing"} kind
+ * @param {number} [sure] how far each answer sits from 0.5
+ * @returns {Record<string, AuditAnswer>}
+ */
+export function assertsAs(kind, sure = 0.49) {
+  const yes = 0.5 + sure;
+  const no = 0.5 - sure;
+  return {
+    asserts_content: noul(["behaviour", "from-code"].includes(kind) ? yes : no),
+    asserts_own_value: noul(kind === "from-code" ? no : yes),
+    asserts_shape_only: noul(kind === "shape-only" ? yes : no),
+    asserts_mock_only: noul(kind === "interaction-only" ? yes : no),
+    asserts_input_only: noul(kind === "input-only" ? yes : no),
+  };
 }

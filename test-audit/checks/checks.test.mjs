@@ -56,9 +56,9 @@ test("the battery is the snapshot, byte for byte", () => {
   assert.equal(`${JSON.stringify(BATTERY, null, 2)}\n`, readFileSync(join(HERE, "battery.snapshot.json"), "utf8"));
 });
 
-test("a question key is its check's name, or the name and a phrasing letter", () => {
+test("a question key is its check's name, or the name and a suffix", () => {
   for (const check of CHECKS) {
-    for (const key of Object.keys(check.questions)) assert.match(key, new RegExp(`^${check.name}(_[a-z])?$`), `${key} in ${check.name}`);
+    for (const key of Object.keys(check.questions)) assert.match(key, new RegExp(`^${check.name}(_[a-z_]+)?$`), `${key} in ${check.name}`);
   }
 });
 

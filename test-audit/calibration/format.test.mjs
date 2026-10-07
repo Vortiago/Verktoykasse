@@ -8,7 +8,7 @@ import { formatBenchmark, formatMatrix, formatSingle } from "./format.mjs";
 import { judge } from "./judge.mjs";
 import { BATTERY } from "../checks/index.mjs";
 import { verdictFrom } from "../classifier/verdict.mjs";
-import { choice, goodAnswers, noul } from "../test-fixtures.mjs";
+import { assertsAs, goodAnswers, noul } from "../test-fixtures.mjs";
 
 /** @typedef {import("../types.d.ts").AuditTest} AuditTest */
 /** @typedef {import("../types.d.ts").CalibrationLabel} CalibrationLabel */
@@ -48,7 +48,7 @@ const SILENT = row(
 const SHAPE = row(
   { check: "asserts", file: "checks/asserts/cases/shape/case.mjs", test: "returns a list", defect: "shape-only", canFail: true, mustEscalate: true, code: "checks/asserts/cases/shape/code.mjs" },
   "test(\"returns a list\", () => {\n  // ```\n  expect(Array.isArray(list())).toBe(true);\n})",
-  { ...goodAnswers(), can_fail_a: noul(0.9), can_fail_c: noul(0.3), asserts_a: choice("shape-only"), asserts_b: choice("shape-only"), deterministic: noul(0.1), restores: noul(0.2), positive_a: noul(0.2), positive_b: noul(0.2) },
+  { ...goodAnswers(), can_fail_a: noul(0.9), can_fail_c: noul(0.3), ...assertsAs("shape-only"), deterministic: noul(0.1), restores: noul(0.2), positive_a: noul(0.2), positive_b: noul(0.2) },
   "export function list() {\n  return [1];\n}\n",
 );
 
@@ -100,7 +100,7 @@ test("a case shows its source, its label in plain words, and what decided it", (
   assert.ok(block.includes("**Expected:** pass, `can_fail` yes. Note: A real guard. Case file [`checks/verdict/cases/good-add/case.mjs`](checks/verdict/cases/good-add/case.mjs), line 2."));
   assert.ok(block.includes("Sources: [Beck, Test Desiderata](https://example.org/desiderata)."));
   assert.ok(block.includes("- **What decided it:** good, passes.\n  - No escalation: `can_fail_a` yes (0.99) · `can_fail_c` yes (0.99) → can_fail: 0.99, spread 0.00 (stable). Label yes: match."));
-  assert.ok(block.includes("`asserts_a` behaviour (0.90) · `asserts_b` behaviour (0.90) → asserts: behaviour."));
+  assert.ok(block.includes("`asserts_content` yes (0.99) · `asserts_own_value` yes (0.99) · `asserts_shape_only` no (0.01) · `asserts_mock_only` no (0.01) · `asserts_input_only` no (0.01) → asserts: behaviour."));
   assert.ok(!block.includes("Code under test"), "no code block without code");
 });
 
@@ -108,9 +108,9 @@ test("an escalated case ties each reason to the answers behind it, a twin pair w
   const block = caseBlock(formatBenchmark([entry([SHAPE])]), 1);
   assert.ok(block.includes("````js\n"), "the fence is longer than the backtick run in the source");
   assert.match(block, /\n {2}- `can_fail_a` yes \(0\.90\) · `can_fail_c` no \(0\.30\) → can_fail: 0\.\d\d, spread 0\.\d\d \(\w+\)\. \*\*Escalates:\*\* can_fail \w+ \(spread 0\.\d\d\)\. Label yes: not scored\.\n/);
-  assert.ok(block.includes("\n  - `asserts_a` shape-only (0.90) · `asserts_b` shape-only (0.90) → asserts: shape-only. **Escalates:** asserts shape-only.\n"));
+  assert.ok(block.includes("→ asserts: shape-only. **Escalates:** asserts shape-only.\n"));
   assert.ok(block.includes("\n  - `positive_a` no (0.20) · `positive_b` no (0.20) → positive: no. **Escalates:** no positive assertion.\n"));
-  assert.ok(block.includes("\n  - No escalation: `runs_a` yes (0.99) · `runs_b` yes (0.99) → runs: yes.\n"));
+  assert.ok(block.includes("runs: yes, from the extractor's flags."));
 });
 
 test("the descriptive answers fit in one line", () => {

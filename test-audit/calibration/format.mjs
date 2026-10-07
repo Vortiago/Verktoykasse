@@ -323,7 +323,8 @@ function answerSentence(check, result) {
     .map((key) => `${code(key)} ${answerText(key, result.answers[key])}`)
     .join(" · ");
   const { value, group } = result.checks[check.name] ?? {};
-  if (!group) return `${answers}.`;
+  if (!answers) return `${check.name}: ${value === undefined ? "unanswered" : valueText(value)}, from the extractor's flags.`;
+  if (!group) return value === undefined ? `${answers}.` : `${answers} → ${check.name}: ${valueText(value)}.`;
   // The can_fail mean also feeds the cross-question rule, so it shows with its spread.
   const combined = check.role === "can-fail" ? canFailValue(group) : value === undefined ? group.state : valueText(value);
   return `${answers} → ${check.name}: ${combined}.`;
@@ -402,7 +403,8 @@ function legend() {
     "- **Escalate**: the tool sends the test to a human, so the test **needs eyes**. Each reason says why. A test with no reason **passes**.",
     `- **can_fail**: the probability that a change to the code under test can make the test fail. The tool asks it in ${Object.keys(canFail.questions).length} phrasings and takes the mean. The **spread** is the highest value minus the lowest. A spread above \`TEST_AUDIT_STABLE_BAND\` makes the value borderline or unstable, and the test escalates.`,
     `- **Twin pair**: ${gates.join(" and ")}. The tool asks each twice, in two plain phrasings. The value counts only when both agree. A "no" escalates.`,
-    `- **asserts**: what the assertion checks. Only ${code(Object.keys(asserts.kinds)[0])} is a real guard. ${Object.keys(asserts.questions).map(code).join(" and ")} list the options in opposite order, and must agree.`,
+    `- **asserts**: what the assertion checks. Only ${code(Object.keys(asserts.kinds)[0])} is a real guard. ${Object.keys(asserts.questions).map(code).join(", ")} each judge one property, and code picks the kind. Answers that contradict each other escalate.`,
+    "- **runs**: read from the extractor's `skipped` and `focus-in-file` flags, not asked.",
     `- **verdict**: ${levels.join(", ")}, computed from the answers, not asked: ${levels[0]} when the test cannot fail or asserts nothing, ${levels[1]} when it checks only a shape, a mock call, or its input, or has no positive assertion. It adds no reason of its own.`,
     '- **Descriptive question**: a "no" is a **smell**. It raises the flag in brackets. It does not escalate the test.',
     "- **Number in brackets**: for a yes/no question, the probability of yes. For a choice, the probability of the chosen option.",

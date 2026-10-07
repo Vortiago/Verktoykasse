@@ -1,4 +1,4 @@
-// canonical source: test-audit/config.mjs@c34fea8 sha256:4cdb78fc264f41bb04223038e27988d896dc209eb310fdb96bae640fd1986ba4 - vendored copy, do not edit here
+// canonical source: test-audit/config.mjs@c2891f2 sha256:c4cfe59a31f23e0a7264660067cff891a30da5243e26726cea56e91b18473a9b - vendored copy, do not edit here
 // test-audit configuration. Env-driven, with portable defaults.
 //
 // The base URL points at any Jev-compatible SystemOne endpoint: a local Ollama
@@ -37,6 +37,8 @@ const config = {
   timeoutMs: num("TEST_AUDIT_TIMEOUT_MS", 120_000, (value) => Number.isInteger(value) && value > 0 && value < 2 ** 31),
   /** Cap on the per-test state, in characters. */
   stateCap: num("TEST_AUDIT_STATE_CAP", 5000),
+  /** A file to append each selftest reply to, as one JSON line; unset means no log. */
+  rawLog: env.TEST_AUDIT_RAW_LOG || "",
   /** Cap on the non-test diff context carried in the state, in characters. */
   changeContextCap: num("TEST_AUDIT_CHANGE_CAP", 3000),
 };
