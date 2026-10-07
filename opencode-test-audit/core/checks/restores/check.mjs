@@ -1,7 +1,7 @@
-// canonical source: test-audit/checks/restores/check.mjs@9ae1caa sha256:98208f0c142a86c5fd6e1b30a746277afed36b8ca03dcd2888a362763b1bd833 - vendored copy, do not edit here
+// canonical source: test-audit/checks/restores/check.mjs@0252a4d sha256:8b14805f262be4a63b88e0cb7afe1c69546d529611df5fcbb6235126e416cc95 - vendored copy, do not edit here
 // The restores check: does the test, or an after hook, restore every global,
-// environment variable, timer, module mock, and spy that it changes? A test that
-// changes none restores state. A "no" raises the `state-leak` flag.
+// environment variable, timer, module mock, spy, and shared object that it
+// changes? A test that changes none restores state. A "no" raises the `state-leak` flag.
 //
 // Sources:
 // - Kent Beck, Test Desiderata (2019): Isolated
@@ -20,12 +20,12 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   flag: "state-leak",
   questions: {
     restores: noul(
-      "Does the test leave every global, environment variable, timer, module mock, and spy as it found them? A restore in an after hook in fixtures counts. A test that changes none of these counts as yes.",
+      "Does the test leave every global, environment variable, timer, module mock, spy, and shared object that the file or its setup declares as it found them? A restore in an after hook in fixtures counts. A test that changes none of these counts as yes.",
       "it changes none of these, or it restores what it changes",
-      "it leaves a global, environment variable, timer, mock, or spy changed",
+      "it leaves a global, environment variable, timer, mock, spy, or shared object changed",
     ),
   },
   rubric: `Restores state: the test, or an after hook, restores every global, environment
-  variable, timer, module mock, and spy it changes. A test that changes none
-  restores state.`,
+  variable, timer, module mock, spy, and shared object it changes. A test that
+  changes none restores state.`,
 });

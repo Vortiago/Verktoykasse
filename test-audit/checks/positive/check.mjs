@@ -24,13 +24,13 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   reason: "no positive assertion",
   questions: {
     positive_a: noul(
-      "Does at least one assertion name a value that the code under test must produce, such as a literal, an object, a thrown error with its message, or the true or false result the name asks for?",
+      "Does at least one assertion name a value that the code under test must produce, such as a literal, an object, a thrown error with its message, or the true or false result the name asks for? An empty array, string, or object, null, or undefined does not count, even written as a literal.",
       "at least one assertion names a value that must be produced",
       "every assertion checks only that something is null, undefined, empty, or did not throw",
     ),
     // The negated twin of `positive_a`.
     positive_b: noul(
-      "Does every assertion in this test check only that something is null, undefined, empty, or did not throw?",
+      "Does every assertion in this test check only that something is null, undefined, empty, or did not throw? An expected empty array, string, or object counts as empty.",
       "every assertion checks only that something is null, undefined, empty, or did not throw",
       "at least one assertion names a value that must be produced",
     ),
@@ -38,5 +38,5 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   negated: ["positive_b"],
   rubric: `Positive assertion: at least one assertion names a value the code must produce,
   such as a literal, an object, or a thrown error with its message. A test that
-  checks only null, undefined, empty, or no throw has none.`,
+  checks only null, undefined, empty (such as toEqual([])), or no throw has none.`,
 });

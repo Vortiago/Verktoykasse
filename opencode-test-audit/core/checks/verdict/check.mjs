@@ -1,4 +1,4 @@
-// canonical source: test-audit/checks/verdict/check.mjs@9ae1caa sha256:7276ef0c247b3a10dc200b5db0641fa2028179d28bec73e8c9d859a7f147789a - vendored copy, do not edit here
+// canonical source: test-audit/checks/verdict/check.mjs@0252a4d sha256:e5dc0c3a987fe81a1c06a03170029f035ec7d20c778b72699e0489c4b948b82d - vendored copy, do not edit here
 // The verdict check: overall, is this test a real guard? The answer is a score on
 // four levels, defined only by whether it can fail and what it asserts. Slop or
 // weak escalates. A descriptive smell does not lower the level, because a
@@ -25,15 +25,16 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
     // never escalates, so it must not lower the level either: a flaky but real
     // guard is good, with its flags.
     verdict: score(
-      "Overall, is this test a real guard? Slop: it asserts nothing, or it cannot fail at all, such as a tautology or two sides that both come from the code under test. Weak: it asserts only a shape, a mock call, an absence, or its own input, so it misses most ways the named behaviour can break. Good: it asserts a value or effect that the named behaviour decides. Strong: good, with an exact expected value that would fail loudly. A smell from the other definitions, such as slow, flaky, uncontrolled, a vague name, a magic number, or a state leak, does not lower the level.",
+      "Overall, is this test a real guard? Slop: it asserts nothing, or it cannot fail at all, such as a tautology or two sides that both come from the code under test. Weak: it asserts only a shape, a mock call, an absence, or its own input passed straight through, so it misses most ways the named behaviour can break. Good: it asserts a value or effect that the named behaviour decides. Strong: good, with an exact expected value that would fail loudly. An expected value the test computes itself without the code under test, such as a sorted copy of its input, is a real expected value. Judge only what the assertions check: a smell from the other definitions, such as slow, flaky, the real clock, randomness, the network, a manual step, uncontrolled, a vague name, a magic number, or a state leak, does not lower the level.",
       LEVELS,
     ),
   },
   rubric: `Verdict: slop, weak, good, or strong. Slop: it asserts nothing, or it cannot fail
   at all (a tautology, or both sides from the code under test). Weak: it asserts
-  only a shape, a mock call, an absence, or its own input, so it misses most ways
-  the named behaviour can break. Good: it asserts a value or effect that the named
-  behaviour decides. Strong: good, with an exact expected value that would fail
-  loudly. Slow, flaky, uncontrolled, vague-name, magic-number, and state-leak smells
-  do not lower the level.`,
+  only a shape, a mock call, an absence, or its own input passed straight through,
+  so it misses most ways the named behaviour can break. Good: it asserts a value or
+  effect that the named behaviour decides. Strong: good, with an exact expected
+  value that would fail loudly. A value the test computes without the code under
+  test, such as a sorted copy of its input, is an expected value. No smell from
+  the other definitions lowers the level.`,
 });

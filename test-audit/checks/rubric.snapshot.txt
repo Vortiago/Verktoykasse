@@ -10,13 +10,14 @@ The test record: `source` is the test call. `scope` holds the describe heads
   code the test does not show. The change context, when present, is the diff of
   the code under test.
 
-Falsifiable: the test fails when the behaviour it names is broken in the code
-  under test. Not falsifiable: a tautology (true === true, or both sides call the
-  same code); a check that the result is merely defined, non-null, or the right
-  shape; an assertion on data the code copies straight from its input.
+Falsifiable: some break of the named behaviour in the code under test makes
+  the test fail. Not falsifiable: no break can, as in a tautology (true === true, or
+  both sides call the same code), an assertion on data the code copies straight
+  from its input, or one that runs zero times. A shape, truthy, or no-throw check
+  can still fail.
 Positive assertion: at least one assertion names a value the code must produce,
   such as a literal, an object, or a thrown error with its message. A test that
-  checks only null, undefined, empty, or no throw has none.
+  checks only null, undefined, empty (such as toEqual([])), or no throw has none.
 Runs: no skip, todo, or skipIf marker and no x prefix is on the test or on a
   describe in its scope, so the test runs. No only or focus marker is anywhere in
   the file (the flag focus-in-file), so no other test is left out of the run.
@@ -50,8 +51,8 @@ Asserts the output: the assertion reads the value the code under test produced,
   not its own input, its setup, or merely that no error was thrown.
 Automated: the test reaches pass or fail with no person doing or reading anything.
 Restores state: the test, or an after hook, restores every global, environment
-  variable, timer, module mock, and spy it changes. A test that changes none
-  restores state.
+  variable, timer, module mock, spy, and shared object it changes. A test that
+  changes none restores state.
 Deterministic: same result every run of the same code, with no sleep, real
   clock, network, real randomness, or unguaranteed order. A faked or seeded clock,
   timer, or random source is fine.
@@ -61,8 +62,9 @@ Type: regression, characterization, or smoke by purpose first; otherwise unit,
   integration, or e2e by what it exercises.
 Verdict: slop, weak, good, or strong. Slop: it asserts nothing, or it cannot fail
   at all (a tautology, or both sides from the code under test). Weak: it asserts
-  only a shape, a mock call, an absence, or its own input, so it misses most ways
-  the named behaviour can break. Good: it asserts a value or effect that the named
-  behaviour decides. Strong: good, with an exact expected value that would fail
-  loudly. Slow, flaky, uncontrolled, vague-name, magic-number, and state-leak smells
-  do not lower the level.
+  only a shape, a mock call, an absence, or its own input passed straight through,
+  so it misses most ways the named behaviour can break. Good: it asserts a value or
+  effect that the named behaviour decides. Strong: good, with an exact expected
+  value that would fail loudly. A value the test computes without the code under
+  test, such as a sorted copy of its input, is an expected value. No smell from
+  the other definitions lowers the level.

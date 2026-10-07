@@ -1,7 +1,7 @@
 {
   "test": "returns a list of routes",
   "defect": "shape-only",
-  "canFail": false,
+  "canFail": true,
   "mustEscalate": true,
   "mixed": false,
   "asserts": "shape-only",

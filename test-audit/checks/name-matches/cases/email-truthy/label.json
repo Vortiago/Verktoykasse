@@ -1,9 +1,9 @@
 {
   "test": "validates email addresses",
   "defect": "name-only",
-  "canFail": false,
+  "canFail": true,
   "mustEscalate": true,
   "mixed": false,
   "name_matches": false,
-  "note": "The name promises validation, while a truthy check passes for any non-empty value."
+  "note": "A false result fails it, but the name promises validation, and one truthy check never shows that an invalid address is rejected."
 }

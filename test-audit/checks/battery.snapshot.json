@@ -1,7 +1,7 @@
 {
   "can_fail_a": {
     "type": "noul",
-    "instructions": "Break the behaviour this test names, in the code under test only. Does the test then fail?",
+    "instructions": "Break the behaviour this test names, in the code under test only. Does the test then fail? Any break counts, including one that changes only the shape of the result or makes the call throw.",
     "criteria": {
       "true": "the test fails when the named behaviour is broken",
       "false": "the test still passes when the named behaviour is broken"
@@ -9,10 +9,10 @@
   },
   "can_fail_b": {
     "type": "noul",
-    "instructions": "Can the code under test get the behaviour this test names wrong while the test still passes?",
+    "instructions": "Does this test keep passing however the code under test breaks the behaviour this test names?",
     "criteria": {
-      "true": "the test can pass with the named behaviour wrong",
-      "false": "a wrong behaviour makes the test fail"
+      "true": "no break of the named behaviour makes the test fail",
+      "false": "some break of the named behaviour makes the test fail"
     }
   },
   "can_fail_c": {
@@ -30,7 +30,7 @@
       "behaviour": "an output value or effect of the code under test, compared with an expected value the test fixes itself: a literal, a constant the test file declares, or a value the test computes without calling the code under test",
       "hardcoded-data": "an expected value taken from the code under test itself, such as a constant it exports or a second call to the same code, so both sides agree by construction",
       "input-only": "its own input or setup, not what the code under test produced",
-      "shape-only": "only the type, length, keys, presence, or definedness of a result, not its content",
+      "shape-only": "only the type, length, keys, presence, or definedness of a result, not its content, even when compared with a literal such as a list of key names",
       "interaction-only": "only that a mock or spy was called, how often, or with what, not the result it stands in for",
       "nothing": "no assertion, a tautology such as true === true, or only that the call did not throw"
     }
@@ -41,7 +41,7 @@
     "criteria": {
       "nothing": "no assertion, a tautology such as true === true, or only that the call did not throw",
       "interaction-only": "only that a mock or spy was called, how often, or with what, not the result it stands in for",
-      "shape-only": "only the type, length, keys, presence, or definedness of a result, not its content",
+      "shape-only": "only the type, length, keys, presence, or definedness of a result, not its content, even when compared with a literal such as a list of key names",
       "input-only": "its own input or setup, not what the code under test produced",
       "hardcoded-data": "an expected value taken from the code under test itself, such as a constant it exports or a second call to the same code, so both sides agree by construction",
       "behaviour": "an output value or effect of the code under test, compared with an expected value the test fixes itself: a literal, a constant the test file declares, or a value the test computes without calling the code under test"
@@ -49,7 +49,7 @@
   },
   "positive_a": {
     "type": "noul",
-    "instructions": "Does at least one assertion name a value that the code under test must produce, such as a literal, an object, a thrown error with its message, or the true or false result the name asks for?",
+    "instructions": "Does at least one assertion name a value that the code under test must produce, such as a literal, an object, a thrown error with its message, or the true or false result the name asks for? An empty array, string, or object, null, or undefined does not count, even written as a literal.",
     "criteria": {
       "true": "at least one assertion names a value that must be produced",
       "false": "every assertion checks only that something is null, undefined, empty, or did not throw"
@@ -57,7 +57,7 @@
   },
   "positive_b": {
     "type": "noul",
-    "instructions": "Does every assertion in this test check only that something is null, undefined, empty, or did not throw?",
+    "instructions": "Does every assertion in this test check only that something is null, undefined, empty, or did not throw? An expected empty array, string, or object counts as empty.",
     "criteria": {
       "true": "every assertion checks only that something is null, undefined, empty, or did not throw",
       "false": "at least one assertion names a value that must be produced"
@@ -109,7 +109,7 @@
   },
   "isolated": {
     "type": "noul",
-    "instructions": "Does this test read only values that it builds itself, or that a hook in fixtures builds before each test? Answer no when it reads a value that another test must set, or mutable state in setup that is shared with other tests and that no hook resets.",
+    "instructions": "Does this test read only values that it builds itself, or that a hook in fixtures builds before each test? Answer no when it reads a value that another test must set, or mutable state in setup that is shared with other tests and that no hook resets. An object the file declares once, such as a registry, that this test reads but another test fills, is shared state.",
     "criteria": {
       "true": "it builds what it reads, so it passes alone and in any order",
       "false": "it reads state that another test sets, or mutable state shared with other tests"
@@ -157,7 +157,7 @@
   },
   "name_matches": {
     "type": "noul",
-    "instructions": "Does the test body assert the behaviour its name states? If the name states no behaviour, answer no.",
+    "instructions": "Does the test body assert the behaviour its name states? If the name states no behaviour, answer no. A body that checks only that the result is truthy, defined, or of a type does not assert the behaviour.",
     "criteria": {
       "true": "the body asserts the behaviour the name promises",
       "false": "the name states no behaviour, or it states one and the body asserts something else or something trivial"
@@ -229,15 +229,15 @@
   },
   "restores": {
     "type": "noul",
-    "instructions": "Does the test leave every global, environment variable, timer, module mock, and spy as it found them? A restore in an after hook in fixtures counts. A test that changes none of these counts as yes.",
+    "instructions": "Does the test leave every global, environment variable, timer, module mock, spy, and shared object that the file or its setup declares as it found them? A restore in an after hook in fixtures counts. A test that changes none of these counts as yes.",
     "criteria": {
       "true": "it changes none of these, or it restores what it changes",
-      "false": "it leaves a global, environment variable, timer, mock, or spy changed"
+      "false": "it leaves a global, environment variable, timer, mock, spy, or shared object changed"
     }
   },
   "verdict": {
     "type": "score",
-    "instructions": "Overall, is this test a real guard? Slop: it asserts nothing, or it cannot fail at all, such as a tautology or two sides that both come from the code under test. Weak: it asserts only a shape, a mock call, an absence, or its own input, so it misses most ways the named behaviour can break. Good: it asserts a value or effect that the named behaviour decides. Strong: good, with an exact expected value that would fail loudly. A smell from the other definitions, such as slow, flaky, uncontrolled, a vague name, a magic number, or a state leak, does not lower the level.",
+    "instructions": "Overall, is this test a real guard? Slop: it asserts nothing, or it cannot fail at all, such as a tautology or two sides that both come from the code under test. Weak: it asserts only a shape, a mock call, an absence, or its own input passed straight through, so it misses most ways the named behaviour can break. Good: it asserts a value or effect that the named behaviour decides. Strong: good, with an exact expected value that would fail loudly. An expected value the test computes itself without the code under test, such as a sorted copy of its input, is a real expected value. Judge only what the assertions check: a smell from the other definitions, such as slow, flaky, the real clock, randomness, the network, a manual step, uncontrolled, a vague name, a magic number, or a state leak, does not lower the level.",
     "criteria": [
       "slop",
       "weak",

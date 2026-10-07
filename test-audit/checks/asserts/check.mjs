@@ -35,7 +35,7 @@ const KINDS = {
   "hardcoded-data":
     "an expected value taken from the code under test itself, such as a constant it exports or a second call to the same code, so both sides agree by construction",
   "input-only": "its own input or setup, not what the code under test produced",
-  "shape-only": "only the type, length, keys, presence, or definedness of a result, not its content",
+  "shape-only": "only the type, length, keys, presence, or definedness of a result, not its content, even when compared with a literal such as a list of key names",
   "interaction-only": "only that a mock or spy was called, how often, or with what, not the result it stands in for",
   nothing: "no assertion, a tautology such as true === true, or only that the call did not throw",
 };

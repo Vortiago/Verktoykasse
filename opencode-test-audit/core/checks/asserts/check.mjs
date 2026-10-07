@@ -1,4 +1,4 @@
-// canonical source: test-audit/checks/asserts/check.mjs@9ae1caa sha256:3217c9b86b0b0ab220f2054b5acb125ea4f05e3bb9fb3623a4b6ac6317b53f6b - vendored copy, do not edit here
+// canonical source: test-audit/checks/asserts/check.mjs@0252a4d sha256:039210e699b234fb13ef4a9ef5ce6eb836eb9aa14a5beda4adc3c56d5974c1eb - vendored copy, do not edit here
 // The asserts check: what does the strongest assertion check? Only `behaviour`
 // is a real guard. Hardcoded data, input only, shape only, interaction only, and
 // nothing escalate. The second phrasing lists the kinds in reverse order, as a position
@@ -36,7 +36,7 @@ const KINDS = {
   "hardcoded-data":
     "an expected value taken from the code under test itself, such as a constant it exports or a second call to the same code, so both sides agree by construction",
   "input-only": "its own input or setup, not what the code under test produced",
-  "shape-only": "only the type, length, keys, presence, or definedness of a result, not its content",
+  "shape-only": "only the type, length, keys, presence, or definedness of a result, not its content, even when compared with a literal such as a list of key names",
   "interaction-only": "only that a mock or spy was called, how often, or with what, not the result it stands in for",
   nothing: "no assertion, a tautology such as true === true, or only that the call did not throw",
 };

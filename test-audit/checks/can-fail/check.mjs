@@ -39,15 +39,15 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
     // names breaks? An "any change can fail it" reading splits from it on every
     // shape or interaction test, so no phrasing asks about any change.
     can_fail_a: noul(
-      "Break the behaviour this test names, in the code under test only. Does the test then fail?",
+      "Break the behaviour this test names, in the code under test only. Does the test then fail? Any break counts, including one that changes only the shape of the result or makes the call throw.",
       "the test fails when the named behaviour is broken",
       "the test still passes when the named behaviour is broken",
     ),
     // The negated twin. After polarity normalisation it must agree with `a`.
     can_fail_b: noul(
-      "Can the code under test get the behaviour this test names wrong while the test still passes?",
-      "the test can pass with the named behaviour wrong",
-      "a wrong behaviour makes the test fail",
+      "Does this test keep passing however the code under test breaks the behaviour this test names?",
+      "no break of the named behaviour makes the test fail",
+      "some break of the named behaviour makes the test fail",
     ),
     can_fail_c: noul(
       "If the behaviour this test names regresses, does the test fail?",
@@ -56,8 +56,9 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
     ),
   },
   negated: ["can_fail_b"],
-  rubric: `Falsifiable: the test fails when the behaviour it names is broken in the code
-  under test. Not falsifiable: a tautology (true === true, or both sides call the
-  same code); a check that the result is merely defined, non-null, or the right
-  shape; an assertion on data the code copies straight from its input.`,
+  rubric: `Falsifiable: some break of the named behaviour in the code under test makes
+  the test fail. Not falsifiable: no break can, as in a tautology (true === true, or
+  both sides call the same code), an assertion on data the code copies straight
+  from its input, or one that runs zero times. A shape, truthy, or no-throw check
+  can still fail.`,
 });

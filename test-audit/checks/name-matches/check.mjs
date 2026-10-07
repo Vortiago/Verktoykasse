@@ -26,7 +26,7 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   flag: "name-mismatch",
   questions: {
     name_matches: noul(
-      "Does the test body assert the behaviour its name states? If the name states no behaviour, answer no.",
+      "Does the test body assert the behaviour its name states? If the name states no behaviour, answer no. A body that checks only that the result is truthy, defined, or of a type does not assert the behaviour.",
       "the body asserts the behaviour the name promises",
       "the name states no behaviour, or it states one and the body asserts something else or something trivial",
     ),
