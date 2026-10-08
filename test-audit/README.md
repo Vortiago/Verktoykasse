@@ -164,7 +164,7 @@ below. To compare several endpoints, see [Calibrate](#calibrate).
 | `TEST_AUDIT_STABLE_BAND` | `0.25` | paraphrase spread ceiling |
 | `TEST_AUDIT_CONCURRENCY` | `3` | calls in flight |
 | `TEST_AUDIT_TIMEOUT_MS` | `120000` | timeout for one call |
-| `TEST_AUDIT_STATE_CAP` | `5000` | characters in one test state |
+| `TEST_AUDIT_STATE_CAP` | `24000` | characters in one test state: about 6000 tokens, so it fits an 8192-token decision-model prompt. Set it lower for a smaller window |
 | `TEST_AUDIT_CHANGE_CAP` | `3000` | characters of non-test diff context |
 | `TEST_AUDIT_RAW_LOG` | unset | with `--selftest`, a file to append each reply to, as one JSON line |
 

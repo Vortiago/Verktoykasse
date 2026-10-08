@@ -116,3 +116,51 @@ test("a test class whose body starts with a blank line still yields its tests", 
   const text = ["class TestA:", "", "    def test_x(self):", "        assert x() == 1"].join("\n");
   assert.deepEqual(extractTests(text, "tests/test_a.py").map((t) => t.name), ["test_x"]);
 });
+
+test("a test carries the fixtures it names, the autouse ones, and the fixtures those name", () => {
+  const text = [
+    "import pytest",
+    "",
+    "@pytest.fixture",
+    "def db():",
+    "    return Db()",
+    "",
+    "@pytest.fixture",
+    "def store(db):",
+    "    return Store(db)",
+    "",
+    "@pytest.fixture",
+    "def unrelated():",
+    "    return 1",
+    "",
+    "@pytest.fixture(autouse=True)",
+    "def clean_env(monkeypatch):",
+    "    monkeypatch.delenv('X', raising=False)",
+    "",
+    "def test_keeps(store):",
+    "    assert store.get('a') is None",
+  ].join("\n");
+  const [found] = extractTests(text, "tests/test_s.py");
+  assert.deepEqual(
+    found.fixtures.map((fixture) => /def (\w+)/.exec(fixture)?.[1]),
+    ["db", "store", "clean_env"],
+  );
+});
+
+test("a test carries the module helpers it calls, and the helpers those call", () => {
+  const text = [
+    "def _running(pid):",
+    "    return pid > 0",
+    "",
+    "def _eventually(check):",
+    "    return check()",
+    "",
+    "def _unused():",
+    "    return 0",
+    "",
+    "def test_dies():",
+    "    assert _eventually(lambda: not _running(1))",
+  ].join("\n");
+  const [found] = extractTests(text, "tests/test_g.py");
+  assert.deepEqual(found.setup, ["def _running(pid):\n    return pid > 0", "def _eventually(check):\n    return check()"]);
+});

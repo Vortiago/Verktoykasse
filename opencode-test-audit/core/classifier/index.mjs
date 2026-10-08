@@ -1,4 +1,4 @@
-// canonical source: test-audit/classifier/index.mjs@c34fea8 sha256:1bbf85ec9e5cd35306ae32ad83041e895652c37f8421e9e7f9a8420e2925b195 - vendored copy, do not edit here
+// canonical source: test-audit/classifier/index.mjs@8df5de3 sha256:c00ea582c5412a9b5a3cd80c5ee494be9f72628aaa22637794167356c57dc59f - vendored copy, do not edit here
 // The classifier: ask the battery about one test and reduce the answers to a
 // verdict. This is the module's interface. `classify` takes an injectable `ask`,
 // so the whole decision path (batching, polarity, spread, escalation) is tested
@@ -28,8 +28,8 @@ const MIN_CONTEXT = 200;
  * The per-test state: the test record, then the change context. The test is
  * the subject, so it takes the room first and the context gets what is left: a
  * long test squeezes the context, not its own tail, where the assertions sit.
- * The source sits early in the record, so a test longer than the cap still
- * shows its head.
+ * The source sits first in the record, so a cut drops the setup and the
+ * fixtures before any line of the test.
  * @param {AuditTest} test
  * @param {string} [changeContext]
  * @param {number} [cap]
@@ -41,12 +41,13 @@ export function buildState(test, changeContext = "", cap = config.stateCap) {
       line: test.line,
       name: test.name,
       path: test.path,
-      // A describe's skip or only and the extractor's notes are what `runs` needs
-      // beyond the test's own source; sent only when present.
+      // The source comes first after the name: when the cap cuts the record, it
+      // cuts the setup, helpers, and fixtures, not the test's own assertions.
+      source: test.source,
+      // A describe's skip or only and the extractor's notes; sent only when present.
       ...(test.scope?.length ? { scope: test.scope } : {}),
       ...(test.flags?.length ? { flags: test.flags } : {}),
       ...(test.setup?.length ? { setup: test.setup } : {}),
-      source: test.source,
       fixtures: test.fixtures,
       imports: test.imports,
     },

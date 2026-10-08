@@ -27,6 +27,8 @@ const HOOK = /^(?:setUp|tearDown|setUpClass|tearDownClass|setup_method|teardown_
 
 /** The longest setup one scope contributes to the state; a longer one is cut. */
 const SETUP_CAP = 800;
+/** The most helper code one test carries; the helpers past it are left out. */
+const HELPER_CAP = 1500;
 
 /** Does this path name a Python test file? @param {string} path */
 export function isPythonTestFile(path) {
@@ -51,23 +53,25 @@ export function extractPythonTests(text, file) {
   const inBlocks = linesIn(blocks);
   const imports = importsOf(lines, code, inBlocks);
   const moduleSkipped = code.some((line) => MODULE_SKIP.test(line));
-  const fixtures = blocks.filter((block) => block.kind === "def" && isFixture(block, code)).map((block) => slice(lines, block));
+  const fixtures = blocks.filter((block) => block.kind === "def" && isFixture(block, code));
+  const helpers = blocks.filter((block) => block.kind === "def" && !block.name.startsWith("test") && !isFixture(block, code));
   const moduleSetup = setupOf(lines, code, 0, lines.length, inBlocks);
   /** @type {AuditTest[]} */
   const out = [];
   for (const block of blocks) {
     if (block.kind === "def" && block.name.startsWith("test")) {
-      out.push(testOf(lines, code, block, { file, path: [], scope: [], fixtures, setup: moduleSetup ? [moduleSetup] : [], imports, skipped: moduleSkipped }));
+      out.push(testOf(lines, code, block, { file, path: [], scope: [], fixtures, hooks: [], helpers, setup: moduleSetup ? [moduleSetup] : [], imports, skipped: moduleSkipped }));
     } else if (block.kind === "class" && isTestClass(block, code)) {
       // The body's indent is that of its first code line; a blank line has none.
       const first = code.slice(block.bodyStart, block.end).find((line) => line.trim()) ?? "";
       const inner = topBlocks(code, block.bodyStart, block.end, indentOf(first));
-      const hooks = inner.filter((item) => item.kind === "def" && (HOOK.test(item.name) || isFixture(item, code))).map((item) => slice(lines, item));
       const classCtx = {
         file,
         path: [block.name],
         scope: [slice(lines, { ...block, end: block.bodyStart }).trimEnd()],
-        fixtures: [...fixtures, ...hooks],
+        fixtures: [...fixtures, ...inner.filter((item) => item.kind === "def" && isFixture(item, code))],
+        hooks: inner.filter((item) => item.kind === "def" && HOOK.test(item.name)).map((item) => slice(lines, item)),
+        helpers: [...helpers, ...inner.filter((item) => item.kind === "def" && !item.name.startsWith("test") && !HOOK.test(item.name) && !isFixture(item, code))],
         setup: [moduleSetup, setupOf(lines, code, block.bodyStart, block.end, linesIn(inner))].filter(Boolean),
         imports,
         skipped: moduleSkipped || decorators(code, block).some((line) => SKIP.test(line)),
@@ -82,10 +86,17 @@ export function extractPythonTests(text, file) {
  * One test record from a `def` block.
  * @param {string[]} lines @param {string[]} code
  * @param {Block} block
- * @param {{ file: string, path: string[], scope: string[], fixtures: string[], setup: string[], imports: string[], skipped: boolean }} ctx
+ * @param {{ file: string, path: string[], scope: string[], fixtures: Block[], hooks: string[], helpers: Block[], setup: string[], imports: string[], skipped: boolean }} ctx
  * @returns {AuditTest}
  */
 function testOf(lines, code, block, ctx) {
+  const source = slice(lines, block).trimEnd();
+  // pytest passes a fixture by its parameter name, so a test needs only the
+  // fixtures it names, the autouse ones, and the fixtures those name in turn.
+  const fixtures = reach(lines, source, ctx.fixtures, (item) => decorators(code, item).some((line) => /autouse\s*=\s*True/.test(line)));
+  const fixtureText = fixtures.map((item) => slice(lines, item));
+  // A helper the test or its fixtures call is part of what the test does.
+  const helperText = capped(reach(lines, [source, ...fixtureText].join("\n"), ctx.helpers, () => false).map((item) => slice(lines, item)), HELPER_CAP);
   const marks = decorators(code, block);
   /** @type {string[]} */
   const flags = [];
@@ -97,9 +108,9 @@ function testOf(lines, code, block, ctx) {
     name: block.name,
     path: ctx.path,
     scope: ctx.scope,
-    source: slice(lines, block).trimEnd(),
-    fixtures: ctx.fixtures,
-    ...(ctx.setup.length ? { setup: ctx.setup } : {}),
+    source,
+    fixtures: [...fixtureText, ...ctx.hooks],
+    ...(ctx.setup.length || helperText.length ? { setup: [...ctx.setup, ...helperText] } : {}),
     imports: ctx.imports,
     flags,
   };
@@ -170,6 +181,44 @@ function blockEnd(code, from, to, indent) {
     last = i;
   }
   return last + 1;
+}
+
+/**
+ * The blocks a text names, and the blocks those name in turn, in file order.
+ * `always` adds a block whether or not it is named.
+ * @param {string[]} lines @param {string} text @param {Block[]} candidates @param {(block: Block) => boolean} always
+ */
+function reach(lines, text, candidates, always) {
+  const found = new Set(candidates.filter((block) => always(block) || names(text, block.name)));
+  for (let grew = true; grew; ) {
+    grew = false;
+    const known = [...found].map((block) => slice(lines, block)).join("\n");
+    for (const block of candidates) {
+      if (!found.has(block) && names(known, block.name)) {
+        found.add(block);
+        grew = true;
+      }
+    }
+  }
+  return candidates.filter((block) => found.has(block));
+}
+
+/** Does the text use this name as a whole word? @param {string} text @param {string} name */
+function names(text, name) {
+  return new RegExp(`(?<![\\w.])${name}\\b`).test(text);
+}
+
+/** The texts, in order, up to a total length; the ones past it are left out. @param {string[]} texts @param {number} cap */
+function capped(texts, cap) {
+  /** @type {string[]} */
+  const kept = [];
+  let used = 0;
+  for (const text of texts) {
+    if (used + text.length > cap) break;
+    kept.push(text);
+    used += text.length;
+  }
+  return kept;
 }
 
 /** The decorator lines of a block, trimmed. @param {string[]} code @param {Block} block */

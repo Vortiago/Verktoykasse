@@ -34,8 +34,13 @@ const config = {
   concurrency: num("TEST_AUDIT_CONCURRENCY", 3),
   /** Per-call timeout. AbortSignal.timeout takes a whole number of ms up to 2^31 - 1. */
   timeoutMs: num("TEST_AUDIT_TIMEOUT_MS", 120_000, (value) => Number.isInteger(value) && value > 0 && value < 2 ** 31),
-  /** Cap on the per-test state, in characters. */
-  stateCap: num("TEST_AUDIT_STATE_CAP", 5000),
+  /**
+   * Cap on the per-test state, in characters. The limit is the endpoint's
+   * prompt, not speed: an Ollama decision model reads 8192 tokens per decision,
+   * and 24000 characters (about 6000 tokens) leaves room for the question. Set
+   * it lower for an endpoint with a smaller window, such as Ollaya.
+   */
+  stateCap: num("TEST_AUDIT_STATE_CAP", 24000),
   /** A file to append each selftest reply to, as one JSON line; unset means no log. */
   rawLog: env.TEST_AUDIT_RAW_LOG || "",
   /** Cap on the non-test diff context carried in the state, in characters. */

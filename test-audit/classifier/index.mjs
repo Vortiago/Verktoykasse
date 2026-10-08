@@ -27,8 +27,8 @@ const MIN_CONTEXT = 200;
  * The per-test state: the test record, then the change context. The test is
  * the subject, so it takes the room first and the context gets what is left: a
  * long test squeezes the context, not its own tail, where the assertions sit.
- * The source sits early in the record, so a test longer than the cap still
- * shows its head.
+ * The source sits first in the record, so a cut drops the setup and the
+ * fixtures before any line of the test.
  * @param {AuditTest} test
  * @param {string} [changeContext]
  * @param {number} [cap]
@@ -40,12 +40,13 @@ export function buildState(test, changeContext = "", cap = config.stateCap) {
       line: test.line,
       name: test.name,
       path: test.path,
-      // A describe's skip or only and the extractor's notes are what `runs` needs
-      // beyond the test's own source; sent only when present.
+      // The source comes first after the name: when the cap cuts the record, it
+      // cuts the setup, helpers, and fixtures, not the test's own assertions.
+      source: test.source,
+      // A describe's skip or only and the extractor's notes; sent only when present.
       ...(test.scope?.length ? { scope: test.scope } : {}),
       ...(test.flags?.length ? { flags: test.flags } : {}),
       ...(test.setup?.length ? { setup: test.setup } : {}),
-      source: test.source,
       fixtures: test.fixtures,
       imports: test.imports,
     },
