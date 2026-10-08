@@ -1,8 +1,12 @@
 // The deterministic check: does the test give the same result on every run and
-// machine? A sleep, the real clock, the network, real randomness, an
-// unguaranteed order, or a file, database, or environment variable the test does
-// not create or fake can change the result. A faked or seeded source is fine. A
-// "no" raises the `non-deterministic` flag: it does not escalate, and the
+// machine? A sleep, the real clock, real randomness, an unguaranteed order, or a
+// service, file, database, or environment variable the test does not start or
+// fake can change the result. A faked or seeded source is fine, and so is a
+// server the test starts itself. In 2026-10 two criteria failed on real e2e
+// suites: "the network" flagged 17 tests that start their own server, and "a
+// remote service" flagged 34. The yes criteria now name what the test starts,
+// and the `local-server` case pins it.
+// A "no" raises the `non-deterministic` flag: it does not escalate, and the
 // finding asks for a fix.
 //
 // Sources:
@@ -28,8 +32,8 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   questions: {
     deterministic: noul(
       "Does this test give the same result on every run?",
-      "yes: nothing real-time, random, networked, or external, or it is faked",
-      "no: it uses the real clock, randomness, a sleep, the network, or an external file or env",
+      "yes: the test fakes or seeds time and randomness, or starts the services it uses",
+      "no: a sleep, the real clock, real randomness, or a service or file it does not start",
     ),
   },
 });

@@ -1,0 +1,9 @@
+{
+  "test": "saving in the browser updates the list",
+  "defect": "clean",
+  "canFail": true,
+  "mustEscalate": false,
+  "mixed": false,
+  "deterministic": true,
+  "note": "A real e2e guard: it starts its own server and browser, so nothing outside it can change the result."
+}
