@@ -91,8 +91,8 @@
     "type": "noul",
     "instructions": "Does this test give the same result on every run?",
     "criteria": {
-      "true": "yes: nothing real-time, random, networked, or external, or it is faked",
-      "false": "no: it uses the real clock, randomness, a sleep, the network, or an external file or env"
+      "true": "yes: no real clock, randomness, sleep, or remote service, or it is faked",
+      "false": "no: it uses the real clock, randomness, a sleep, a remote service, or an external file or env"
     }
   },
   "automated": {
