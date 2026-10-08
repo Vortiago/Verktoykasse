@@ -27,8 +27,6 @@ const HOOK = /^(?:setUp|tearDown|setUpClass|tearDownClass|setup_method|teardown_
 
 /** The longest setup one scope contributes to the state; a longer one is cut. */
 const SETUP_CAP = 800;
-/** The most helper code one test carries; the helpers past it are left out. */
-const HELPER_CAP = 1500;
 
 /** Does this path name a Python test file? @param {string} path */
 export function isPythonTestFile(path) {
@@ -54,7 +52,11 @@ export function extractPythonTests(text, file) {
   const imports = importsOf(lines, code, inBlocks);
   const moduleSkipped = code.some((line) => MODULE_SKIP.test(line));
   const fixtures = blocks.filter((block) => block.kind === "def" && isFixture(block, code));
-  const helpers = blocks.filter((block) => block.kind === "def" && !block.name.startsWith("test") && !isFixture(block, code));
+  // A helper is any module-level function or class the test may call that is
+  // not itself a test, a test class, or a fixture.
+  const helpers = blocks.filter((block) =>
+    block.kind === "def" ? !block.name.startsWith("test") && !isFixture(block, code) : !isTestClass(block, code),
+  );
   const moduleSetup = setupOf(lines, code, 0, lines.length, inBlocks);
   /** @type {AuditTest[]} */
   const out = [];
@@ -95,8 +97,10 @@ function testOf(lines, code, block, ctx) {
   // fixtures it names, the autouse ones, and the fixtures those name in turn.
   const fixtures = reach(lines, source, ctx.fixtures, (item) => decorators(code, item).some((line) => /autouse\s*=\s*True/.test(line)));
   const fixtureText = fixtures.map((item) => slice(lines, item));
-  // A helper the test or its fixtures call is part of what the test does.
-  const helperText = capped(reach(lines, [source, ...fixtureText].join("\n"), ctx.helpers, () => false).map((item) => slice(lines, item)), HELPER_CAP);
+  // A helper the test or its fixtures call is part of what the test does. The
+  // state cap, sized for the endpoint, cuts what does not fit; the source comes
+  // first in the record, so a cut never reaches the test.
+  const helperText = reach(lines, [source, ...fixtureText].join("\n"), ctx.helpers, () => false).map((item) => slice(lines, item));
   const marks = decorators(code, block);
   /** @type {string[]} */
   const flags = [];
@@ -206,19 +210,6 @@ function reach(lines, text, candidates, always) {
 /** Does the text use this name as a whole word? @param {string} text @param {string} name */
 function names(text, name) {
   return new RegExp(`(?<![\\w.])${name}\\b`).test(text);
-}
-
-/** The texts, in order, up to a total length; the ones past it are left out. @param {string[]} texts @param {number} cap */
-function capped(texts, cap) {
-  /** @type {string[]} */
-  const kept = [];
-  let used = 0;
-  for (const text of texts) {
-    if (used + text.length > cap) break;
-    kept.push(text);
-    used += text.length;
-  }
-  return kept;
 }
 
 /** The decorator lines of a block, trimmed. @param {string[]} code @param {Block} block */

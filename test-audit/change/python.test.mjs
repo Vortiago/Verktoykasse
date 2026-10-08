@@ -164,3 +164,20 @@ test("a test carries the module helpers it calls, and the helpers those call", (
   const [found] = extractTests(text, "tests/test_g.py");
   assert.deepEqual(found.setup, ["def _running(pid):\n    return pid > 0", "def _eventually(check):\n    return check()"]);
 });
+
+test("a helper class the test uses travels with it, and a test class does not", () => {
+  const text = [
+    "class _Watch:",
+    "    def exited(self):",
+    "        return True",
+    "",
+    "class TestOther:",
+    "    def test_a(self):",
+    "        assert 1 == 1",
+    "",
+    "def test_waits():",
+    "    assert _Watch().exited()",
+  ].join("\n");
+  const found = extractTests(text, "tests/test_w.py").find((t) => t.name === "test_waits");
+  assert.deepEqual(found?.setup, ["class _Watch:\n    def exited(self):\n        return True"]);
+});
