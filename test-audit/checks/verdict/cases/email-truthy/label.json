@@ -2,7 +2,6 @@
   "test": "validates email addresses",
   "defect": "name-only",
   "canFail": true,
-  "mustEscalate": true,
   "mixed": false,
-  "note": "A false result fails it, but the name promises validation, and one truthy check never shows that an invalid address is rejected."
+  "note": "A true result from a boolean validator is a real check. The name promises validation of both kinds, but only one valid address is checked; no question judges that, so the case may pass or escalate."
 }

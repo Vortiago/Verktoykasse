@@ -29,9 +29,9 @@ function row(label, answers, error) {
 /** A real guard: it can fail, and nothing escalates. */
 const GOOD = goodAnswers();
 /** A stable "cannot fail": the phrasings agree, so the tool commits to no. It escalates. */
-const CANNOT_FAIL = { ...GOOD, can_fail_a: noul(0.1), can_fail_c: noul(0.1), ...assertsAs("nothing") };
-/** A good can_fail beside an assertion that checks nothing, a slop verdict: it escalates. */
-const SLOP = { ...GOOD, ...assertsAs("nothing") };
+const CANNOT_FAIL = { ...GOOD, can_fail_a: noul(0.1), can_fail_c: noul(0.1), ...assertsAs("inexact") };
+/** A good can_fail beside an expected value from the code, a slop verdict: it escalates. */
+const SLOP = { ...GOOD, ...assertsAs("from-code") };
 /** Phrasings that disagree beyond the band: the tool commits to no value. */
 const UNSTABLE = { ...GOOD, can_fail_a: noul(0.9), can_fail_c: noul(0.1) };
 

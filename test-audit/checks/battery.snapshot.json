@@ -9,50 +9,42 @@
   },
   "can_fail_c": {
     "type": "noul",
-    "instructions": "Would some wrong output of the behaviour this test names fail it?",
+    "instructions": "Does a wrong result of the named behaviour make this test fail?",
     "criteria": {
-      "true": "yes: a wrong output fails it",
-      "false": "no: every output passes it"
+      "true": "yes: a wrong result makes it fail",
+      "false": "no: it passes with any result"
     }
   },
-  "asserts_content": {
+  "asserts_exact": {
     "type": "noul",
-    "instructions": "Does an assertion compare the content of the output with an expected value?",
+    "instructions": "Does an assertion compare a result of the code with one exact value?",
     "criteria": {
-      "true": "yes: it checks what the output holds",
-      "false": "no: only its type, length, keys, or truthiness, or nothing at all"
+      "true": "yes: it compares a result with one value, or with true or false",
+      "false": "no: it checks only a type, a size, keys, a limit, or no result"
     }
   },
-  "asserts_own_value": {
+  "asserts_same": {
     "type": "noul",
-    "instructions": "Does the test write its expected value itself, as a literal or its own computation?",
+    "instructions": "Do the expected value and the checked result come from the same code?",
     "criteria": {
-      "true": "yes: the test fixes it",
-      "false": "no: it comes from the code under test"
+      "true": "yes: they come from the same code, so they always agree",
+      "false": "no: they come from different sources"
     }
   },
-  "asserts_shape_only": {
+  "asserts_shape": {
     "type": "noul",
-    "instructions": "Do all assertions check only type, length, its list of keys, a bound, or truthiness?",
+    "instructions": "Does each assertion check only the type, the size, or the keys of a result?",
     "criteria": {
-      "true": "yes: only the shape",
+      "true": "yes: only the type, the size, or the keys",
       "false": "no: an assertion checks a value"
     }
   },
-  "asserts_mock_only": {
+  "asserts_mock": {
     "type": "noul",
-    "instructions": "Are all assertions about whether a mock or spy was called?",
+    "instructions": "Does each assertion check only a call to a mock?",
     "criteria": {
-      "true": "yes: only mock calls",
+      "true": "yes: only calls to a mock",
       "false": "no: an assertion checks a result"
-    }
-  },
-  "asserts_input_only": {
-    "type": "noul",
-    "instructions": "Do the assertions only read the test's own variables, never a value the code under test returned?",
-    "criteria": {
-      "true": "yes: only its own input or setup",
-      "false": "no: they read a value the code returned"
     }
   },
   "positive_a": {
@@ -65,7 +57,7 @@
   },
   "positive_b": {
     "type": "noul",
-    "instructions": "Does this test check a real value, not only empty, null, or no throw?",
+    "instructions": "Does an assertion check a value that is not empty or null?",
     "criteria": {
       "true": "yes: it checks a real value",
       "false": "no: only empty, null, undefined, or no throw"
@@ -81,7 +73,7 @@
   },
   "isolated": {
     "type": "noul",
-    "instructions": "Does this test pass alone and in any order, reading nothing another test sets or changes?",
+    "instructions": "Does this test pass alone and in any order?",
     "criteria": {
       "true": "yes: what it reads is built by it, a hook, or a fixture no test changes",
       "false": "no: it reads a value another test sets or changes"
@@ -113,7 +105,7 @@
   },
   "resilient": {
     "type": "noul",
-    "instructions": "Does this test reach and read the code only through its public interface?",
+    "instructions": "Does this test use only the public interface of the code?",
     "criteria": {
       "true": "yes: a public import, and it asserts a return, a throw, or an effect a caller sees",
       "false": "no: an internal import, a spy on a helper, a private or _ member, or a pinned internal call order"

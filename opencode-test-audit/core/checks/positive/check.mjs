@@ -1,4 +1,4 @@
-// canonical source: test-audit/checks/positive/check.mjs@c2891f2 sha256:8144117b8617eb70326741e4c8ae165472cde18adb1fff634947c610104966d0 - vendored copy, do not edit here
+// canonical source: test-audit/checks/positive/check.mjs@ee14484 sha256:d46f8f3c88748e0c25931d41183d64bdfa2cbce58e55358016e6471270c69d16 - vendored copy, do not edit here
 // The positive check: does at least one assertion need a value that a
 // do-nothing stub could not return, such as a non-empty literal, an object, or a
 // thrown error with its message? A test that checks only empty, zero, false,
@@ -31,7 +31,7 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
       "no: only empty, null, undefined, or no throw",
     ),
     positive_b: noul(
-      "Does this test check a real value, not only empty, null, or no throw?",
+      "Does an assertion check a value that is not empty or null?",
       "yes: it checks a real value",
       "no: only empty, null, undefined, or no throw",
     ),

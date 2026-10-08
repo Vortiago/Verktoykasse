@@ -1,4 +1,4 @@
-// canonical source: test-audit/checks/isolated/check.mjs@45c4fac sha256:eb81ca50eb0b1c03383ce3b6954290aa9b33e2feac27a8a812cf4c5c5fc982a4 - vendored copy, do not edit here
+// canonical source: test-audit/checks/isolated/check.mjs@ee14484 sha256:17fecf49aa94df0b4e11c6b36d64787371912248f697082297e55c90b9cbdd3c - vendored copy, do not edit here
 // The isolated check: does the test pass alone and in any order, reading nothing
 // that another test sets or changes? A hook, or a fixture no test changes, is
 // fine. It is about what the test reads;
@@ -21,7 +21,7 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   flag: "order-dependent",
   questions: {
     isolated: noul(
-      "Does this test pass alone and in any order, reading nothing another test sets or changes?",
+      "Does this test pass alone and in any order?",
       "yes: what it reads is built by it, a hook, or a fixture no test changes",
       "no: it reads a value another test sets or changes",
     ),

@@ -20,7 +20,7 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   flag: "order-dependent",
   questions: {
     isolated: noul(
-      "Does this test pass alone and in any order, reading nothing another test sets or changes?",
+      "Does this test pass alone and in any order?",
       "yes: what it reads is built by it, a hook, or a fixture no test changes",
       "no: it reads a value another test sets or changes",
     ),

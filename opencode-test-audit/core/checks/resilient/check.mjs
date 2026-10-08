@@ -1,4 +1,4 @@
-// canonical source: test-audit/checks/resilient/check.mjs@45c4fac sha256:e63bd4f7aab97d7ec97f7a734e4d882478a4c2703a73d36003d25d95f4d11a45 - vendored copy, do not edit here
+// canonical source: test-audit/checks/resilient/check.mjs@ee14484 sha256:632c42dea3f9fb8cb8849661fec5d066d59223f962290685d281623a6bac3ee5 - vendored copy, do not edit here
 // The resilient check: does the test reach and read the code only through its
 // public interface, so a refactor that keeps the behaviour keeps it green? An
 // internal import, a spy on a helper, a private or `_` member, or a pinned
@@ -28,7 +28,7 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   flag: "structure-dependent",
   questions: {
     resilient: noul(
-      "Does this test reach and read the code only through its public interface?",
+      "Does this test use only the public interface of the code?",
       "yes: a public import, and it asserts a return, a throw, or an effect a caller sees",
       "no: an internal import, a spy on a helper, a private or _ member, or a pinned internal call order",
     ),

@@ -1,4 +1,4 @@
-// canonical source: test-audit/checks/can-fail/check.mjs@45c4fac sha256:e3ee55bbad1885dd0ab1531f5bd7e63d1775b8596971292c6d7defe57257cdc9 - vendored copy, do not edit here
+// canonical source: test-audit/checks/can-fail/check.mjs@ee14484 sha256:784f2859b7266334701a6442b3bd125c4a2a6ea33e5905ad1e8ad1a71678ca8e - vendored copy, do not edit here
 // The can-fail check: can some bug in the behaviour the test names make it fail?
 // A tautology, a self-reference, and a test that passes with zero results say
 // no. A shape or definedness check can still fail; the asserts check says how
@@ -39,9 +39,9 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
       "no: it passes whatever the code does, as with a tautology, both sides from the code, or an assertion that never runs",
     ),
     can_fail_c: noul(
-      "Would some wrong output of the behaviour this test names fail it?",
-      "yes: a wrong output fails it",
-      "no: every output passes it",
+      "Does a wrong result of the named behaviour make this test fail?",
+      "yes: a wrong result makes it fail",
+      "no: it passes with any result",
     ),
   },
   negated: [],

@@ -38,9 +38,9 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
       "no: it passes whatever the code does, as with a tautology, both sides from the code, or an assertion that never runs",
     ),
     can_fail_c: noul(
-      "Would some wrong output of the behaviour this test names fail it?",
-      "yes: a wrong output fails it",
-      "no: every output passes it",
+      "Does a wrong result of the named behaviour make this test fail?",
+      "yes: a wrong result makes it fail",
+      "no: it passes with any result",
     ),
   },
   negated: [],

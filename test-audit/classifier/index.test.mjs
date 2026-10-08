@@ -87,11 +87,11 @@ test("an untrusted answer escalates rather than passing silently", () => {
 
 test("asserts that disagree escalate, and any non-behaviour assertion escalates", () => {
   // "Compares content" beside "only the shape" is a contradiction.
-  const disagree = verdictFrom(TEST, { ...goodAnswers(), asserts_shape_only: noul(0.9) });
+  const disagree = verdictFrom(TEST, { ...goodAnswers(), asserts_shape: noul(0.9) });
   assert.equal(disagree.asserts, undefined);
-  assert.match(disagree.reasons.join(" "), /asserts unstable \(content vs shape-only\)/);
+  assert.match(disagree.reasons.join(" "), /asserts unstable \(exact vs shape-only\)/);
 
-  for (const kind of /** @type {const} */ (["nothing", "shape-only", "from-code", "interaction-only", "input-only"])) {
+  for (const kind of /** @type {const} */ (["inexact", "shape-only", "from-code", "interaction-only"])) {
     const result = verdictFrom(TEST, { ...goodAnswers(), ...assertsAs(kind) });
     assert.equal(result.needsEyes, true, kind);
     assert.match(result.reasons.join(" "), new RegExp(`asserts ${kind}`));
@@ -108,12 +108,12 @@ test("a test with no positive assertion escalates, and its verdict is weak", () 
 
 test("the verdict is computed from the answers that carry it", () => {
   const level = (/** @type {Record<string, any>} */ answers) => verdictFrom(TEST, { ...goodAnswers(), ...answers }).score.label;
-  assert.equal(level({ ...assertsAs("nothing") }), "slop");
+  assert.equal(level({ ...assertsAs("inexact") }), "weak");
   assert.equal(level({ ...assertsAs("from-code") }), "slop");
   assert.equal(level({ ...assertsAs("shape-only") }), "weak");
   assert.equal(level({ can_fail_a: noul(0.1), can_fail_c: noul(0.1) }), "slop");
   // Phrasings that disagree commit to nothing, so there is no verdict.
-  assert.equal(level({ asserts_shape_only: noul(0.9) }), undefined);
+  assert.equal(level({ asserts_shape: noul(0.9) }), undefined);
 });
 
 test("a test the extractor marks as skipped, or a focus marker in its file, escalates", () => {
@@ -126,7 +126,7 @@ test("a test the extractor marks as skipped, or a focus marker in its file, esca
 });
 
 test("an asserts answer on exactly 0.5 leaves no kind, and escalates", () => {
-  const result = verdictFrom(TEST, { ...goodAnswers(), asserts_mock_only: noul(0.5) });
+  const result = verdictFrom(TEST, { ...goodAnswers(), asserts_mock: noul(0.5) });
   assert.equal(result.asserts, undefined);
   assert.match(result.reasons.join(" "), /asserts not fully answered/);
 });
@@ -205,16 +205,22 @@ test("a twin with one phrasing unanswered escalates", () => {
 });
 
 test("each check yields one result, and the reasons come in role order", () => {
-  const answers = { ...goodAnswers(), can_fail_c: noul(0.4), ...assertsAs("nothing") };
+  const answers = { ...goodAnswers(), can_fail_c: noul(0.4), ...assertsAs("inexact") };
   const result = verdictFrom({ ...TEST, flags: ["skipped"] }, answers, { error: "partial" });
   assert.deepEqual(Object.keys(result.checks), CHECKS.map((check) => check.name));
-  assert.deepEqual(result.reasons, ["no answers (partial)", "can_fail unstable (spread 0.59)", "does not run, or narrows the run", "asserts nothing"]);
+  assert.deepEqual(result.reasons, ["no answers (partial)", "can_fail unstable (spread 0.59)", "does not run, or narrows the run", "asserts inexact"]);
   assert.deepEqual(result.checks.runs, { value: false, reasons: ["does not run, or narrows the run"], flags: [] });
-  assert.deepEqual(result.checks.asserts.flags, ["nothing"]);
+  assert.deepEqual(result.checks.asserts.flags, ["inexact"]);
 });
 
 test("an exact tie escalates instead of passing", () => {
   const gate = verdictFrom(TEST, { ...goodAnswers(), positive_a: noul(0.5), positive_b: noul(0.5) });
   assert.equal(gate.checks.positive.value, undefined);
   assert.match(gate.reasons.join(" "), /positive undecided/);
+});
+
+test("an asserts answer near 0.5 commits to no kind, and escalates", () => {
+  const result = verdictFrom(TEST, { ...goodAnswers(), asserts_exact: noul(0.6) });
+  assert.equal(result.asserts, undefined);
+  assert.match(result.reasons.join(" "), /asserts unstable \(unsure exact 0\.60\)/);
 });

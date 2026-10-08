@@ -16,10 +16,10 @@ test("a clean test is ok", () => {
   assert.deepEqual(findingFor({}), { action: "ok", reasons: [], sure: true });
 });
 
-test("a test that cannot fail and asserts nothing is dropped, and a confident answer is sure", () => {
-  const finding = findingFor({ can_fail_a: noul(0.02), can_fail_c: noul(0.03), ...assertsAs("nothing") });
+test("a test that cannot fail and checks no exact value is dropped, and a confident answer is sure", () => {
+  const finding = findingFor({ can_fail_a: noul(0.02), can_fail_c: noul(0.03), ...assertsAs("inexact") });
   assert.equal(finding.action, "drop");
-  assert.deepEqual(finding.reasons, ["cannot fail", "asserts nothing"]);
+  assert.deepEqual(finding.reasons, ["cannot fail", "checks no exact value"]);
   assert.equal(finding.sure, true);
 });
 
@@ -63,9 +63,10 @@ test("a reason that no check owns, such as a file with no readable test, is a lo
   assert.deepEqual(findingOf(result), { action: "look", reasons: ["no test found: the file's tests use a form the extractor cannot read"], sure: false });
 });
 
-test("an assert kind the phrasings give a low probability is not sure", () => {
+test("asserts answers near 0.5 give no kind, so the finding is a look, not a fix", () => {
   const finding = findingFor(assertsAs("shape-only", 0.15));
-  assert.deepEqual(finding, { action: "fix", reasons: ["asserts only the shape"], sure: false });
+  assert.equal(finding.action, "look");
+  assert.equal(finding.sure, false);
 });
 
 test("a smell near 0.5 needs a fix, but is unsure", () => {

@@ -100,7 +100,7 @@ test("a case shows its source, its label in plain words, and what decided it", (
   assert.ok(block.includes("**Expected:** pass, `can_fail` yes. Note: A real guard. Case file [`checks/verdict/cases/good-add/case.mjs`](checks/verdict/cases/good-add/case.mjs), line 2."));
   assert.ok(block.includes("Sources: [Beck, Test Desiderata](https://example.org/desiderata)."));
   assert.ok(block.includes("- **What decided it:** good, passes.\n  - No escalation: `can_fail_a` yes (0.99) · `can_fail_c` yes (0.99) → can_fail: 0.99, spread 0.00 (stable). Label yes: match."));
-  assert.ok(block.includes("`asserts_content` yes (0.99) · `asserts_own_value` yes (0.99) · `asserts_shape_only` no (0.01) · `asserts_mock_only` no (0.01) · `asserts_input_only` no (0.01) → asserts: behaviour."));
+  assert.ok(block.includes("`asserts_exact` yes (0.99) · `asserts_same` no (0.01) · `asserts_shape` no (0.01) · `asserts_mock` no (0.01) → asserts: behaviour."));
   assert.ok(!block.includes("Code under test"), "no code block without code");
 });
 

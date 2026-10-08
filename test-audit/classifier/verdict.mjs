@@ -59,9 +59,12 @@ import config from "../config.mjs";
 const YES = 0.5;
 
 /** The assert kinds that leave a test unable to guard anything: the verdict is slop. */
-const SLOP_KINDS = ["nothing", "from-code"];
+const SLOP_KINDS = ["from-code"];
 /** The assert kinds that check something, but not the behaviour: the verdict is weak. */
-const WEAK_KINDS = ["shape-only", "interaction-only", "input-only"];
+const WEAK_KINDS = ["inexact", "shape-only", "interaction-only"];
+
+/** An asserts answer closer to 0.5 than this commits to no kind. */
+const KIND_BAND = 0.2;
 
 /** The roles whose reasons escalate a test, in the order the result lists them. */
 const REASON_ORDER = ["can-fail", "runs", "gate", "asserts"];
@@ -204,20 +207,20 @@ function assertKind(check, answers) {
   for (const key of Object.keys(check.questions)) {
     const value = field(answers[key], "noul", "number");
     if (value === undefined || value === YES) return { missing: true };
-    says[key.replace(`${check.name}_`, "")] = value > YES;
+    const name = key.replace(`${check.name}_`, "");
+    // An answer this close to 0.5 is a guess, so it commits to no kind.
+    if (Math.abs(value - YES) < KIND_BAND) return { conflict: `unsure ${name} ${value.toFixed(2)}` };
+    says[name] = value > YES;
   }
   const only = [
-    ["shape_only", "shape-only"],
-    ["mock_only", "interaction-only"],
-    ["input_only", "input-only"],
+    ["mock", "interaction-only"],
+    ["shape", "shape-only"],
   ].filter(([key]) => says[key]);
-  if (says.content && only.length) return { conflict: `content vs ${only.map(([, kind]) => kind).join(", ")}` };
+  if (says.exact && only.length) return { conflict: `exact vs ${only.map(([, kind]) => kind).join(", ")}` };
   // A mock checked with the test's own value is still a mock check, so the mock comes first.
-  if (says.mock_only) return { value: "interaction-only" };
-  if (says.input_only) return { value: "input-only" };
-  if (says.shape_only) return { value: "shape-only" };
-  if (!says.content) return { value: "nothing" };
-  if (!says.own_value) return { value: "from-code" };
+  if (only.length) return { value: only[0][1] };
+  if (!says.exact) return { value: "inexact" };
+  if (says.same) return { value: "from-code" };
   return { value: "behaviour" };
 }
 

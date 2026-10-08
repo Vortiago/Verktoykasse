@@ -1,10 +1,10 @@
-// canonical source: test-audit/classifier/finding.mjs@c2891f2 sha256:32793bcb697dc5d1061367d0f22da28faa0c79acf8892f7cdff3b908b13d7f9c - vendored copy, do not edit here
+// canonical source: test-audit/classifier/finding.mjs@ee14484 sha256:b64336058acebe2d02ee85926ca349870b3e2fee0af5a41a81acecaac84fea04 - vendored copy, do not edit here
 // The finding for one test: what an LLM should do with it, why, and how sure the
 // tool is. The audit's reader is an LLM that decides which tests to look at, fix,
 // or drop, so each finding is one action with its reasons.
 //
-// - drop: the test cannot guard anything. It cannot fail, it asserts nothing,
-//   or its expected value comes from the code under test.
+// - drop: the test cannot guard anything. It cannot fail, or its expected
+//   value and its result come from the same code.
 // - fix: the test runs a real check but a weak one, or it does not run.
 // - look: the answers disagree, sit near a boundary, or are missing. The tool
 //   is not sure, so the finding may be a false positive.
@@ -27,11 +27,11 @@ import { CHECKS } from "../checks/index.mjs";
 const MARGIN = 0.25;
 
 /** The assert kinds that drop the test, and the ones that need a fix, with their reason. */
-const DROP_KINDS = { nothing: "asserts nothing", "from-code": "expected value comes from the code under test" };
+const DROP_KINDS = { "from-code": "expected value and result come from the same code" };
 const FIX_KINDS = {
   "shape-only": "asserts only the shape",
   "interaction-only": "asserts only a mock call",
-  "input-only": "asserts its own input",
+  inexact: "checks no exact value",
 };
 
 /** The flags that make a test unreliable, so the reader should fix it. */

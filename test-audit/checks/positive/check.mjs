@@ -30,7 +30,7 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
       "no: only empty, null, undefined, or no throw",
     ),
     positive_b: noul(
-      "Does this test check a real value, not only empty, null, or no throw?",
+      "Does an assertion check a value that is not empty or null?",
       "yes: it checks a real value",
       "no: only empty, null, undefined, or no throw",
     ),

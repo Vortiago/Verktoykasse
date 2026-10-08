@@ -1,8 +1,8 @@
 // The verdict check: overall, is this test a real guard? The tool does not ask
 // it. The rules in classifier/verdict.mjs compute it from the answers that carry
-// it: slop when the test cannot fail or asserts nothing, or its expected value
-// comes from the code under test; weak when it checks only a shape, a mock call,
-// or its own input, or has no positive assertion; good otherwise. A decision
+// it: slop when the test cannot fail, or its expected value comes from the code
+// under test; weak when it checks no exact value, or only a shape, a mock call,
+// or its own data, or has no positive assertion; good otherwise. A decision
 // model judges one thing per question, so code owns the composition. Its
 // calibration cases are the clean tests that must pass, the mixed tests that
 // must escalate, and the cases of the smells the battery no longer asks.

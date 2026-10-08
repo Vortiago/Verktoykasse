@@ -91,7 +91,7 @@ look  src/c.test.mjs:7  "the retry lands"  can_fail unstable (spread 0.48)  (uns
 
 | Action | Meaning |
 | --- | --- |
-| `drop` | The test cannot guard anything: it cannot fail, it asserts nothing, or its expected value comes from the code under test. |
+| `drop` | The test cannot guard anything: it cannot fail, or its expected value and its result come from the same code, so they always agree. |
 | `fix` | The test runs a weak check (only a shape, a mock call, or its input; no positive assertion; a weak verdict), it does not run, or it is flaky, order-dependent, leaks state, holds conditional logic, or needs a person. |
 | `look` | The tool is not sure: the phrasings disagree, an answer is missing, or answers contradict each other. The finding may be a false positive. |
 | `ok` | Nothing to report. The test gets no line. |
@@ -234,7 +234,7 @@ only its folder and one line in `checks/index.mjs`.
 | Check | Questions | Role | Looks for | Cases |
 | --- | --- | --- | --- | --- |
 | [`can-fail`](checks/can-fail/check.mjs) | `can_fail_a`, `can_fail_c` | can-fail | tautology, self-reference, vacuous test, passes-with-zero | 9 |
-| [`asserts`](checks/asserts/check.mjs) | `asserts_content`, `asserts_own_value`, `asserts_shape_only`, `asserts_mock_only`, `asserts_input_only` | asserts | an expected value from the code, input only, shape only, interaction only, or nothing; code picks the kind from the five answers | 14 |
+| [`asserts`](checks/asserts/check.mjs) | `asserts_exact`, `asserts_same`, `asserts_shape`, `asserts_mock` | asserts | no exact value, expected value and result from the same code, shape only, or interaction only; code picks the kind from the four answers | 14 |
 | [`positive`](checks/positive/check.mjs) | `positive_a`, `positive_b` | gate: no positive assertion | only-negative test | 7 |
 | [`runs`](checks/runs/check.mjs) | none: the extractor's `skipped` and `focus-in-file` flags | runs: does not run, or narrows the run | a skip, todo, or x marker on the test or on a describe around it, or an only or focus marker anywhere in the file | 6 |
 | [`conditional`](checks/conditional/check.mjs) | `conditional` | flag `conditional` | a branch, a loop over a value that may be empty, an early return, or a catch that can leave an assertion unrun | 3 |
@@ -255,8 +255,8 @@ property, and code picks the kind; answers that contradict each other escalate.
 questions are the descriptive questions. Each one raises a flag.
 
 The verdict is not asked. Code computes it: slop when the test cannot fail,
-asserts nothing, or takes its expected value from the code under test; weak
-when it checks only a shape, a mock call, or its input, or has no positive
+or takes its expected value from the same code as its result; weak when it checks no
+exact value, or only a shape, a mock call, or its input, or has no positive
 assertion; good otherwise. "Cannot fail" beside a behaviour assertion is a
 contradiction, and escalates.
 

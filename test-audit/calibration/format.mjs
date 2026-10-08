@@ -405,7 +405,7 @@ function legend() {
     `- **Twin pair**: ${gates.join(" and ")}. The tool asks each twice, in two plain phrasings. The value counts only when both agree. A "no" escalates.`,
     `- **asserts**: what the assertion checks. Only ${code(Object.keys(asserts.kinds)[0])} is a real guard. ${Object.keys(asserts.questions).map(code).join(", ")} each judge one property, and code picks the kind. Answers that contradict each other escalate.`,
     "- **runs**: read from the extractor's `skipped` and `focus-in-file` flags, not asked.",
-    `- **verdict**: ${levels.join(", ")}, computed from the answers, not asked: ${levels[0]} when the test cannot fail or asserts nothing, ${levels[1]} when it checks only a shape, a mock call, or its input, or has no positive assertion. It adds no reason of its own.`,
+    `- **verdict**: ${levels.join(", ")}, computed from the answers, not asked: ${levels[0]} when the test cannot fail or takes its expected value from the code, ${levels[1]} when it checks no exact value, or only a shape, a mock call, or its input, or has no positive assertion. It adds no reason of its own.`,
     '- **Descriptive question**: a "no" is a **smell**. It raises the flag in brackets. It does not escalate the test.',
     "- **Number in brackets**: for a yes/no question, the probability of yes. For a choice, the probability of the chosen option.",
     "- **unanswered**: the endpoint gave no answer. **untrusted**: the answer has a `mass` below `TEST_AUDIT_MIN_MASS`. **not scored**: the tool did not commit to a can_fail value, so the agreement does not count the case.",

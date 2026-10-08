@@ -4,6 +4,6 @@
   "canFail": false,
   "mustEscalate": true,
   "mixed": false,
-  "asserts": "input-only",
+  "asserts": "inexact",
   "note": "The name promises a trimmed title, but the assertion reads the untouched input, so broken trimming still passes."
 }

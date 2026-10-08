@@ -35,9 +35,9 @@ export function goodAnswers() {
 }
 
 /**
- * The asserts answers that give one kind: the yes/no answer to each property
+ * The asserts answers that give one kind: the yes/no answer to each fact
  * question. Spread them over goodAnswers().
- * @param {"behaviour" | "from-code" | "input-only" | "shape-only" | "interaction-only" | "nothing"} kind
+ * @param {"behaviour" | "from-code" | "inexact" | "shape-only" | "interaction-only"} kind
  * @param {number} [sure] how far each answer sits from 0.5
  * @returns {Record<string, AuditAnswer>}
  */
@@ -45,10 +45,9 @@ export function assertsAs(kind, sure = 0.49) {
   const yes = 0.5 + sure;
   const no = 0.5 - sure;
   return {
-    asserts_content: noul(["behaviour", "from-code"].includes(kind) ? yes : no),
-    asserts_own_value: noul(kind === "from-code" ? no : yes),
-    asserts_shape_only: noul(kind === "shape-only" ? yes : no),
-    asserts_mock_only: noul(kind === "interaction-only" ? yes : no),
-    asserts_input_only: noul(kind === "input-only" ? yes : no),
+    asserts_exact: noul(["behaviour", "from-code"].includes(kind) ? yes : no),
+    asserts_same: noul(kind === "from-code" ? yes : no),
+    asserts_shape: noul(kind === "shape-only" ? yes : no),
+    asserts_mock: noul(kind === "interaction-only" ? yes : no),
   };
 }
