@@ -28,8 +28,8 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   questions: {
     deterministic: noul(
       "Does this test give the same result on every run?",
-      "yes: no real clock, randomness, sleep, or remote service, or it is faked",
-      "no: it uses the real clock, randomness, a sleep, a remote service, or an external file or env",
+      "yes: nothing real-time, random, networked, or external, or it is faked",
+      "no: it uses the real clock, randomness, a sleep, the network, or an external file or env",
     ),
   },
 });
