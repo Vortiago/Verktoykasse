@@ -30,8 +30,7 @@ import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
 import config from "../config.mjs";
 
-/** @typedef {"choice" | "score" | "noul"} QuestionType */
-/** @typedef {{ type: QuestionType, instructions: string, criteria: Record<string, string | null> | string[] }} Question */
+/** @typedef {{ type: "noul", instructions: string, criteria: { true: string, false: string } }} Question */
 /** @typedef {import("../types.d.ts").AuditAnswer} AuditAnswer */
 /** @typedef {{ answers?: Record<string, AuditAnswer>, usage?: Record<string, unknown> }} SystemOneResponse */
 
@@ -83,29 +82,9 @@ function post(url, body, timeoutMs) {
  * @param {string} instructions @param {string} yes @param {string} no
  */
 export const noul = (instructions, yes, no) => ({
-  type: /** @type {QuestionType} */ ("noul"),
+  type: /** @type {const} */ ("noul"),
   instructions,
   criteria: { true: yes, false: no },
-});
-
-/**
- * Pick one named answer. A null criterion means the name speaks for itself.
- * @param {string} instructions @param {Record<string, string | null>} criteria
- */
-export const choice = (instructions, criteria) => ({
-  type: /** @type {QuestionType} */ ("choice"),
-  instructions,
-  criteria,
-});
-
-/**
- * An ordinal level: `levels` lowest first; the answer index names the level.
- * @param {string} instructions @param {string[]} levels
- */
-export const score = (instructions, levels) => ({
-  type: /** @type {QuestionType} */ ("score"),
-  instructions,
-  criteria: levels,
 });
 
 /**

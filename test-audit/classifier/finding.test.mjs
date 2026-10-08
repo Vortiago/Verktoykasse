@@ -76,3 +76,7 @@ test("a smell near 0.5 needs a fix, but is unsure", () => {
 test("a test that reaches into internals needs a fix", () => {
   assert.deepEqual(findingFor({ resilient: noul(0.05) }), { action: "fix", reasons: ["reaches into internals"], sure: true });
 });
+
+test("a skipped test needs a fix, and a marker is sure: it comes from the code", () => {
+  assert.deepEqual(findingFor({}, { flags: ["skipped"] }), { action: "fix", reasons: ["does not run, or a marker narrows the run"], sure: true });
+});

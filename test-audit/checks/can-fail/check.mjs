@@ -43,5 +43,4 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
       "no: it passes with any result",
     ),
   },
-  negated: [],
 });

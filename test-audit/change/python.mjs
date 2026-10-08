@@ -11,13 +11,15 @@
 
 /** @typedef {import("../types.d.ts").AuditTest} AuditTest */
 
-/** A pytest or unittest test file: `test_*.py`, `*_test.py`, or a `.py` under a tests folder; never conftest.py. */
-const PY_TEST_FILE = /(?:^|[\\/])(?:test_[^\\/]*|[^\\/]*_test)\.py$|(?:^|[\\/])tests?[\\/](?:.*[\\/])?(?!conftest\.py$)[^\\/]+\.py$/;
+/** A file named as a pytest or unittest test file: `test_*.py` or `*_test.py`. */
+const PY_NAMED = /(?:^|[\\/])(?:test_[^\\/]*|[^\\/]*_test)\.py$/;
+/** Any `.py` under a tests folder, but never conftest.py. */
+const PY_IN_TESTS = /(?:^|[\\/])tests?[\\/](?:.*[\\/])?(?!conftest\.py$)[^\\/]+\.py$/;
 
 /** A decorator or call that skips a test, or may skip it. */
 const SKIP = /^@(?:pytest\.mark\.(?:skip|skipif)|unittest\.(?:skip|skipIf|skipUnless)|skip|skipIf|skipUnless)\b/;
 /** A module-level marker that skips every test in the file. */
-const MODULE_SKIP = /^pytestmark\s*=.*\bpytest\.mark\.(?:skip|skipif)\b/m;
+const MODULE_SKIP = /^pytestmark\s*=.*\bpytest\.mark\.(?:skip|skipif)\b/;
 /** A decorator that runs one test over a table. */
 const EACH = /^@(?:pytest\.mark\.parametrize|given)\b/;
 /** The methods and functions that set up or tear down a test. */
@@ -28,7 +30,12 @@ const SETUP_CAP = 800;
 
 /** Does this path name a Python test file? @param {string} path */
 export function isPythonTestFile(path) {
-  return PY_TEST_FILE.test(path);
+  return PY_NAMED.test(path) || PY_IN_TESTS.test(path);
+}
+
+/** Is this path named as a Python test file, whatever folder it is in? @param {string} path */
+export function isNamedPythonTestFile(path) {
+  return PY_NAMED.test(path);
 }
 
 /**
@@ -41,35 +48,31 @@ export function extractPythonTests(text, file) {
   const lines = text.split("\n");
   const code = codeLines(text);
   const blocks = topBlocks(code, 0, lines.length, 0);
-  const imports = importsOf(lines, code, blocks);
-  const moduleSkipped = MODULE_SKIP.test(code.join("\n"));
-  const fixtures = blocks.filter((block) => block.kind === "def" && isFixture(block, lines, code)).map((block) => slice(lines, block));
-  const moduleSetup = setupOf(lines, code, 0, lines.length, blocks);
+  const inBlocks = linesIn(blocks);
+  const imports = importsOf(lines, code, inBlocks);
+  const moduleSkipped = code.some((line) => MODULE_SKIP.test(line));
+  const fixtures = blocks.filter((block) => block.kind === "def" && isFixture(block, code)).map((block) => slice(lines, block));
+  const moduleSetup = setupOf(lines, code, 0, lines.length, inBlocks);
   /** @type {AuditTest[]} */
   const out = [];
   for (const block of blocks) {
     if (block.kind === "def" && block.name.startsWith("test")) {
       out.push(testOf(lines, code, block, { file, path: [], scope: [], fixtures, setup: moduleSetup ? [moduleSetup] : [], imports, skipped: moduleSkipped }));
     } else if (block.kind === "class" && isTestClass(block, code)) {
-      const inner = topBlocks(code, block.bodyStart, block.end, indentOf(code[block.bodyStart] ?? ""));
-      const hooks = inner.filter((item) => item.kind === "def" && (HOOK.test(item.name) || isFixture(item, lines, code))).map((item) => slice(lines, item));
-      const classSetup = setupOf(lines, code, block.bodyStart, block.end, inner);
-      const head = slice(lines, { ...block, end: block.bodyStart }).trimEnd();
-      const classSkipped = moduleSkipped || decorators(code, block).some((line) => SKIP.test(line));
-      for (const item of inner) {
-        if (item.kind !== "def" || !item.name.startsWith("test")) continue;
-        out.push(
-          testOf(lines, code, item, {
-            file,
-            path: [block.name],
-            scope: [head],
-            fixtures: [...fixtures, ...hooks],
-            setup: [moduleSetup, classSetup].filter(Boolean),
-            imports,
-            skipped: classSkipped,
-          }),
-        );
-      }
+      // The body's indent is that of its first code line; a blank line has none.
+      const first = code.slice(block.bodyStart, block.end).find((line) => line.trim()) ?? "";
+      const inner = topBlocks(code, block.bodyStart, block.end, indentOf(first));
+      const hooks = inner.filter((item) => item.kind === "def" && (HOOK.test(item.name) || isFixture(item, code))).map((item) => slice(lines, item));
+      const classCtx = {
+        file,
+        path: [block.name],
+        scope: [slice(lines, { ...block, end: block.bodyStart }).trimEnd()],
+        fixtures: [...fixtures, ...hooks],
+        setup: [moduleSetup, setupOf(lines, code, block.bodyStart, block.end, linesIn(inner))].filter(Boolean),
+        imports,
+        skipped: moduleSkipped || decorators(code, block).some((line) => SKIP.test(line)),
+      };
+      for (const item of inner) if (item.kind === "def" && item.name.startsWith("test")) out.push(testOf(lines, code, item, classCtx));
     }
   }
   return out;
@@ -174,8 +177,8 @@ function decorators(code, block) {
   return code.slice(block.start, block.head).map((line) => line.trim()).filter((line) => line.startsWith("@"));
 }
 
-/** A pytest fixture: a function decorated with `@pytest.fixture` or `@fixture`. @param {Block} block @param {string[]} _lines @param {string[]} code */
-function isFixture(block, _lines, code) {
+/** A pytest fixture: a function decorated with `@pytest.fixture` or `@fixture`. @param {Block} block @param {string[]} code */
+function isFixture(block, code) {
   return decorators(code, block).some((line) => /^@(?:pytest\.)?fixture\b/.test(line));
 }
 
@@ -186,9 +189,13 @@ function isTestClass(block, code) {
   return /\(\s*[^)]*\bTestCase\b/.test(head);
 }
 
-/** The import statements at module level, each whole. @param {string[]} lines @param {string[]} code @param {Block[]} blocks */
-function importsOf(lines, code, blocks) {
-  const inBlock = new Set(blocks.flatMap((block) => range(block.start, block.end)));
+/** The lines inside any of the blocks. @param {Block[]} blocks */
+function linesIn(blocks) {
+  return new Set(blocks.flatMap((block) => range(block.start, block.end)));
+}
+
+/** The import statements at module level, each whole. @param {string[]} lines @param {string[]} code @param {Set<number>} inBlock */
+function importsOf(lines, code, inBlock) {
   /** @type {string[]} */
   const out = [];
   for (let i = 0; i < code.length; i += 1) {
@@ -204,10 +211,9 @@ function importsOf(lines, code, blocks) {
 /**
  * The code of one scope outside its `def` and `class` blocks and its imports:
  * the constants and shared objects the tests read. Capped.
- * @param {string[]} lines @param {string[]} code @param {number} from @param {number} to @param {Block[]} blocks
+ * @param {string[]} lines @param {string[]} code @param {number} from @param {number} to @param {Set<number>} inBlock
  */
-function setupOf(lines, code, from, to, blocks) {
-  const inBlock = new Set(blocks.flatMap((block) => range(block.start, block.end)));
+function setupOf(lines, code, from, to, inBlock) {
   const kept = [];
   for (let i = from; i < to; i += 1) {
     if (inBlock.has(i) || !code[i].trim() || /^\s*(?:import|from)\s/.test(code[i])) continue;

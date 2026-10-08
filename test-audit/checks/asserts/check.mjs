@@ -44,13 +44,17 @@
 
 import { noul } from "../../classifier/systemone.mjs";
 
-/** The kinds of assertion, best first: the first kind is the one real guard. The model never sees these; code picks one from the answers. */
+/**
+ * The kinds of assertion, best first: the first kind is the one real guard. The
+ * model never sees these; code picks one from the answers. Each kind gives the
+ * verdict level, and the reason a finding states.
+ */
 const KINDS = {
-  behaviour: "a result of the code, against one exact value the test writes",
-  "from-code": "a result of the code, against a value from the same code, so both always agree",
-  inexact: "no exact value: only a limit, that a result exists, a constant, or nothing",
-  "shape-only": "only the type, the size, or the keys of a result",
-  "interaction-only": "only a call to a mock",
+  behaviour: { level: "good" },
+  "from-code": { level: "slop", reason: "expected value and result come from the same code" },
+  inexact: { level: "weak", reason: "checks no exact value" },
+  "shape-only": { level: "weak", reason: "asserts only the shape" },
+  "interaction-only": { level: "weak", reason: "asserts only a mock call" },
 };
 
 export default /** @satisfies {import("../../types.d.ts").Check} */ ({

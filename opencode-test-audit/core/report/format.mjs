@@ -1,4 +1,4 @@
-// canonical source: test-audit/report/format.mjs@c34fea8 sha256:8de1eb6bcb950d6db47ddaae9aadcda6642e90c3b3052b64959be24f40a912da - vendored copy, do not edit here
+// canonical source: test-audit/report/format.mjs@2863149 sha256:56ad2acce8e8afad53eee94daaf6060c64f8f9c543e0e0ffe46b0e15e79d25b2 - vendored copy, do not edit here
 // The pieces the text and markdown reports share: how a can-fail value, a
 // location, and the summary line read.
 
@@ -43,6 +43,11 @@ export function eyesResults(results) {
   return results.filter((result) => result.needsEyes);
 }
 
+/** " 3 calls, 1200 tokens." after a summary, or nothing. @param {AuditUsage | undefined} usage */
+export function usageText(usage) {
+  return usage ? ` ${plural(usage.calls, "call")}, ${usage.tokens} tokens.` : "";
+}
+
 /**
  * The closing line: counts by verdict, the unstable count, and the usage.
  * @param {AuditResult[]} results @param {{ usage?: AuditUsage }} meta
@@ -57,8 +62,7 @@ export function summary(results, meta) {
   const parts = Object.entries(counts).map(([label, count]) => `${count} ${label}`);
   const eyes = eyesResults(results).length;
   const unstable = results.filter((result) => result.canFail?.unstable).length;
-  const usage = meta.usage ? ` ${plural(meta.usage.calls, "call")}, ${meta.usage.tokens} tokens.` : "";
-  return `Summary: ${parts.join(", ") || "no tests"}. ${unstable} unstable. ${eyesPhrase(eyes)}.${usage}`;
+  return `Summary: ${parts.join(", ") || "no tests"}. ${unstable} unstable. ${eyesPhrase(eyes)}.${usageText(meta.usage)}`;
 }
 
 /** Pad to a column. A width of 0 or less means no cap and no padding. @param {string} text @param {number} width */

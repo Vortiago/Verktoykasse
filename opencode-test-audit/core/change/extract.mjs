@@ -1,4 +1,4 @@
-// canonical source: test-audit/change/extract.mjs@f927696 sha256:98de345a3fa8049395cadd027d6232f9f1a8ddedc38ffd86ec8fdb6b512b3ac0 - vendored copy, do not edit here
+// canonical source: test-audit/change/extract.mjs@2863149 sha256:31c069cf1bd0914e12d4c187b3b5d8c350f0923e84c65e922c8c99795f7ca07a - vendored copy, do not edit here
 // Test extraction: the parse half of the audit. It takes the text of one file
 // and returns the test blocks inside it. No git, no filesystem, no network, so
 // a fixture string exercises every branch. The read half lives in collect.mjs.
@@ -9,7 +9,7 @@
 
 import { argSpan, splitTop } from "../tools/js-scan.mjs";
 import { codeOnly } from "./code-only.mjs";
-import { extractPythonTests, isPythonTestFile } from "./python.mjs";
+import { extractPythonTests, isNamedPythonTestFile, isPythonTestFile } from "./python.mjs";
 
 /** @typedef {import("../types.d.ts").AuditTest} AuditTest */
 
@@ -56,6 +56,18 @@ const FIXTURES = new Set(["beforeEach", "beforeAll", "afterEach", "afterAll", "b
  */
 export function isTestFile(path) {
   return TEST_FILE.test(path) || isPythonTestFile(path);
+}
+
+/** A JavaScript or TypeScript file named as a test, whatever folder it is in. */
+const JS_NAMED = /[._-](?:test|spec)\.[cm]?[jt]sx?$/;
+
+/**
+ * Is this path named as a test file? A named file that yields no test holds a
+ * form the extractor cannot read, so the audit reports it.
+ * @param {string} path
+ */
+export function isNamedTestFile(path) {
+  return JS_NAMED.test(path) || isNamedPythonTestFile(path);
 }
 
 /**

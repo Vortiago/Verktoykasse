@@ -1,4 +1,4 @@
-// canonical source: test-audit/checks/can-fail/check.mjs@ee14484 sha256:784f2859b7266334701a6442b3bd125c4a2a6ea33e5905ad1e8ad1a71678ca8e - vendored copy, do not edit here
+// canonical source: test-audit/checks/can-fail/check.mjs@2863149 sha256:7f5acf89a53d6f0032bbf38844e67ca975b640b2e78133342a06dd024353c170 - vendored copy, do not edit here
 // The can-fail check: can some bug in the behaviour the test names make it fail?
 // A tautology, a self-reference, and a test that passes with zero results say
 // no. A shape or definedness check can still fail; the asserts check says how
@@ -44,5 +44,4 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
       "no: it passes with any result",
     ),
   },
-  negated: [],
 });

@@ -42,6 +42,11 @@ export function eyesResults(results) {
   return results.filter((result) => result.needsEyes);
 }
 
+/** " 3 calls, 1200 tokens." after a summary, or nothing. @param {AuditUsage | undefined} usage */
+export function usageText(usage) {
+  return usage ? ` ${plural(usage.calls, "call")}, ${usage.tokens} tokens.` : "";
+}
+
 /**
  * The closing line: counts by verdict, the unstable count, and the usage.
  * @param {AuditResult[]} results @param {{ usage?: AuditUsage }} meta
@@ -56,8 +61,7 @@ export function summary(results, meta) {
   const parts = Object.entries(counts).map(([label, count]) => `${count} ${label}`);
   const eyes = eyesResults(results).length;
   const unstable = results.filter((result) => result.canFail?.unstable).length;
-  const usage = meta.usage ? ` ${plural(meta.usage.calls, "call")}, ${meta.usage.tokens} tokens.` : "";
-  return `Summary: ${parts.join(", ") || "no tests"}. ${unstable} unstable. ${eyesPhrase(eyes)}.${usage}`;
+  return `Summary: ${parts.join(", ") || "no tests"}. ${unstable} unstable. ${eyesPhrase(eyes)}.${usageText(meta.usage)}`;
 }
 
 /** Pad to a column. A width of 0 or less means no cap and no padding. @param {string} text @param {number} width */

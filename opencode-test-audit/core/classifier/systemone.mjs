@@ -1,4 +1,4 @@
-// canonical source: test-audit/classifier/systemone.mjs@c34fea8 sha256:dd5ceefc3aa4fae9f5b79e2553c3b5d228521d91decc0c59394ae397bae1afd5 - vendored copy, do not edit here
+// canonical source: test-audit/classifier/systemone.mjs@2863149 sha256:d2270444c27464a562714b9902a4e1d5e87a83be42a907d1452990e54274bef4 - vendored copy, do not edit here
 // SystemOne client for test-audit. One Jev-compatible typed-question endpoint:
 // a local Ollama 0.35 or later, llama-arbiter, Ollaya, or any TypeSafe server.
 //
@@ -31,8 +31,7 @@ import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
 import config from "../config.mjs";
 
-/** @typedef {"choice" | "score" | "noul"} QuestionType */
-/** @typedef {{ type: QuestionType, instructions: string, criteria: Record<string, string | null> | string[] }} Question */
+/** @typedef {{ type: "noul", instructions: string, criteria: { true: string, false: string } }} Question */
 /** @typedef {import("../types.d.ts").AuditAnswer} AuditAnswer */
 /** @typedef {{ answers?: Record<string, AuditAnswer>, usage?: Record<string, unknown> }} SystemOneResponse */
 
@@ -84,29 +83,9 @@ function post(url, body, timeoutMs) {
  * @param {string} instructions @param {string} yes @param {string} no
  */
 export const noul = (instructions, yes, no) => ({
-  type: /** @type {QuestionType} */ ("noul"),
+  type: /** @type {const} */ ("noul"),
   instructions,
   criteria: { true: yes, false: no },
-});
-
-/**
- * Pick one named answer. A null criterion means the name speaks for itself.
- * @param {string} instructions @param {Record<string, string | null>} criteria
- */
-export const choice = (instructions, criteria) => ({
-  type: /** @type {QuestionType} */ ("choice"),
-  instructions,
-  criteria,
-});
-
-/**
- * An ordinal level: `levels` lowest first; the answer index names the level.
- * @param {string} instructions @param {string[]} levels
- */
-export const score = (instructions, levels) => ({
-  type: /** @type {QuestionType} */ ("score"),
-  instructions,
-  criteria: levels,
 });
 
 /**

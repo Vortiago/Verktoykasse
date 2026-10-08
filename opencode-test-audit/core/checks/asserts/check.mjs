@@ -1,4 +1,4 @@
-// canonical source: test-audit/checks/asserts/check.mjs@ccdc586 sha256:8ccd17fa0fb33c04ee61a05aa3058cdb99f7301f3f793bfb3b0f756d2ba4c576 - vendored copy, do not edit here
+// canonical source: test-audit/checks/asserts/check.mjs@2863149 sha256:6f8b620681fa0c2684b6bd27a26d4a06873853955b219d77263f1b2f66c86408 - vendored copy, do not edit here
 // The asserts check: does an assertion compare a result of the code with one
 // exact value that the test writes? Only that, `behaviour`, is a real guard.
 // Four short yes/no questions each judge one fact: an exact comparison of a
@@ -45,13 +45,17 @@
 
 import { noul } from "../../classifier/systemone.mjs";
 
-/** The kinds of assertion, best first: the first kind is the one real guard. The model never sees these; code picks one from the answers. */
+/**
+ * The kinds of assertion, best first: the first kind is the one real guard. The
+ * model never sees these; code picks one from the answers. Each kind gives the
+ * verdict level, and the reason a finding states.
+ */
 const KINDS = {
-  behaviour: "a result of the code, against one exact value the test writes",
-  "from-code": "a result of the code, against a value from the same code, so both always agree",
-  inexact: "no exact value: only a limit, that a result exists, a constant, or nothing",
-  "shape-only": "only the type, the size, or the keys of a result",
-  "interaction-only": "only a call to a mock",
+  behaviour: { level: "good" },
+  "from-code": { level: "slop", reason: "expected value and result come from the same code" },
+  inexact: { level: "weak", reason: "checks no exact value" },
+  "shape-only": { level: "weak", reason: "asserts only the shape" },
+  "interaction-only": { level: "weak", reason: "asserts only a mock call" },
 };
 
 export default /** @satisfies {import("../../types.d.ts").Check} */ ({

@@ -3,13 +3,10 @@
 // share one pipeline.
 
 import process from "node:process";
-import { changeContext, changedTests, collect, extractTests, isTestFile } from "./change/index.mjs";
+import { changeContext, changedTests, collect, extractTests, isNamedTestFile, isTestFile } from "./change/index.mjs";
 import { classify, usageMeter, verdictFrom } from "./classifier/index.mjs";
 import { mapPool } from "./lib/pool.mjs";
 import config from "./config.mjs";
-
-/** A file named as a test file: `.test.` or `.spec.`, not only under `__tests__/`. */
-const TEST_NAME = /\.(?:test|spec)\.[cm]?[jt]sx?$|(?:^|[\\/])(?:test_[^\\/]*|[^\\/]*_test)\.py$/;
 
 /** @typedef {import("./types.d.ts").AuditResult} AuditResult */
 /** @typedef {import("./types.d.ts").AuditUsage} AuditUsage */
@@ -40,7 +37,7 @@ export async function runAudit(args = {}, opts = {}) {
   // extractor cannot read (a tagged-template table, say). It escalates rather
   // than vanish, so a miss is never a clean pass.
   const unread = extracted
-    .filter((entry) => entry.tests.length === 0 && (args.files?.length || TEST_NAME.test(entry.path)))
+    .filter((entry) => entry.tests.length === 0 && (args.files?.length || isNamedTestFile(entry.path)))
     .map((entry) => unreadResult(entry.path));
   // The diff names the lines the change touched, so an untouched test in a
   // modified file stays out; its non-test part is the context. A change with no

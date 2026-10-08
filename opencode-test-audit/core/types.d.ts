@@ -1,4 +1,4 @@
-// canonical source: test-audit/types.d.ts@c2891f2 sha256:f2028b092db8b4e2bd6f4e0991928384af389b277bd1f7733af13a50dd3df100 - vendored copy, do not edit here
+// canonical source: test-audit/types.d.ts@2863149 sha256:ab6b545386ee342caa06625bae11bd2e923d71e9344bb1b649b9df65d6ffe072 - vendored copy, do not edit here
 // Shared shapes for the test-audit modules. The modules are `.mjs` with JSDoc
 // types, and the tsc gate checks them under strict (tsconfig.json). A module
 // imports a shape with `@typedef {import("../types.d.ts").AuditTest} AuditTest`,
@@ -19,7 +19,7 @@ interface CheckBase {
   name: string;
   /** The questions the check asks, keyed by the name the endpoint answers under, in battery order. */
   questions: Record<string, Question>;
-  /** The question keys whose yes and no are swapped. The verdict rules flip their value. */
+  /** The question keys whose yes is the finding, so a clean test answers no. A twin phrasing listed here is flipped before the spread. */
   negated?: string[];
 }
 
@@ -39,7 +39,7 @@ interface CheckBase {
  */
 export type Check =
   | (CheckBase & { role: "can-fail" })
-  | (CheckBase & { role: "asserts"; kinds: Record<string, string> })
+  | (CheckBase & { role: "asserts"; kinds: Record<string, { level: string; reason?: string }> })
   | (CheckBase & { role: "gate"; reason: string })
   | (CheckBase & { role: "runs"; reason: string })
   | (CheckBase & { role: "descriptive"; flag: string })
@@ -79,17 +79,16 @@ export interface AuditAnswer {
 
 /**
  * Several phrasings of one judgement, aligned to one polarity: the answer to a
- * negated yes/no phrasing is flipped. A yes/no phrasing gives P(yes); a choice
- * gives its kind.
+ * negated yes/no phrasing is flipped. Each phrasing gives P(yes).
  */
 export interface Paraphrase {
   /** One value per phrasing, in question order; null when unanswered or untrusted. */
-  values: Array<number | string | null>;
-  /** The mean of the yes/no values; null for choices, or when none answered. */
+  values: Array<number | null>;
+  /** The mean of the values; null when none answered. */
   mean: number | null;
-  /** The highest yes/no value minus the lowest; null for choices, or with fewer than two. */
+  /** The highest value minus the lowest; null with fewer than two. */
   spread: number | null;
-  /** unanswered, single, stable, borderline, or unstable. Choices are stable when they name one kind. */
+  /** unanswered, single, stable, borderline, or unstable. */
   state: string;
   /** borderline or unstable: the phrasings disagree. */
   unstable: boolean;
@@ -105,6 +104,8 @@ export interface CheckResult {
   value?: boolean | string;
   /** The phrasings behind the value, for a check asked in more than one. */
   group?: Paraphrase;
+  /** The value sits far enough from 0.5, or comes from the code, to act on. */
+  sure: boolean;
   /** Why the check escalates the test. Empty when it does not. */
   reasons: string[];
   /** The flags the check raises. They report, and do not escalate. */
@@ -121,8 +122,8 @@ export interface AuditResult {
   canFail?: Paraphrase;
   /** The assert kind both phrasings agree on: the value of the asserts check. */
   asserts?: string;
-  /** The verdict: the raw score, and the level it rounds to. */
-  score: { value?: number; label?: string };
+  /** The verdict level the rules compute from the answers. */
+  score: { label?: string };
   /** The extractor's notes, then the flags of the checks, each once. */
   flags: string[];
   needsEyes: boolean;

@@ -5,7 +5,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
-import { ask, noul, choice, score, trusted, tokensOf, usageMeter } from "./systemone.mjs";
+import { ask, noul, trusted, tokensOf, usageMeter } from "./systemone.mjs";
 
 test("the constructors emit the contract's question shapes", () => {
   assert.deepEqual(noul("is it?", "yes means this", "no means that"), {
@@ -13,8 +13,6 @@ test("the constructors emit the contract's question shapes", () => {
     instructions: "is it?",
     criteria: { true: "yes means this", false: "no means that" },
   });
-  assert.deepEqual(choice("pick", { a: "one", b: "two" }), { type: "choice", instructions: "pick", criteria: { a: "one", b: "two" } });
-  assert.deepEqual(score("rate", ["low", "high"]), { type: "score", instructions: "rate", criteria: ["low", "high"] });
 });
 
 test("trusted applies the mass floor when the endpoint reports one", () => {

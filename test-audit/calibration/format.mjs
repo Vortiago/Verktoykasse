@@ -13,7 +13,6 @@ import { labelChecks } from "./labels.mjs";
 /** @typedef {import("../types.d.ts").CalibrationRow} CalibrationRow */
 /** @typedef {import("../types.d.ts").AuditAnswer} AuditAnswer */
 /** @typedef {import("../types.d.ts").Check} Check */
-/** @typedef {import("../classifier/systemone.mjs").Question} Question */
 /** @typedef {ReturnType<typeof import("./judge.mjs").judge>} Judgement */
 /** One endpoint and model's run over the corpus. @typedef {{ target: { url: string, model: string }, rows: CalibrationRow[], verdict: Judgement, usage: AuditUsage }} CalibrationEntry */
 /** One case in report order: its row, its number, and the anchor its links point at. @typedef {{ row: CalibrationRow, number: number, anchor: string }} NumberedRow */
@@ -320,7 +319,7 @@ function decided(label, result) {
  */
 function answerSentence(check, result) {
   const answers = Object.keys(check.questions)
-    .map((key) => `${code(key)} ${answerText(key, result.answers[key])}`)
+    .map((key) => `${code(key)} ${answerText(result.answers[key])}`)
     .join(" · ");
   const { value, group } = result.checks[check.name] ?? {};
   if (!answers) return `${check.name}: ${value === undefined ? "unanswered" : valueText(value)}, from the extractor's flags.`;
@@ -407,7 +406,7 @@ function legend() {
     "- **runs**: read from the extractor's `skipped` and `focus-in-file` flags, not asked.",
     `- **verdict**: ${levels.join(", ")}, computed from the answers, not asked: ${levels[0]} when the test cannot fail or takes its expected value from the code, ${levels[1]} when it checks no exact value, or only a shape, a mock call, or its input, or has no positive assertion. It adds no reason of its own.`,
     '- **Descriptive question**: a "no" is a **smell**. It raises the flag in brackets. It does not escalate the test.',
-    "- **Number in brackets**: for a yes/no question, the probability of yes. For a choice, the probability of the chosen option.",
+    "- **Number in brackets**: the probability of yes.",
     "- **unanswered**: the endpoint gave no answer. **untrusted**: the answer has a `mass` below `TEST_AUDIT_MIN_MASS`. **not scored**: the tool did not commit to a can_fail value, so the agreement does not count the case.",
     "- **Status** of a case:",
     ...Object.values(STATUS).map((status) => `  - **${status.name}**: ${status.meaning}`),
@@ -418,32 +417,21 @@ function legend() {
     "",
     "| Question | Asks | Answer |",
     "| --- | --- | --- |",
-    ...Object.entries(BATTERY).map(([key, question]) => `| ${code(key)} | ${escapeCell(question.instructions)} | ${escapeCell(checksText(question))} |`),
+    ...Object.entries(BATTERY).map(([key, question]) => `| ${code(key)} | ${escapeCell(question.instructions)} | ${escapeCell(question.criteria.true)} |`),
   ];
 }
 
-/** What a question checks, from its criteria. @param {Question} question */
-function checksText(question) {
-  if (Array.isArray(question.criteria)) return `scale: ${question.criteria.join(", ")}`;
-  if (question.type === "noul") return String(question.criteria.true);
-  return `one of: ${Object.keys(question.criteria).join(", ")}`;
-}
-
 /**
- * One answer as the benchmark shows it: its value and the number behind it, or
- * why it has none. The number is P(yes), the probability of the chosen kind, or
- * the score.
- * @param {string} key @param {AuditAnswer | undefined} answer
+ * One answer as the benchmark shows it: yes or no and P(yes), or why it has
+ * none.
+ * @param {AuditAnswer | undefined} answer
  */
-function answerText(key, answer) {
+function answerText(answer) {
   if (!answer) return "unanswered";
   if (!trusted(answer)) return `untrusted (mass ${answer.mass?.toFixed(2)})`;
-  const type = BATTERY[key].type;
-  const number = type === "noul" ? answer.noul : type === "score" ? answer.score : answer.probabilities?.[String(answer.choice)];
-  const shown = typeof number === "number" ? ` (${number.toFixed(2)})` : "";
-  const value = questionValue(key, answer);
-  if (value !== undefined) return `${valueText(value)}${shown}`;
-  return type === "score" && shown ? `off the scale${shown}` : "unanswered";
+  const value = questionValue(answer);
+  if (value === undefined || typeof answer.noul !== "number") return "unanswered";
+  return `${valueText(value)} (${answer.noul.toFixed(2)})`;
 }
 
 /** yes or no for a boolean; any other value as it is. @param {boolean | string} value */

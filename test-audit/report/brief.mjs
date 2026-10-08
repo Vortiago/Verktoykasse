@@ -3,7 +3,7 @@
 // tool is. An ok test gets no line. The worst actions come first.
 
 import { findingOf } from "../classifier/finding.mjs";
-import { location, plural } from "./format.mjs";
+import { location, plural, usageText } from "./format.mjs";
 
 /** @typedef {import("../types.d.ts").AuditResult} AuditResult */
 /** @typedef {import("../types.d.ts").AuditUsage} AuditUsage */
@@ -29,7 +29,6 @@ export function formatBrief(results, meta = {}) {
   const counts = ACTIONS.map((action) => [action, found.filter(({ finding }) => finding.action === action).length])
     .filter(([, count]) => count)
     .map(([action, count]) => `${count} ${action}`);
-  const usage = meta.usage ? ` ${plural(meta.usage.calls, "call")}, ${meta.usage.tokens} tokens.` : "";
-  lines.push(`${plural(results.length, "test")}: ${counts.join(", ")}.${usage}`);
+  lines.push(`${plural(results.length, "test")}: ${counts.join(", ")}.${usageText(meta.usage)}`);
   return lines.join("\n");
 }

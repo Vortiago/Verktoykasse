@@ -35,5 +35,4 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
       "no: only empty, null, undefined, or no throw",
     ),
   },
-  negated: [],
 });

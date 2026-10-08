@@ -1,16 +1,13 @@
-// canonical source: test-audit/audit.mjs@f927696 sha256:3753ba8c28f9eab87f0288edd27baa9bdb876542313d5dadd1c1f14b1c67d065 - vendored copy, do not edit here
+// canonical source: test-audit/audit.mjs@2863149 sha256:908a9f079f9b6f99354166a70d9d3b69bdcfa844f74ece326bab2952a65512a7 - vendored copy, do not edit here
 // One audit: read the change, extract its tests, and classify each with one
 // SystemOne call. The CLI and the OpenCode plugin both call `runAudit`, so they
 // share one pipeline.
 
 import process from "node:process";
-import { changeContext, changedTests, collect, extractTests, isTestFile } from "./change/index.mjs";
+import { changeContext, changedTests, collect, extractTests, isNamedTestFile, isTestFile } from "./change/index.mjs";
 import { classify, usageMeter, verdictFrom } from "./classifier/index.mjs";
 import { mapPool } from "./lib/pool.mjs";
 import config from "./config.mjs";
-
-/** A file named as a test file: `.test.` or `.spec.`, not only under `__tests__/`. */
-const TEST_NAME = /\.(?:test|spec)\.[cm]?[jt]sx?$|(?:^|[\\/])(?:test_[^\\/]*|[^\\/]*_test)\.py$/;
 
 /** @typedef {import("./types.d.ts").AuditResult} AuditResult */
 /** @typedef {import("./types.d.ts").AuditUsage} AuditUsage */
@@ -41,7 +38,7 @@ export async function runAudit(args = {}, opts = {}) {
   // extractor cannot read (a tagged-template table, say). It escalates rather
   // than vanish, so a miss is never a clean pass.
   const unread = extracted
-    .filter((entry) => entry.tests.length === 0 && (args.files?.length || TEST_NAME.test(entry.path)))
+    .filter((entry) => entry.tests.length === 0 && (args.files?.length || isNamedTestFile(entry.path)))
     .map((entry) => unreadResult(entry.path));
   // The diff names the lines the change touched, so an untouched test in a
   // modified file stays out; its non-test part is the context. A change with no

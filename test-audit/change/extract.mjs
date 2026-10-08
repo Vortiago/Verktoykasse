@@ -8,7 +8,7 @@
 
 import { argSpan, splitTop } from "../tools/js-scan.mjs";
 import { codeOnly } from "./code-only.mjs";
-import { extractPythonTests, isPythonTestFile } from "./python.mjs";
+import { extractPythonTests, isNamedPythonTestFile, isPythonTestFile } from "./python.mjs";
 
 /** @typedef {import("../types.d.ts").AuditTest} AuditTest */
 
@@ -55,6 +55,18 @@ const FIXTURES = new Set(["beforeEach", "beforeAll", "afterEach", "afterAll", "b
  */
 export function isTestFile(path) {
   return TEST_FILE.test(path) || isPythonTestFile(path);
+}
+
+/** A JavaScript or TypeScript file named as a test, whatever folder it is in. */
+const JS_NAMED = /[._-](?:test|spec)\.[cm]?[jt]sx?$/;
+
+/**
+ * Is this path named as a test file? A named file that yields no test holds a
+ * form the extractor cannot read, so the audit reports it.
+ * @param {string} path
+ */
+export function isNamedTestFile(path) {
+  return JS_NAMED.test(path) || isNamedPythonTestFile(path);
 }
 
 /**

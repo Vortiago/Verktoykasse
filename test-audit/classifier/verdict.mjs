@@ -10,8 +10,8 @@
 // asked the plain way round: a decision model answers a negation less
 // reliably. The rules trust the value only when the spread is inside
 // TEST_AUDIT_STABLE_BAND. A disagreement escalates to a human; it is never
-// broken by a vote. The `asserts` pair also lists its kinds in reverse order,
-// as a position control, and offers `unclear`, which escalates.
+// broken by a vote. `asserts` asks one yes/no question per fact and picks the
+// kind in code; an answer near 0.5 escalates when it decides the kind.
 //
 // The verdict is not asked. It is computed from the answers that carry it, so
 // each question judges one thing, and code owns the composition.
@@ -58,13 +58,11 @@ import config from "../config.mjs";
 /** A yes/no answer at or above this reads as yes. */
 const YES = 0.5;
 
-/** The assert kinds that leave a test unable to guard anything: the verdict is slop. */
-const SLOP_KINDS = ["from-code"];
-/** The assert kinds that check something, but not the behaviour: the verdict is weak. */
-const WEAK_KINDS = ["inexact", "shape-only", "interaction-only"];
-
-/** An asserts answer closer to 0.5 than this commits to no kind. */
-const KIND_BAND = 0.2;
+/**
+ * A yes/no answer closer to 0.5 than this is a guess: an asserts answer then
+ * commits to no kind when it decides one, and any other answer is unsure.
+ */
+const UNSURE_BAND = 0.2;
 
 /** The roles whose reasons escalate a test, in the order the result lists them. */
 const REASON_ORDER = ["can-fail", "runs", "gate", "asserts"];
@@ -72,8 +70,9 @@ const REASON_ORDER = ["can-fail", "runs", "gate", "asserts"];
 /** The extractor's flags that stop a test or narrow the run. */
 const RUN_FLAGS = ["skipped", "focus-in-file"];
 
-/** The check that asks each question, keyed by the question. */
-const OWNER = new Map(CHECKS.flatMap((check) => Object.keys(check.questions).map((key) => /** @type {const} */ ([key, check]))));
+/** The asserts check, whose kinds give a verdict level, and the verdict check the rules fill in. */
+const ASSERTS = CHECKS.find((check) => check.role === "asserts");
+const VERDICT = CHECKS.find((check) => check.role === "verdict");
 
 /**
  * Reduce one test's answers to a verdict: one result for each check, and the
@@ -107,28 +106,28 @@ export function verdictFrom(test, answers, opts = {}) {
         // the code, a mock call, its own input, or nothing at all is not a guard,
         // so any other kind escalates.
         const kind = assertKind(check, answers);
-        const pass = Object.keys(check.kinds)[0];
+        const [pass] = Object.keys(check.kinds);
         /** @type {string[]} */
         const reasons = [];
         if (kind.missing) reasons.push(`${check.name} not fully answered`);
         else if (kind.conflict) reasons.push(`${check.name} unstable (${kind.conflict})`);
         else if (kind.value !== pass) reasons.push(`${check.name} ${kind.value}`);
         const value = kind.missing || kind.conflict ? undefined : kind.value;
-        checks[check.name] = { value, reasons, flags: value && value !== pass ? [value] : [] };
+        checks[check.name] = { value, sure: value !== undefined, reasons, flags: value && value !== pass ? [value] : [] };
         views.asserts = value;
         break;
       }
       case "runs": {
         // A marker is syntax, so the extractor reads it; the rule only reports it.
         const marked = (test.flags ?? []).some((flag) => RUN_FLAGS.includes(flag));
-        checks[check.name] = { value: !marked, reasons: marked ? [check.reason] : [], flags: [] };
+        checks[check.name] = { value: !marked, sure: true, reasons: marked ? [check.reason] : [], flags: [] };
         break;
       }
       case "descriptive": {
         // A descriptive answer reports as a flag. It never escalates.
         const [key] = Object.keys(check.questions);
         const value = boolOf(answers[key]);
-        checks[check.name] = { value, reasons: [], flags: value === false ? [check.flag] : [] };
+        checks[check.name] = { value, sure: far(field(answers[key], "noul", "number")), reasons: [], flags: value === false ? [check.flag] : [] };
         break;
       }
       case "verdict":
@@ -140,16 +139,14 @@ export function verdictFrom(test, answers, opts = {}) {
   // The verdict, from the answers that carry it. It adds no reason: each answer
   // behind a slop or weak level already escalates on its own.
   const kind = views.asserts;
-  const verdictCheck = CHECKS.find((check) => check.role === "verdict");
+  const kindLevel = kind && ASSERTS?.role === "asserts" ? ASSERTS.kinds[kind]?.level : undefined;
   /** @type {string | undefined} */
   let level;
-  if (canFail?.value === false || (kind && SLOP_KINDS.includes(kind))) level = "slop";
-  else if ((kind && WEAK_KINDS.includes(kind)) || checks.positive?.value === false) level = "weak";
-  else if (canFail?.value === true && kind === "behaviour") level = "good";
-  if (verdictCheck?.role === "verdict") {
-    checks[verdictCheck.name] = { value: level, reasons: [], flags: [] };
-    if (level) views.score = { value: verdictCheck.levels.indexOf(level), label: level };
-  }
+  if (canFail?.value === false || kindLevel === "slop") level = "slop";
+  else if (kindLevel === "weak" || checks.positive?.value === false) level = "weak";
+  else if (canFail?.value === true && kindLevel === "good") level = "good";
+  if (VERDICT) checks[VERDICT.name] = { value: level, sure: true, reasons: [], flags: [] };
+  if (level) views.score = { label: level };
 
   // Answers that contradict each other: a test that cannot fail cannot also
   // check the behaviour. Each answer is stable on its own, so only a rule across
@@ -177,52 +174,46 @@ export function verdictFrom(test, answers, opts = {}) {
 }
 
 /**
- * The value of one answer, as the rules read it: yes or no for a yes/no
- * question, the kind for a choice, and the level for a score. Undefined when the
- * answer is missing, untrusted, of the wrong type, or off the scale. A negated
- * phrasing is read as it is asked, not flipped.
- * @param {string} key @param {AuditAnswer | undefined} answer
- * @returns {boolean | string | undefined}
+ * The value of one answer, as the rules read it: yes or no. Undefined when the
+ * answer is missing or untrusted. A negated phrasing is read as it is asked, not
+ * flipped.
+ * @param {AuditAnswer | undefined} answer
+ * @returns {boolean | undefined}
  */
-export function questionValue(key, answer) {
-  const check = OWNER.get(key);
-  const type = check?.questions[key].type;
-  if (type === "noul") return boolOf(answer);
-  if (type === "choice") return field(answer, "choice", "string");
-  return undefined;
+export function questionValue(answer) {
+  return boolOf(answer);
 }
 
 /**
  * The assert kind from the yes/no answers of the asserts check. Each question
  * judges one property; the kind is the worst one the answers name. "Compares
  * content" beside "only the shape", "only a mock call", or "only its own input"
- * is a contradiction. A missing or untrusted answer, or an exact tie, leaves no
- * kind.
+ * is a contradiction. A missing or untrusted answer leaves no kind. An answer
+ * near 0.5, an exact tie included, is a guess that counts only when it decides.
  * @param {Check} check @param {Record<string, AuditAnswer>} answers
  * @returns {{ value?: string, conflict?: string, missing?: boolean }}
  */
 function assertKind(check, answers) {
   /** @type {Record<string, boolean>} */
   const says = {};
-  /** @type {string[]} */
-  const unsure = [];
+  /** @type {Array<{ name: string, value: number }>} */
+  const guesses = [];
   for (const key of Object.keys(check.questions)) {
     const value = field(answers[key], "noul", "number");
-    if (value === undefined || value === YES) return { missing: true };
+    if (value === undefined) return { missing: true };
     const name = key.replace(`${check.name}_`, "");
     says[name] = value > YES;
-    if (Math.abs(value - YES) < KIND_BAND) unsure.push(`${name} ${value.toFixed(2)}`);
+    if (!far(value)) guesses.push({ name, value });
   }
-  // An answer near 0.5 is a guess. Try each guess both ways: when every way
-  // gives the same kind, the guess does not matter; when not, there is no kind.
-  const names = unsure.map((entry) => entry.split(" ")[0]);
+  // Try each guess both ways: when every way gives the same kind, the guess does
+  // not matter; when not, there is no kind.
   const kinds = new Set();
-  for (let mask = 0; mask < 1 << names.length; mask += 1) {
+  for (let mask = 0; mask < 1 << guesses.length; mask += 1) {
     const trial = { ...says };
-    names.forEach((name, bit) => (trial[name] = Boolean(mask & (1 << bit))));
+    guesses.forEach(({ name }, bit) => (trial[name] = Boolean(mask & (1 << bit))));
     kinds.add(JSON.stringify(kindOf(trial)));
   }
-  if (kinds.size > 1) return { conflict: `unsure ${unsure.join(", ")}` };
+  if (kinds.size > 1) return { conflict: `unsure ${guesses.map(({ name, value }) => `${name} ${value.toFixed(2)}`).join(", ")}` };
   return kindOf(says);
 }
 
@@ -262,7 +253,7 @@ function yesNo(check, answers) {
   const tied = committed(group) && group.mean === YES;
   if (tied) reasons.push(`${check.name} undecided (mean ${YES})`);
   const value = committed(group) && group.mean !== null && !tied ? group.mean > YES : undefined;
-  return { value, group, reasons, flags: [] };
+  return { value, group, sure: value !== undefined && far(group.mean), reasons, flags: [] };
 }
 
 /**
@@ -275,17 +266,15 @@ function yesNo(check, answers) {
  */
 function phrasings(check, answers) {
   const negated = new Set(check.negated);
-  const values = Object.entries(check.questions).map(([key, question]) => {
-    if (question.type === "choice") return field(answers[key], "choice", "string") ?? null;
+  const values = Object.keys(check.questions).map((key) => {
     const value = field(answers[key], "noul", "number");
     if (value === undefined) return null;
     return negated.has(key) ? 1 - value : value;
   });
   const present = values.filter((value) => value !== null);
-  const numbers = present.filter((value) => typeof value === "number");
-  const spread = numbers.length >= 2 ? Math.max(...numbers) - Math.min(...numbers) : null;
-  const mean = numbers.length ? numbers.reduce((sum, value) => sum + value, 0) / numbers.length : null;
-  const state = stateOf(present, spread, config.stableBand);
+  const spread = present.length >= 2 ? Math.max(...present) - Math.min(...present) : null;
+  const mean = present.length ? present.reduce((sum, value) => sum + value, 0) / present.length : null;
+  const state = stateOf(present.length, spread, config.stableBand);
   return { values, mean, spread, state, unstable: state === "borderline" || state === "unstable" };
 }
 
@@ -295,14 +284,12 @@ function committed(group) {
 }
 
 /**
- * unanswered, single, stable, borderline, or unstable. Choices have no spread:
- * they are stable when they name one kind, and unstable otherwise.
- * @param {Array<number | string>} present @param {number | null} spread @param {number} band
+ * unanswered, single, stable, borderline, or unstable.
+ * @param {number} answered @param {number | null} spread @param {number} band
  */
-function stateOf(present, spread, band) {
-  if (present.length === 0) return "unanswered";
-  if (present.length === 1) return "single";
-  if (spread === null) return new Set(present).size === 1 ? "stable" : "unstable";
+function stateOf(answered, spread, band) {
+  if (answered === 0) return "unanswered";
+  if (spread === null) return "single";
   if (spread <= band) return "stable";
   return spread <= band * 2 ? "borderline" : "unstable";
 }
@@ -317,6 +304,11 @@ function stateOf(present, spread, band) {
 function field(answer, key, kind) {
   if (!trusted(answer) || typeof answer[key] !== kind) return undefined;
   return answer[key];
+}
+
+/** A yes/no value far enough from 0.5 to act on. @param {number | null | undefined} value */
+function far(value) {
+  return typeof value === "number" && Math.abs(value - YES) >= UNSURE_BAND;
 }
 
 /** @param {AuditAnswer | undefined} answer @returns {boolean | undefined} */

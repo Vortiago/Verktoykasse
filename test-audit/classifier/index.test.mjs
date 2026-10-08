@@ -125,10 +125,10 @@ test("a test the extractor marks as skipped, or a focus marker in its file, esca
   assert.equal(verdictFrom(TEST, goodAnswers()).checks.runs.value, true);
 });
 
-test("an asserts answer on exactly 0.5 leaves no kind, and escalates", () => {
+test("an asserts answer on exactly 0.5 is a guess, and escalates when it decides the kind", () => {
   const result = verdictFrom(TEST, { ...goodAnswers(), asserts_mock: noul(0.5) });
   assert.equal(result.asserts, undefined);
-  assert.match(result.reasons.join(" "), /asserts not fully answered/);
+  assert.match(result.reasons.join(" "), /asserts unstable \(unsure mock 0\.50\)/);
 });
 
 test("descriptive gates report as flags without escalating", () => {
@@ -209,7 +209,7 @@ test("each check yields one result, and the reasons come in role order", () => {
   const result = verdictFrom({ ...TEST, flags: ["skipped"] }, answers, { error: "partial" });
   assert.deepEqual(Object.keys(result.checks), CHECKS.map((check) => check.name));
   assert.deepEqual(result.reasons, ["no answers (partial)", "can_fail unstable (spread 0.59)", "does not run, or narrows the run", "asserts inexact"]);
-  assert.deepEqual(result.checks.runs, { value: false, reasons: ["does not run, or narrows the run"], flags: [] });
+  assert.deepEqual(result.checks.runs, { value: false, sure: true, reasons: ["does not run, or narrows the run"], flags: [] });
   assert.deepEqual(result.checks.asserts.flags, ["inexact"]);
 });
 

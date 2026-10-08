@@ -111,3 +111,8 @@ test("a def test_ inside a docstring or a comment is not a test, and a multi-lin
   );
   assert.match(found[0].source, /assert store\.read\(text\) == text$/);
 });
+
+test("a test class whose body starts with a blank line still yields its tests", () => {
+  const text = ["class TestA:", "", "    def test_x(self):", "        assert x() == 1"].join("\n");
+  assert.deepEqual(extractTests(text, "tests/test_a.py").map((t) => t.name), ["test_x"]);
+});
