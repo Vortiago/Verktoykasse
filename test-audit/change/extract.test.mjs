@@ -219,7 +219,8 @@ test("a chained or curried call head is still a test", () => {
   const found = extractTests(text, "x.test.mjs");
   assert.deepEqual(found.map((t) => t.name), ["adds %i", "reads a link", "runs at once"]);
   assert.deepEqual(found[0].flags, ["each", "skipped"]);
-  assert.deepEqual(found[1].flags, ["skipped"]);
+  // A skipIf runs where its condition holds, so it is not a skip.
+  assert.deepEqual(found[1].flags, []);
   assert.deepEqual(found[2].flags, []);
   assert.match(found[0].source, /^test\.skip\.each/);
 });

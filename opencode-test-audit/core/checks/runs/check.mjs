@@ -1,7 +1,8 @@
-// canonical source: test-audit/checks/runs/check.mjs@c2891f2 sha256:3af3be06feb2dfc34f1273985e9ee6a1fd950972f99916ad4c6db5cdc10e8d22 - vendored copy, do not edit here
-// The runs check: does the test run, and does the rest of its file run? A skip,
-// todo, or skipIf marker or an x prefix on the test or on a describe around it
-// stops it from guarding anything. An only or focus marker anywhere in the file
+// canonical source: test-audit/checks/runs/check.mjs@3eb9908 sha256:08eff666c654405daf666e10afe6c56c776b39a7fa3e3a14b8f4cda4ad0903c8 - vendored copy, do not edit here
+// The runs check: does the test run, and does the rest of its file run? A skip
+// or todo marker or an x prefix on the test or on a describe around it stops
+// it from guarding anything. A skipIf is no skip: the test runs where its
+// condition holds. An only or focus marker anywhere in the file
 // leaves the other tests out of the run. The tool asks no question: the
 // extractor reads the markers and sets the `skipped` and `focus-in-file` flags,
 // and the rules read those. A marker is syntax, so it is a fact, not a judgement.

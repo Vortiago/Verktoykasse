@@ -1,4 +1,4 @@
-// canonical source: test-audit/change/python.mjs@f4c57f2 sha256:f4da7d45f4b88befa265928e0562aef9a082fd6931edaf336da03c2b6d3a7e53 - vendored copy, do not edit here
+// canonical source: test-audit/change/python.mjs@3eb9908 sha256:a807909836a1f6acae47214f8a1fd870f925655abdc3a871472e5ccde37f2c27 - vendored copy, do not edit here
 // The Python extractor: find the pytest and unittest tests in one file, with the
 // fixtures, setup, imports, and markers the questions need. It reads the syntax
 // only to find the test blocks, as the JavaScript extractor does; the questions
@@ -17,10 +17,13 @@ const PY_NAMED = /(?:^|[\\/])(?:test_[^\\/]*|[^\\/]*_test)\.py$/;
 /** Any `.py` under a tests folder, but never conftest.py. */
 const PY_IN_TESTS = /(?:^|[\\/])tests?[\\/](?:.*[\\/])?(?!conftest\.py$)[^\\/]+\.py$/;
 
-/** A decorator or call that skips a test, or may skip it. */
-const SKIP = /^@(?:pytest\.mark\.(?:skip|skipif)|unittest\.(?:skip|skipIf|skipUnless)|skip|skipIf|skipUnless)\b/;
+/**
+ * A decorator that always skips a test. A skipif or skipUnless runs the test
+ * where its condition holds, such as on one platform, so it is not a skip.
+ */
+const SKIP = /^@(?:pytest\.mark\.skip|unittest\.skip|skip)\b(?!If|Unless|if)/;
 /** A module-level marker that skips every test in the file. */
-const MODULE_SKIP = /^pytestmark\s*=.*\bpytest\.mark\.(?:skip|skipif)\b/;
+const MODULE_SKIP = /^pytestmark\s*=.*\bpytest\.mark\.skip\b(?!if)/;
 /** A decorator that runs one test over a table. */
 const EACH = /^@(?:pytest\.mark\.parametrize|given)\b/;
 /** The methods and functions that set up or tear down a test. */

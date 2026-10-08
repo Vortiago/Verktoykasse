@@ -16,10 +16,13 @@ const PY_NAMED = /(?:^|[\\/])(?:test_[^\\/]*|[^\\/]*_test)\.py$/;
 /** Any `.py` under a tests folder, but never conftest.py. */
 const PY_IN_TESTS = /(?:^|[\\/])tests?[\\/](?:.*[\\/])?(?!conftest\.py$)[^\\/]+\.py$/;
 
-/** A decorator or call that skips a test, or may skip it. */
-const SKIP = /^@(?:pytest\.mark\.(?:skip|skipif)|unittest\.(?:skip|skipIf|skipUnless)|skip|skipIf|skipUnless)\b/;
+/**
+ * A decorator that always skips a test. A skipif or skipUnless runs the test
+ * where its condition holds, such as on one platform, so it is not a skip.
+ */
+const SKIP = /^@(?:pytest\.mark\.skip|unittest\.skip|skip)\b(?!If|Unless|if)/;
 /** A module-level marker that skips every test in the file. */
-const MODULE_SKIP = /^pytestmark\s*=.*\bpytest\.mark\.(?:skip|skipif)\b/;
+const MODULE_SKIP = /^pytestmark\s*=.*\bpytest\.mark\.skip\b(?!if)/;
 /** A decorator that runs one test over a table. */
 const EACH = /^@(?:pytest\.mark\.parametrize|given)\b/;
 /** The methods and functions that set up or tear down a test. */

@@ -26,9 +26,13 @@ const CALL =
  * function, so the test is the second call: `test.each([...])("name", fn)`. */
 const CURRIED = new Set(["each", "for", "skipIf", "runIf"]);
 
-/** The keywords that skip a test or a describe, and the members that skip or may skip it. */
+/**
+ * The keywords and members that always skip a test or a describe. A skipIf
+ * runs the test where its condition holds, such as on one platform, so it is
+ * not a skip.
+ */
 const SKIP_KEYWORDS = new Set(["xdescribe", "xcontext", "xit", "xtest", "xspecify"]);
-const SKIP_MEMBERS = ["skip", "todo", "skipIf"];
+const SKIP_MEMBERS = ["skip", "todo"];
 
 /** The second call of a curried head, matched right where the first ends. */
 const EACH_CALL = /\s*\(/y;

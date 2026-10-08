@@ -1,4 +1,4 @@
-// canonical source: test-audit/change/extract.mjs@2863149 sha256:31c069cf1bd0914e12d4c187b3b5d8c350f0923e84c65e922c8c99795f7ca07a - vendored copy, do not edit here
+// canonical source: test-audit/change/extract.mjs@3eb9908 sha256:1dc52b25877941afef9b84f4a3c78f27dab9eb1214875f6888180b0a1f368ea8 - vendored copy, do not edit here
 // Test extraction: the parse half of the audit. It takes the text of one file
 // and returns the test blocks inside it. No git, no filesystem, no network, so
 // a fixture string exercises every branch. The read half lives in collect.mjs.
@@ -27,9 +27,13 @@ const CALL =
  * function, so the test is the second call: `test.each([...])("name", fn)`. */
 const CURRIED = new Set(["each", "for", "skipIf", "runIf"]);
 
-/** The keywords that skip a test or a describe, and the members that skip or may skip it. */
+/**
+ * The keywords and members that always skip a test or a describe. A skipIf
+ * runs the test where its condition holds, such as on one platform, so it is
+ * not a skip.
+ */
 const SKIP_KEYWORDS = new Set(["xdescribe", "xcontext", "xit", "xtest", "xspecify"]);
-const SKIP_MEMBERS = ["skip", "todo", "skipIf"];
+const SKIP_MEMBERS = ["skip", "todo"];
 
 /** The second call of a curried head, matched right where the first ends. */
 const EACH_CALL = /\s*\(/y;

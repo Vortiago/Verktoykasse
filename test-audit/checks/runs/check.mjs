@@ -1,6 +1,7 @@
-// The runs check: does the test run, and does the rest of its file run? A skip,
-// todo, or skipIf marker or an x prefix on the test or on a describe around it
-// stops it from guarding anything. An only or focus marker anywhere in the file
+// The runs check: does the test run, and does the rest of its file run? A skip
+// or todo marker or an x prefix on the test or on a describe around it stops
+// it from guarding anything. A skipIf is no skip: the test runs where its
+// condition holds. An only or focus marker anywhere in the file
 // leaves the other tests out of the run. The tool asks no question: the
 // extractor reads the markers and sets the `skipped` and `focus-in-file` flags,
 // and the rules read those. A marker is syntax, so it is a fact, not a judgement.

@@ -56,7 +56,7 @@ test("a pytest fixture travels with each test, and module constants are setup", 
   assert.deepEqual(found.setup, ["LIMIT = 64"]);
 });
 
-test("skip markers and parametrize become flags, and the decorators stay in the source", () => {
+test("an unconditional skip and parametrize become flags, a conditional skipif does not, and the decorators stay in the source", () => {
   const text = [
     "import pytest",
     "",
@@ -76,7 +76,7 @@ test("skip markers and parametrize become flags, and the decorators stay in the 
   const found = extractTests(text, "tests/test_m.py");
   assert.deepEqual(
     found.map((t) => [t.name, t.flags]),
-    [["test_a", ["skipped"]], ["test_b", ["each"]], ["test_c", ["skipped"]]],
+    [["test_a", ["skipped"]], ["test_b", ["each"]], ["test_c", []]],
   );
   assert.match(found[0].source, /^@pytest\.mark\.skip/);
 });

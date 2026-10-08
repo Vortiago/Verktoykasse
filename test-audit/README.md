@@ -356,8 +356,9 @@ are a baseline to run again.
   module-level `test*` function, async too, and the `test*` methods of a class
   named `Test*` or based on a `TestCase`. A `@pytest.fixture` function, a
   `setUp` or `setup_method`, and the module and class constants travel with each
-  test. A skip marker (`@pytest.mark.skip`/`skipif`, `@unittest.skip*`, a
-  module `pytestmark`) flags it as skipped, and `parametrize` or hypothesis's
+  test. An unconditional skip (`@pytest.mark.skip`, `@unittest.skip`, a
+  module `pytestmark`) flags it as skipped; a `skipif` or `skipUnless` does not,
+  because the test runs where its condition holds, and `parametrize` or hypothesis's
   `given` as `each`. Fixtures in `conftest.py` are not read.
 - The JavaScript extractor reads `test` and `it` calls with a literal or a computed name,
   with a member chain such as `test.skip.each` or `test.skipIf(cond)`, and
