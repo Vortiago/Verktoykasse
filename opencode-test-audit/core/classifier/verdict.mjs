@@ -1,4 +1,4 @@
-// canonical source: test-audit/classifier/verdict.mjs@ee14484 sha256:5d364f69c73875b4a01d1c3e9303cb52017b7ae6010ea1747cc656bd9e914c4a - vendored copy, do not edit here
+// canonical source: test-audit/classifier/verdict.mjs@ccdc586 sha256:699057c1169df3e469691d258aae7e769c9668bc02c8bce3d6cc5288de096b5e - vendored copy, do not edit here
 // The verdict rules: reduce one test's answers to a verdict, a set of flags, and
 // the reasons it escalates. Pure, so the rules are tested on hand-written answer
 // objects without the model.
@@ -205,14 +205,35 @@ export function questionValue(key, answer) {
 function assertKind(check, answers) {
   /** @type {Record<string, boolean>} */
   const says = {};
+  /** @type {string[]} */
+  const unsure = [];
   for (const key of Object.keys(check.questions)) {
     const value = field(answers[key], "noul", "number");
     if (value === undefined || value === YES) return { missing: true };
     const name = key.replace(`${check.name}_`, "");
-    // An answer this close to 0.5 is a guess, so it commits to no kind.
-    if (Math.abs(value - YES) < KIND_BAND) return { conflict: `unsure ${name} ${value.toFixed(2)}` };
     says[name] = value > YES;
+    if (Math.abs(value - YES) < KIND_BAND) unsure.push(`${name} ${value.toFixed(2)}`);
   }
+  // An answer near 0.5 is a guess. Try each guess both ways: when every way
+  // gives the same kind, the guess does not matter; when not, there is no kind.
+  const names = unsure.map((entry) => entry.split(" ")[0]);
+  const kinds = new Set();
+  for (let mask = 0; mask < 1 << names.length; mask += 1) {
+    const trial = { ...says };
+    names.forEach((name, bit) => (trial[name] = Boolean(mask & (1 << bit))));
+    kinds.add(JSON.stringify(kindOf(trial)));
+  }
+  if (kinds.size > 1) return { conflict: `unsure ${unsure.join(", ")}` };
+  return kindOf(says);
+}
+
+/**
+ * The kind that one set of yes/no facts names. "An exact comparison" beside
+ * "only the shape" or "only a mock call" is a contradiction.
+ * @param {Record<string, boolean>} says
+ * @returns {{ value?: string, conflict?: string }}
+ */
+function kindOf(says) {
   const only = [
     ["mock", "interaction-only"],
     ["shape", "shape-only"],
@@ -221,7 +242,7 @@ function assertKind(check, answers) {
   // A mock checked with the test's own value is still a mock check, so the mock comes first.
   if (only.length) return { value: only[0][1] };
   if (!says.exact) return { value: "inexact" };
-  if (says.same) return { value: "from-code" };
+  if (!says.written && says.same) return { value: "from-code" };
   return { value: "behaviour" };
 }
 

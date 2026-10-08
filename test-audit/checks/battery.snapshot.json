@@ -23,6 +23,14 @@
       "false": "no: it checks only a type, a size, keys, a limit, or no result"
     }
   },
+  "asserts_written": {
+    "type": "noul",
+    "instructions": "Does the test write the expected value as a literal or a calculation?",
+    "criteria": {
+      "true": "yes: the test writes the expected value",
+      "false": "no: the test reads the expected value from code"
+    }
+  },
   "asserts_same": {
     "type": "noul",
     "instructions": "Do the expected value and the checked result come from the same code?",

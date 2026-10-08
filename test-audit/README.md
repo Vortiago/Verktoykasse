@@ -234,7 +234,7 @@ only its folder and one line in `checks/index.mjs`.
 | Check | Questions | Role | Looks for | Cases |
 | --- | --- | --- | --- | --- |
 | [`can-fail`](checks/can-fail/check.mjs) | `can_fail_a`, `can_fail_c` | can-fail | tautology, self-reference, vacuous test, passes-with-zero | 9 |
-| [`asserts`](checks/asserts/check.mjs) | `asserts_exact`, `asserts_same`, `asserts_shape`, `asserts_mock` | asserts | no exact value, expected value and result from the same code, shape only, or interaction only; code picks the kind from the four answers | 14 |
+| [`asserts`](checks/asserts/check.mjs) | `asserts_exact`, `asserts_written`, `asserts_same`, `asserts_shape`, `asserts_mock` | asserts | no exact value, expected value read from the same code as the result, shape only, or interaction only; code picks the kind from the five answers | 14 |
 | [`positive`](checks/positive/check.mjs) | `positive_a`, `positive_b` | gate: no positive assertion | only-negative test | 7 |
 | [`runs`](checks/runs/check.mjs) | none: the extractor's `skipped` and `focus-in-file` flags | runs: does not run, or narrows the run | a skip, todo, or x marker on the test or on a describe around it, or an only or focus marker anywhere in the file | 6 |
 | [`conditional`](checks/conditional/check.mjs) | `conditional` | flag `conditional` | a branch, a loop over a value that may be empty, an early return, or a catch that can leave an assertion unrun | 3 |

@@ -1,13 +1,15 @@
-// canonical source: test-audit/checks/asserts/check.mjs@ee14484 sha256:6df024a45a18d560423d641896160771993f82f6cbabbe90ea3c89a8ece10cba - vendored copy, do not edit here
+// canonical source: test-audit/checks/asserts/check.mjs@ccdc586 sha256:8ccd17fa0fb33c04ee61a05aa3058cdb99f7301f3f793bfb3b0f756d2ba4c576 - vendored copy, do not edit here
 // The asserts check: does an assertion compare a result of the code with one
 // exact value that the test writes? Only that, `behaviour`, is a real guard.
 // Four short yes/no questions each judge one fact: an exact comparison of a
-// result, an expected value from the same code as the result (so the two agree
-// by construction; two codebases checked against each other do not), and
+// result, an expected value the test writes, an expected value from the same
+// code as the result (so the two agree by construction; two codebases checked
+// against each other do not), and
 // assertions that check only the
 // shape or only a mock call. An assertion that reads only the test's own input
 // checks no result of the code, so `asserts_exact` says no. Code picks the kind
-// from the answers. An answer near 0.5 leaves no kind and escalates. Every
+// from the answers. An answer near 0.5 escalates only when it decides the kind:
+// the rules try it both ways. Every
 // other kind escalates. Answers that contradict each other, such as "an exact
 // comparison" beside "only the shape", escalate as unstable. A check with no
 // exact value (a limit, that a result exists) is weak, not empty, so it asks
@@ -61,6 +63,11 @@ export default /** @satisfies {import("../../types.d.ts").Check} */ ({
       "Does an assertion compare a result of the code with one exact value?",
       "yes: it compares a result with one value, or with true or false",
       "no: it checks only a type, a size, keys, a limit, or no result",
+    ),
+    asserts_written: noul(
+      "Does the test write the expected value as a literal or a calculation?",
+      "yes: the test writes the expected value",
+      "no: the test reads the expected value from code",
     ),
     asserts_same: noul(
       "Do the expected value and the checked result come from the same code?",

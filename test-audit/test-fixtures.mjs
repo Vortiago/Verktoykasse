@@ -46,6 +46,7 @@ export function assertsAs(kind, sure = 0.49) {
   const no = 0.5 - sure;
   return {
     asserts_exact: noul(["behaviour", "from-code"].includes(kind) ? yes : no),
+    asserts_written: noul(kind === "from-code" ? no : yes),
     asserts_same: noul(kind === "from-code" ? yes : no),
     asserts_shape: noul(kind === "shape-only" ? yes : no),
     asserts_mock: noul(kind === "interaction-only" ? yes : no),

@@ -224,3 +224,13 @@ test("an asserts answer near 0.5 commits to no kind, and escalates", () => {
   assert.equal(result.asserts, undefined);
   assert.match(result.reasons.join(" "), /asserts unstable \(unsure exact 0\.60\)/);
 });
+
+test("an unsure answer that does not change the kind is no doubt", () => {
+  // A literal expected value: whether it is "the same code" no longer matters.
+  const result = verdictFrom(TEST, { ...goodAnswers(), asserts_same: noul(0.35) });
+  assert.equal(result.asserts, "behaviour");
+  assert.equal(result.needsEyes, false);
+  // Read from code, and unsure whether it is the same code: that decides the kind.
+  const read = verdictFrom(TEST, { ...goodAnswers(), asserts_written: noul(0.05), asserts_same: noul(0.35) });
+  assert.match(read.reasons.join(" "), /asserts unstable \(unsure same 0\.35\)/);
+});
