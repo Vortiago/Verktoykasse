@@ -33,9 +33,9 @@ export async function runAudit(args = {}, opts = {}) {
 
   const extracted = change.files.map((file) => ({ path: file.path, tests: extractTests(file.text, file.path) }));
   const found = extracted.flatMap((entry) => entry.tests);
-  // A test file the change touched that yields no test holds a form the
-  // extractor cannot read (a tagged-template table, say). It escalates rather
-  // than vanish, so a miss is never a clean pass.
+  // A file named as a test (by `--files`, or by its name) that yields no test
+  // holds a form the extractor cannot read (a tagged-template table, say). It
+  // escalates rather than vanish, so a miss is never a clean pass.
   const unread = extracted
     .filter((entry) => entry.tests.length === 0 && (args.files?.length || isNamedTestFile(entry.path)))
     .map((entry) => unreadResult(entry.path));

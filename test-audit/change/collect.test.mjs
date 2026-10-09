@@ -14,3 +14,11 @@ test("parseNameOnly splits git's NUL-separated list and keeps each path exact", 
 test("a named file that cannot be read fails the run instead of auditing nothing", () => {
   assert.throws(() => collect({ files: ["no-such-dir/missing.test.mjs"] }), /cannot read no-such-dir\/missing\.test\.mjs/);
 });
+
+test("named files refuse a range, and refuse to be empty", () => {
+  // Named files replace the git read: a range given with them would be dropped
+  // in silence, and an empty list would read as "no files" and audit all.
+  assert.throws(() => collect({ files: ["a.test.mjs"], staged: true }), /cannot combine/);
+  assert.throws(() => collect({ files: ["a.test.mjs"], base: "main" }), /cannot combine/);
+  assert.throws(() => collect({ files: [] }), /at least one path/);
+});

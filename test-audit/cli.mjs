@@ -56,6 +56,7 @@ async function main() {
   }
   if (args.benchmark && !args.selftest) throw new Error("--benchmark needs --selftest");
   if (args.cases && !args.selftest) throw new Error("--cases needs --selftest");
+  if (args.models?.length && args.targets?.length) throw new Error("--models conflicts with --targets");
   if (args.selftest) {
     const { runSelftest } = await import("./calibration/runner.mjs");
     const { text, code } = await runSelftest({

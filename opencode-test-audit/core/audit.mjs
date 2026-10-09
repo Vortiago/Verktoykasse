@@ -1,4 +1,4 @@
-// canonical source: test-audit/audit.mjs@2863149 sha256:908a9f079f9b6f99354166a70d9d3b69bdcfa844f74ece326bab2952a65512a7 - vendored copy, do not edit here
+// canonical source: test-audit/audit.mjs@8a4813d sha256:b996f93030fa9fef39e2120668bd2a08fe0031f5bb82b4b92118de7fa4ff9512 - vendored copy, do not edit here
 // One audit: read the change, extract its tests, and classify each with one
 // SystemOne call. The CLI and the OpenCode plugin both call `runAudit`, so they
 // share one pipeline.
@@ -34,9 +34,9 @@ export async function runAudit(args = {}, opts = {}) {
 
   const extracted = change.files.map((file) => ({ path: file.path, tests: extractTests(file.text, file.path) }));
   const found = extracted.flatMap((entry) => entry.tests);
-  // A test file the change touched that yields no test holds a form the
-  // extractor cannot read (a tagged-template table, say). It escalates rather
-  // than vanish, so a miss is never a clean pass.
+  // A file named as a test (by `--files`, or by its name) that yields no test
+  // holds a form the extractor cannot read (a tagged-template table, say). It
+  // escalates rather than vanish, so a miss is never a clean pass.
   const unread = extracted
     .filter((entry) => entry.tests.length === 0 && (args.files?.length || isNamedTestFile(entry.path)))
     .map((entry) => unreadResult(entry.path));

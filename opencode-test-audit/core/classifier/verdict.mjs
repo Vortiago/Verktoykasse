@@ -1,4 +1,4 @@
-// canonical source: test-audit/classifier/verdict.mjs@2863149 sha256:5bf20b839a0a0daf8408520610a19e070f738491a5bdcc1781c6644a3b27eda8 - vendored copy, do not edit here
+// canonical source: test-audit/classifier/verdict.mjs@8a4813d sha256:194661686c6f4f9e52d665654987fef9cfbd5ea67a66fcefe261bb5d58ac701e - vendored copy, do not edit here
 // The verdict rules: reduce one test's answers to a verdict, a set of flags, and
 // the reasons it escalates. Pure, so the rules are tested on hand-written answer
 // objects without the model.
@@ -233,6 +233,9 @@ function kindOf(says) {
   // A mock checked with the test's own value is still a mock check, so the mock comes first.
   if (only.length) return { value: only[0][1] };
   if (!says.exact) return { value: "inexact" };
+  // "The test writes the expected value" beside "the two come from the same
+  // code" is a contradiction: a written value does not come from the code.
+  if (says.written && says.same) return { conflict: "written vs same" };
   if (!says.written && says.same) return { value: "from-code" };
   return { value: "behaviour" };
 }

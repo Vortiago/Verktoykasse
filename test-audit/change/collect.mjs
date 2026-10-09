@@ -29,6 +29,10 @@ export function collect(opts = {}) {
   const { base, head, staged = false, files, cwd = process.cwd(), filter } = opts;
   assertRef("--base", base);
   assertRef("--head", head);
+  // Named files replace the git read, so a range given with them would be
+  // silently dropped. An empty list would read as "no files" and audit all.
+  if (files && !files.length) throw new Error("files needs at least one path");
+  if (files && (base || head || staged)) throw new Error("files cannot combine with base, head, or staged");
 
   // Named files are read relative to where the caller stands, not the root. One
   // that cannot be read fails the run: dropped, a typo would read as a clean audit.

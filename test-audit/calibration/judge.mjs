@@ -102,8 +102,11 @@ export function judge(rows) {
 function answered(result) {
   if (result.error) return false;
   // The answers, not the checks: a check that reads only the extractor's flags,
-  // such as runs, has a value with no answer at all.
-  return Object.values(result.answers).some((answer) => trusted(answer));
+  // such as runs, has a value with no answer at all. A slot with no value is no
+  // answer: the battery is all noul, so an answer must carry a number. Else a
+  // reply of `{}`-valued slots would read as answered, and nothing would
+  // resolve, and acceptance would pass on 0 of 0.
+  return Object.values(result.answers).some((answer) => trusted(answer) && typeof answer.noul === "number");
 }
 
 /**

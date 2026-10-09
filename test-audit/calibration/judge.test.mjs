@@ -56,6 +56,16 @@ test("an unrouted mixed case fails the run", () => {
   assert.equal(verdict.pass, false);
 });
 
+test("a reply whose answer slots carry no value is unanswered, not a pass", () => {
+  // An endpoint that reports no mass can send the slots with no value in any
+  // of them. That is no answer: it must land in unresolved, so acceptance
+  // fails on it instead of passing on 0 of 0.
+  const empty = Object.fromEntries(Object.keys(GOOD).map((key) => [key, {}]));
+  const verdict = judge([row({ test: "slop", canFail: false, mustEscalate: true }, empty)]);
+  assert.equal(verdict.unresolved, 1);
+  assert.equal(verdict.pass, false);
+});
+
 test("agreement counts only the cases the tool resolved", () => {
   const rows = [row({ test: "a", canFail: true }, GOOD), row({ test: "b", canFail: false }, CANNOT_FAIL), row({ test: "c", canFail: true }, UNSTABLE)];
   const verdict = judge(rows);

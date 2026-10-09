@@ -1,20 +1,20 @@
-// The asserts check: does an assertion compare a result of the code with one
-// exact value that the test writes? Only that, `behaviour`, is a real guard.
-// Four short yes/no questions each judge one fact: an exact comparison of a
-// result, an expected value the test writes, an expected value from the same
-// code as the result (so the two agree by construction; two codebases checked
-// against each other do not), and
-// assertions that check only the
-// shape or only a mock call. An assertion that reads only the test's own input
-// checks no result of the code, so `asserts_exact` says no. Code picks the kind
-// from the answers. An answer near 0.5 escalates only when it decides the kind:
-// the rules try it both ways. Every
-// other kind escalates. Answers that contradict each other, such as "an exact
-// comparison" beside "only the shape", escalate as unstable. A check with no
-// exact value (a limit, that a result exists) is weak, not empty, so it asks
-// for a fix; only can_fail drops a test. A choice question lost to position bias on two decision
-// models (the last option won in either order), and yes/no questions have no
-// order. That an interaction-only assertion escalates is a house choice.
+// The asserts check: does an assertion compare a result with one exact value
+// the test itself writes? Only that answer, `behaviour`, is a real guard. Five
+// short yes/no questions each judge one fact: `exact`, that the assertion
+// compares a result exactly (one that reads only the test's own input checks no
+// result); `written`, that the test writes the expected value itself; `same`,
+// that the expected value and the result come from the same code, so they agree
+// by construction (code from two codebases does not); and `shape` and `mock`,
+// that the assertion checks only the shape, or only a mock call. Code picks the
+// kind from the answers. An answer near 0.5 escalates only when it decides the
+// kind: the rules try it both ways and escalate when the kind changes. Every
+// kind but `behaviour` escalates. Answers that contradict each other escalate
+// as unstable too: an exact comparison beside shape only, or a written value
+// beside the same code. An assertion with no exact value (a limit, that a
+// result exists) is weak, not empty, so it asks for a fix; only can_fail drops
+// a test. That an interaction-only assertion escalates is a house choice. A
+// choice question lost to position bias on two decision models: the last option
+// won in either order. Yes/no questions have no order.
 //
 // Sources:
 // - testsmells.org, Open Catalog of Test Smells: Redundant Assertion, Unknown

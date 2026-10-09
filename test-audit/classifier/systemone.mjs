@@ -36,7 +36,7 @@ import config from "../config.mjs";
 
 /**
  * Ask one or more typed questions about `state`.
- * @param {string | unknown} state
+ * @param {string} state
  * @param {Record<string, Question>} questions
  * @param {{ url?: string, model?: string, timeoutMs?: number, onResponse?: (json: object) => void }} [opts]
  * @returns {Promise<Record<string, AuditAnswer>>}

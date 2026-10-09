@@ -1,4 +1,4 @@
-// canonical source: test-audit/change/collect.mjs@4ba9d42 sha256:0eff87b5020e092d850e2402c017c3d1cba6c72848dce53b5de5ceb5d95ce1c8 - vendored copy, do not edit here
+// canonical source: test-audit/change/collect.mjs@8a4813d sha256:8449a12944dfd28301fbb9434a30717565837e7536f982df87ae18a7beccb8d3 - vendored copy, do not edit here
 // The read half of the audit: ask git for the change, and read the text of the
 // touched files. It parses nothing: the paths and text go to extract.mjs, so
 // the parse stays testable on a fixture string. `collect` is the only module
@@ -30,6 +30,10 @@ export function collect(opts = {}) {
   const { base, head, staged = false, files, cwd = process.cwd(), filter } = opts;
   assertRef("--base", base);
   assertRef("--head", head);
+  // Named files replace the git read, so a range given with them would be
+  // silently dropped. An empty list would read as "no files" and audit all.
+  if (files && !files.length) throw new Error("files needs at least one path");
+  if (files && (base || head || staged)) throw new Error("files cannot combine with base, head, or staged");
 
   // Named files are read relative to where the caller stands, not the root. One
   // that cannot be read fails the run: dropped, a typo would read as a clean audit.

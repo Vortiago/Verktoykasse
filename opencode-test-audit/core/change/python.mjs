@@ -1,4 +1,4 @@
-// canonical source: test-audit/change/python.mjs@3eb9908 sha256:a807909836a1f6acae47214f8a1fd870f925655abdc3a871472e5ccde37f2c27 - vendored copy, do not edit here
+// canonical source: test-audit/change/python.mjs@8a4813d sha256:603cc82bc5e6249d9088ca296c8f926622349126397eebd6c5a109c2e4d7aaba - vendored copy, do not edit here
 // The Python extractor: find the pytest and unittest tests in one file, with the
 // fixtures, setup, imports, and markers the questions need. It reads the syntax
 // only to find the test blocks, as the JavaScript extractor does; the questions
@@ -211,9 +211,12 @@ function reach(lines, text, candidates, always) {
   return candidates.filter((block) => found.has(block));
 }
 
-/** Does the text use this name as a whole word? @param {string} text @param {string} name */
+/** Does the text use this name as a whole word? `self.` may precede it, because
+ * a test reaches its class's helpers through self. Any other attribute stays
+ * out, so `store.load` does not carry a helper named `load`.
+ * @param {string} text @param {string} name */
 function names(text, name) {
-  return new RegExp(`(?<![\\w.])${name}\\b`).test(text);
+  return new RegExp(`(?<![\\w.])${name}\\b|(?<=self\\.)${name}\\b`).test(text);
 }
 
 /** The decorator lines of a block, trimmed. @param {string[]} code @param {Block} block */

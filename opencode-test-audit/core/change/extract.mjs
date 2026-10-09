@@ -1,4 +1,4 @@
-// canonical source: test-audit/change/extract.mjs@3eb9908 sha256:1dc52b25877941afef9b84f4a3c78f27dab9eb1214875f6888180b0a1f368ea8 - vendored copy, do not edit here
+// canonical source: test-audit/change/extract.mjs@8a4813d sha256:94a0d2ba826d50d403f979bd7d9bf3af22996db79980af391d1aa117a7d0e4f8 - vendored copy, do not edit here
 // Test extraction: the parse half of the audit. It takes the text of one file
 // and returns the test blocks inside it. No git, no filesystem, no network, so
 // a fixture string exercises every branch. The read half lives in collect.mjs.
@@ -44,7 +44,9 @@ const HEAD_CAP = 160;
 /** The longest setup one scope contributes to the state; a longer one is cut. */
 const SETUP_CAP = 800;
 
-/** An import statement, matched the way extractImports matches it. */
+/** An import statement: lazy through the first module string, so a multi-line
+ * brace import stays one statement. `import.meta` and a dynamic `import(...)`
+ * are skipped. */
 const IMPORT = /^[ \t]*import\b(?!\s*[.(])[\s\S]*?(?:from\s*)?["'][^"']*["'][ \t]*;?/gm;
 
 /** `suite`, `before` and `after` are node:test's names for a describe and its
@@ -375,7 +377,7 @@ function bodyInterior(code, open, spanEnd) {
   if (inner.startsWith("=>", callback) && !/^\s*\{/.test(inner.slice(callback + 2))) {
     return { start: open + 1 + callback + 2, end: spanEnd - 1 };
   }
-  const brace = inner.indexOf("{", callback);
+  const brace = bodyBrace(inner, callback);
   if (brace === -1) return null;
   const block = argSpan(code, open + 1 + brace);
   if (!block) return null;
@@ -383,14 +385,28 @@ function bodyInterior(code, open, spanEnd) {
 }
 
 /**
- * The import statements of a file. Lazy through the first module string, so a
- * multi-line brace import stays one statement. `import.meta` and a dynamic
- * `import(...)` are skipped.
+ * The `{` that opens the callback body: the first `{` outside a parameter list.
+ * A destructured parameter (`function ({ a }) { … }`) opens a brace before the
+ * body, so a plain indexOf would land inside it and lose the block.
+ * @param {string} inner
+ * @param {number} from
+ */
+function bodyBrace(inner, from) {
+  let depth = 0;
+  for (let i = from; i < inner.length; i += 1) {
+    if (inner[i] === "(") depth += 1;
+    else if (inner[i] === ")") depth -= 1;
+    else if (inner[i] === "{" && depth === 0) return i;
+  }
+  return -1;
+}
+
+/**
+ * The import statements of a file, as IMPORT matches them.
  * @param {string} text
  */
 function extractImports(text) {
-  const re = /^[ \t]*import\b(?!\s*[.(])[\s\S]*?(?:from\s*)?["'][^"']*["'][ \t]*;?/gm;
-  return [...text.matchAll(re)].map((m) => m[0].trim());
+  return [...text.matchAll(IMPORT)].map((m) => m[0].trim());
 }
 
 /**

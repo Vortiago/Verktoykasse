@@ -14,7 +14,7 @@ import config from "../config.mjs";
  * answer. */
 export const NEUTRAL_TEST_PATH = "example.test.mjs";
 /** The neutral path the code under test sits at in the change context. */
-export const NEUTRAL_CODE_PATH = "src/example.mjs";
+const NEUTRAL_CODE_PATH = "src/example.mjs";
 
 /** @typedef {import("../types.d.ts").CalibrationLabel} CalibrationLabel */
 /** @typedef {import("../types.d.ts").CalibrationRow} CalibrationRow */

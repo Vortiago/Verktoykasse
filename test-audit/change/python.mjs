@@ -210,9 +210,12 @@ function reach(lines, text, candidates, always) {
   return candidates.filter((block) => found.has(block));
 }
 
-/** Does the text use this name as a whole word? @param {string} text @param {string} name */
+/** Does the text use this name as a whole word? `self.` may precede it, because
+ * a test reaches its class's helpers through self. Any other attribute stays
+ * out, so `store.load` does not carry a helper named `load`.
+ * @param {string} text @param {string} name */
 function names(text, name) {
-  return new RegExp(`(?<![\\w.])${name}\\b`).test(text);
+  return new RegExp(`(?<![\\w.])${name}\\b|(?<=self\\.)${name}\\b`).test(text);
 }
 
 /** The decorator lines of a block, trimmed. @param {string[]} code @param {Block} block */

@@ -208,8 +208,8 @@ test("each check yields one result, and the reasons come in role order", () => {
   const answers = { ...goodAnswers(), can_fail_c: noul(0.4), ...assertsAs("inexact") };
   const result = verdictFrom({ ...TEST, flags: ["skipped"] }, answers, { error: "partial" });
   assert.deepEqual(Object.keys(result.checks), CHECKS.map((check) => check.name));
-  assert.deepEqual(result.reasons, ["no answers (partial)", "can_fail unstable (spread 0.59)", "does not run, or narrows the run", "asserts inexact"]);
-  assert.deepEqual(result.checks.runs, { value: false, sure: true, reasons: ["does not run, or narrows the run"], flags: [] });
+  assert.deepEqual(result.reasons, ["no answers (partial)", "can_fail unstable (spread 0.59)", "does not run, or a marker narrows the run", "asserts inexact"]);
+  assert.deepEqual(result.checks.runs, { value: false, sure: true, reasons: ["does not run, or a marker narrows the run"], flags: [] });
   assert.deepEqual(result.checks.asserts.flags, ["inexact"]);
 });
 
@@ -227,10 +227,21 @@ test("an asserts answer near 0.5 commits to no kind, and escalates", () => {
 
 test("an unsure answer that does not change the kind is no doubt", () => {
   // A literal expected value: whether it is "the same code" no longer matters.
-  const result = verdictFrom(TEST, { ...goodAnswers(), asserts_same: noul(0.35) });
+  // An unsure answer that cannot decide anything: the value is not read from
+  // code, so whether the test writes it changes no kind.
+  const result = verdictFrom(TEST, { ...goodAnswers(), asserts_written: noul(0.35) });
   assert.equal(result.asserts, "behaviour");
   assert.equal(result.needsEyes, false);
   // Read from code, and unsure whether it is the same code: that decides the kind.
   const read = verdictFrom(TEST, { ...goodAnswers(), asserts_written: noul(0.05), asserts_same: noul(0.35) });
   assert.match(read.reasons.join(" "), /asserts unstable \(unsure same 0\.35\)/);
+});
+
+test("a written expected value beside the same code is a contradiction", () => {
+  // Sure answers: "the test writes the value" and "the two come from the same
+  // code" cannot both be true, so there is no kind, and the test escalates.
+  const result = verdictFrom(TEST, { ...goodAnswers(), ...assertsAs("from-code"), asserts_written: noul(0.99) });
+  assert.equal(result.asserts, undefined);
+  assert.match(result.reasons.join(" "), /asserts unstable \(written vs same\)/);
+  assert.equal(result.needsEyes, true);
 });

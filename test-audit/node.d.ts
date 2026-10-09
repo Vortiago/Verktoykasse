@@ -49,26 +49,11 @@ declare var Buffer: {
   concat(chunks: Buffer[]): Buffer;
 };
 
-interface AbortSignal {
-  readonly aborted: boolean;
-}
+interface AbortSignal {}
 
 declare var AbortSignal: {
   timeout(ms: number): AbortSignal;
 };
-
-interface FetchResponse {
-  readonly ok: boolean;
-  readonly status: number;
-  text(): Promise<string>;
-  /** `unknown`, as in @types/node: the caller states the shape it expects. */
-  json(): Promise<unknown>;
-}
-
-declare function fetch(
-  url: string,
-  init?: { method?: string; headers?: Record<string, string>; body?: string; signal?: AbortSignal },
-): Promise<FetchResponse>;
 
 // ── node:* modules ─────────────────────────────────────────────────────────
 

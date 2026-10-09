@@ -1,4 +1,4 @@
-// canonical source: test-audit/types.d.ts@2863149 sha256:ab6b545386ee342caa06625bae11bd2e923d71e9344bb1b649b9df65d6ffe072 - vendored copy, do not edit here
+// canonical source: test-audit/types.d.ts@8a4813d sha256:0bf443eb1226e52412367586e2adc662e13d207e9c480b38a90d4c98953d6365 - vendored copy, do not edit here
 // Shared shapes for the test-audit modules. The modules are `.mjs` with JSDoc
 // types, and the tsc gate checks them under strict (tsconfig.json). A module
 // imports a shape with `@typedef {import("../types.d.ts").AuditTest} AuditTest`,
@@ -127,7 +127,7 @@ export interface AuditResult {
   /** The extractor's notes, then the flags of the checks, each once. */
   flags: string[];
   needsEyes: boolean;
-  /** The transport error, then the reasons of the checks: can-fail, the gates, asserts, and the verdict. */
+  /** The transport error, then the reasons of the checks, in REASON_ORDER: can-fail, runs, the gate, asserts. */
   reasons: string[];
   error?: string;
 }

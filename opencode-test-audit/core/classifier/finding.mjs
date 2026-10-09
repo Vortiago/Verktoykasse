@@ -1,4 +1,4 @@
-// canonical source: test-audit/classifier/finding.mjs@2863149 sha256:2a57822049910f5b5517ce18c6a456677b9cd88a66904f6b4d293fe48fc46eb0 - vendored copy, do not edit here
+// canonical source: test-audit/classifier/finding.mjs@8a4813d sha256:a8bb14bae72ccdac2ea608a6d0f38f230bafef4effa63efffdaa4d1526991933 - vendored copy, do not edit here
 // The finding for one test: what an LLM should do with it, why, and how sure the
 // tool is. The audit's reader is an LLM that decides which tests to look at, fix,
 // or drop, so each finding is one action with its reasons.
@@ -38,6 +38,11 @@ const SMELL_CHECKS = new Map(CHECKS.flatMap((check) => (check.role === "descript
 
 /** The asserts check, whose kinds give each assertion kind its level and reason. */
 const ASSERTS = CHECKS.find((check) => check.role === "asserts");
+/** The checks whose own reason text the finding carries, so one string exists once. */
+const RUNS = CHECKS.find((check) => check.role === "runs");
+const POSITIVE = CHECKS.find((check) => check.name === "positive");
+const runsReason = RUNS && RUNS.role === "runs" ? RUNS.reason : "does not run";
+const positiveReason = POSITIVE && POSITIVE.role === "gate" ? POSITIVE.reason : "no positive assertion";
 
 /**
  * @param {AuditResult} result
@@ -63,8 +68,8 @@ export function findingOf(result) {
   if (canFail?.value === false && asserts?.value !== "behaviour") add(drop, canFail, "cannot fail");
   const kind = typeof asserts?.value === "string" && ASSERTS?.role === "asserts" ? ASSERTS.kinds[asserts.value] : undefined;
   if (asserts && kind?.reason) add(kind.level === "slop" ? drop : fix, asserts, kind.reason);
-  if (runs?.value === false) add(fix, runs, "does not run, or a marker narrows the run");
-  if (positive?.value === false) add(fix, positive, "no positive assertion");
+  if (runs?.value === false) add(fix, runs, runsReason);
+  if (positive?.value === false) add(fix, positive, positiveReason);
 
   // Every other reason is a doubt: phrasings that disagree, a tie, a missing
   // answer, answers that contradict each other, or a file with no test the

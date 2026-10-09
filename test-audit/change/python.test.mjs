@@ -165,6 +165,26 @@ test("a test carries the module helpers it calls, and the helpers those call", (
   assert.deepEqual(found.setup, ["def _running(pid):\n    return pid > 0", "def _eventually(check):\n    return check()"]);
 });
 
+test("a helper the test reaches through self travels with it", () => {
+  const text = [
+    "class TestStore:",
+    "    def _item(self):",
+    "        return 2",
+    "",
+    "    def _unused(self):",
+    "        return 0",
+    "",
+    "    def test_reads(self):",
+    "        assert read() == self._item()",
+    "",
+  ].join("\n");
+  const found = extractTests(text, "tests/test_store.py");
+  assert.equal(found.length, 1);
+  const setup = (found[0].setup ?? []).join("\n");
+  assert.match(setup, /def _item\(self\):/);
+  assert.doesNotMatch(setup, /_unused/);
+});
+
 test("a helper class the test uses travels with it, and a test class does not", () => {
   const text = [
     "class _Watch:",

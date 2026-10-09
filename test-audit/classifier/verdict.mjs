@@ -232,6 +232,9 @@ function kindOf(says) {
   // A mock checked with the test's own value is still a mock check, so the mock comes first.
   if (only.length) return { value: only[0][1] };
   if (!says.exact) return { value: "inexact" };
+  // "The test writes the expected value" beside "the two come from the same
+  // code" is a contradiction: a written value does not come from the code.
+  if (says.written && says.same) return { conflict: "written vs same" };
   if (!says.written && says.same) return { value: "from-code" };
   return { value: "behaviour" };
 }

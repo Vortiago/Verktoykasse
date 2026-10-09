@@ -19,6 +19,6 @@
 export default /** @satisfies {import("../../types.d.ts").Check} */ ({
   name: "runs",
   role: "runs",
-  reason: "does not run, or narrows the run",
+  reason: "does not run, or a marker narrows the run",
   questions: {},
 });

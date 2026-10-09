@@ -37,6 +37,11 @@ const SMELL_CHECKS = new Map(CHECKS.flatMap((check) => (check.role === "descript
 
 /** The asserts check, whose kinds give each assertion kind its level and reason. */
 const ASSERTS = CHECKS.find((check) => check.role === "asserts");
+/** The checks whose own reason text the finding carries, so one string exists once. */
+const RUNS = CHECKS.find((check) => check.role === "runs");
+const POSITIVE = CHECKS.find((check) => check.name === "positive");
+const runsReason = RUNS && RUNS.role === "runs" ? RUNS.reason : "does not run";
+const positiveReason = POSITIVE && POSITIVE.role === "gate" ? POSITIVE.reason : "no positive assertion";
 
 /**
  * @param {AuditResult} result
@@ -62,8 +67,8 @@ export function findingOf(result) {
   if (canFail?.value === false && asserts?.value !== "behaviour") add(drop, canFail, "cannot fail");
   const kind = typeof asserts?.value === "string" && ASSERTS?.role === "asserts" ? ASSERTS.kinds[asserts.value] : undefined;
   if (asserts && kind?.reason) add(kind.level === "slop" ? drop : fix, asserts, kind.reason);
-  if (runs?.value === false) add(fix, runs, "does not run, or a marker narrows the run");
-  if (positive?.value === false) add(fix, positive, "no positive assertion");
+  if (runs?.value === false) add(fix, runs, runsReason);
+  if (positive?.value === false) add(fix, positive, positiveReason);
 
   // Every other reason is a doubt: phrasings that disagree, a tie, a missing
   // answer, answers that contradict each other, or a file with no test the

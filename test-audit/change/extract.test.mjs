@@ -24,6 +24,13 @@ test("extractTests reads a test with its name and line", () => {
   assert.equal(tests[0].source.startsWith("test("), true);
 });
 
+test("a describe whose function callback destructures its parameter keeps its tests", () => {
+  // The body brace follows the parameter list, so a plain first `{` after
+  // `function` would land inside `({ env })` and lose the block.
+  const tests = extractTests('describe("suite", function ({ env }) {\n  test("keeps", () => {\n    assert.ok(env);\n  });\n});\n', "a.test.mjs");
+  assert.deepEqual(tests.map((t) => t.name), ["keeps"]);
+});
+
 test("extractTests nests a describe chain and keeps fixtures in scope", () => {
   const text = [
     'describe("math", () => {',

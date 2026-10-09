@@ -126,7 +126,7 @@ export interface AuditResult {
   /** The extractor's notes, then the flags of the checks, each once. */
   flags: string[];
   needsEyes: boolean;
-  /** The transport error, then the reasons of the checks: can-fail, the gates, asserts, and the verdict. */
+  /** The transport error, then the reasons of the checks, in REASON_ORDER: can-fail, runs, the gate, asserts. */
   reasons: string[];
   error?: string;
 }

@@ -1,4 +1,4 @@
-// canonical source: test-audit/classifier/systemone.mjs@2863149 sha256:d2270444c27464a562714b9902a4e1d5e87a83be42a907d1452990e54274bef4 - vendored copy, do not edit here
+// canonical source: test-audit/classifier/systemone.mjs@8a4813d sha256:1e72065098e1018a15ab8a441533394f764c367cfedbcf105f5e339841df1a2a - vendored copy, do not edit here
 // SystemOne client for test-audit. One Jev-compatible typed-question endpoint:
 // a local Ollama 0.35 or later, llama-arbiter, Ollaya, or any TypeSafe server.
 //
@@ -37,7 +37,7 @@ import config from "../config.mjs";
 
 /**
  * Ask one or more typed questions about `state`.
- * @param {string | unknown} state
+ * @param {string} state
  * @param {Record<string, Question>} questions
  * @param {{ url?: string, model?: string, timeoutMs?: number, onResponse?: (json: object) => void }} [opts]
  * @returns {Promise<Record<string, AuditAnswer>>}
