@@ -1,4 +1,4 @@
-// canonical source: test-audit/classifier/verdict.mjs@8a4813d sha256:194661686c6f4f9e52d665654987fef9cfbd5ea67a66fcefe261bb5d58ac701e - vendored copy, do not edit here
+// canonical source: test-audit/classifier/verdict.mjs@7ccb53c sha256:f6830f57b84134c0ec4e443c2066cf4e2b9203f3079507e145066cf5b1582076 - vendored copy, do not edit here
 // The verdict rules: reduce one test's answers to a verdict, a set of flags, and
 // the reasons it escalates. Pure, so the rules are tested on hand-written answer
 // objects without the model.
@@ -190,7 +190,8 @@ export function questionValue(answer) {
  * judges one property; the kind is the worst one the answers name. "Compares
  * content" beside "only the shape", "only a mock call", or "only its own input"
  * is a contradiction. A missing or untrusted answer leaves no kind. An answer
- * near 0.5, an exact tie included, is a guess that counts only when it decides.
+ * near 0.5 is a guess that counts only when it decides a kind; an exact tie is
+ * no answer at all.
  * @param {Check} check @param {Record<string, AuditAnswer>} answers
  * @returns {{ value?: string, conflict?: string, missing?: boolean }}
  */
@@ -204,15 +205,20 @@ function assertKind(check, answers) {
     if (value === undefined) return { missing: true };
     const name = key.replace(`${check.name}_`, "");
     says[name] = value > YES;
+    // An exact tie is no answer: it decides nothing which way it is read.
+    if (value === YES) return { conflict: `unsure ${name} ${value.toFixed(2)}` };
     if (!far(value)) guesses.push({ name, value });
   }
   // Try each guess both ways: when every way gives the same kind, the guess does
-  // not matter; when not, there is no kind.
+  // not matter; when not, there is no kind. A way that reads as a contradiction
+  // rejects an answer the model did not give, so it is no kind to compare: the
+  // contradiction rule judges only the answers the model gave.
   const kinds = new Set();
   for (let mask = 0; mask < 1 << guesses.length; mask += 1) {
     const trial = { ...says };
     guesses.forEach(({ name }, bit) => (trial[name] = Boolean(mask & (1 << bit))));
-    kinds.add(JSON.stringify(kindOf(trial)));
+    const kind = kindOf(trial);
+    if (!kind.conflict) kinds.add(JSON.stringify(kind));
   }
   if (kinds.size > 1) return { conflict: `unsure ${guesses.map(({ name, value }) => `${name} ${value.toFixed(2)}`).join(", ")}` };
   return kindOf(says);

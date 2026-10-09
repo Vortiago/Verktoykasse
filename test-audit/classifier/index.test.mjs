@@ -245,3 +245,13 @@ test("a written expected value beside the same code is a contradiction", () => {
   assert.match(result.reasons.join(" "), /asserts unstable \(written vs same\)/);
   assert.equal(result.needsEyes, true);
 });
+
+test("a guess flipping only into a contradiction does not make the kind unsure", () => {
+  // Sure that the test writes the value, leaning no that the two come from the
+  // same code. Read as yes the answers would contradict each other, but that
+  // contradiction is the guess's own: no kind differs between the ways, so the
+  // committed reading, `behaviour`, stands.
+  const result = verdictFrom(TEST, { ...goodAnswers(), asserts_same: noul(0.46) });
+  assert.equal(result.asserts, "behaviour");
+  assert.equal(result.needsEyes, false);
+});
