@@ -1,29 +1,33 @@
 # test-audit benchmark
 
-Date: 2026-10-08. Command:
+Date: 2026-10-09. Command:
 
 ```sh
 TEST_AUDIT_CONCURRENCY=4 TEST_AUDIT_TIMEOUT_MS=900000 node cli.mjs --selftest --benchmark \
   --targets "http://koishi.tail6defbc.ts.net:8090|qwen3.8-flash-next-mtp"
 ```
 
-> The run took 62m34s on two CPU backends (node 0 and the GPU were out of the router). The battery is 15 yes/no questions. The state puts the test source first, carries the Python fixtures a test names and the helpers it calls, and is capped at 24000 characters, sized for an 8192-token decision-model prompt.
+> The run took 38m. Since the 2026-10-08 record the corpus gained the deterministic
+> `local-server` case (108 cases), and the doubt loop stopped counting a guess that
+> flips only into a contradiction: the five `unsure same` false positives that flip
+> caused are gone, and the not-OK set is the same known borderlines as 2026-10-08,
+> with no sure false positive.
 
 This file records a calibration run of `test-audit` over the labelled corpus. Each case is one test with a known defect, or a clean test. The [legend](#legend) explains the terms.
 
 ## Summary: qwen3.8-flash-next-mtp
 
-Endpoint `http://koishi.tail6defbc.ts.net:8090`, model `qwen3.8-flash-next-mtp`. 107 cases, 107 calls, 26504 tokens.
+Endpoint `http://koishi.tail6defbc.ts.net:8090`, model `qwen3.8-flash-next-mtp`. 108 cases, 108 calls, 26808 tokens.
 
 | Measure | Result | Meaning |
 | --- | --- | --- |
-| Cases | 107 | The labelled tests in the corpus. |
+| Cases | 108 | The labelled tests in the corpus. |
 | Silent passes | 0 | Defect cases that did not escalate. Must be 0. |
-| False positives | 3 of 58 | Cases that should pass, but escalated. Lower is better. |
+| False positives | 3 of 59 | Cases that should pass, but escalated. Lower is better. |
 | Sure false positives | 0 of 3 | False positives whose finding says it is sure, so the reader acts on a sound test. Lower is better. |
-| can_fail agreement | 81 of 86 (94%) | The can_fail answers that match the label. Only the cases where the tool committed to a value count. Must be 90% or more. |
+| can_fail agreement | 83 of 88 (94%) | The can_fail answers that match the label. Only the cases where the tool committed to a value count. Must be 90% or more. |
 | Mixed routed | 5 of 5 | Mixed cases that escalated. Must be all. |
-| Check agreement | 111 of 116 | The check values that match the label, where the label names one and the tool committed. Not an acceptance rule. The table below splits it by check. |
+| Check agreement | 112 of 117 | The check values that match the label, where the label names one and the tool committed. Not an acceptance rule. The table below splits it by check. |
 | Unresolved | 0 | Cases with no test or no answer. Must be 0. |
 | Acceptance | **PASS** | PASS when each "must" in this table holds. |
 
@@ -32,7 +36,7 @@ Endpoint `http://koishi.tail6defbc.ts.net:8090`, model `qwen3.8-flash-next-mtp`.
 | Family | Cases | Escalated | Expected | OK |
 | --- | --- | --- | --- | --- |
 | ambiguous | 5 | 5 | escalate | yes |
-| clean | 37 | 1 | pass | **no**: 1 FALSE positive |
+| clean | 38 | 1 | pass | **no**: 1 FALSE positive |
 | commented-out | 2 | 2 | escalate | **no**: 2 WRONG check |
 | conditional-logic | 1 | 0 | pass | yes |
 | eager | 2 | 1 | pass | **no**: 1 FALSE positive |
@@ -74,7 +78,7 @@ Endpoint `http://koishi.tail6defbc.ts.net:8090`, model `qwen3.8-flash-next-mtp`.
 | `runs` | 20 | 20 | 20 (100%) |
 | `conditional` | 3 | 3 | 3 (100%) |
 | `isolated` | 3 | 3 | 2 (67%) |
-| `deterministic` | 17 | 17 | 17 (100%) |
+| `deterministic` | 18 | 18 | 18 (100%) |
 | `automated` | 2 | 2 | 2 (100%) |
 | `restores` | 5 | 5 | 4 (80%) |
 | `resilient` | 11 | 11 | 11 (100%) |
@@ -133,68 +137,69 @@ The cases that are not OK come first, then the others by defect family. A test n
 | 43 | [`removes duplicate tags`](#case-43) | [`resilient`](checks/resilient/check.mjs) | clean | pass | good, passes | OK |
 | 44 | [`reverses a string`](#case-44) | [`verdict`](checks/verdict/check.mjs) | clean | pass | good, passes | OK |
 | 45 | [`rounds to two decimals`](#case-45) | [`verdict`](checks/verdict/check.mjs) | clean | pass | good, passes | OK |
-| 46 | [`slugs a display name`](#case-46) | [`verdict`](checks/verdict/check.mjs) | clean | pass | good, passes | OK |
-| 47 | [`splits a version into its parts`](#case-47) | [`verdict`](checks/verdict/check.mjs) | clean | pass | good, passes | OK |
-| 48 | [`store round trips a value`](#case-48) | [`verdict`](checks/verdict/check.mjs) | clean | pass | good, passes | OK |
-| 49 | [`takes ten percent off the total`](#case-49) | [`verdict`](checks/verdict/check.mjs) | clean | pass | good, passes | OK |
-| 50 | [`the cache returns a stored value`](#case-50) | [`verdict`](checks/verdict/check.mjs) | clean | pass | good, passes | OK |
-| 51 | [`the server answers health`](#case-51) | [`verdict`](checks/verdict/check.mjs) | clean | pass | good, passes | OK |
-| 52 | [`the service reports its version`](#case-52) | [`verdict`](checks/verdict/check.mjs) | clean | pass | good, passes | OK |
-| 53 | [`the store keeps a value on disk`](#case-53) | [`verdict`](checks/verdict/check.mjs) | clean | pass | good, passes | OK |
-| 54 | [`totals the cart`](#case-54) | [`verdict`](checks/verdict/check.mjs) | clean | pass | good, passes | OK |
-| 55 | [`every row is validated`](#case-55) | [`conditional`](checks/conditional/check.mjs) | conditional-logic | pass | good, passes | OK |
-| 56 | [`creating a user validates, stores and notifies`](#case-56) | [`verdict`](checks/verdict/check.mjs) | eager | pass | good, passes | OK |
-| 57 | [`rejects a blank name`](#case-57) | [`conditional`](checks/conditional/check.mjs) | early-return | escalate | slop, needs eyes | OK |
-| 58 | [`loads the draft`](#case-58) | [`runs`](checks/runs/check.mjs) | focused | escalate | good, needs eyes | OK |
-| 59 | [`saves the draft`](#case-59) | [`runs`](checks/runs/check.mjs) | focused | escalate | good, needs eyes | OK |
-| 60 | [`slugs the tenant name`](#case-60) | [`verdict`](checks/verdict/check.mjs) | general-fixture | pass | good, passes | OK |
-| 61 | [`indexes both words`](#case-61) | [`resilient`](checks/resilient/check.mjs) | implementation-coupled | either | good, passes | OK |
-| 62 | [`forwards the payload`](#case-62) | [`asserts`](checks/asserts/check.mjs) | interaction-only | escalate | weak, needs eyes | OK |
-| 63 | [`notifies the listener`](#case-63) | [`asserts`](checks/asserts/check.mjs) | interaction-only | escalate | weak, needs eyes | OK |
-| 64 | [`publishes twice`](#case-64) | [`asserts`](checks/asserts/check.mjs) | interaction-only | escalate | unclassified, needs eyes | OK |
-| 65 | [`maps a paid, unshipped order to its status code`](#case-65) | [`verdict`](checks/verdict/check.mjs) | magic-number | pass | good, passes | OK |
-| 66 | [`accepts the token from the mail`](#case-66) | [`automated`](checks/automated/check.mjs) | manual | pass | good, passes | OK |
-| 67 | [`computes the tax`](#case-67) | [`verdict`](checks/verdict/check.mjs) | name-only | escalate | weak, needs eyes | OK |
-| 68 | [`computes the tax due`](#case-68) | [`verdict`](checks/verdict/check.mjs) | name-only | escalate | weak, needs eyes | OK |
-| 69 | [`validates email addresses`](#case-69) | [`verdict`](checks/verdict/check.mjs) | name-only | either | good, passes | OK |
-| 70 | [`both jobs report in start order`](#case-70) | [`deterministic`](checks/deterministic/check.mjs) | non-deterministic | pass | good, passes | OK |
-| 71 | [`debounce fires once`](#case-71) | [`deterministic`](checks/deterministic/check.mjs) | non-deterministic | either | good, passes | OK |
-| 72 | [`the remote catalogue lists the widget`](#case-72) | [`deterministic`](checks/deterministic/check.mjs) | non-deterministic | pass | good, passes | OK |
-| 73 | [`the retry lands within the window`](#case-73) | [`deterministic`](checks/deterministic/check.mjs) | non-deterministic | pass | good, passes | OK |
-| 74 | [`the sorter keeps every random value`](#case-74) | [`deterministic`](checks/deterministic/check.mjs) | non-deterministic | pass | good, passes | OK |
-| 75 | [`resolves the route of a request`](#case-75) | [`verdict`](checks/verdict/check.mjs) | obscure | pass | good, passes | OK |
-| 76 | [`finds no imports in an empty file`](#case-76) | [`positive`](checks/positive/check.mjs) | only-negative | escalate | weak, needs eyes | OK |
-| 77 | [`no edge for a comment`](#case-77) | [`positive`](checks/positive/check.mjs) | only-negative | escalate | weak, needs eyes | OK |
-| 78 | [`parses a well formed header`](#case-78) | [`positive`](checks/positive/check.mjs) | only-negative | escalate | weak, needs eyes | OK |
-| 79 | [`returns null for an unknown setting`](#case-79) | [`positive`](checks/positive/check.mjs) | only-negative | escalate | weak, needs eyes | OK |
-| 80 | [`events are dispatched`](#case-80) | [`can-fail`](checks/can-fail/check.mjs) | passes-with-zero | escalate | weak, needs eyes | OK |
-| 81 | [`imports are folded`](#case-81) | [`can-fail`](checks/can-fail/check.mjs) | passes-with-zero | escalate | weak, needs eyes | OK |
-| 82 | [`reader round trips`](#case-82) | [`can-fail`](checks/can-fail/check.mjs) | self-reference | escalate | slop, needs eyes | OK |
-| 83 | [`the two totals match`](#case-83) | [`can-fail`](checks/can-fail/check.mjs) | self-reference | escalate | slop, needs eyes | OK |
-| 84 | [`builds three steps`](#case-84) | [`asserts`](checks/asserts/check.mjs) | shape-only | escalate | unclassified, needs eyes | OK |
-| 85 | [`loads the profile fields`](#case-85) | [`asserts`](checks/asserts/check.mjs) | shape-only | escalate | weak, needs eyes | OK |
-| 86 | [`planner returns roads`](#case-86) | [`asserts`](checks/asserts/check.mjs) | shape-only | escalate | unclassified, needs eyes | OK |
-| 87 | [`returns a list of routes`](#case-87) | [`asserts`](checks/asserts/check.mjs) | shape-only | escalate | weak, needs eyes | OK |
-| 88 | [`sorts by price ascending`](#case-88) | [`verdict`](checks/verdict/check.mjs) | silent-failure | pass | good, passes | OK |
-| 89 | [`handles overflow`](#case-89) | [`runs`](checks/runs/check.mjs) | skipped | escalate | slop, needs eyes | OK |
-| 90 | [`parses a dotted key`](#case-90) | [`runs`](checks/runs/check.mjs) | skipped | escalate | unclassified, needs eyes | OK |
-| 91 | [`rejects a malformed header`](#case-91) | [`runs`](checks/runs/check.mjs) | skipped | escalate | slop, needs eyes | OK |
-| 92 | [`rejects a stale token`](#case-92) | [`runs`](checks/runs/check.mjs) | skipped | escalate | slop, needs eyes | OK |
-| 93 | [`splits a dotted key`](#case-93) | [`runs`](checks/runs/check.mjs) | skipped | escalate | unclassified, needs eyes | OK |
-| 94 | [`finds the largest prime below ten million`](#case-94) | [`verdict`](checks/verdict/check.mjs) | slow | pass | good, passes | OK |
-| 95 | [`the package entry loads`](#case-95) | [`verdict`](checks/verdict/check.mjs) | smoke | escalate | unclassified, needs eyes | OK |
-| 96 | [`reads the port from the environment`](#case-96) | [`restores`](checks/restores/check.mjs) | state-leak | pass | good, passes | OK |
-| 97 | [`the reminder fires after an hour`](#case-97) | [`restores`](checks/restores/check.mjs) | state-leak | pass | good, passes | OK |
-| 98 | [`slugify lowercases through normalise`](#case-98) | [`resilient`](checks/resilient/check.mjs) | structure-dependent | pass | good, passes | OK |
-| 99 | [`the build is green`](#case-99) | [`can-fail`](checks/can-fail/check.mjs) | tautology | escalate | unclassified, needs eyes | OK |
-| 100 | [`the world is sane`](#case-100) | [`can-fail`](checks/can-fail/check.mjs) | tautology | escalate | unclassified, needs eyes | OK |
-| 101 | [`reads the port from the sample file`](#case-101) | [`verdict`](checks/verdict/check.mjs) | uncontrolled-resource | pass | good, passes | OK |
-| 102 | [`the summary is produced`](#case-102) | [`can-fail`](checks/can-fail/check.mjs) | vacuous | escalate | weak, needs eyes | OK |
-| 103 | [`works`](#case-103) | [`verdict`](checks/verdict/check.mjs) | vague-name | pass | good, passes | OK |
-| 104 | [`reads the major version`](#case-104) | [`verdict`](checks/verdict/check.mjs) | weak-assert | either | weak, needs eyes | OK |
-| 105 | [`builds a job with the given name`](#case-105) | [`verdict`](checks/verdict/check.mjs) | wrong-reason | either | good, passes | OK |
-| 106 | [`reports no booking for a free slot`](#case-106) | [`positive`](checks/positive/check.mjs) | wrong-reason | either | weak, needs eyes | OK |
-| 107 | [`saves the user`](#case-107) | [`asserts`](checks/asserts/check.mjs) | wrong-reason | escalate | weak, needs eyes | OK |
+| 46 | [`saving in the browser updates the list`](#case-46) | [`deterministic`](checks/deterministic/check.mjs) | clean | pass | good, passes | OK |
+| 47 | [`slugs a display name`](#case-47) | [`verdict`](checks/verdict/check.mjs) | clean | pass | good, passes | OK |
+| 48 | [`splits a version into its parts`](#case-48) | [`verdict`](checks/verdict/check.mjs) | clean | pass | good, passes | OK |
+| 49 | [`store round trips a value`](#case-49) | [`verdict`](checks/verdict/check.mjs) | clean | pass | good, passes | OK |
+| 50 | [`takes ten percent off the total`](#case-50) | [`verdict`](checks/verdict/check.mjs) | clean | pass | good, passes | OK |
+| 51 | [`the cache returns a stored value`](#case-51) | [`verdict`](checks/verdict/check.mjs) | clean | pass | good, passes | OK |
+| 52 | [`the server answers health`](#case-52) | [`verdict`](checks/verdict/check.mjs) | clean | pass | good, passes | OK |
+| 53 | [`the service reports its version`](#case-53) | [`verdict`](checks/verdict/check.mjs) | clean | pass | good, passes | OK |
+| 54 | [`the store keeps a value on disk`](#case-54) | [`verdict`](checks/verdict/check.mjs) | clean | pass | good, passes | OK |
+| 55 | [`totals the cart`](#case-55) | [`verdict`](checks/verdict/check.mjs) | clean | pass | good, passes | OK |
+| 56 | [`every row is validated`](#case-56) | [`conditional`](checks/conditional/check.mjs) | conditional-logic | pass | good, passes | OK |
+| 57 | [`creating a user validates, stores and notifies`](#case-57) | [`verdict`](checks/verdict/check.mjs) | eager | pass | good, passes | OK |
+| 58 | [`rejects a blank name`](#case-58) | [`conditional`](checks/conditional/check.mjs) | early-return | escalate | slop, needs eyes | OK |
+| 59 | [`loads the draft`](#case-59) | [`runs`](checks/runs/check.mjs) | focused | escalate | good, needs eyes | OK |
+| 60 | [`saves the draft`](#case-60) | [`runs`](checks/runs/check.mjs) | focused | escalate | good, needs eyes | OK |
+| 61 | [`slugs the tenant name`](#case-61) | [`verdict`](checks/verdict/check.mjs) | general-fixture | pass | good, passes | OK |
+| 62 | [`indexes both words`](#case-62) | [`resilient`](checks/resilient/check.mjs) | implementation-coupled | either | good, passes | OK |
+| 63 | [`forwards the payload`](#case-63) | [`asserts`](checks/asserts/check.mjs) | interaction-only | escalate | weak, needs eyes | OK |
+| 64 | [`notifies the listener`](#case-64) | [`asserts`](checks/asserts/check.mjs) | interaction-only | escalate | weak, needs eyes | OK |
+| 65 | [`publishes twice`](#case-65) | [`asserts`](checks/asserts/check.mjs) | interaction-only | escalate | unclassified, needs eyes | OK |
+| 66 | [`maps a paid, unshipped order to its status code`](#case-66) | [`verdict`](checks/verdict/check.mjs) | magic-number | pass | good, passes | OK |
+| 67 | [`accepts the token from the mail`](#case-67) | [`automated`](checks/automated/check.mjs) | manual | pass | good, passes | OK |
+| 68 | [`computes the tax`](#case-68) | [`verdict`](checks/verdict/check.mjs) | name-only | escalate | weak, needs eyes | OK |
+| 69 | [`computes the tax due`](#case-69) | [`verdict`](checks/verdict/check.mjs) | name-only | escalate | weak, needs eyes | OK |
+| 70 | [`validates email addresses`](#case-70) | [`verdict`](checks/verdict/check.mjs) | name-only | either | good, passes | OK |
+| 71 | [`both jobs report in start order`](#case-71) | [`deterministic`](checks/deterministic/check.mjs) | non-deterministic | pass | good, passes | OK |
+| 72 | [`debounce fires once`](#case-72) | [`deterministic`](checks/deterministic/check.mjs) | non-deterministic | either | good, passes | OK |
+| 73 | [`the remote catalogue lists the widget`](#case-73) | [`deterministic`](checks/deterministic/check.mjs) | non-deterministic | pass | good, passes | OK |
+| 74 | [`the retry lands within the window`](#case-74) | [`deterministic`](checks/deterministic/check.mjs) | non-deterministic | pass | good, passes | OK |
+| 75 | [`the sorter keeps every random value`](#case-75) | [`deterministic`](checks/deterministic/check.mjs) | non-deterministic | pass | good, passes | OK |
+| 76 | [`resolves the route of a request`](#case-76) | [`verdict`](checks/verdict/check.mjs) | obscure | pass | good, passes | OK |
+| 77 | [`finds no imports in an empty file`](#case-77) | [`positive`](checks/positive/check.mjs) | only-negative | escalate | weak, needs eyes | OK |
+| 78 | [`no edge for a comment`](#case-78) | [`positive`](checks/positive/check.mjs) | only-negative | escalate | weak, needs eyes | OK |
+| 79 | [`parses a well formed header`](#case-79) | [`positive`](checks/positive/check.mjs) | only-negative | escalate | weak, needs eyes | OK |
+| 80 | [`returns null for an unknown setting`](#case-80) | [`positive`](checks/positive/check.mjs) | only-negative | escalate | weak, needs eyes | OK |
+| 81 | [`events are dispatched`](#case-81) | [`can-fail`](checks/can-fail/check.mjs) | passes-with-zero | escalate | weak, needs eyes | OK |
+| 82 | [`imports are folded`](#case-82) | [`can-fail`](checks/can-fail/check.mjs) | passes-with-zero | escalate | weak, needs eyes | OK |
+| 83 | [`reader round trips`](#case-83) | [`can-fail`](checks/can-fail/check.mjs) | self-reference | escalate | slop, needs eyes | OK |
+| 84 | [`the two totals match`](#case-84) | [`can-fail`](checks/can-fail/check.mjs) | self-reference | escalate | slop, needs eyes | OK |
+| 85 | [`builds three steps`](#case-85) | [`asserts`](checks/asserts/check.mjs) | shape-only | escalate | unclassified, needs eyes | OK |
+| 86 | [`loads the profile fields`](#case-86) | [`asserts`](checks/asserts/check.mjs) | shape-only | escalate | weak, needs eyes | OK |
+| 87 | [`planner returns roads`](#case-87) | [`asserts`](checks/asserts/check.mjs) | shape-only | escalate | unclassified, needs eyes | OK |
+| 88 | [`returns a list of routes`](#case-88) | [`asserts`](checks/asserts/check.mjs) | shape-only | escalate | weak, needs eyes | OK |
+| 89 | [`sorts by price ascending`](#case-89) | [`verdict`](checks/verdict/check.mjs) | silent-failure | pass | good, passes | OK |
+| 90 | [`handles overflow`](#case-90) | [`runs`](checks/runs/check.mjs) | skipped | escalate | slop, needs eyes | OK |
+| 91 | [`parses a dotted key`](#case-91) | [`runs`](checks/runs/check.mjs) | skipped | escalate | unclassified, needs eyes | OK |
+| 92 | [`rejects a malformed header`](#case-92) | [`runs`](checks/runs/check.mjs) | skipped | escalate | slop, needs eyes | OK |
+| 93 | [`rejects a stale token`](#case-93) | [`runs`](checks/runs/check.mjs) | skipped | escalate | slop, needs eyes | OK |
+| 94 | [`splits a dotted key`](#case-94) | [`runs`](checks/runs/check.mjs) | skipped | escalate | unclassified, needs eyes | OK |
+| 95 | [`finds the largest prime below ten million`](#case-95) | [`verdict`](checks/verdict/check.mjs) | slow | pass | good, passes | OK |
+| 96 | [`the package entry loads`](#case-96) | [`verdict`](checks/verdict/check.mjs) | smoke | escalate | unclassified, needs eyes | OK |
+| 97 | [`reads the port from the environment`](#case-97) | [`restores`](checks/restores/check.mjs) | state-leak | pass | good, passes | OK |
+| 98 | [`the reminder fires after an hour`](#case-98) | [`restores`](checks/restores/check.mjs) | state-leak | pass | good, passes | OK |
+| 99 | [`slugify lowercases through normalise`](#case-99) | [`resilient`](checks/resilient/check.mjs) | structure-dependent | pass | good, passes | OK |
+| 100 | [`the build is green`](#case-100) | [`can-fail`](checks/can-fail/check.mjs) | tautology | escalate | unclassified, needs eyes | OK |
+| 101 | [`the world is sane`](#case-101) | [`can-fail`](checks/can-fail/check.mjs) | tautology | escalate | unclassified, needs eyes | OK |
+| 102 | [`reads the port from the sample file`](#case-102) | [`verdict`](checks/verdict/check.mjs) | uncontrolled-resource | pass | good, passes | OK |
+| 103 | [`the summary is produced`](#case-103) | [`can-fail`](checks/can-fail/check.mjs) | vacuous | escalate | weak, needs eyes | OK |
+| 104 | [`works`](#case-104) | [`verdict`](checks/verdict/check.mjs) | vague-name | pass | good, passes | OK |
+| 105 | [`reads the major version`](#case-105) | [`verdict`](checks/verdict/check.mjs) | weak-assert | either | weak, needs eyes | OK |
+| 106 | [`builds a job with the given name`](#case-106) | [`verdict`](checks/verdict/check.mjs) | wrong-reason | either | good, passes | OK |
+| 107 | [`reports no booking for a free slot`](#case-107) | [`positive`](checks/positive/check.mjs) | wrong-reason | either | weak, needs eyes | OK |
+| 108 | [`saves the user`](#case-108) | [`asserts`](checks/asserts/check.mjs) | wrong-reason | escalate | weak, needs eyes | OK |
 
 ## Case details: qwen3.8-flash-next-mtp
 
@@ -209,8 +214,8 @@ test("regression #12: an empty list sums to zero", () => {
 ```
 - **Known defect:** none, a clean test. **Check:** [`verdict`](checks/verdict/check.mjs). **Expected:** pass, `can_fail` yes. Note: The name cites a past issue. Case file [`checks/verdict/cases/issue-cited/case.mjs`](checks/verdict/cases/issue-cited/case.mjs), line 4. Sources: [Gerard Meszaros, xUnit Test Patterns (2007): Test Organization and Test Strategy](http://xunitpatterns.com/).
 - **What decided it:** weak, needs eyes.
-  - `positive_a` no (0.44) · `positive_b` no (0.44) → positive: no. **Escalates:** no positive assertion.
-  - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (1.00) · `asserts_written` yes (1.00) · `asserts_same` no (0.24) · `asserts_shape` no (0.01) · `asserts_mock` no (0.01) → asserts: behaviour. runs: yes, from the extractor's flags.
+  - `positive_a` no (0.38) · `positive_b` yes (0.50) → positive: no. **Escalates:** no positive assertion.
+  - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (1.00) · `asserts_written` yes (1.00) · `asserts_same` no (0.16) · `asserts_shape` no (0.01) · `asserts_mock` no (0.01) → asserts: behaviour. runs: yes, from the extractor's flags.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 </details>
 <details open><summary><a id="case-2"></a>2. <code>merges the options</code> · commented-out · <b>WRONG check</b></summary>
@@ -281,8 +286,8 @@ export function statusLabels() {
 ```
 - **Known defect:** from-code. **Check:** [`asserts`](checks/asserts/check.mjs). **Expected:** escalate, `can_fail` no, `asserts` from-code. Note: The expected value is the code under test own constant, so the test agrees by construction and cannot fail. Case file [`checks/asserts/cases/status-table/case.mjs`](checks/asserts/cases/status-table/case.mjs), line 6. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Tautology / self-reference](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** slop, needs eyes.
-  - `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). **WRONG can_fail:** label no, tool 1.00.
-  - `asserts_exact` yes (0.99) · `asserts_written` no (0.02) · `asserts_same` yes (0.94) · `asserts_shape` no (0.01) · `asserts_mock` no (0.01) → asserts: from-code. **Escalates:** asserts from-code.
+  - `can_fail_a` yes (0.99) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.01 (stable). **WRONG can_fail:** label no, tool 1.00.
+  - `asserts_exact` yes (0.99) · `asserts_written` no (0.02) · `asserts_same` yes (0.93) · `asserts_shape` no (0.01) · `asserts_mock` no (0.01) → asserts: from-code. **Escalates:** asserts from-code.
   - No escalation: `positive_a` yes (0.99) · `positive_b` yes (1.00) → positive: yes. runs: yes, from the extractor's flags.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 - **Label checks:** `asserts` from-code: match.
@@ -356,7 +361,7 @@ const registry = new Registry();
 ```
 - **Known defect:** order-dependent. **Check:** [`isolated`](checks/isolated/check.mjs). **Expected:** pass, `can_fail` yes, `isolated` no. Note: It passes only after the test above has run. Case file [`checks/isolated/cases/handler-registry/case.mjs`](checks/isolated/cases/handler-registry/case.mjs), line 12. Sources: [Kent Beck, Test Desiderata (2019): Isolated](https://kentbeck.github.io/TestDesiderata/).
 - **What decided it:** good, passes.
-  - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (1.00) · `asserts_written` yes (1.00) · `asserts_same` no (0.19) · `asserts_shape` no (0.01) · `asserts_mock` no (0.02) → asserts: behaviour. `positive_a` yes (0.98) · `positive_b` yes (0.99) → positive: yes. runs: yes, from the extractor's flags.
+  - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (1.00) · `asserts_written` yes (1.00) · `asserts_same` no (0.19) · `asserts_shape` no (0.01) · `asserts_mock` no (0.02) → asserts: behaviour. `positive_a` yes (0.98) · `positive_b` yes (1.00) → positive: yes. runs: yes, from the extractor's flags.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 - **Label checks:** **`isolated` no, tool yes**.
 </details>
@@ -369,9 +374,9 @@ test("parse is stable", () => {
 ```
 - **Known defect:** self-reference. **Check:** [`can-fail`](checks/can-fail/check.mjs). **Expected:** escalate, `can_fail` no. Note: Both sides call the same production function, so the comparison is true by construction. Case file [`checks/can-fail/cases/self-parse/case.mjs`](checks/can-fail/cases/self-parse/case.mjs), line 6. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Tautology / self-reference](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** slop, needs eyes.
-  - `can_fail_a` yes (0.83) · `can_fail_c` yes (0.99) → can_fail: 0.91, spread 0.16 (stable). **WRONG can_fail:** label no, tool 0.91.
-  - `asserts_exact` yes (0.76) · `asserts_written` no (0.06) · `asserts_same` yes (1.00) · `asserts_shape` no (0.03) · `asserts_mock` no (0.01) → asserts: from-code. **Escalates:** asserts from-code.
-  - `positive_a` no (0.36) · `positive_b` yes (0.87) → positive: unstable. **Escalates:** positive unstable (spread 0.51).
+  - `can_fail_a` yes (0.86) · `can_fail_c` yes (0.99) → can_fail: 0.92, spread 0.13 (stable). **WRONG can_fail:** label no, tool 0.92.
+  - `asserts_exact` yes (0.70) · `asserts_written` no (0.07) · `asserts_same` yes (1.00) · `asserts_shape` no (0.03) · `asserts_mock` no (0.01) → asserts: from-code. **Escalates:** asserts from-code.
+  - `positive_a` no (0.35) · `positive_b` yes (0.84) → positive: borderline. **Escalates:** positive borderline (spread 0.49).
   - No escalation: runs: yes, from the extractor's flags.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 </details>
@@ -404,9 +409,9 @@ test("the queue is not negative", () => {
 ```
 - **Known defect:** vacuous. **Check:** [`can-fail`](checks/can-fail/check.mjs). **Expected:** escalate, `can_fail` no. Note: A length is never negative, so the bound is always true. Case file [`checks/can-fail/cases/count-nonnegative/case.mjs`](checks/can-fail/cases/count-nonnegative/case.mjs), line 6. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Vacuous / passes-with-zero](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** weak, needs eyes.
-  - `can_fail_a` yes (0.88) · `can_fail_c` yes (1.00) → can_fail: 0.94, spread 0.11 (stable). **WRONG can_fail:** label no, tool 0.94.
-  - `asserts_exact` no (0.02) · `asserts_written` yes (0.99) · `asserts_same` yes (0.55) · `asserts_shape` yes (0.84) · `asserts_mock` no (0.00) → asserts: shape-only. **Escalates:** asserts shape-only.
-  - `positive_a` no (0.39) · `positive_b` yes (0.93) → positive: unstable. **Escalates:** positive unstable (spread 0.54).
+  - `can_fail_a` yes (0.88) · `can_fail_c` yes (1.00) → can_fail: 0.94, spread 0.12 (stable). **WRONG can_fail:** label no, tool 0.94.
+  - `asserts_exact` no (0.03) · `asserts_written` yes (0.99) · `asserts_same` no (0.50) · `asserts_shape` yes (0.85) · `asserts_mock` no (0.00) → asserts: shape-only. **Escalates:** asserts shape-only.
+  - `positive_a` no (0.45) · `positive_b` yes (0.91) → positive: borderline. **Escalates:** positive borderline (spread 0.46).
   - No escalation: runs: yes, from the extractor's flags.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 </details>
@@ -460,8 +465,8 @@ test("collects the graph nodes", () => {
 ```
 - **Known defect:** ambiguous. It is a mixed case, so its answers can disagree. **Check:** [`verdict`](checks/verdict/check.mjs). **Expected:** escalate. Note: Both assertions check the shape and never the node values, so the paraphrased gates disagree. Case file [`checks/verdict/cases/mixed-graph-shapes/case.mjs`](checks/verdict/cases/mixed-graph-shapes/case.mjs), line 5. Sources: [Xuezhi Wang et al., Self-Consistency Improves Chain of Thought Reasoning (ICLR 2023)](https://arxiv.org/abs/2203.11171).
 - **What decided it:** weak, needs eyes.
-  - `asserts_exact` no (0.16) · `asserts_written` yes (0.96) · `asserts_same` no (0.26) · `asserts_shape` yes (0.99) · `asserts_mock` no (0.01) → asserts: shape-only. **Escalates:** asserts shape-only.
-  - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). `positive_a` yes (0.99) · `positive_b` yes (0.99) → positive: yes. runs: yes, from the extractor's flags.
+  - `asserts_exact` no (0.10) · `asserts_written` yes (0.95) · `asserts_same` no (0.22) · `asserts_shape` yes (0.99) · `asserts_mock` no (0.01) → asserts: shape-only. **Escalates:** asserts shape-only.
+  - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). `positive_a` yes (0.99) · `positive_b` yes (0.98) → positive: yes. runs: yes, from the extractor's flags.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 </details>
 <details><summary><a id="case-16"></a>16. <code>retries once</code> · ambiguous · OK</summary>
@@ -475,8 +480,8 @@ test("retries once", () => {
 ```
 - **Known defect:** ambiguous. It is a mixed case, so its answers can disagree. **Check:** [`verdict`](checks/verdict/check.mjs). **Expected:** escalate. Note: interaction assertion with a specific count. Case file [`checks/verdict/cases/mixed-mock/case.mjs`](checks/verdict/cases/mixed-mock/case.mjs), line 5. Sources: [Xuezhi Wang et al., Self-Consistency Improves Chain of Thought Reasoning (ICLR 2023)](https://arxiv.org/abs/2203.11171).
 - **What decided it:** unclassified, needs eyes.
-  - `asserts_exact` yes (0.80) · `asserts_written` yes (1.00) · `asserts_same` no (0.47) · `asserts_shape` no (0.03) · `asserts_mock` yes (0.98). **Escalates:** asserts unstable (exact vs interaction-only).
-  - `positive_a` yes (0.55) · `positive_b` yes (0.95) → positive: borderline. **Escalates:** positive borderline (spread 0.40).
+  - `asserts_exact` yes (0.83) · `asserts_written` yes (1.00) · `asserts_same` no (0.45) · `asserts_shape` no (0.03) · `asserts_mock` yes (0.98). **Escalates:** asserts unstable (exact vs interaction-only).
+  - `positive_a` yes (0.57) · `positive_b` yes (0.94) → positive: borderline. **Escalates:** positive borderline (spread 0.37).
   - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). runs: yes, from the extractor's flags.
 - **Descriptive:** 5 clean · smells: `restores` (state-leak) · unanswered: none.
 </details>
@@ -607,7 +612,7 @@ test("capitalises the first letter", () => {
 ```
 - **Known defect:** none, a clean test. **Check:** [`conditional`](checks/conditional/check.mjs). **Expected:** pass, `can_fail` yes, `conditional` yes. Note: No branch, loop, or catch. Case file [`checks/conditional/cases/straight-line/case.mjs`](checks/conditional/cases/straight-line/case.mjs), line 4. Sources: [Gerard Meszaros, xUnit Test Patterns (2007): Conditional Test Logic](http://xunitpatterns.com/Conditional%20Test%20Logic.html).
 - **What decided it:** good, passes.
-  - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (1.00) · `asserts_written` yes (1.00) · `asserts_same` no (0.11) · `asserts_shape` no (0.00) · `asserts_mock` no (0.01) → asserts: behaviour. `positive_a` yes (1.00) · `positive_b` yes (1.00) → positive: yes. runs: yes, from the extractor's flags.
+  - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (1.00) · `asserts_written` yes (1.00) · `asserts_same` no (0.16) · `asserts_shape` no (0.00) · `asserts_mock` no (0.01) → asserts: behaviour. `positive_a` yes (1.00) · `positive_b` yes (1.00) → positive: yes. runs: yes, from the extractor's flags.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 - **Label checks:** `conditional` yes: match.
 </details>
@@ -653,7 +658,7 @@ test("debounce fires once after the wait", () => {
 ```
 - **Known defect:** none, a clean test. **Check:** [`deterministic`](checks/deterministic/check.mjs). **Expected:** pass, `can_fail` yes, `deterministic` yes, `restores` yes. Note: The timers are faked and restored. Case file [`checks/deterministic/cases/debounce-wait/case.mjs`](checks/deterministic/cases/debounce-wait/case.mjs), line 4. Sources: [Kent Beck, Test Desiderata (2019): Deterministic](https://kentbeck.github.io/TestDesiderata/).
 - **What decided it:** good, passes.
-  - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (1.00) · `asserts_written` yes (1.00) · `asserts_same` no (0.29) · `asserts_shape` no (0.01) · `asserts_mock` no (0.04) → asserts: behaviour. `positive_a` yes (0.99) · `positive_b` yes (1.00) → positive: yes. runs: yes, from the extractor's flags.
+  - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (1.00) · `asserts_written` yes (1.00) · `asserts_same` no (0.40) · `asserts_shape` no (0.01) · `asserts_mock` no (0.03) → asserts: behaviour. `positive_a` yes (0.99) · `positive_b` yes (1.00) → positive: yes. runs: yes, from the extractor's flags.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 - **Label checks:** `deterministic` yes: match · `restores` yes: match.
 </details>
@@ -680,7 +685,7 @@ test("formats a date as ISO", () => {
 ```
 - **Known defect:** none, a clean test. **Check:** [`automated`](checks/automated/check.mjs). **Expected:** pass, `can_fail` yes, `automated` yes. Note: No person needed. Case file [`checks/automated/cases/iso-date/case.mjs`](checks/automated/cases/iso-date/case.mjs), line 4. Sources: [Kent Beck, Test Desiderata (2019): Automated](https://kentbeck.github.io/TestDesiderata/).
 - **What decided it:** good, passes.
-  - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (1.00) · `asserts_written` yes (1.00) · `asserts_same` no (0.15) · `asserts_shape` no (0.00) · `asserts_mock` no (0.01) → asserts: behaviour. `positive_a` yes (0.98) · `positive_b` yes (1.00) → positive: yes. runs: yes, from the extractor's flags.
+  - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (1.00) · `asserts_written` yes (1.00) · `asserts_same` no (0.08) · `asserts_shape` no (0.00) · `asserts_mock` no (0.01) → asserts: behaviour. `positive_a` yes (0.98) · `positive_b` yes (1.00) → positive: yes. runs: yes, from the extractor's flags.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 - **Label checks:** `automated` yes: match.
 </details>
@@ -734,7 +739,7 @@ test("parses a number", () => {
 ```
 - **Known defect:** none, a clean test. **Check:** [`verdict`](checks/verdict/check.mjs). **Expected:** pass, `can_fail` yes. Note: The name says which behaviour the test checks. Case file [`checks/verdict/cases/string-to-int/case.mjs`](checks/verdict/cases/string-to-int/case.mjs), line 4. Sources: [Gerard Meszaros, xUnit Test Patterns (2007): Obscure Test](http://xunitpatterns.com/Obscure%20Test.html).
 - **What decided it:** good, passes.
-  - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (1.00) · `asserts_written` yes (1.00) · `asserts_same` no (0.16) · `asserts_shape` no (0.00) · `asserts_mock` no (0.01) → asserts: behaviour. `positive_a` yes (0.99) · `positive_b` yes (1.00) → positive: yes. runs: yes, from the extractor's flags.
+  - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (1.00) · `asserts_written` yes (1.00) · `asserts_same` no (0.19) · `asserts_shape` no (0.00) · `asserts_mock` no (0.01) → asserts: behaviour. `positive_a` yes (0.99) · `positive_b` yes (0.99) → positive: yes. runs: yes, from the extractor's flags.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 </details>
 <details><summary><a id="case-36"></a>36. <code>parses a semantic version</code> · clean · OK</summary>
@@ -752,7 +757,7 @@ const EXPECTED = { major: 1, minor: 2, patch: 3 };
 ```
 - **Known defect:** none, a clean test. **Check:** [`asserts`](checks/asserts/check.mjs). **Expected:** pass, `can_fail` yes, `asserts` behaviour, `positive` yes, `runs` yes, `verdict` good. Note: The expected value is a constant the test file declares, so the assertion checks behaviour. Case file [`checks/asserts/cases/named-expected/case.mjs`](checks/asserts/cases/named-expected/case.mjs), line 7. Sources: [testsmells.org, Open Catalog of Test Smells: Magic Number Test](https://testsmells.org/pages/testsmells.html).
 - **What decided it:** good, passes.
-  - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (1.00) · `asserts_written` yes (0.84) · `asserts_same` no (0.15) · `asserts_shape` no (0.01) · `asserts_mock` no (0.00) → asserts: behaviour. `positive_a` yes (1.00) · `positive_b` yes (1.00) → positive: yes. runs: yes, from the extractor's flags.
+  - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (1.00) · `asserts_written` yes (0.83) · `asserts_same` no (0.12) · `asserts_shape` no (0.01) · `asserts_mock` no (0.00) → asserts: behaviour. `positive_a` yes (1.00) · `positive_b` yes (1.00) → positive: yes. runs: yes, from the extractor's flags.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 - **Label checks:** `asserts` behaviour: match · `positive` yes: match · `runs` yes: match · `verdict` good: match.
 </details>
@@ -807,7 +812,7 @@ afterEach(() => {
 - **Known defect:** none, a clean test. **Check:** [`restores`](checks/restores/check.mjs). **Expected:** pass, `can_fail` yes, `restores` yes. Note: The afterEach restores PORT. Case file [`checks/restores/cases/env-port/case.mjs`](checks/restores/cases/env-port/case.mjs), line 11. Sources: [Kent Beck, Test Desiderata (2019): Isolated](https://kentbeck.github.io/TestDesiderata/).
 - **What decided it:** good, passes.
   - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (1.00) · `asserts_written` yes (1.00) · `asserts_same` no (0.16) · `asserts_shape` no (0.00) · `asserts_mock` no (0.01) → asserts: behaviour. `positive_a` yes (0.99) · `positive_b` yes (1.00) → positive: yes. runs: yes, from the extractor's flags.
-- **Descriptive:** 5 clean · smells: `deterministic` (non-deterministic) · unanswered: none.
+- **Descriptive:** 6 clean · smells: none · unanswered: none.
 - **Label checks:** `restores` yes: match.
 </details>
 <details><summary><a id="case-40"></a>40. <code>regression #42: a single import resolves</code> · clean · OK</summary>
@@ -871,7 +876,7 @@ test("reverses a string", () => {
 ```
 - **Known defect:** none, a clean test. **Check:** [`verdict`](checks/verdict/check.mjs). **Expected:** pass, `can_fail` yes, `asserts` behaviour, `positive` yes, `runs` yes, `deterministic` yes, `resilient` yes, `verdict` good. Note: a clean unit guard. Case file [`checks/verdict/cases/good-unit-reverse/case.mjs`](checks/verdict/cases/good-unit-reverse/case.mjs), line 4. Sources: [Kent Beck, Test Desiderata (2019): Behavioral, Specific](https://kentbeck.github.io/TestDesiderata/).
 - **What decided it:** good, passes.
-  - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (1.00) · `asserts_written` yes (1.00) · `asserts_same` no (0.13) · `asserts_shape` no (0.00) · `asserts_mock` no (0.01) → asserts: behaviour. `positive_a` yes (0.99) · `positive_b` yes (1.00) → positive: yes. runs: yes, from the extractor's flags.
+  - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (1.00) · `asserts_written` yes (1.00) · `asserts_same` no (0.11) · `asserts_shape` no (0.00) · `asserts_mock` no (0.01) → asserts: behaviour. `positive_a` yes (0.99) · `positive_b` yes (0.99) → positive: yes. runs: yes, from the extractor's flags.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 - **Label checks:** `asserts` behaviour: match · `positive` yes: match · `runs` yes: match · `deterministic` yes: match · `resilient` yes: match · `verdict` good: match.
 </details>
@@ -887,7 +892,27 @@ test("rounds to two decimals", () => {
   - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (1.00) · `asserts_written` yes (1.00) · `asserts_same` no (0.09) · `asserts_shape` no (0.00) · `asserts_mock` no (0.00) → asserts: behaviour. `positive_a` yes (0.99) · `positive_b` yes (1.00) → positive: yes. runs: yes, from the extractor's flags.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 </details>
-<details><summary><a id="case-46"></a>46. <code>slugs a display name</code> · clean · OK</summary>
+<details><summary><a id="case-46"></a>46. <code>saving in the browser updates the list</code> · clean · OK</summary>
+
+```js
+test("saving in the browser updates the list", async () => {
+  const server = await startServer({ port: 0 });
+  const browser = await launchBrowser();
+  const page = await browser.newPage(server.url);
+  await page.click("#save");
+  await page.waitForSelector(".saved");
+  expect(await page.text(".saved")).toBe("Saved");
+  await browser.close();
+  await server.close();
+})
+```
+- **Known defect:** none, a clean test. **Check:** [`deterministic`](checks/deterministic/check.mjs). **Expected:** pass, `can_fail` yes, `deterministic` yes. Note: A real e2e guard: it starts its own server and browser, so nothing outside it can change the result. Case file [`checks/deterministic/cases/local-server/case.mjs`](checks/deterministic/cases/local-server/case.mjs), line 5. Sources: [Kent Beck, Test Desiderata (2019): Deterministic, Isolated](https://kentbeck.github.io/TestDesiderata/).
+- **What decided it:** good, passes.
+  - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (1.00) · `asserts_written` yes (1.00) · `asserts_same` no (0.22) · `asserts_shape` no (0.00) · `asserts_mock` no (0.02) → asserts: behaviour. `positive_a` yes (0.99) · `positive_b` yes (1.00) → positive: yes. runs: yes, from the extractor's flags.
+- **Descriptive:** 6 clean · smells: none · unanswered: none.
+- **Label checks:** `deterministic` yes: match.
+</details>
+<details><summary><a id="case-47"></a>47. <code>slugs a display name</code> · clean · OK</summary>
 
 ```js
 test("slugs a display name", () => {
@@ -896,11 +921,11 @@ test("slugs a display name", () => {
 ```
 - **Known defect:** none, a clean test. **Check:** [`verdict`](checks/verdict/check.mjs). **Expected:** pass, `can_fail` yes, `asserts` behaviour, `positive` yes, `runs` yes, `deterministic` yes, `resilient` yes, `verdict` good. Note: a real guard. Case file [`checks/verdict/cases/good-unit-slug/case.mjs`](checks/verdict/cases/good-unit-slug/case.mjs), line 4. Sources: [Kent Beck, Test Desiderata (2019): Behavioral, Specific](https://kentbeck.github.io/TestDesiderata/).
 - **What decided it:** good, passes.
-  - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (1.00) · `asserts_written` yes (1.00) · `asserts_same` no (0.08) · `asserts_shape` no (0.00) · `asserts_mock` no (0.00) → asserts: behaviour. `positive_a` yes (0.99) · `positive_b` yes (1.00) → positive: yes. runs: yes, from the extractor's flags.
+  - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (1.00) · `asserts_written` yes (1.00) · `asserts_same` no (0.09) · `asserts_shape` no (0.00) · `asserts_mock` no (0.01) → asserts: behaviour. `positive_a` yes (0.99) · `positive_b` yes (1.00) → positive: yes. runs: yes, from the extractor's flags.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 - **Label checks:** `asserts` behaviour: match · `positive` yes: match · `runs` yes: match · `deterministic` yes: match · `resilient` yes: match · `verdict` good: match.
 </details>
-<details><summary><a id="case-47"></a>47. <code>splits a version into its parts</code> · clean · OK</summary>
+<details><summary><a id="case-48"></a>48. <code>splits a version into its parts</code> · clean · OK</summary>
 
 ```js
 test("splits a version into its parts", () => {
@@ -912,7 +937,7 @@ test("splits a version into its parts", () => {
   - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (0.99) · `asserts_written` yes (1.00) · `asserts_same` no (0.08) · `asserts_shape` no (0.01) · `asserts_mock` no (0.01) → asserts: behaviour. `positive_a` yes (0.99) · `positive_b` yes (1.00) → positive: yes. runs: yes, from the extractor's flags.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 </details>
-<details><summary><a id="case-48"></a>48. <code>store round trips a value</code> · clean · OK</summary>
+<details><summary><a id="case-49"></a>49. <code>store round trips a value</code> · clean · OK</summary>
 
 ```js
 test("store round trips a value", async () => {
@@ -927,7 +952,7 @@ test("store round trips a value", async () => {
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 - **Label checks:** `asserts` behaviour: match · `positive` yes: match · `runs` yes: match.
 </details>
-<details><summary><a id="case-49"></a>49. <code>takes ten percent off the total</code> · clean · OK</summary>
+<details><summary><a id="case-50"></a>50. <code>takes ten percent off the total</code> · clean · OK</summary>
 
 ```js
 test("takes ten percent off the total", () => {
@@ -940,7 +965,7 @@ test("takes ten percent off the total", () => {
   - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (1.00) · `asserts_written` yes (1.00) · `asserts_same` no (0.14) · `asserts_shape` no (0.00) · `asserts_mock` no (0.00) → asserts: behaviour. `positive_a` yes (1.00) · `positive_b` yes (1.00) → positive: yes. runs: yes, from the extractor's flags.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 </details>
-<details><summary><a id="case-50"></a>50. <code>the cache returns a stored value</code> · clean · OK</summary>
+<details><summary><a id="case-51"></a>51. <code>the cache returns a stored value</code> · clean · OK</summary>
 
 ```js
 test("the cache returns a stored value", async () => {
@@ -955,7 +980,7 @@ test("the cache returns a stored value", async () => {
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 - **Label checks:** `asserts` behaviour: match · `positive` yes: match · `runs` yes: match.
 </details>
-<details><summary><a id="case-51"></a>51. <code>the server answers health</code> · clean · OK</summary>
+<details><summary><a id="case-52"></a>52. <code>the server answers health</code> · clean · OK</summary>
 
 ```js
 test("the server answers health", async () => {
@@ -966,10 +991,10 @@ test("the server answers health", async () => {
 - **Known defect:** none, a clean test. **Check:** [`verdict`](checks/verdict/check.mjs). **Expected:** pass, `can_fail` yes, `asserts` behaviour, `positive` yes, `runs` yes. Note: a clean end-to-end guard. Case file [`checks/verdict/cases/good-e2e/case.mjs`](checks/verdict/cases/good-e2e/case.mjs), line 4. Sources: [Kent Beck, Test Desiderata (2019): Behavioral, Specific](https://kentbeck.github.io/TestDesiderata/).
 - **What decided it:** good, passes.
   - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (1.00) · `asserts_written` yes (1.00) · `asserts_same` no (0.08) · `asserts_shape` no (0.00) · `asserts_mock` no (0.01) → asserts: behaviour. `positive_a` yes (0.99) · `positive_b` yes (0.99) → positive: yes. runs: yes, from the extractor's flags.
-- **Descriptive:** 5 clean · smells: `deterministic` (non-deterministic) · unanswered: none.
+- **Descriptive:** 6 clean · smells: none · unanswered: none.
 - **Label checks:** `asserts` behaviour: match · `positive` yes: match · `runs` yes: match.
 </details>
-<details><summary><a id="case-52"></a>52. <code>the service reports its version</code> · clean · OK</summary>
+<details><summary><a id="case-53"></a>53. <code>the service reports its version</code> · clean · OK</summary>
 
 ```js
 test("the service reports its version", async () => {
@@ -980,10 +1005,10 @@ test("the service reports its version", async () => {
 - **Known defect:** none, a clean test. **Check:** [`verdict`](checks/verdict/check.mjs). **Expected:** pass, `can_fail` yes, `asserts` behaviour, `positive` yes, `runs` yes. Note: a real guard. Case file [`checks/verdict/cases/good-e2e-version/case.mjs`](checks/verdict/cases/good-e2e-version/case.mjs), line 4. Sources: [Kent Beck, Test Desiderata (2019): Behavioral, Specific](https://kentbeck.github.io/TestDesiderata/).
 - **What decided it:** good, passes.
   - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (1.00) · `asserts_written` yes (1.00) · `asserts_same` no (0.06) · `asserts_shape` no (0.00) · `asserts_mock` no (0.01) → asserts: behaviour. `positive_a` yes (1.00) · `positive_b` yes (1.00) → positive: yes. runs: yes, from the extractor's flags.
-- **Descriptive:** 5 clean · smells: `deterministic` (non-deterministic) · unanswered: none.
+- **Descriptive:** 6 clean · smells: none · unanswered: none.
 - **Label checks:** `asserts` behaviour: match · `positive` yes: match · `runs` yes: match.
 </details>
-<details><summary><a id="case-53"></a>53. <code>the store keeps a value on disk</code> · clean · OK</summary>
+<details><summary><a id="case-54"></a>54. <code>the store keeps a value on disk</code> · clean · OK</summary>
 
 ```js
 test("the store keeps a value on disk", async () => {
@@ -997,7 +1022,7 @@ test("the store keeps a value on disk", async () => {
   - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (1.00) · `asserts_written` yes (0.99) · `asserts_same` no (0.11) · `asserts_shape` no (0.00) · `asserts_mock` no (0.01) → asserts: behaviour. `positive_a` yes (1.00) · `positive_b` yes (1.00) → positive: yes. runs: yes, from the extractor's flags.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 </details>
-<details><summary><a id="case-54"></a>54. <code>totals the cart</code> · clean · OK</summary>
+<details><summary><a id="case-55"></a>55. <code>totals the cart</code> · clean · OK</summary>
 
 ```js
 test("totals the cart", () => {
@@ -1009,7 +1034,7 @@ test("totals the cart", () => {
   - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (1.00) · `asserts_written` yes (1.00) · `asserts_same` no (0.14) · `asserts_shape` no (0.00) · `asserts_mock` no (0.01) → asserts: behaviour. `positive_a` yes (1.00) · `positive_b` yes (1.00) → positive: yes. runs: yes, from the extractor's flags.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 </details>
-<details><summary><a id="case-55"></a>55. <code>every row is validated</code> · conditional-logic · OK</summary>
+<details><summary><a id="case-56"></a>56. <code>every row is validated</code> · conditional-logic · OK</summary>
 
 ```js
 test("every row is validated", () => {
@@ -1019,11 +1044,11 @@ test("every row is validated", () => {
 ```
 - **Known defect:** conditional-logic. **Check:** [`conditional`](checks/conditional/check.mjs). **Expected:** pass, `can_fail` yes, `conditional` no. Note: If validateAll returns an empty list, the loop asserts nothing. Case file [`checks/conditional/cases/row-loop/case.mjs`](checks/conditional/cases/row-loop/case.mjs), line 4. Sources: [Gerard Meszaros, xUnit Test Patterns (2007): Conditional Test Logic](http://xunitpatterns.com/Conditional%20Test%20Logic.html).
 - **What decided it:** good, passes.
-  - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (0.99) · `asserts_written` yes (1.00) · `asserts_same` no (0.35) · `asserts_shape` no (0.01) · `asserts_mock` no (0.01) → asserts: behaviour. `positive_a` yes (0.89) · `positive_b` yes (0.99) → positive: yes. runs: yes, from the extractor's flags.
+  - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (0.99) · `asserts_written` yes (1.00) · `asserts_same` no (0.41) · `asserts_shape` no (0.02) · `asserts_mock` no (0.01) → asserts: behaviour. `positive_a` yes (0.88) · `positive_b` yes (0.99) → positive: yes. runs: yes, from the extractor's flags.
 - **Descriptive:** 5 clean · smells: `conditional` (conditional) · unanswered: none.
 - **Label checks:** `conditional` no: match.
 </details>
-<details><summary><a id="case-56"></a>56. <code>creating a user validates, stores and notifies</code> · eager · OK</summary>
+<details><summary><a id="case-57"></a>57. <code>creating a user validates, stores and notifies</code> · eager · OK</summary>
 
 ```js
 test("creating a user validates, stores and notifies", async () => {
@@ -1040,7 +1065,7 @@ test("creating a user validates, stores and notifies", async () => {
   - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (0.96) · `asserts_written` yes (0.97) · `asserts_same` no (0.27) · `asserts_shape` no (0.01) · `asserts_mock` no (0.02) → asserts: behaviour. `positive_a` yes (0.98) · `positive_b` yes (1.00) → positive: yes. runs: yes, from the extractor's flags.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 </details>
-<details><summary><a id="case-57"></a>57. <code>rejects a blank name</code> · early-return · OK</summary>
+<details><summary><a id="case-58"></a>58. <code>rejects a blank name</code> · early-return · OK</summary>
 
 ```js
 test("rejects a blank name", () => {
@@ -1050,13 +1075,13 @@ test("rejects a blank name", () => {
 ```
 - **Known defect:** early-return. **Check:** [`conditional`](checks/conditional/check.mjs). **Expected:** escalate, `can_fail` no, `conditional` no. Note: The early return makes the assertion unreachable, so the test cannot fail. Case file [`checks/conditional/cases/early-return-name/case.mjs`](checks/conditional/cases/early-return-name/case.mjs), line 5. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Skipped / disabled / focused](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** slop, needs eyes.
-  - `can_fail_a` no (0.00) · `can_fail_c` no (0.03) → can_fail: 0.02, spread 0.02 (stable). **Escalates:** can_fail contradicts asserts. Label no: match.
-  - `positive_a` no (0.18) · `positive_b` no (0.41) → positive: no. **Escalates:** no positive assertion.
-  - No escalation: `asserts_exact` yes (0.99) · `asserts_written` yes (1.00) · `asserts_same` yes (0.53) · `asserts_shape` no (0.09) · `asserts_mock` no (0.03) → asserts: behaviour. runs: yes, from the extractor's flags.
+  - `asserts_exact` yes (0.99) · `asserts_written` yes (1.00) · `asserts_same` yes (0.50) · `asserts_shape` no (0.07) · `asserts_mock` no (0.03). **Escalates:** asserts unstable (written vs same).
+  - `positive_a` no (0.22) · `positive_b` no (0.23) → positive: no. **Escalates:** no positive assertion.
+  - No escalation: `can_fail_a` no (0.00) · `can_fail_c` no (0.02) → can_fail: 0.01, spread 0.02 (stable). Label no: match. runs: yes, from the extractor's flags.
 - **Descriptive:** 5 clean · smells: `conditional` (conditional) · unanswered: none.
 - **Label checks:** `conditional` no: match.
 </details>
-<details><summary><a id="case-58"></a>58. <code>loads the draft</code> · focused · OK</summary>
+<details><summary><a id="case-59"></a>59. <code>loads the draft</code> · focused · OK</summary>
 
 ```js
 it("loads the draft", () => {
@@ -1065,12 +1090,12 @@ it("loads the draft", () => {
 ```
 - **Known defect:** focused. **Check:** [`runs`](checks/runs/check.mjs). **Expected:** escalate, `runs` no. Note: The plain test inherits the file-level focus from it.only. Case file [`checks/runs/cases/focus-draft/case.mjs`](checks/runs/cases/focus-draft/case.mjs), line 10. Extractor notes: `focus-in-file`. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Skipped / disabled / focused](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** good, needs eyes.
-  - runs: no, from the extractor's flags. **Escalates:** does not run, or narrows the run.
+  - runs: no, from the extractor's flags. **Escalates:** does not run, or a marker narrows the run.
   - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). `asserts_exact` yes (1.00) · `asserts_written` yes (0.99) · `asserts_same` no (0.30) · `asserts_shape` no (0.00) · `asserts_mock` no (0.02) → asserts: behaviour. `positive_a` yes (0.97) · `positive_b` yes (1.00) → positive: yes.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 - **Label checks:** `runs` no: match.
 </details>
-<details><summary><a id="case-59"></a>59. <code>saves the draft</code> · focused · OK</summary>
+<details><summary><a id="case-60"></a>60. <code>saves the draft</code> · focused · OK</summary>
 
 ```js
 it.only("saves the draft", () => {
@@ -1079,12 +1104,12 @@ it.only("saves the draft", () => {
 ```
 - **Known defect:** focused. **Check:** [`runs`](checks/runs/check.mjs). **Expected:** escalate, `runs` no. Note: The it.only focuses the file and narrows the whole run. Case file [`checks/runs/cases/focus-draft/case.mjs`](checks/runs/cases/focus-draft/case.mjs), line 6. Extractor notes: `focus-in-file`. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Skipped / disabled / focused](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** good, needs eyes.
-  - runs: no, from the extractor's flags. **Escalates:** does not run, or narrows the run.
+  - runs: no, from the extractor's flags. **Escalates:** does not run, or a marker narrows the run.
   - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). `asserts_exact` yes (1.00) · `asserts_written` yes (1.00) · `asserts_same` no (0.27) · `asserts_shape` no (0.01) · `asserts_mock` no (0.05) → asserts: behaviour. `positive_a` yes (0.98) · `positive_b` yes (0.98) → positive: yes.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 - **Label checks:** `runs` no: match.
 </details>
-<details><summary><a id="case-60"></a>60. <code>slugs the tenant name</code> · general-fixture · OK</summary>
+<details><summary><a id="case-61"></a>61. <code>slugs the tenant name</code> · general-fixture · OK</summary>
 
 ```js
 test("slugs the tenant name", () => {
@@ -1117,7 +1142,7 @@ beforeEach(() => {
   - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (1.00) · `asserts_written` yes (1.00) · `asserts_same` no (0.12) · `asserts_shape` no (0.00) · `asserts_mock` no (0.00) → asserts: behaviour. `positive_a` yes (0.99) · `positive_b` yes (1.00) → positive: yes. runs: yes, from the extractor's flags.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 </details>
-<details><summary><a id="case-61"></a>61. <code>indexes both words</code> · implementation-coupled · OK</summary>
+<details><summary><a id="case-62"></a>62. <code>indexes both words</code> · implementation-coupled · OK</summary>
 
 ```js
 test("indexes both words", () => {
@@ -1131,7 +1156,7 @@ test("indexes both words", () => {
 - **Descriptive:** 5 clean · smells: `resilient` (structure-dependent) · unanswered: none.
 - **Label checks:** `resilient` no: match.
 </details>
-<details><summary><a id="case-62"></a>62. <code>forwards the payload</code> · interaction-only · OK</summary>
+<details><summary><a id="case-63"></a>63. <code>forwards the payload</code> · interaction-only · OK</summary>
 
 ```js
 test("forwards the payload", () => {
@@ -1142,12 +1167,12 @@ test("forwards the payload", () => {
 ```
 - **Known defect:** interaction-only. **Check:** [`asserts`](checks/asserts/check.mjs). **Expected:** escalate, `can_fail` yes, `asserts` interaction-only. Note: The mock argument shape can change and fail the test, while the real output stays unchecked. Case file [`checks/asserts/cases/mock-argument/case.mjs`](checks/asserts/cases/mock-argument/case.mjs), line 4. Sources: [Martin Fowler, Mocks Aren't Stubs (2007)](https://martinfowler.com/articles/mocksArentStubs.html).
 - **What decided it:** weak, needs eyes.
-  - `asserts_exact` no (0.03) · `asserts_written` yes (0.95) · `asserts_same` no (0.31) · `asserts_shape` no (0.48) · `asserts_mock` yes (0.91) → asserts: interaction-only. **Escalates:** asserts interaction-only.
-  - No escalation: `can_fail_a` yes (0.99) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `positive_a` yes (0.97) · `positive_b` yes (1.00) → positive: yes. runs: yes, from the extractor's flags.
+  - `asserts_exact` no (0.03) · `asserts_written` yes (0.93) · `asserts_same` no (0.28) · `asserts_shape` no (0.49) · `asserts_mock` yes (0.90) → asserts: interaction-only. **Escalates:** asserts interaction-only.
+  - No escalation: `can_fail_a` yes (0.99) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.01 (stable). Label yes: match. `positive_a` yes (0.97) · `positive_b` yes (1.00) → positive: yes. runs: yes, from the extractor's flags.
 - **Descriptive:** 5 clean · smells: `restores` (state-leak) · unanswered: none.
 - **Label checks:** `asserts` interaction-only: match.
 </details>
-<details><summary><a id="case-63"></a>63. <code>notifies the listener</code> · interaction-only · OK</summary>
+<details><summary><a id="case-64"></a>64. <code>notifies the listener</code> · interaction-only · OK</summary>
 
 ```js
 test("notifies the listener", () => {
@@ -1161,10 +1186,10 @@ test("notifies the listener", () => {
   - `asserts_exact` no (0.13) · `asserts_written` yes (0.60) · `asserts_same` no (0.35) · `asserts_shape` no (0.02) · `asserts_mock` yes (0.99) → asserts: interaction-only. **Escalates:** asserts interaction-only.
   - `positive_a` no (0.25) · `positive_b` yes (0.66) → positive: borderline. **Escalates:** positive borderline (spread 0.41).
   - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. runs: yes, from the extractor's flags.
-- **Descriptive:** 4 clean · smells: `restores` (state-leak), `resilient` (structure-dependent) · unanswered: none.
+- **Descriptive:** 5 clean · smells: `restores` (state-leak) · unanswered: none.
 - **Label checks:** `asserts` interaction-only: match · `verdict` weak: match.
 </details>
-<details><summary><a id="case-64"></a>64. <code>publishes twice</code> · interaction-only · OK</summary>
+<details><summary><a id="case-65"></a>65. <code>publishes twice</code> · interaction-only · OK</summary>
 
 ```js
 test("publishes twice", () => {
@@ -1175,13 +1200,13 @@ test("publishes twice", () => {
 ```
 - **Known defect:** interaction-only. **Check:** [`asserts`](checks/asserts/check.mjs). **Expected:** escalate, `can_fail` yes, `asserts` interaction-only. Note: A changed call count fails the test, yet the payload of each call is never asserted. Case file [`checks/asserts/cases/spy-count/case.mjs`](checks/asserts/cases/spy-count/case.mjs), line 4. Sources: [Martin Fowler, Mocks Aren't Stubs (2007)](https://martinfowler.com/articles/mocksArentStubs.html).
 - **What decided it:** unclassified, needs eyes.
-  - `asserts_exact` yes (0.60) · `asserts_written` yes (1.00) · `asserts_same` no (0.25) · `asserts_shape` no (0.04) · `asserts_mock` yes (0.98). **Escalates:** asserts unstable (unsure exact 0.60).
+  - `asserts_exact` yes (0.60) · `asserts_written` yes (1.00) · `asserts_same` no (0.25) · `asserts_shape` no (0.04) · `asserts_mock` yes (0.98). **Escalates:** asserts unstable (exact vs interaction-only).
   - `positive_a` yes (0.56) · `positive_b` yes (0.90) → positive: borderline. **Escalates:** positive borderline (spread 0.33).
   - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. runs: yes, from the extractor's flags.
-- **Descriptive:** 4 clean · smells: `restores` (state-leak), `resilient` (structure-dependent) · unanswered: none.
+- **Descriptive:** 5 clean · smells: `restores` (state-leak) · unanswered: none.
 - **Label checks:** `asserts` interaction-only: not committed.
 </details>
-<details><summary><a id="case-65"></a>65. <code>maps a paid, unshipped order to its status code</code> · magic-number · OK</summary>
+<details><summary><a id="case-66"></a>66. <code>maps a paid, unshipped order to its status code</code> · magic-number · OK</summary>
 
 ```js
 test("maps a paid, unshipped order to its status code", () => {
@@ -1193,7 +1218,7 @@ test("maps a paid, unshipped order to its status code", () => {
   - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (1.00) · `asserts_written` yes (1.00) · `asserts_same` no (0.09) · `asserts_shape` no (0.00) · `asserts_mock` no (0.01) → asserts: behaviour. `positive_a` yes (1.00) · `positive_b` yes (1.00) → positive: yes. runs: yes, from the extractor's flags.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 </details>
-<details><summary><a id="case-66"></a>66. <code>accepts the token from the mail</code> · manual · OK</summary>
+<details><summary><a id="case-67"></a>67. <code>accepts the token from the mail</code> · manual · OK</summary>
 
 ```js
 test("accepts the token from the mail", async () => {
@@ -1203,11 +1228,11 @@ test("accepts the token from the mail", async () => {
 ```
 - **Known defect:** manual. **Check:** [`automated`](checks/automated/check.mjs). **Expected:** pass, `can_fail` yes, `automated` no. Note: A person must act before the assertion can run. Case file [`checks/automated/cases/pasted-token/case.mjs`](checks/automated/cases/pasted-token/case.mjs), line 6. Sources: [Kent Beck, Test Desiderata (2019): Automated](https://kentbeck.github.io/TestDesiderata/).
 - **What decided it:** good, passes.
-  - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (1.00) · `asserts_written` yes (0.99) · `asserts_same` no (0.16) · `asserts_shape` no (0.03) · `asserts_mock` no (0.02) → asserts: behaviour. `positive_a` yes (0.93) · `positive_b` yes (0.88) → positive: yes. runs: yes, from the extractor's flags.
+  - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (1.00) · `asserts_written` yes (1.00) · `asserts_same` no (0.16) · `asserts_shape` no (0.02) · `asserts_mock` no (0.02) → asserts: behaviour. `positive_a` yes (0.95) · `positive_b` yes (0.91) → positive: yes. runs: yes, from the extractor's flags.
 - **Descriptive:** 4 clean · smells: `deterministic` (non-deterministic), `automated` (manual) · unanswered: none.
 - **Label checks:** `automated` no: match.
 </details>
-<details><summary><a id="case-67"></a>67. <code>computes the tax</code> · name-only · OK</summary>
+<details><summary><a id="case-68"></a>68. <code>computes the tax</code> · name-only · OK</summary>
 
 ```js
 test("computes the tax", () => {
@@ -1222,7 +1247,7 @@ test("computes the tax", () => {
   - No escalation: `positive_a` yes (0.69) · `positive_b` yes (0.86) → positive: yes. runs: yes, from the extractor's flags.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 </details>
-<details><summary><a id="case-68"></a>68. <code>computes the tax due</code> · name-only · OK</summary>
+<details><summary><a id="case-69"></a>69. <code>computes the tax due</code> · name-only · OK</summary>
 
 ```js
 test("computes the tax due", () => {
@@ -1237,7 +1262,7 @@ test("computes the tax due", () => {
   - No escalation: `positive_a` yes (0.57) · `positive_b` yes (0.79) → positive: yes. runs: yes, from the extractor's flags.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 </details>
-<details><summary><a id="case-69"></a>69. <code>validates email addresses</code> · name-only · OK</summary>
+<details><summary><a id="case-70"></a>70. <code>validates email addresses</code> · name-only · OK</summary>
 
 ```js
 test("validates email addresses", () => {
@@ -1249,7 +1274,7 @@ test("validates email addresses", () => {
   - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (0.95) · `asserts_written` yes (0.98) · `asserts_same` no (0.29) · `asserts_shape` no (0.04) · `asserts_mock` no (0.01) → asserts: behaviour. `positive_a` yes (0.97) · `positive_b` yes (0.99) → positive: yes. runs: yes, from the extractor's flags.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 </details>
-<details><summary><a id="case-70"></a>70. <code>both jobs report in start order</code> · non-deterministic · OK</summary>
+<details><summary><a id="case-71"></a>71. <code>both jobs report in start order</code> · non-deterministic · OK</summary>
 
 ```js
 test("both jobs report in start order", async () => {
@@ -1272,7 +1297,7 @@ export async function runJob(name, log) {
 - **Descriptive:** 5 clean · smells: `deterministic` (non-deterministic) · unanswered: none.
 - **Label checks:** `deterministic` no: match.
 </details>
-<details><summary><a id="case-71"></a>71. <code>debounce fires once</code> · non-deterministic · OK</summary>
+<details><summary><a id="case-72"></a>72. <code>debounce fires once</code> · non-deterministic · OK</summary>
 
 ```js
 test("debounce fires once", async () => {
@@ -1285,11 +1310,11 @@ test("debounce fires once", async () => {
 ```
 - **Known defect:** non-deterministic. **Check:** [`deterministic`](checks/deterministic/check.mjs). **Expected:** either, `can_fail` yes, `deterministic` no. Note: a real guard, but timer-bound; reported, not escalated. Case file [`checks/deterministic/cases/flaky/case.mjs`](checks/deterministic/cases/flaky/case.mjs), line 4. Sources: [Kent Beck, Test Desiderata (2019): Deterministic](https://kentbeck.github.io/TestDesiderata/).
 - **What decided it:** good, passes.
-  - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (0.98) · `asserts_written` yes (1.00) · `asserts_same` no (0.35) · `asserts_shape` no (0.10) · `asserts_mock` no (0.03) → asserts: behaviour. `positive_a` yes (0.96) · `positive_b` yes (1.00) → positive: yes. runs: yes, from the extractor's flags.
+  - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (0.98) · `asserts_written` yes (1.00) · `asserts_same` no (0.39) · `asserts_shape` no (0.09) · `asserts_mock` no (0.04) → asserts: behaviour. `positive_a` yes (0.94) · `positive_b` yes (0.99) → positive: yes. runs: yes, from the extractor's flags.
 - **Descriptive:** 5 clean · smells: `deterministic` (non-deterministic) · unanswered: none.
 - **Label checks:** `deterministic` no: match.
 </details>
-<details><summary><a id="case-72"></a>72. <code>the remote catalogue lists the widget</code> · non-deterministic · OK</summary>
+<details><summary><a id="case-73"></a>73. <code>the remote catalogue lists the widget</code> · non-deterministic · OK</summary>
 
 ```js
 test("the remote catalogue lists the widget", async () => {
@@ -1304,7 +1329,7 @@ test("the remote catalogue lists the widget", async () => {
 - **Descriptive:** 5 clean · smells: `deterministic` (non-deterministic) · unanswered: none.
 - **Label checks:** `deterministic` no: match · `verdict` good: match.
 </details>
-<details><summary><a id="case-73"></a>73. <code>the retry lands within the window</code> · non-deterministic · OK</summary>
+<details><summary><a id="case-74"></a>74. <code>the retry lands within the window</code> · non-deterministic · OK</summary>
 
 ```js
 test("the retry lands within the window", async () => {
@@ -1320,7 +1345,7 @@ test("the retry lands within the window", async () => {
 - **Descriptive:** 4 clean · smells: `deterministic` (non-deterministic), `restores` (state-leak) · unanswered: none.
 - **Label checks:** `deterministic` no: match.
 </details>
-<details><summary><a id="case-74"></a>74. <code>the sorter keeps every random value</code> · non-deterministic · OK</summary>
+<details><summary><a id="case-75"></a>75. <code>the sorter keeps every random value</code> · non-deterministic · OK</summary>
 
 ```js
 test("the sorter keeps every random value", () => {
@@ -1334,7 +1359,7 @@ test("the sorter keeps every random value", () => {
 - **Descriptive:** 5 clean · smells: `deterministic` (non-deterministic) · unanswered: none.
 - **Label checks:** `deterministic` no: match.
 </details>
-<details><summary><a id="case-75"></a>75. <code>resolves the route of a request</code> · obscure · OK</summary>
+<details><summary><a id="case-76"></a>76. <code>resolves the route of a request</code> · obscure · OK</summary>
 
 ```js
 test("resolves the route of a request", () => {
@@ -1347,7 +1372,7 @@ test("resolves the route of a request", () => {
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 - **Label checks:** `asserts` behaviour: match.
 </details>
-<details><summary><a id="case-76"></a>76. <code>finds no imports in an empty file</code> · only-negative · OK</summary>
+<details><summary><a id="case-77"></a>77. <code>finds no imports in an empty file</code> · only-negative · OK</summary>
 
 ```js
 test("finds no imports in an empty file", () => {
@@ -1362,7 +1387,7 @@ test("finds no imports in an empty file", () => {
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 - **Label checks:** `positive` no: match.
 </details>
-<details><summary><a id="case-77"></a>77. <code>no edge for a comment</code> · only-negative · OK</summary>
+<details><summary><a id="case-78"></a>78. <code>no edge for a comment</code> · only-negative · OK</summary>
 
 ```js
 test("no edge for a comment", () => {
@@ -1376,7 +1401,7 @@ test("no edge for a comment", () => {
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 - **Label checks:** `positive` no: match.
 </details>
-<details><summary><a id="case-78"></a>78. <code>parses a well formed header</code> · only-negative · OK</summary>
+<details><summary><a id="case-79"></a>79. <code>parses a well formed header</code> · only-negative · OK</summary>
 
 ```js
 test("parses a well formed header", () => {
@@ -1392,7 +1417,7 @@ test("parses a well formed header", () => {
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 - **Label checks:** `positive` no: match.
 </details>
-<details><summary><a id="case-79"></a>79. <code>returns null for an unknown setting</code> · only-negative · OK</summary>
+<details><summary><a id="case-80"></a>80. <code>returns null for an unknown setting</code> · only-negative · OK</summary>
 
 ```js
 test("returns null for an unknown setting", () => {
@@ -1406,7 +1431,7 @@ test("returns null for an unknown setting", () => {
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 - **Label checks:** `positive` no: match.
 </details>
-<details><summary><a id="case-80"></a>80. <code>events are dispatched</code> · passes-with-zero · OK</summary>
+<details><summary><a id="case-81"></a>81. <code>events are dispatched</code> · passes-with-zero · OK</summary>
 
 ```js
 test("events are dispatched", () => {
@@ -1421,7 +1446,7 @@ test("events are dispatched", () => {
   - No escalation: `positive_a` yes (0.57) · `positive_b` yes (0.59) → positive: yes. runs: yes, from the extractor's flags.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 </details>
-<details><summary><a id="case-81"></a>81. <code>imports are folded</code> · passes-with-zero · OK</summary>
+<details><summary><a id="case-82"></a>82. <code>imports are folded</code> · passes-with-zero · OK</summary>
 
 ```js
 test("imports are folded", () => {
@@ -1431,11 +1456,11 @@ test("imports are folded", () => {
 ```
 - **Known defect:** passes-with-zero. **Check:** [`can-fail`](checks/can-fail/check.mjs). **Expected:** escalate, `can_fail` yes. Note: vacuous: passes when the feature produces nothing. Case file [`checks/can-fail/cases/vacuous-zero/case.mjs`](checks/can-fail/cases/vacuous-zero/case.mjs), line 5. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Vacuous / passes-with-zero](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** weak, needs eyes.
-  - `asserts_exact` no (0.01) · `asserts_written` no (0.31) · `asserts_same` no (0.35) · `asserts_shape` yes (0.96) · `asserts_mock` no (0.02) → asserts: shape-only. **Escalates:** asserts shape-only.
-  - No escalation: `can_fail_a` yes (0.98) · `can_fail_c` yes (0.99) → can_fail: 0.99, spread 0.01 (stable). Label yes: match. `positive_a` yes (0.50) · `positive_b` yes (0.67) → positive: yes. runs: yes, from the extractor's flags.
+  - `asserts_exact` no (0.01) · `asserts_written` no (0.31) · `asserts_same` no (0.44) · `asserts_shape` yes (0.96) · `asserts_mock` no (0.03) → asserts: shape-only. **Escalates:** asserts shape-only.
+  - No escalation: `can_fail_a` yes (0.98) · `can_fail_c` yes (0.99) → can_fail: 0.98, spread 0.00 (stable). Label yes: match. `positive_a` no (0.48) · `positive_b` yes (0.66) → positive: yes. runs: yes, from the extractor's flags.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 </details>
-<details><summary><a id="case-82"></a>82. <code>reader round trips</code> · self-reference · OK</summary>
+<details><summary><a id="case-83"></a>83. <code>reader round trips</code> · self-reference · OK</summary>
 
 ```js
 test("reader round trips", () => {
@@ -1444,13 +1469,12 @@ test("reader round trips", () => {
 ```
 - **Known defect:** self-reference. **Check:** [`can-fail`](checks/can-fail/check.mjs). **Expected:** escalate, `can_fail` no. Note: tautology: both sides call the same production code. Case file [`checks/can-fail/cases/tautology-selfreference/case.mjs`](checks/can-fail/cases/tautology-selfreference/case.mjs), line 5. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Tautology / self-reference](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** slop, needs eyes.
-  - `can_fail_a` no (0.22) · `can_fail_c` yes (1.00) → can_fail: 0.61, spread 0.78 (unstable). **Escalates:** can_fail unstable (spread 0.78). Label no: not scored.
-  - `asserts_exact` yes (0.89) · `asserts_written` no (0.12) · `asserts_same` yes (1.00) · `asserts_shape` no (0.02) · `asserts_mock` no (0.01) → asserts: from-code. **Escalates:** asserts from-code.
-  - `positive_a` yes (0.61) · `positive_b` yes (0.87) → positive: borderline. **Escalates:** positive borderline (spread 0.26).
-  - No escalation: runs: yes, from the extractor's flags.
+  - `can_fail_a` no (0.33) · `can_fail_c` yes (1.00) → can_fail: 0.66, spread 0.67 (unstable). **Escalates:** can_fail unstable (spread 0.67). Label no: not scored.
+  - `asserts_exact` yes (0.94) · `asserts_written` no (0.21) · `asserts_same` yes (1.00) · `asserts_shape` no (0.02) · `asserts_mock` no (0.02) → asserts: from-code. **Escalates:** asserts from-code.
+  - No escalation: `positive_a` yes (0.64) · `positive_b` yes (0.89) → positive: yes. runs: yes, from the extractor's flags.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 </details>
-<details><summary><a id="case-83"></a>83. <code>the two totals match</code> · self-reference · OK</summary>
+<details><summary><a id="case-84"></a>84. <code>the two totals match</code> · self-reference · OK</summary>
 
 ```js
 test("the two totals match", () => {
@@ -1459,12 +1483,11 @@ test("the two totals match", () => {
 ```
 - **Known defect:** self-reference. **Check:** [`can-fail`](checks/can-fail/check.mjs). **Expected:** escalate, `can_fail` no. Note: One helper backs both sides, so any change to it moves both sides together. Case file [`checks/can-fail/cases/helper-agreement/case.mjs`](checks/can-fail/cases/helper-agreement/case.mjs), line 6. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Tautology / self-reference](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** slop, needs eyes.
-  - `can_fail_a` no (0.01) · `can_fail_c` no (0.34) → can_fail: 0.17, spread 0.33 (borderline). **Escalates:** can_fail borderline (spread 0.33). Label no: not scored.
-  - `asserts_exact` yes (0.95) · `asserts_written` no (0.04) · `asserts_same` yes (1.00) · `asserts_shape` no (0.03) · `asserts_mock` no (0.01) → asserts: from-code. **Escalates:** asserts from-code.
-  - No escalation: `positive_a` yes (0.81) · `positive_b` yes (0.89) → positive: yes. runs: yes, from the extractor's flags.
+  - `asserts_exact` yes (0.94) · `asserts_written` no (0.03) · `asserts_same` yes (1.00) · `asserts_shape` no (0.03) · `asserts_mock` no (0.01) → asserts: from-code. **Escalates:** asserts from-code.
+  - No escalation: `can_fail_a` no (0.01) · `can_fail_c` no (0.20) → can_fail: 0.11, spread 0.18 (stable). Label no: match. `positive_a` yes (0.80) · `positive_b` yes (0.83) → positive: yes. runs: yes, from the extractor's flags.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 </details>
-<details><summary><a id="case-84"></a>84. <code>builds three steps</code> · shape-only · OK</summary>
+<details><summary><a id="case-85"></a>85. <code>builds three steps</code> · shape-only · OK</summary>
 
 ```js
 test("builds three steps", () => {
@@ -1479,7 +1502,7 @@ test("builds three steps", () => {
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 - **Label checks:** `asserts` shape-only: not committed.
 </details>
-<details><summary><a id="case-85"></a>85. <code>loads the profile fields</code> · shape-only · OK</summary>
+<details><summary><a id="case-86"></a>86. <code>loads the profile fields</code> · shape-only · OK</summary>
 
 ```js
 test("loads the profile fields", () => {
@@ -1494,7 +1517,7 @@ test("loads the profile fields", () => {
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 - **Label checks:** `asserts` shape-only: match.
 </details>
-<details><summary><a id="case-86"></a>86. <code>planner returns roads</code> · shape-only · OK</summary>
+<details><summary><a id="case-87"></a>87. <code>planner returns roads</code> · shape-only · OK</summary>
 
 ```js
 test("planner returns roads", () => {
@@ -1505,12 +1528,12 @@ test("planner returns roads", () => {
 ```
 - **Known defect:** shape-only. **Check:** [`asserts`](checks/asserts/check.mjs). **Expected:** escalate, `can_fail` yes, `asserts` shape-only. Note: shape-not-value: a shape change can fail it, the content is never checked. Case file [`checks/asserts/cases/shape-not-value/case.mjs`](checks/asserts/cases/shape-not-value/case.mjs), line 5. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Shape-not-value](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** unclassified, needs eyes.
-  - `asserts_exact` yes (0.74) · `asserts_written` yes (1.00) · `asserts_same` no (0.21) · `asserts_shape` yes (0.99) · `asserts_mock` no (0.01). **Escalates:** asserts unstable (exact vs shape-only).
-  - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `positive_a` yes (0.93) · `positive_b` yes (0.99) → positive: yes. runs: yes, from the extractor's flags.
+  - `asserts_exact` yes (0.74) · `asserts_written` yes (1.00) · `asserts_same` no (0.24) · `asserts_shape` yes (0.99) · `asserts_mock` no (0.01). **Escalates:** asserts unstable (exact vs shape-only).
+  - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `positive_a` yes (0.93) · `positive_b` yes (0.98) → positive: yes. runs: yes, from the extractor's flags.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 - **Label checks:** `asserts` shape-only: not committed.
 </details>
-<details><summary><a id="case-87"></a>87. <code>returns a list of routes</code> · shape-only · OK</summary>
+<details><summary><a id="case-88"></a>88. <code>returns a list of routes</code> · shape-only · OK</summary>
 
 ```js
 test("returns a list of routes", () => {
@@ -1526,7 +1549,7 @@ test("returns a list of routes", () => {
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 - **Label checks:** `asserts` shape-only: match · `verdict` weak: match.
 </details>
-<details><summary><a id="case-88"></a>88. <code>sorts by price ascending</code> · silent-failure · OK</summary>
+<details><summary><a id="case-89"></a>89. <code>sorts by price ascending</code> · silent-failure · OK</summary>
 
 ```js
 test("sorts by price ascending", () => {
@@ -1539,7 +1562,7 @@ test("sorts by price ascending", () => {
   - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (1.00) · `asserts_written` yes (1.00) · `asserts_same` no (0.33) · `asserts_shape` no (0.01) · `asserts_mock` no (0.00) → asserts: behaviour. `positive_a` yes (0.96) · `positive_b` yes (1.00) → positive: yes. runs: yes, from the extractor's flags.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 </details>
-<details><summary><a id="case-89"></a>89. <code>handles overflow</code> · skipped · OK</summary>
+<details><summary><a id="case-90"></a>90. <code>handles overflow</code> · skipped · OK</summary>
 
 ```js
 test.skip("handles overflow", () => {
@@ -1548,13 +1571,13 @@ test.skip("handles overflow", () => {
 ```
 - **Known defect:** skipped. **Check:** [`runs`](checks/runs/check.mjs). **Expected:** escalate, `runs` no. Note: skipped: the test never runs. Case file [`checks/runs/cases/skipped/case.mjs`](checks/runs/cases/skipped/case.mjs), line 5. Extractor notes: `skipped`. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Skipped / disabled / focused](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** slop, needs eyes.
-  - `can_fail_a` no (0.03) · `can_fail_c` no (0.05) → can_fail: 0.04, spread 0.02 (stable). **Escalates:** can_fail contradicts asserts.
-  - runs: no, from the extractor's flags. **Escalates:** does not run, or narrows the run.
-  - No escalation: `asserts_exact` yes (1.00) · `asserts_written` yes (0.95) · `asserts_same` no (0.36) · `asserts_shape` no (0.01) · `asserts_mock` no (0.01) → asserts: behaviour. `positive_a` yes (0.99) · `positive_b` yes (0.99) → positive: yes.
+  - `can_fail_a` no (0.03) · `can_fail_c` no (0.10) → can_fail: 0.06, spread 0.07 (stable). **Escalates:** can_fail contradicts asserts.
+  - runs: no, from the extractor's flags. **Escalates:** does not run, or a marker narrows the run.
+  - No escalation: `asserts_exact` yes (1.00) · `asserts_written` yes (0.97) · `asserts_same` no (0.38) · `asserts_shape` no (0.01) · `asserts_mock` no (0.01) → asserts: behaviour. `positive_a` yes (0.98) · `positive_b` yes (0.99) → positive: yes.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 - **Label checks:** `runs` no: match.
 </details>
-<details><summary><a id="case-90"></a>90. <code>parses a dotted key</code> · skipped · OK</summary>
+<details><summary><a id="case-91"></a>91. <code>parses a dotted key</code> · skipped · OK</summary>
 
 ```js
 xit("parses a dotted key", () => {
@@ -1564,12 +1587,12 @@ xit("parses a dotted key", () => {
 - **Known defect:** skipped. **Check:** [`runs`](checks/runs/check.mjs). **Expected:** escalate, `runs` no. Note: The test is marked xit, so it never runs. Case file [`checks/runs/cases/xit-key/case.mjs`](checks/runs/cases/xit-key/case.mjs), line 5. Extractor notes: `skipped`. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Skipped / disabled / focused](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** unclassified, needs eyes.
   - `can_fail_a` yes (0.52) · `can_fail_c` no (0.09) → can_fail: 0.30, spread 0.43 (borderline). **Escalates:** can_fail borderline (spread 0.43).
-  - runs: no, from the extractor's flags. **Escalates:** does not run, or narrows the run.
+  - runs: no, from the extractor's flags. **Escalates:** does not run, or a marker narrows the run.
   - No escalation: `asserts_exact` yes (0.99) · `asserts_written` yes (1.00) · `asserts_same` no (0.20) · `asserts_shape` no (0.02) · `asserts_mock` no (0.01) → asserts: behaviour. `positive_a` yes (0.98) · `positive_b` yes (0.99) → positive: yes.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 - **Label checks:** `runs` no: match.
 </details>
-<details><summary><a id="case-91"></a>91. <code>rejects a malformed header</code> · skipped · OK</summary>
+<details><summary><a id="case-92"></a>92. <code>rejects a malformed header</code> · skipped · OK</summary>
 
 ```js
 test.skip("rejects a malformed header", () => {
@@ -1580,12 +1603,12 @@ test.skip("rejects a malformed header", () => {
 - **What decided it:** slop, needs eyes.
   - `can_fail_a` no (0.03) · `can_fail_c` no (0.02) → can_fail: 0.02, spread 0.01 (stable). **Escalates:** can_fail contradicts asserts.
   - `positive_a` yes (0.98) · `positive_b` yes (0.72) → positive: borderline. **Escalates:** positive borderline (spread 0.26).
-  - runs: no, from the extractor's flags. **Escalates:** does not run, or narrows the run.
+  - runs: no, from the extractor's flags. **Escalates:** does not run, or a marker narrows the run.
   - No escalation: `asserts_exact` yes (0.92) · `asserts_written` yes (0.99) · `asserts_same` no (0.31) · `asserts_shape` no (0.04) · `asserts_mock` no (0.03) → asserts: behaviour.
 - **Descriptive:** 5 clean · smells: `conditional` (conditional) · unanswered: none.
 - **Label checks:** `runs` no: match.
 </details>
-<details><summary><a id="case-92"></a>92. <code>rejects a stale token</code> · skipped · OK</summary>
+<details><summary><a id="case-93"></a>93. <code>rejects a stale token</code> · skipped · OK</summary>
 
 ```js
 test.skip("rejects a stale token", () => {
@@ -1596,12 +1619,12 @@ test.skip("rejects a stale token", () => {
 - **What decided it:** slop, needs eyes.
   - `can_fail_a` no (0.03) · `can_fail_c` no (0.03) → can_fail: 0.03, spread 0.00 (stable). **Escalates:** can_fail contradicts asserts.
   - `positive_a` yes (0.52) · `positive_b` yes (0.82) → positive: borderline. **Escalates:** positive borderline (spread 0.30).
-  - runs: no, from the extractor's flags. **Escalates:** does not run, or narrows the run.
+  - runs: no, from the extractor's flags. **Escalates:** does not run, or a marker narrows the run.
   - No escalation: `asserts_exact` yes (1.00) · `asserts_written` yes (1.00) · `asserts_same` no (0.28) · `asserts_shape` no (0.03) · `asserts_mock` no (0.02) → asserts: behaviour.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 - **Label checks:** `runs` no: match.
 </details>
-<details><summary><a id="case-93"></a>93. <code>splits a dotted key</code> · skipped · OK</summary>
+<details><summary><a id="case-94"></a>94. <code>splits a dotted key</code> · skipped · OK</summary>
 
 ```js
 test("splits a dotted key", () => {
@@ -1611,12 +1634,12 @@ test("splits a dotted key", () => {
 - **Known defect:** skipped. **Check:** [`runs`](checks/runs/check.mjs). **Expected:** escalate, `runs` no. Note: The describe around the test is skipped, so the test never runs. Case file [`checks/runs/cases/legacy-block/case.mjs`](checks/runs/cases/legacy-block/case.mjs), line 5, inside `describe.skip("legacy parser", () => {`. Extractor notes: `skipped`. Sources: [testsmells.org, Open Catalog of Test Smells: Ignored Test](https://testsmells.org/pages/testsmells.html).
 - **What decided it:** unclassified, needs eyes.
   - `can_fail_a` yes (0.98) · `can_fail_c` no (0.09) → can_fail: 0.53, spread 0.88 (unstable). **Escalates:** can_fail unstable (spread 0.88).
-  - runs: no, from the extractor's flags. **Escalates:** does not run, or narrows the run.
+  - runs: no, from the extractor's flags. **Escalates:** does not run, or a marker narrows the run.
   - No escalation: `asserts_exact` yes (0.99) · `asserts_written` yes (1.00) · `asserts_same` no (0.19) · `asserts_shape` no (0.02) · `asserts_mock` no (0.01) → asserts: behaviour. `positive_a` yes (0.98) · `positive_b` yes (1.00) → positive: yes.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 - **Label checks:** `runs` no: match.
 </details>
-<details><summary><a id="case-94"></a>94. <code>finds the largest prime below ten million</code> · slow · OK</summary>
+<details><summary><a id="case-95"></a>95. <code>finds the largest prime below ten million</code> · slow · OK</summary>
 
 ```js
 test("finds the largest prime below ten million", () => {
@@ -1625,10 +1648,10 @@ test("finds the largest prime below ten million", () => {
 ```
 - **Known defect:** slow. **Check:** [`verdict`](checks/verdict/check.mjs). **Expected:** pass, `can_fail` yes. Note: The sieve over ten million numbers is heavy work. Case file [`checks/verdict/cases/primes-ten-million/case.mjs`](checks/verdict/cases/primes-ten-million/case.mjs), line 4. Sources: [Kent Beck, Test Desiderata (2019): Fast](https://kentbeck.github.io/TestDesiderata/).
 - **What decided it:** good, passes.
-  - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (1.00) · `asserts_written` yes (1.00) · `asserts_same` no (0.06) · `asserts_shape` no (0.00) · `asserts_mock` no (0.00) → asserts: behaviour. `positive_a` yes (1.00) · `positive_b` yes (1.00) → positive: yes. runs: yes, from the extractor's flags.
+  - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (1.00) · `asserts_written` yes (1.00) · `asserts_same` no (0.08) · `asserts_shape` no (0.00) · `asserts_mock` no (0.00) → asserts: behaviour. `positive_a` yes (1.00) · `positive_b` yes (1.00) → positive: yes. runs: yes, from the extractor's flags.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 </details>
-<details><summary><a id="case-95"></a>95. <code>the package entry loads</code> · smoke · OK</summary>
+<details><summary><a id="case-96"></a>96. <code>the package entry loads</code> · smoke · OK</summary>
 
 ```js
 test("the package entry loads", async () => {
@@ -1641,7 +1664,7 @@ test("the package entry loads", async () => {
   - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `positive_a` yes (0.89) · `positive_b` yes (0.90) → positive: yes. runs: yes, from the extractor's flags.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 </details>
-<details><summary><a id="case-96"></a>96. <code>reads the port from the environment</code> · state-leak · OK</summary>
+<details><summary><a id="case-97"></a>97. <code>reads the port from the environment</code> · state-leak · OK</summary>
 
 ```js
 test("reads the port from the environment", () => {
@@ -1652,10 +1675,10 @@ test("reads the port from the environment", () => {
 - **Known defect:** state-leak. **Check:** [`restores`](checks/restores/check.mjs). **Expected:** pass, `can_fail` yes, `restores` no. Note: PORT stays 8081 for every later test. Case file [`checks/restores/cases/port-override/case.mjs`](checks/restores/cases/port-override/case.mjs), line 4. Sources: [Kent Beck, Test Desiderata (2019): Isolated](https://kentbeck.github.io/TestDesiderata/).
 - **What decided it:** good, passes.
   - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (1.00) · `asserts_written` yes (1.00) · `asserts_same` no (0.12) · `asserts_shape` no (0.00) · `asserts_mock` no (0.01) → asserts: behaviour. `positive_a` yes (0.99) · `positive_b` yes (1.00) → positive: yes. runs: yes, from the extractor's flags.
-- **Descriptive:** 4 clean · smells: `deterministic` (non-deterministic), `restores` (state-leak) · unanswered: none.
+- **Descriptive:** 5 clean · smells: `restores` (state-leak) · unanswered: none.
 - **Label checks:** `restores` no: match.
 </details>
-<details><summary><a id="case-97"></a>97. <code>the reminder fires after an hour</code> · state-leak · OK</summary>
+<details><summary><a id="case-98"></a>98. <code>the reminder fires after an hour</code> · state-leak · OK</summary>
 
 ```js
 test("the reminder fires after an hour", () => {
@@ -1672,7 +1695,7 @@ test("the reminder fires after an hour", () => {
 - **Descriptive:** 5 clean · smells: `restores` (state-leak) · unanswered: none.
 - **Label checks:** `deterministic` yes: match · `restores` no: match.
 </details>
-<details><summary><a id="case-98"></a>98. <code>slugify lowercases through normalise</code> · structure-dependent · OK</summary>
+<details><summary><a id="case-99"></a>99. <code>slugify lowercases through normalise</code> · structure-dependent · OK</summary>
 
 ```js
 test("slugify lowercases through normalise", () => {
@@ -1688,7 +1711,7 @@ test("slugify lowercases through normalise", () => {
 - **Descriptive:** 5 clean · smells: `resilient` (structure-dependent) · unanswered: none.
 - **Label checks:** `asserts` behaviour: match · `resilient` no: match.
 </details>
-<details><summary><a id="case-99"></a>99. <code>the build is green</code> · tautology · OK</summary>
+<details><summary><a id="case-100"></a>100. <code>the build is green</code> · tautology · OK</summary>
 
 ```js
 test("the build is green", () => {
@@ -1698,11 +1721,12 @@ test("the build is green", () => {
 - **Known defect:** tautology. **Check:** [`can-fail`](checks/can-fail/check.mjs). **Expected:** escalate, `can_fail` no, `verdict` slop. Note: The assertion holds for every build, so breaking the code cannot fail it. Case file [`checks/can-fail/cases/constant-truth/case.mjs`](checks/can-fail/cases/constant-truth/case.mjs), line 5. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Tautology / self-reference](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** unclassified, needs eyes.
   - `can_fail_a` no (0.01) · `can_fail_c` yes (0.98) → can_fail: 0.50, spread 0.97 (unstable). **Escalates:** can_fail unstable (spread 0.97). Label no: not scored.
-  - No escalation: `asserts_exact` yes (1.00) · `asserts_written` yes (0.99) · `asserts_same` yes (0.87) · `asserts_shape` no (0.05) · `asserts_mock` no (0.01) → asserts: behaviour. `positive_a` yes (0.70) · `positive_b` yes (0.78) → positive: yes. runs: yes, from the extractor's flags.
+  - `asserts_exact` yes (1.00) · `asserts_written` yes (0.99) · `asserts_same` yes (0.87) · `asserts_shape` no (0.05) · `asserts_mock` no (0.01). **Escalates:** asserts unstable (written vs same).
+  - No escalation: `positive_a` yes (0.70) · `positive_b` yes (0.78) → positive: yes. runs: yes, from the extractor's flags.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 - **Label checks:** `verdict` slop: not committed.
 </details>
-<details><summary><a id="case-100"></a>100. <code>the world is sane</code> · tautology · OK</summary>
+<details><summary><a id="case-101"></a>101. <code>the world is sane</code> · tautology · OK</summary>
 
 ```js
 test("the world is sane", () => {
@@ -1711,12 +1735,13 @@ test("the world is sane", () => {
 ```
 - **Known defect:** tautology. **Check:** [`can-fail`](checks/can-fail/check.mjs). **Expected:** escalate, `can_fail` no, `verdict` slop. Note: tautology: true === true. Case file [`checks/can-fail/cases/tautology-constant/case.mjs`](checks/can-fail/cases/tautology-constant/case.mjs), line 5. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Tautology / self-reference](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** unclassified, needs eyes.
-  - `can_fail_a` no (0.04) · `can_fail_c` yes (0.99) → can_fail: 0.52, spread 0.95 (unstable). **Escalates:** can_fail unstable (spread 0.95). Label no: not scored.
-  - No escalation: `asserts_exact` yes (1.00) · `asserts_written` yes (0.99) · `asserts_same` yes (0.86) · `asserts_shape` no (0.02) · `asserts_mock` no (0.01) → asserts: behaviour. `positive_a` yes (0.93) · `positive_b` yes (0.89) → positive: yes. runs: yes, from the extractor's flags.
+  - `can_fail_a` no (0.03) · `can_fail_c` yes (1.00) → can_fail: 0.51, spread 0.97 (unstable). **Escalates:** can_fail unstable (spread 0.97). Label no: not scored.
+  - `asserts_exact` yes (1.00) · `asserts_written` yes (0.99) · `asserts_same` yes (0.88) · `asserts_shape` no (0.03) · `asserts_mock` no (0.00). **Escalates:** asserts unstable (written vs same).
+  - No escalation: `positive_a` yes (0.93) · `positive_b` yes (0.88) → positive: yes. runs: yes, from the extractor's flags.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 - **Label checks:** `verdict` slop: not committed.
 </details>
-<details><summary><a id="case-101"></a>101. <code>reads the port from the sample file</code> · uncontrolled-resource · OK</summary>
+<details><summary><a id="case-102"></a>102. <code>reads the port from the sample file</code> · uncontrolled-resource · OK</summary>
 
 ```js
 test("reads the port from the sample file", () => {
@@ -1729,7 +1754,7 @@ test("reads the port from the sample file", () => {
   - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (1.00) · `asserts_written` yes (1.00) · `asserts_same` no (0.09) · `asserts_shape` no (0.00) · `asserts_mock` no (0.01) → asserts: behaviour. `positive_a` yes (1.00) · `positive_b` yes (1.00) → positive: yes. runs: yes, from the extractor's flags.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 </details>
-<details><summary><a id="case-102"></a>102. <code>the summary is produced</code> · vacuous · OK</summary>
+<details><summary><a id="case-103"></a>103. <code>the summary is produced</code> · vacuous · OK</summary>
 
 ```js
 test("the summary is produced", () => {
@@ -1739,12 +1764,12 @@ test("the summary is produced", () => {
 ```
 - **Known defect:** vacuous. **Check:** [`can-fail`](checks/can-fail/check.mjs). **Expected:** escalate, `can_fail` yes. Note: The aggregate exists, but no value inside it is ever read. Case file [`checks/can-fail/cases/aggregate-exists/case.mjs`](checks/can-fail/cases/aggregate-exists/case.mjs), line 5. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Vacuous / passes-with-zero](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** weak, needs eyes.
-  - `asserts_exact` no (0.01) · `asserts_written` yes (0.51) · `asserts_same` no (0.44) · `asserts_shape` yes (0.97) · `asserts_mock` no (0.01) → asserts: shape-only. **Escalates:** asserts shape-only.
-  - `positive_a` yes (0.59) · `positive_b` no (0.27) → positive: borderline. **Escalates:** positive borderline (spread 0.32).
+  - `asserts_exact` no (0.01) · `asserts_written` no (0.48) · `asserts_same` no (0.45) · `asserts_shape` yes (0.98) · `asserts_mock` no (0.01) → asserts: shape-only. **Escalates:** asserts shape-only.
+  - `positive_a` yes (0.61) · `positive_b` no (0.13) → positive: borderline. **Escalates:** positive borderline (spread 0.48).
   - No escalation: `can_fail_a` yes (0.99) · `can_fail_c` yes (1.00) → can_fail: 0.99, spread 0.01 (stable). Label yes: match. runs: yes, from the extractor's flags.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 </details>
-<details><summary><a id="case-103"></a>103. <code>works</code> · vague-name · OK</summary>
+<details><summary><a id="case-104"></a>104. <code>works</code> · vague-name · OK</summary>
 
 ```js
 test("works", () => {
@@ -1756,7 +1781,7 @@ test("works", () => {
   - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (1.00) · `asserts_written` yes (1.00) · `asserts_same` no (0.20) · `asserts_shape` no (0.00) · `asserts_mock` no (0.01) → asserts: behaviour. `positive_a` yes (0.99) · `positive_b` yes (1.00) → positive: yes. runs: yes, from the extractor's flags.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 </details>
-<details><summary><a id="case-104"></a>104. <code>reads the major version</code> · weak-assert · OK</summary>
+<details><summary><a id="case-105"></a>105. <code>reads the major version</code> · weak-assert · OK</summary>
 
 ```js
 test("reads the major version", () => {
@@ -1769,7 +1794,7 @@ test("reads the major version", () => {
   - No escalation: `can_fail_a` yes (0.99) · `can_fail_c` yes (1.00) → can_fail: 0.99, spread 0.01 (stable). Label yes: match. `positive_a` yes (0.97) · `positive_b` yes (0.98) → positive: yes. runs: yes, from the extractor's flags.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 </details>
-<details><summary><a id="case-105"></a>105. <code>builds a job with the given name</code> · wrong-reason · OK</summary>
+<details><summary><a id="case-106"></a>106. <code>builds a job with the given name</code> · wrong-reason · OK</summary>
 
 ```js
 test("builds a job with the given name", () => {
@@ -1787,9 +1812,9 @@ export function buildJob({ name, steps }) {
 - **Known defect:** wrong-reason. **Check:** [`verdict`](checks/verdict/check.mjs). **Expected:** either, `can_fail` yes. Note: The asserted field is copied from the argument, so a stub that only copies would pass. Only the mutation check proves this, so escalation is welcome but not required. Case file [`checks/verdict/cases/passthrough-argument/case.mjs`](checks/verdict/cases/passthrough-argument/case.mjs), line 6. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Passes for the wrong reason](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** good, passes.
   - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (1.00) · `asserts_written` yes (1.00) · `asserts_same` no (0.29) · `asserts_shape` no (0.00) · `asserts_mock` no (0.00) → asserts: behaviour. `positive_a` yes (0.98) · `positive_b` yes (1.00) → positive: yes. runs: yes, from the extractor's flags.
-- **Descriptive:** 6 clean · smells: none · unanswered: none.
+- **Descriptive:** 5 clean · smells: `deterministic` (non-deterministic) · unanswered: none.
 </details>
-<details><summary><a id="case-106"></a>106. <code>reports no booking for a free slot</code> · wrong-reason · OK</summary>
+<details><summary><a id="case-107"></a>107. <code>reports no booking for a free slot</code> · wrong-reason · OK</summary>
 
 ```js
 test("reports no booking for a free slot", () => {
@@ -1815,13 +1840,12 @@ export class Calendar {
 ```
 - **Known defect:** wrong-reason. **Check:** [`positive`](checks/positive/check.mjs). **Expected:** either, `can_fail` yes, `positive` no. Note: The lookup is empty only because the fixture never creates the booking it queries. Only the mutation check proves this, so escalation is welcome but not required. Case file [`checks/positive/cases/absent-record/case.mjs`](checks/positive/cases/absent-record/case.mjs), line 6. Sources: [the house catalogue, verify-prd-implemented/test-patterns.md: Passes for the wrong reason](https://github.com/Vortiago/Verktoykasse/blob/main/verify-prd-implemented/test-patterns.md).
 - **What decided it:** weak, needs eyes.
-  - `asserts_exact` yes (0.99) · `asserts_written` yes (1.00) · `asserts_same` no (0.34) · `asserts_shape` no (0.47) · `asserts_mock` no (0.00). **Escalates:** asserts unstable (unsure same 0.34, shape 0.47).
   - `positive_a` no (0.00) · `positive_b` no (0.00) → positive: no. **Escalates:** no positive assertion.
-  - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. runs: yes, from the extractor's flags.
+  - No escalation: `can_fail_a` yes (1.00) · `can_fail_c` yes (1.00) → can_fail: 1.00, spread 0.00 (stable). Label yes: match. `asserts_exact` yes (0.99) · `asserts_written` yes (1.00) · `asserts_same` no (0.34) · `asserts_shape` no (0.47) · `asserts_mock` no (0.00) → asserts: behaviour. runs: yes, from the extractor's flags.
 - **Descriptive:** 6 clean · smells: none · unanswered: none.
 - **Label checks:** `positive` no: match.
 </details>
-<details><summary><a id="case-107"></a>107. <code>saves the user</code> · wrong-reason · OK</summary>
+<details><summary><a id="case-108"></a>108. <code>saves the user</code> · wrong-reason · OK</summary>
 
 ```js
 test("saves the user", () => {
@@ -1845,7 +1869,7 @@ export function save(user) {
   - `asserts_exact` no (0.01) · `asserts_written` yes (0.72) · `asserts_same` no (0.41) · `asserts_shape` no (0.04) · `asserts_mock` yes (0.99) → asserts: interaction-only. **Escalates:** asserts interaction-only.
   - `positive_a` no (0.06) · `positive_b` no (0.11) → positive: no. **Escalates:** no positive assertion.
   - No escalation: `can_fail_a` yes (0.98) · `can_fail_c` yes (0.89) → can_fail: 0.94, spread 0.09 (stable). Label yes: match. runs: yes, from the extractor's flags.
-- **Descriptive:** 5 clean · smells: `resilient` (structure-dependent) · unanswered: none.
+- **Descriptive:** 6 clean · smells: none · unanswered: none.
 - **Label checks:** `asserts` interaction-only: match.
 </details>
 
@@ -1889,7 +1913,7 @@ The tool asks each test these questions in one call.
 | `positive_b` | Does an assertion check a value that is not empty or null? | yes: it checks a real value |
 | `conditional` | Does every assertion always run? | yes: no branch, loop, early return, or catch can skip or swallow one |
 | `isolated` | Does this test pass alone and in any order? | yes: what it reads is built by it, a hook, or a fixture no test changes |
-| `deterministic` | Does this test give the same result on every run? | yes: nothing real-time, random, networked, or external, or it is faked |
+| `deterministic` | Does this test give the same result on every run? | yes: the test fakes or seeds time and randomness, or starts the services it uses |
 | `automated` | Does this test pass or fail with no person involved? | yes: no person must set up, act, or read |
 | `restores` | Does this test leave all shared state as it found it? | yes: it changes none, or an after hook puts it back |
 | `resilient` | Does this test use only the public interface of the code? | yes: a public import, and it asserts a return, a throw, or an effect a caller sees |
