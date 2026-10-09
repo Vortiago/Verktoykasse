@@ -1,0 +1,8 @@
+{
+  "test": "splits a dotted key",
+  "defect": "skipped",
+  "mustEscalate": true,
+  "mixed": false,
+  "runs": false,
+  "note": "The describe around the test is skipped, so the test never runs."
+}

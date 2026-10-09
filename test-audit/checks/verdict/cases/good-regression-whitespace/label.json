@@ -1,0 +1,14 @@
+{
+  "test": "regression #77: a trimmed name keeps its inner spaces",
+  "defect": "clean",
+  "canFail": true,
+  "mustEscalate": false,
+  "mixed": false,
+  "asserts": "behaviour",
+  "runs": true,
+  "positive": true,
+  "verdict": "good",
+  "deterministic": true,
+  "note": "a real guard",
+  "resilient": true
+}

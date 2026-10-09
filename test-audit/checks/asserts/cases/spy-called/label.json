@@ -1,0 +1,10 @@
+{
+  "test": "notifies the listener",
+  "defect": "interaction-only",
+  "canFail": true,
+  "mustEscalate": true,
+  "mixed": false,
+  "asserts": "interaction-only",
+  "verdict": "weak",
+  "note": "A missing call fails the test, though the mock stands in for behaviour it never verifies."
+}

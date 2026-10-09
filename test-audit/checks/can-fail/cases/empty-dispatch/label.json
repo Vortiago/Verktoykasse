@@ -1,0 +1,8 @@
+{
+  "test": "events are dispatched",
+  "defect": "passes-with-zero",
+  "canFail": false,
+  "mustEscalate": true,
+  "mixed": false,
+  "note": "The check only asks whether the collection is defined, so no dispatch passes."
+}

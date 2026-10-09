@@ -1,0 +1,13 @@
+{
+  "test": "regression #42: a single import resolves",
+  "defect": "clean",
+  "canFail": true,
+  "mustEscalate": false,
+  "asserts": "behaviour",
+  "runs": true,
+  "positive": true,
+  "verdict": "good",
+  "deterministic": true,
+  "note": "a clean regression guard",
+  "resilient": true
+}

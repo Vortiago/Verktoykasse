@@ -1,0 +1,9 @@
+{
+  "test": "the token has not expired yet",
+  "defect": "non-deterministic",
+  "canFail": true,
+  "mustEscalate": false,
+  "mixed": false,
+  "deterministic": false,
+  "note": "A real expiry check, but reading Date.now makes the result depend on when the test runs."
+}

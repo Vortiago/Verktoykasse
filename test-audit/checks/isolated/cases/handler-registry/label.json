@@ -1,0 +1,21 @@
+[
+  {
+    "test": "registers a handler",
+    "defect": "state-leak",
+    "canFail": true,
+    "mustEscalate": false,
+    "mixed": false,
+    "isolated": true,
+    "restores": false,
+    "note": "It builds what it reads, but it leaves the shared registry changed."
+  },
+  {
+    "test": "dispatches to the registered handler",
+    "defect": "order-dependent",
+    "canFail": true,
+    "mustEscalate": false,
+    "mixed": false,
+    "isolated": false,
+    "note": "It passes only after the test above has run."
+  }
+]

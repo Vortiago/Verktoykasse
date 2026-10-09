@@ -1,0 +1,8 @@
+{
+  "test": "pins the current receipt layout before the rewrite",
+  "defect": "clean",
+  "canFail": true,
+  "mustEscalate": false,
+  "mixed": false,
+  "note": "The name and the inline snapshot say it pins today's output."
+}

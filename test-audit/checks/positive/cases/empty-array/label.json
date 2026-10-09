@@ -1,0 +1,9 @@
+{
+  "test": "finds no imports in an empty file",
+  "defect": "only-negative",
+  "canFail": true,
+  "mustEscalate": true,
+  "mixed": false,
+  "positive": false,
+  "note": "Only the empty result is checked, so a finder that never finds anything would pass."
+}

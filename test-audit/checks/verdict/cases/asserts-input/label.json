@@ -1,0 +1,9 @@
+{
+  "test": "normalise trims the title",
+  "defect": "wrong-reason",
+  "canFail": false,
+  "mustEscalate": true,
+  "mixed": false,
+  "asserts": "inexact",
+  "note": "The name promises a trimmed title, but the assertion reads the untouched input, so broken trimming still passes."
+}

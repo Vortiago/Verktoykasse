@@ -1,0 +1,8 @@
+{
+  "test": "regression #12: an empty list sums to zero",
+  "defect": "clean",
+  "canFail": true,
+  "mustEscalate": false,
+  "mixed": false,
+  "note": "The name cites a past issue."
+}

@@ -1,0 +1,9 @@
+{
+  "test": "merges the options",
+  "defect": "commented-out",
+  "canFail": false,
+  "mustEscalate": true,
+  "mixed": false,
+  "asserts": "inexact",
+  "note": "The real assertion is commented out, beside a tautology."
+}

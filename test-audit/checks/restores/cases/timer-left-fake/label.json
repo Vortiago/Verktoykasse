@@ -1,0 +1,10 @@
+{
+  "test": "the reminder fires after an hour",
+  "defect": "state-leak",
+  "canFail": true,
+  "mustEscalate": false,
+  "mixed": false,
+  "restores": false,
+  "deterministic": true,
+  "note": "The fake timers stay on for every later test."
+}

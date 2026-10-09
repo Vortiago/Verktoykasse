@@ -1,0 +1,7 @@
+{
+  "test": "handles overflow",
+  "defect": "skipped",
+  "mustEscalate": true,
+  "runs": false,
+  "note": "skipped: the test never runs"
+}

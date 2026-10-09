@@ -1,0 +1,7 @@
+{
+  "test": "parses config",
+  "defect": "commented-out",
+  "mustEscalate": true,
+  "asserts": "inexact",
+  "note": "commented-out assertion beside a tautology"
+}

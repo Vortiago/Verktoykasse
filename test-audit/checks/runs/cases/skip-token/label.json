@@ -1,0 +1,8 @@
+{
+  "test": "rejects a stale token",
+  "defect": "skipped",
+  "mustEscalate": true,
+  "mixed": false,
+  "runs": false,
+  "note": "The test is marked skipped, so it never runs."
+}

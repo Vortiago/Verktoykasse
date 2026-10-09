@@ -1,0 +1,8 @@
+{
+  "test": "an invoice falls due thirty days after it is issued",
+  "defect": "clean",
+  "canFail": true,
+  "mustEscalate": false,
+  "mixed": false,
+  "note": "The expected date follows from the input and the named constant."
+}

@@ -1,0 +1,8 @@
+{
+  "test": "parse is stable",
+  "defect": "self-reference",
+  "canFail": false,
+  "mustEscalate": true,
+  "mixed": false,
+  "note": "Both sides call the same production function, so the comparison is true by construction."
+}

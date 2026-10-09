@@ -1,0 +1,9 @@
+{
+  "test": "builds three steps",
+  "defect": "shape-only",
+  "canFail": true,
+  "mustEscalate": true,
+  "mixed": false,
+  "asserts": "shape-only",
+  "note": "A wrong count fails the test, yet the step contents are never checked."
+}

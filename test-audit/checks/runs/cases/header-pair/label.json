@@ -1,0 +1,19 @@
+[
+  {
+    "test": "rejects a malformed header",
+    "defect": "skipped",
+    "mustEscalate": true,
+    "mixed": false,
+    "runs": false,
+    "note": "The test is marked skip, so it never runs."
+  },
+  {
+    "test": "parses a well formed header",
+    "defect": "clean",
+    "canFail": true,
+    "mustEscalate": false,
+    "mixed": false,
+    "runs": true,
+    "note": "A skip on a sibling does not stop this test, and it narrows nothing."
+  }
+]

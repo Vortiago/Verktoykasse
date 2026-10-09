@@ -1,0 +1,122 @@
+{
+  "can_fail_a": {
+    "type": "noul",
+    "instructions": "Can a bug in the behaviour this test names make the test fail?",
+    "criteria": {
+      "true": "yes: some bug in that behaviour fails it",
+      "false": "no: it passes whatever the code does, as with a tautology, both sides from the code, or an assertion that never runs"
+    }
+  },
+  "can_fail_c": {
+    "type": "noul",
+    "instructions": "Does a wrong result of the named behaviour make this test fail?",
+    "criteria": {
+      "true": "yes: a wrong result makes it fail",
+      "false": "no: it passes with any result"
+    }
+  },
+  "asserts_exact": {
+    "type": "noul",
+    "instructions": "Does an assertion compare a result of the code with one exact value?",
+    "criteria": {
+      "true": "yes: it compares a result with one value, or with true or false",
+      "false": "no: it checks only a type, a size, keys, a limit, or no result"
+    }
+  },
+  "asserts_written": {
+    "type": "noul",
+    "instructions": "Does the test write the expected value as a literal or a calculation?",
+    "criteria": {
+      "true": "yes: the test writes the expected value",
+      "false": "no: the test reads the expected value from code"
+    }
+  },
+  "asserts_same": {
+    "type": "noul",
+    "instructions": "Do the expected value and the checked result come from the same code?",
+    "criteria": {
+      "true": "yes: they come from the same code, so they always agree",
+      "false": "no: they come from different sources"
+    }
+  },
+  "asserts_shape": {
+    "type": "noul",
+    "instructions": "Does each assertion check only the type, the size, or the keys of a result?",
+    "criteria": {
+      "true": "yes: only the type, the size, or the keys",
+      "false": "no: an assertion checks a value"
+    }
+  },
+  "asserts_mock": {
+    "type": "noul",
+    "instructions": "Does each assertion check only a call to a mock?",
+    "criteria": {
+      "true": "yes: only calls to a mock",
+      "false": "no: an assertion checks a result"
+    }
+  },
+  "positive_a": {
+    "type": "noul",
+    "instructions": "Does an assertion expect a non-empty value?",
+    "criteria": {
+      "true": "yes: a number, a string, true, an object, or an error message",
+      "false": "no: only empty, null, undefined, or no throw"
+    }
+  },
+  "positive_b": {
+    "type": "noul",
+    "instructions": "Does an assertion check a value that is not empty or null?",
+    "criteria": {
+      "true": "yes: it checks a real value",
+      "false": "no: only empty, null, undefined, or no throw"
+    }
+  },
+  "conditional": {
+    "type": "noul",
+    "instructions": "Does every assertion always run?",
+    "criteria": {
+      "true": "yes: no branch, loop, early return, or catch can skip or swallow one",
+      "false": "no: a branch, a loop over a value that may be empty, an early return, or a catch can skip or swallow one"
+    }
+  },
+  "isolated": {
+    "type": "noul",
+    "instructions": "Does this test pass alone and in any order?",
+    "criteria": {
+      "true": "yes: what it reads is built by it, a hook, or a fixture no test changes",
+      "false": "no: it reads a value another test sets or changes"
+    }
+  },
+  "deterministic": {
+    "type": "noul",
+    "instructions": "Does this test give the same result on every run?",
+    "criteria": {
+      "true": "yes: the test fakes or seeds time and randomness, or starts the services it uses",
+      "false": "no: a sleep, the real clock, real randomness, or a service or file it does not start"
+    }
+  },
+  "automated": {
+    "type": "noul",
+    "instructions": "Does this test pass or fail with no person involved?",
+    "criteria": {
+      "true": "yes: no person must set up, act, or read",
+      "false": "no: a person must"
+    }
+  },
+  "restores": {
+    "type": "noul",
+    "instructions": "Does this test leave all shared state as it found it?",
+    "criteria": {
+      "true": "yes: it changes none, or an after hook puts it back",
+      "false": "no: it leaves a global, env variable, timer, mock, or shared object changed"
+    }
+  },
+  "resilient": {
+    "type": "noul",
+    "instructions": "Does this test use only the public interface of the code?",
+    "criteria": {
+      "true": "yes: a public import, and it asserts a return, a throw, or an effect a caller sees",
+      "false": "no: an internal import, or a private or _ member of the code under test, or a spy on its helper"
+    }
+  }
+}

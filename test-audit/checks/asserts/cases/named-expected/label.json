@@ -1,0 +1,12 @@
+{
+  "test": "parses a semantic version",
+  "defect": "clean",
+  "canFail": true,
+  "mustEscalate": false,
+  "mixed": false,
+  "asserts": "behaviour",
+  "runs": true,
+  "positive": true,
+  "verdict": "good",
+  "note": "The expected value is a constant the test file declares, so the assertion checks behaviour."
+}

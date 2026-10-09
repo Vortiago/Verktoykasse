@@ -1,0 +1,9 @@
+{
+  "test": "capitalises the first letter",
+  "defect": "clean",
+  "canFail": true,
+  "mustEscalate": false,
+  "mixed": false,
+  "conditional": true,
+  "note": "No branch, loop, or catch."
+}

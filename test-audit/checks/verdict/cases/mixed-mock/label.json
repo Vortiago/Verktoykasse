@@ -1,0 +1,7 @@
+{
+  "test": "retries once",
+  "defect": "ambiguous",
+  "mustEscalate": true,
+  "mixed": true,
+  "note": "interaction assertion with a specific count"
+}

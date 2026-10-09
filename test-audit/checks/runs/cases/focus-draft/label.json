@@ -1,0 +1,18 @@
+[
+  {
+    "test": "saves the draft",
+    "defect": "focused",
+    "mustEscalate": true,
+    "mixed": false,
+    "runs": false,
+    "note": "The it.only focuses the file and narrows the whole run."
+  },
+  {
+    "test": "loads the draft",
+    "defect": "focused",
+    "mustEscalate": true,
+    "mixed": false,
+    "runs": false,
+    "note": "The plain test inherits the file-level focus from it.only."
+  }
+]

@@ -1,0 +1,7 @@
+{
+  "test": "debounce fires once",
+  "defect": "non-deterministic",
+  "canFail": true,
+  "deterministic": false,
+  "note": "a real guard, but timer-bound; reported, not escalated"
+}

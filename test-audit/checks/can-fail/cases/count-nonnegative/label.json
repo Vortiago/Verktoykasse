@@ -1,0 +1,8 @@
+{
+  "test": "the queue is not negative",
+  "defect": "vacuous",
+  "canFail": false,
+  "mustEscalate": true,
+  "mixed": false,
+  "note": "A length is never negative, so the bound is always true."
+}

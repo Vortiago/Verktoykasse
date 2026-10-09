@@ -1,0 +1,7 @@
+{
+  "test": "computes the tax",
+  "defect": "name-only",
+  "canFail": false,
+  "mustEscalate": true,
+  "note": "name-only: toBeDefined is true for any defined value"
+}

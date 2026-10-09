@@ -1,0 +1,13 @@
+{
+  "test": "reverses a string",
+  "defect": "clean",
+  "canFail": true,
+  "mustEscalate": false,
+  "deterministic": true,
+  "asserts": "behaviour",
+  "runs": true,
+  "positive": true,
+  "verdict": "good",
+  "note": "a clean unit guard",
+  "resilient": true
+}

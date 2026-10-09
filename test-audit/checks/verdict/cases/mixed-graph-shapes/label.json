@@ -1,0 +1,7 @@
+{
+  "test": "collects the graph nodes",
+  "defect": "ambiguous",
+  "mustEscalate": true,
+  "mixed": true,
+  "note": "Both assertions check the shape and never the node values, so the paraphrased gates disagree."
+}

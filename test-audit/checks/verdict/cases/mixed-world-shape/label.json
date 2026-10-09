@@ -1,0 +1,7 @@
+{
+  "test": "the schema is sound",
+  "defect": "ambiguous",
+  "mustEscalate": true,
+  "mixed": true,
+  "note": "A tautology sits beside a weak shape assertion, so the paraphrased gates disagree."
+}

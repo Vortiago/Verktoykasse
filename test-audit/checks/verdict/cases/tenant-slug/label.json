@@ -1,0 +1,8 @@
+{
+  "test": "slugs the tenant name",
+  "defect": "general-fixture",
+  "canFail": true,
+  "mustEscalate": false,
+  "mixed": false,
+  "note": "Only the name matters; the rest of the fixture is irrelevant."
+}

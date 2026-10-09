@@ -1,0 +1,10 @@
+{
+  "test": "the server answers health",
+  "defect": "clean",
+  "canFail": true,
+  "mustEscalate": false,
+  "asserts": "behaviour",
+  "runs": true,
+  "positive": true,
+  "note": "a clean end-to-end guard"
+}

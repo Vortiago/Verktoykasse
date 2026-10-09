@@ -1,0 +1,9 @@
+{
+  "test": "parses a well formed header",
+  "defect": "only-negative",
+  "canFail": true,
+  "mustEscalate": true,
+  "mixed": false,
+  "positive": false,
+  "note": "Only that the call does not throw is checked, and the parsed output is never asserted."
+}

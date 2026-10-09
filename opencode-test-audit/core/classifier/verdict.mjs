@@ -1,0 +1,328 @@
+// canonical source: test-audit/classifier/verdict.mjs@7ccb53c sha256:f6830f57b84134c0ec4e443c2066cf4e2b9203f3079507e145066cf5b1582076 - vendored copy, do not edit here
+// The verdict rules: reduce one test's answers to a verdict, a set of flags, and
+// the reasons it escalates. Pure, so the rules are tested on hand-written answer
+// objects without the model.
+//
+// Each check in checks/ has a role, and the role says what the rules do with
+// its answers. The rules read the rest from the check itself: its negated
+// phrasings, its assert kinds, its escalation reason, its flag, and its levels.
+//
+// The twin rule: each verdict-carrying judgement is asked in two phrasings, both
+// asked the plain way round: a decision model answers a negation less
+// reliably. The rules trust the value only when the spread is inside
+// TEST_AUDIT_STABLE_BAND. A disagreement escalates to a human; it is never
+// broken by a vote. `asserts` asks one yes/no question per fact and picks the
+// kind in code; an answer near 0.5 escalates when it decides the kind.
+//
+// The verdict is not asked. It is computed from the answers that carry it, so
+// each question judges one thing, and code owns the composition.
+//
+// Sources:
+// - Xuezhi Wang et al., Self-Consistency Improves Chain of Thought Reasoning
+//   (ICLR 2023)
+//   https://arxiv.org/abs/2203.11171
+//   An answer that several paths agree on is more reliable than one path.
+// - Melanie Sclar et al., Quantifying Language Models' Sensitivity to Spurious
+//   Features in Prompt Design (ICLR 2024)
+//   https://arxiv.org/abs/2310.11324
+//   A small change of prompt that keeps the meaning can move accuracy by a
+//   large margin, so one phrasing is not enough.
+// - Lianmin Zheng et al., Judging LLM-as-a-Judge with MT-Bench and Chatbot
+//   Arena (NeurIPS 2023)
+//   https://arxiv.org/abs/2306.05685
+//   An LLM judge prefers an answer for its position, not only its content.
+// - Peiyi Wang et al., Large Language Models are not Fair Evaluators (2023)
+//   https://arxiv.org/abs/2305.17926
+//   Swapping the order of the options and combining the results reduces
+//   position bias. That the asserts swap removes it is an inference.
+// - Birgitta Böckeler, Maintainability sensors for coding agents (2026)
+//   https://www.martinfowler.com/articles/sensors-for-coding-agents.html
+//   An inferential sensor reports, and a human decides. So a disagreement
+//   escalates and is never resolved by a vote.
+// - TypeSafe AI, System One docs: one specific, well-scoped question each;
+//   double negatives are answered less reliably; code owns composition.
+//   https://docs.typesafe.ai/
+// The band default (0.25), the three verdict levels, and the rule that "cannot
+// fail" contradicts a behaviour assertion are house choices.
+
+import { trusted } from "./systemone.mjs";
+import { CHECKS } from "../checks/index.mjs";
+import config from "../config.mjs";
+
+/** @typedef {import("../types.d.ts").AuditTest} AuditTest */
+/** @typedef {import("../types.d.ts").AuditAnswer} AuditAnswer */
+/** @typedef {import("../types.d.ts").AuditResult} AuditResult */
+/** @typedef {import("../types.d.ts").Check} Check */
+/** @typedef {import("../types.d.ts").CheckResult} CheckResult */
+/** @typedef {import("../types.d.ts").Paraphrase} Paraphrase */
+
+/** A yes/no answer at or above this reads as yes. */
+const YES = 0.5;
+
+/**
+ * A yes/no answer closer to 0.5 than this is a guess: an asserts answer then
+ * commits to no kind when it decides one, and any other answer is unsure.
+ */
+const UNSURE_BAND = 0.2;
+
+/** The roles whose reasons escalate a test, in the order the result lists them. */
+const REASON_ORDER = ["can-fail", "runs", "gate", "asserts"];
+
+/** The extractor's flags that stop a test or narrow the run. */
+const RUN_FLAGS = ["skipped", "focus-in-file"];
+
+/** The asserts check, whose kinds give a verdict level, and the verdict check the rules fill in. */
+const ASSERTS = CHECKS.find((check) => check.role === "asserts");
+const VERDICT = CHECKS.find((check) => check.role === "verdict");
+
+/**
+ * Reduce one test's answers to a verdict: one result for each check, and the
+ * views the reports read.
+ * @param {AuditTest} test
+ * @param {Record<string, AuditAnswer>} answers
+ * @param {{ error?: string }} [opts]
+ * @returns {AuditResult}
+ */
+export function verdictFrom(test, answers, opts = {}) {
+  /** @type {Record<string, CheckResult>} */
+  const checks = {};
+  /** @type {CheckResult | undefined} */
+  let canFail;
+  /** @type {Pick<AuditResult, "asserts" | "score">} */
+  const views = { score: {} };
+  for (const check of CHECKS) {
+    switch (check.role) {
+      case "can-fail":
+        canFail = checks[check.name] = yesNo(check, answers);
+        break;
+      case "gate": {
+        const result = yesNo(check, answers);
+        // A twin pair that both answered and agree on "no" escalates.
+        if (result.value === false) result.reasons.push(check.reason);
+        checks[check.name] = result;
+        break;
+      }
+      case "asserts": {
+        // The assertion must check the behaviour. A shape, an expected value from
+        // the code, a mock call, its own input, or nothing at all is not a guard,
+        // so any other kind escalates.
+        const kind = assertKind(check, answers);
+        const [pass] = Object.keys(check.kinds);
+        /** @type {string[]} */
+        const reasons = [];
+        if (kind.missing) reasons.push(`${check.name} not fully answered`);
+        else if (kind.conflict) reasons.push(`${check.name} unstable (${kind.conflict})`);
+        else if (kind.value !== pass) reasons.push(`${check.name} ${kind.value}`);
+        const value = kind.missing || kind.conflict ? undefined : kind.value;
+        checks[check.name] = { value, sure: value !== undefined, reasons, flags: value && value !== pass ? [value] : [] };
+        views.asserts = value;
+        break;
+      }
+      case "runs": {
+        // A marker is syntax, so the extractor reads it; the rule only reports it.
+        const marked = (test.flags ?? []).some((flag) => RUN_FLAGS.includes(flag));
+        checks[check.name] = { value: !marked, sure: true, reasons: marked ? [check.reason] : [], flags: [] };
+        break;
+      }
+      case "descriptive": {
+        // A descriptive answer reports as a flag. It never escalates.
+        const [key] = Object.keys(check.questions);
+        const value = boolOf(answers[key]);
+        checks[check.name] = { value, sure: far(field(answers[key], "noul", "number")), reasons: [], flags: value === false ? [check.flag] : [] };
+        break;
+      }
+      case "verdict":
+        // No questions: the verdict is computed below, from the other checks.
+        break;
+    }
+  }
+
+  // The verdict, from the answers that carry it. It adds no reason: each answer
+  // behind a slop or weak level already escalates on its own.
+  const kind = views.asserts;
+  const kindLevel = kind && ASSERTS?.role === "asserts" ? ASSERTS.kinds[kind]?.level : undefined;
+  /** @type {string | undefined} */
+  let level;
+  if (canFail?.value === false || kindLevel === "slop") level = "slop";
+  else if (kindLevel === "weak" || checks.positive?.value === false) level = "weak";
+  else if (canFail?.value === true && kindLevel === "good") level = "good";
+  if (VERDICT) checks[VERDICT.name] = { value: level, sure: true, reasons: [], flags: [] };
+  if (level) views.score = { label: level };
+
+  // Answers that contradict each other: a test that cannot fail cannot also
+  // check the behaviour. Each answer is stable on its own, so only a rule across
+  // questions sees it.
+  if (canFail?.value === false && kind === "behaviour") canFail.reasons.push("can_fail contradicts asserts");
+
+  const reasons = [
+    ...(opts.error ? [`no answers (${opts.error})`] : []),
+    ...REASON_ORDER.flatMap((role) => CHECKS.filter((check) => check.role === role).flatMap((check) => checks[check.name].reasons)),
+  ];
+  // The extractor's notes and the flags of the checks report; only the reasons escalate.
+  const flags = [...new Set([...(test.flags ?? []), ...Object.values(checks).flatMap((result) => result.flags)])];
+  return {
+    test: { file: test.file, line: test.line, name: test.name, path: test.path },
+    answers,
+    checks,
+    canFail: canFail?.group,
+    asserts: views.asserts,
+    score: views.score,
+    flags,
+    needsEyes: reasons.length > 0,
+    reasons,
+    error: opts.error,
+  };
+}
+
+/**
+ * The value of one answer, as the rules read it: yes or no. Undefined when the
+ * answer is missing or untrusted. A negated phrasing is read as it is asked, not
+ * flipped.
+ * @param {AuditAnswer | undefined} answer
+ * @returns {boolean | undefined}
+ */
+export function questionValue(answer) {
+  return boolOf(answer);
+}
+
+/**
+ * The assert kind from the yes/no answers of the asserts check. Each question
+ * judges one property; the kind is the worst one the answers name. "Compares
+ * content" beside "only the shape", "only a mock call", or "only its own input"
+ * is a contradiction. A missing or untrusted answer leaves no kind. An answer
+ * near 0.5 is a guess that counts only when it decides a kind; an exact tie is
+ * no answer at all.
+ * @param {Check} check @param {Record<string, AuditAnswer>} answers
+ * @returns {{ value?: string, conflict?: string, missing?: boolean }}
+ */
+function assertKind(check, answers) {
+  /** @type {Record<string, boolean>} */
+  const says = {};
+  /** @type {Array<{ name: string, value: number }>} */
+  const guesses = [];
+  for (const key of Object.keys(check.questions)) {
+    const value = field(answers[key], "noul", "number");
+    if (value === undefined) return { missing: true };
+    const name = key.replace(`${check.name}_`, "");
+    says[name] = value > YES;
+    // An exact tie is no answer: it decides nothing which way it is read.
+    if (value === YES) return { conflict: `unsure ${name} ${value.toFixed(2)}` };
+    if (!far(value)) guesses.push({ name, value });
+  }
+  // Try each guess both ways: when every way gives the same kind, the guess does
+  // not matter; when not, there is no kind. A way that reads as a contradiction
+  // rejects an answer the model did not give, so it is no kind to compare: the
+  // contradiction rule judges only the answers the model gave.
+  const kinds = new Set();
+  for (let mask = 0; mask < 1 << guesses.length; mask += 1) {
+    const trial = { ...says };
+    guesses.forEach(({ name }, bit) => (trial[name] = Boolean(mask & (1 << bit))));
+    const kind = kindOf(trial);
+    if (!kind.conflict) kinds.add(JSON.stringify(kind));
+  }
+  if (kinds.size > 1) return { conflict: `unsure ${guesses.map(({ name, value }) => `${name} ${value.toFixed(2)}`).join(", ")}` };
+  return kindOf(says);
+}
+
+/**
+ * The kind that one set of yes/no facts names. "An exact comparison" beside
+ * "only the shape" or "only a mock call" is a contradiction.
+ * @param {Record<string, boolean>} says
+ * @returns {{ value?: string, conflict?: string }}
+ */
+function kindOf(says) {
+  const only = [
+    ["mock", "interaction-only"],
+    ["shape", "shape-only"],
+  ].filter(([key]) => says[key]);
+  if (says.exact && only.length) return { conflict: `exact vs ${only.map(([, kind]) => kind).join(", ")}` };
+  // A mock checked with the test's own value is still a mock check, so the mock comes first.
+  if (only.length) return { value: only[0][1] };
+  if (!says.exact) return { value: "inexact" };
+  // "The test writes the expected value" beside "the two come from the same
+  // code" is a contradiction: a written value does not come from the code.
+  if (says.written && says.same) return { conflict: "written vs same" };
+  if (!says.written && says.same) return { value: "from-code" };
+  return { value: "behaviour" };
+}
+
+/**
+ * A yes/no judgement asked in one or more phrasings. Its value is yes or no only
+ * when every phrasing answered and they agree. A phrasing that is missing, or
+ * phrasings that disagree beyond the band, escalate.
+ * @param {Check} check @param {Record<string, AuditAnswer>} answers
+ * @returns {CheckResult}
+ */
+function yesNo(check, answers) {
+  const group = phrasings(check, answers);
+  /** @type {string[]} */
+  const reasons = [];
+  if (group.values.includes(null)) reasons.push(`${check.name} not fully answered`);
+  if (group.unstable) reasons.push(`${check.name} ${group.state} (spread ${group.spread?.toFixed(2) ?? "-"})`);
+  // An exact tie is no answer: it would otherwise read as yes and pass a gate.
+  const tied = committed(group) && group.mean === YES;
+  if (tied) reasons.push(`${check.name} undecided (mean ${YES})`);
+  const value = committed(group) && group.mean !== null && !tied ? group.mean > YES : undefined;
+  return { value, group, sure: value !== undefined && far(group.mean), reasons, flags: [] };
+}
+
+/**
+ * The phrasings of one judgement, aligned to one polarity: the answer to a
+ * negated yes/no phrasing is flipped, and a choice is read as it is. Yes/no
+ * phrasings agree when their spread is inside the band; choices agree when they
+ * name one kind.
+ * @param {Check} check @param {Record<string, AuditAnswer>} answers
+ * @returns {Paraphrase}
+ */
+function phrasings(check, answers) {
+  const negated = new Set(check.negated);
+  const values = Object.keys(check.questions).map((key) => {
+    const value = field(answers[key], "noul", "number");
+    if (value === undefined) return null;
+    return negated.has(key) ? 1 - value : value;
+  });
+  const present = values.filter((value) => value !== null);
+  const spread = present.length >= 2 ? Math.max(...present) - Math.min(...present) : null;
+  const mean = present.length ? present.reduce((sum, value) => sum + value, 0) / present.length : null;
+  const state = stateOf(present.length, spread, config.stableBand);
+  return { values, mean, spread, state, unstable: state === "borderline" || state === "unstable" };
+}
+
+/** Every phrasing answered, and they agree. @param {Paraphrase} group */
+function committed(group) {
+  return !group.unstable && !group.values.includes(null);
+}
+
+/**
+ * unanswered, single, stable, borderline, or unstable.
+ * @param {number} answered @param {number | null} spread @param {number} band
+ */
+function stateOf(answered, spread, band) {
+  if (answered === 0) return "unanswered";
+  if (spread === null) return "single";
+  if (spread <= band) return "stable";
+  return spread <= band * 2 ? "borderline" : "unstable";
+}
+
+/**
+ * One trusted field of an answer, or undefined when the answer is missing,
+ * below the mass floor, or of the wrong type.
+ * @template {"string" | "number"} Kind
+ * @param {any} answer @param {string} key @param {Kind} kind
+ * @returns {(Kind extends "string" ? string : number) | undefined}
+ */
+function field(answer, key, kind) {
+  if (!trusted(answer) || typeof answer[key] !== kind) return undefined;
+  return answer[key];
+}
+
+/** A yes/no value far enough from 0.5 to act on. @param {number | null | undefined} value */
+function far(value) {
+  return typeof value === "number" && Math.abs(value - YES) >= UNSURE_BAND;
+}
+
+/** @param {AuditAnswer | undefined} answer @returns {boolean | undefined} */
+function boolOf(answer) {
+  const value = field(answer, "noul", "number");
+  return value === undefined ? undefined : value >= YES;
+}

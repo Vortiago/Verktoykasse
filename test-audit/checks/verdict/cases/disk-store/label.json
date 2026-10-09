@@ -1,0 +1,8 @@
+{
+  "test": "the store keeps a value on disk",
+  "defect": "clean",
+  "canFail": true,
+  "mustEscalate": false,
+  "mixed": false,
+  "note": "The code runs with a real filesystem."
+}

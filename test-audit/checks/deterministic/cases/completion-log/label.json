@@ -1,0 +1,9 @@
+{
+  "test": "both jobs report in start order",
+  "defect": "non-deterministic",
+  "canFail": true,
+  "mustEscalate": false,
+  "mixed": false,
+  "deterministic": false,
+  "note": "The jobs finish in network order, so the log order can change between runs."
+}

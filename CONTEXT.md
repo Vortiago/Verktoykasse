@@ -53,6 +53,41 @@ An issue whose resolution requires a prototype or measurement before an
 implement/close decision. Not committable work as filed.
 _Avoid_: spike (the outcome is a decision recorded on the issue, not code)
 
+**Test audit**:
+The classification, test by test, that `test-audit` produces for a change. One
+audit covers every test the change adds.
+_Avoid_: test scan, test review
+
+**Battery**:
+The set of typed SystemOne questions that `test-audit` asks about one test. All
+questions of a battery share one read of the state and travel in one call.
+
+**Check**:
+One judgement in the battery. A judgement is asked as one question, a paraphrase
+pair, or a set of fact questions about one property space, or read from the
+code. Each check is one folder in `test-audit/checks/` that holds its
+questions, its role in the verdict, its sources, and the calibration cases meant
+to catch its defect. Not a gate half.
+_Avoid_: question (for a check of more than one phrasing)
+
+**Paraphrase pair**:
+Two or more logically equivalent phrasings of one question. The tool normalises
+their polarity before it compares them. A disagreement beyond the stable band is
+instability, not a tie to break.
+_Avoid_: reworded question, duplicate question
+
+**Needs-eyes**:
+The verdict of a test whose verdict-carrying answers are untrusted, unstable or
+show a defect, or whose score is slop or weak. The audit escalates the test to a
+human. It never passes the test silently.
+_Avoid_: flagged, failed
+
+**Finding**:
+What the reader of an audit should do with one test: drop it, fix it, look at
+it, or nothing (ok). It carries its reasons, and whether the tool is sure. An
+unsure finding may be a false positive. A test that needs eyes is never ok.
+_Avoid_: result, recommendation
+
 ### Web toolkit
 
 **Declarative face**:
