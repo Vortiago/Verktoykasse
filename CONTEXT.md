@@ -63,9 +63,10 @@ The set of typed SystemOne questions that `test-audit` asks about one test. All
 questions of a battery share one read of the state and travel in one call.
 
 **Check**:
-One judgement in the battery: one question, or a paraphrase pair of one
-judgement. Each check is one folder in `test-audit/checks/` that holds its
-questions, its rubric definition, its sources, and the calibration cases meant
+One judgement in the battery. A judgement is asked as one question, a paraphrase
+pair, or a set of fact questions about one property space, or read from the
+code. Each check is one folder in `test-audit/checks/` that holds its
+questions, its role in the verdict, its sources, and the calibration cases meant
 to catch its defect. Not a gate half.
 _Avoid_: question (for a check of more than one phrasing)
 

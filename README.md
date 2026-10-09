@@ -138,23 +138,18 @@ A directory is a skill when it holds a `SKILL.md`.
 
 - **[test-audit](test-audit/README.md)**: a SystemOne classifier for the tests a
   change adds. It asks a Jev-compatible typed-question endpoint the questions a
-  reviewer asks about each added test, and it prints one verdict for each test.
-  It looks for defects such as a tautology, a vacuous test, a shape-only or
-  interaction-only assertion, a name-only test, and the rest of the house
-  catalogue. Trust combines `mass` and a paraphrase pair. If a judgement is
-  unstable, the tool escalates the test to a human instead of passing it
-  silently.
-
-  The endpoint can be a local Ollama decision model, llama-arbiter, or any
-  TypeSafe endpoint. `--selftest --targets` scores several models on one
-  labelled corpus ([checks and sources](test-audit/checks/),
+  reviewer asks about each test, and prints one verdict per test: tautology,
+  vacuous test, shape-only or interaction-only assertion, and the rest of the
+  house catalogue. Trust combines `mass` and a paraphrase pair; an unstable
+  judgement escalates to a human instead of passing silently. The endpoint can
+  be a local Ollama decision model, llama-arbiter, or any TypeSafe endpoint,
+  and `--selftest --targets` scores several models on one labelled corpus
+  ([checks and sources](test-audit/checks/),
   [results](test-audit/BENCHMARK.md)). The tool is a cheap sensor beside the
   mutation check in `verify-prd-implemented`, not a coverage tool. It ships a
-  CLI, and an OpenCode 2 plugin in
-  [`opencode-test-audit`](opencode-test-audit/README.md) that carries a vendored
-  copy of the core. The plugin adds one command, `/test-audit`, and one tool,
-  `test-audit`. It is advisory: it reports and never blocks. Install it with
-  `opencode plugin add 'github:Vortiago/Verktoykasse#main::path:opencode-test-audit'`.
+  CLI, and an advisory [OpenCode 2 plugin](opencode-test-audit/README.md) that
+  adds one command, `/test-audit`, and one tool, `test-audit`, and never
+  blocks.
 
 ## Install
 
