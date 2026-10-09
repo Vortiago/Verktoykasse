@@ -33,7 +33,7 @@ test-audit/
           case.mjs        the test; its header names the defect and the sources, and the model never sees it
           label.json      the known defect and the expected outcome
           code.mjs        the code under test, if the right answer depends on it
-    can-fail/  asserts/  positive/  verdict/  and 6 descriptive checks
+    can-fail/  asserts/  positive/  runs/  verdict/  and 6 descriptive checks
   change/                 read the diff and find the tests
   classifier/             ask one SystemOne call per test, and apply the verdict rules
   report/                 print one finding per test, a summary, and an exit code
